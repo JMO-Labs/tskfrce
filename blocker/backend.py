@@ -25,6 +25,7 @@ class Seen:
     mdns_name: str | None = None
     model: str | None = None
     dhcp_fp: str | None = None
+    vid: int | None = None  # tagged VLAN; None = the untagged LAN
 
     def __post_init__(self) -> None:
         for f in ("mdns_name", "model", "dhcp_fp"):
@@ -36,7 +37,7 @@ class Seen:
         return {k: v for k, v in asdict(self).items() if v is not None or k not in _OPTIONAL}
 
 
-_OPTIONAL = ("mdns_name", "model", "dhcp_fp")
+_OPTIONAL = ("mdns_name", "model", "dhcp_fp", "vid")
 
 
 def _request(cfg: Config, path: str, body: dict | None = None):
@@ -76,4 +77,13 @@ def report_resisting(cfg: Config, macs: set[str]) -> bool:
         return True
     except Exception as e:
         log.warning("report_resisting failed: %s", e)
+        return False
+
+
+def report_vlans(cfg: Config, vlans: list[dict]) -> bool:
+    try:
+        _request(cfg, "/vlans", {"vlans": vlans})
+        return True
+    except Exception as e:
+        log.warning("report_vlans failed: %s", e)
         return False

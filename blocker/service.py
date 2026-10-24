@@ -23,6 +23,7 @@ from blocker.portal import run_dns, run_http
 from blocker.resist import ResistanceCounter, ResistanceWatch, Tally
 from blocker.signals import Signals
 from blocker.state_store import MAC_RE, StateStore
+from blocker.vlan import VlanDetector
 
 log = logging.getLogger(__name__)
 
@@ -96,6 +97,7 @@ class Service:
         self._stop = threading.Event()
         self._api = None
         self.signals = Signals(cfg)
+        self._vlan = VlanDetector(cfg)
         self.store.on_change(self._apply)
 
     # --- policy application -------------------------------------------------
@@ -292,6 +294,8 @@ class Service:
         self._spawn(self._reconcile_loop)
         self._spawn(self._resist_loop)
         self._spawn(lambda: run_discovery(self.cfg, self._stop, self._on_seen))
+        if self.cfg.lan_iface or self.cfg.mirror_iface:
+            self._spawn(lambda: self._vlan.run(self._stop))
         self._spawn(lambda: self.signals.run_dhcp(self._stop))
         self._spawn(lambda: self.signals.run_mdns(self._stop))
         self._spawn(lambda: run_dns(self.cfg, self._portal_ip or "", self._stop))
