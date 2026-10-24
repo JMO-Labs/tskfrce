@@ -68,6 +68,7 @@ def device_out(
         "mdns_name": d.mdns_name,
         "model": d.model,
         "random_mac": d.random_mac,
+        "vlan_id": d.vlan_id,
     }
 
 

@@ -21,6 +21,7 @@ class FamilySettings(Base):
     gifs_enabled = Column(Boolean, nullable=False, default=False, server_default="0")
     giphy_api_key = Column(String(100), nullable=True)  # write-only through the API
     gif_rating = Column(String(2), nullable=False, default="g", server_default="g")
+    listen_only = Column(Boolean, nullable=False, default=False, server_default="0")
     last_reset_date = Column(Date, nullable=True)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     blocker_last_seen = Column(DateTime, nullable=True)  # naive UTC; home box heartbeat

@@ -33,6 +33,7 @@ def _fam_out(fam) -> dict:
         "points_unlock_early": fam.points_unlock_early,
         "early_bonus_cap": fam.early_bonus_cap,
         "screen_time_price": fam.screen_time_price,
+        "listen_only": fam.listen_only,
         "gifs_enabled": fam.gifs_enabled,
         "gif_rating": fam.gif_rating,
         "giphy_key_set": bool(fam.giphy_api_key),  # the key itself is never returned

@@ -16,7 +16,7 @@ from app.lock.hints import apply_hint
 from app.lock.loop import trigger
 from app.lock.state import desired_blocked
 from app.models.family import get_family
-from app.models.lock import Device
+from app.models.lock import Device, Vlan
 from app.services import inbox
 
 MAC_RE = re.compile(r"^([0-9a-f]{2}:){5}[0-9a-f]{2}$")
@@ -45,6 +45,7 @@ class SeenReport(BaseModel):
     mdns_name: str | None = Field(default=None, max_length=255)
     model: str | None = Field(default=None, max_length=255)
     dhcp_fp: str | None = Field(default=None, max_length=255)
+    vid: int | None = Field(default=None, ge=1, le=4094)  # null = untagged LAN
 
     @field_validator("mac")
     @classmethod
@@ -69,6 +70,23 @@ class SeenReport(BaseModel):
         return v
 
 
+class VlanItem(BaseModel):
+    vid: int = Field(ge=1, le=4094)
+    macs: int = Field(default=0, ge=0, le=100000)
+    subnet: str | None = None
+
+    @field_validator("subnet")
+    @classmethod
+    def _subnet(cls, v: str | None) -> str | None:
+        if v is not None:
+            v = str(ipaddress.ip_network(v, strict=False))
+        return v
+
+
+class VlansReport(BaseModel):
+    vlans: list[VlanItem] = Field(max_length=4094)
+
+
 class ResistingReport(BaseModel):
     resisting: list[str] = Field(max_length=1000)
 
@@ -86,6 +104,8 @@ def _apply(dev: Device, body: SeenReport, now: datetime) -> None:
     dev.ipv6 = body.ipv6
     dev.hostname = body.hostname or dev.hostname
     dev.vendor = body.vendor or dev.vendor
+    if "vid" in body.model_fields_set:  # absent key keeps the old value; explicit null = untagged
+        dev.vlan_id = body.vid
     for k in ("mdns_name", "model", "dhcp_fp"):
         setattr(dev, k, getattr(body, k) or getattr(dev, k))
 
@@ -136,7 +156,26 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
 @router.get("/state", dependencies=[Depends(require_token)])
 def state(db: Session = Depends(get_db)) -> dict:
     _touch(db)
-    return {"blocked": desired_blocked(db, datetime.now(UTC))}
+    fam = get_family(db)
+    covered = [v for (v,) in db.query(Vlan.vid).filter(Vlan.covered.is_(True)).order_by(Vlan.vid)]
+    blocked = [] if fam.listen_only else desired_blocked(db, datetime.now(UTC))
+    return {"blocked": blocked, "listen_only": fam.listen_only, "covered_vlans": covered}
+
+
+@router.post("/vlans", dependencies=[Depends(require_token)])
+def vlans_report(body: VlansReport, db: Session = Depends(get_db)) -> dict:
+    now = datetime.now(UTC).replace(tzinfo=None)
+    items = {i.vid: i for i in body.vlans}  # a repeated vid: last one wins
+    rows = {v.vid: v for v in db.query(Vlan).filter(Vlan.vid.in_(items))}
+    for vid, i in items.items():
+        row = rows.get(vid)
+        if row is None:
+            row = Vlan(vid=vid, first_seen=now)
+            db.add(row)
+        row.device_count, row.last_seen = i.macs, now
+        row.subnet = i.subnet or row.subnet
+    db.commit()
+    return {"count": len(items)}
 
 
 @router.post("/devices/resisting", dependencies=[Depends(require_token)])
