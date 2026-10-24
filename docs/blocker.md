@@ -24,7 +24,7 @@ For the reasoning behind these limits, see the [blocker enforcement decision rec
 | Trick | What happens |
 |---|---|
 | Change DNS / use a VPN | Doesn't work: all internet traffic is dropped |
-| Forget the network / rotating private address | A new address looks like a new device, so it starts blocked |
+| Forget the network / rotating private address | A new address looks like a new device. You get a "New device" alert. It stays online unless **Block new devices until I assign them** is on (Settings → Family). |
 | Set a fixed (static) IP | Doesn't work: the box tracks the device itself, not its number |
 | IPv6 | Blocked too, as long as the box has IPv6 on your network. If it doesn't, turn IPv6 off on your router to be sure. |
 | Mobile data / hotspot / other Wi-Fi | Not covered (home Wi-Fi only) |

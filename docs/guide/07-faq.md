@@ -18,7 +18,7 @@ It stays in your home, on the home box. There are no accounts with us, no ads an
 A determined kid can. t@sk4ce is built to stop normal use and to tell you when someone is dodging it. It is not a lock.
 
 - Mobile data and phone hotspots aren't covered. It only works on your home Wi-Fi.
-- A new, unregistered device can be used instead, unless you keep "Block new devices" on.
+- A new, unregistered device can be used instead, unless you turn on "Block new devices" in Settings (it is off at first).
 - A kid who changes their device's network settings is usually still stopped, and you get an alert when something gets through.
 
 Talk with your kids. The app helps with that. It can't replace it.
@@ -33,7 +33,7 @@ Most routers work. A few, especially some mesh systems, don't. Check the [router
 
 ## Can I use it without pausing the internet?
 
-Yes. Skip the **Devices** step in [first-time setup](03-first-setup.md) and mark every device **Guest** (or don't assign any, and turn off "Block new devices" in Settings). Nothing is paused then. Chores, points, chat and rewards all still work.
+Yes. Skip the **Devices** step in [first-time setup](03-first-setup.md) and mark every device **Guest** (or don't assign any; "Block new devices" is off unless you turned it on). Nothing is paused then. Chores, points, chat and rewards all still work.
 
 ## Can I use it with Wi-Fi on my phone only (no box)?
 

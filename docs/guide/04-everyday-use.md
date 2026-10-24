@@ -93,7 +93,7 @@ Rewards are the things you create yourself. A kid sees a progress bar toward eac
 
 On **Devices**, three lists:
 
-- **New**: devices the box just noticed. Pick an owner or mark as guest. New devices are paused until you do (you can change that in Settings).
+- **New**: devices the box just noticed. Pick an owner or mark as guest. New devices stay online until you do. To pause them until you pick an owner, turn on **Block new devices until I assign them** in Settings.
 - **Assigned**: a device with one or more kid owners. It is paused until all its owners' chores are approved.
 - **Guests**: always online.
 
