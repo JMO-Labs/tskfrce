@@ -28,6 +28,11 @@ export interface Device {
   last_seen: string | null
   resisting: boolean
   needs_pins?: boolean
+  hint_of_id?: number | null
+  hint_reason?: 'name' | 'model' | 'timing' | null
+  mdns_name?: string | null
+  model?: string | null
+  random_mac?: boolean
 }
 
 /** GET /blocker: home box liveness */

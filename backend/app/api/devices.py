@@ -14,7 +14,14 @@ from app.lock.rules import is_online
 from app.lock.schedule import local_now
 from app.lock.state import Prefetch, device_facts
 from app.models.family import FamilySettings, get_family
-from app.models.lock import Device, DeviceGroup, Override, TimeWindow, device_group_members
+from app.models.lock import (
+    Device,
+    DeviceGroup,
+    DeviceHintRejection,
+    Override,
+    TimeWindow,
+    device_group_members,
+)
 from app.models.user import User, UserRole
 from app.schemas.lock import DevicePatch, GroupIn, OverrideIn, utc_z
 
@@ -56,6 +63,11 @@ def device_out(
         "last_seen": utc_z(d.last_seen),
         "resisting": d.resisting_since is not None,
         "needs_pins": needs_pins,
+        "hint_of_id": d.hint_of_id,
+        "hint_reason": d.hint_reason,
+        "mdns_name": d.mdns_name,
+        "model": d.model,
+        "random_mac": d.random_mac,
     }
 
 
@@ -112,6 +124,21 @@ def patch_device(device_id: int, body: DevicePatch, db: Session = Depends(get_db
         if len(groups) != len(set(body.group_ids)):
             raise HTTPException(400, "One of the groups doesn't exist. Refresh and try again.")
         d.groups = groups
+    db.commit()
+    trigger()
+    return device_out(db, d, get_family(db), datetime.now(UTC))
+
+
+@router.post("/devices/{device_id}/hint/undo")
+def undo_hint(device_id: int, db: Session = Depends(get_db)):
+    d = _device(db, device_id)
+    if d.hint_of_id is None:
+        raise HTTPException(404, "There's no suggestion to undo on this device.")
+    db.merge(DeviceHintRejection(device_id=d.id, candidate_id=d.hint_of_id))
+    d.owners, d.groups = [], []
+    db.query(Override).filter(Override.device_id == d.id).delete()  # incl. the copied lock
+    d.status = "unassigned"
+    d.hint_of_id = d.hint_reason = None
     db.commit()
     trigger()
     return device_out(db, d, get_family(db), datetime.now(UTC))

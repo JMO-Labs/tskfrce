@@ -12,6 +12,7 @@ KINDS = (
     "redemption_decided",
     "device_resisting",
     "new_device",
+    "device_hint",
     "badge_earned",
     "level_up",
     "chat_message",
