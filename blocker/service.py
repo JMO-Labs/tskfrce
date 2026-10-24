@@ -16,13 +16,15 @@ from dataclasses import replace
 from blocker import firewall as fw
 from blocker.api import make_api
 from blocker.arp import RedirectionManager, TargetAddrs
-from blocker.backend import Seen, fetch_blocked, report_resisting
+from blocker.backend import Seen, fetch_state, report_resisting
 from blocker.config import Config
 from blocker.discovery import run_discovery
 from blocker.portal import run_dns, run_http
 from blocker.resist import ResistanceCounter, ResistanceWatch, Tally
+from blocker.sites import SiteManager
 from blocker.signals import Signals
 from blocker.state_store import MAC_RE, StateStore
+from blocker.vlan import VlanDetector
 
 log = logging.getLogger(__name__)
 
@@ -70,7 +72,9 @@ class Service:
         *,
         firewall=fw,
         redirection: RedirectionManager | None = None,
-        fetch: Callable[[Config], list[str] | None] = fetch_blocked,
+        fetch: Callable[[Config], list[str] | None] | None = None,
+        fetch_state: Callable[[Config], dict | None] = fetch_state,
+        sites: SiteManager | None = None,
         sleep: Callable[[float], None] = time.sleep,
         clock: Callable[[], float] = time.monotonic,
         lan_cidrs: list[str] | None = None,
@@ -81,10 +85,14 @@ class Service:
         self.cfg = cfg
         self._fw = firewall
         self._redir = redirection or RedirectionManager(cfg)
-        self._fetch = fetch
+        self._fetch = fetch  # legacy blocked-only fetch; wins over fetch_state when given
+        self._fetch_state = fetch_state
+        self._listen_only = False
+        self._vid_of: dict[str, int | None] = {}  # mac -> vlan it was last seen on
         self._sleep = sleep
         self._clock = clock
         self._lan_cidrs = lan_cidrs or DEFAULT_LAN_CIDRS
+        self._sites = sites or SiteManager(cfg, on_seen=self._on_seen, lan_cidrs=self._lan_cidrs)
         self._portal_ip = portal_ip
         self._watch = watch
         self._report = report
@@ -96,6 +104,7 @@ class Service:
         self._stop = threading.Event()
         self._api = None
         self.signals = Signals(cfg)
+        self._vlan = VlanDetector(cfg)
         self.store.on_change(self._apply)
 
     # --- policy application -------------------------------------------------
@@ -106,12 +115,14 @@ class Service:
         # (on_change, reconcile, _on_seen) can't apply a stale ruleset last.
         with self._lock:
             lan = self._lan()
-            infra = (
+            site_macs, site_ips = self._sites.infra()
+            infra = site_macs | (
                 {m.lower() for m in (lan.gateway_mac, lan.gateway_mac6, lan.box_mac) if m}
                 if lan
                 else set()
             )
-            blocked = set(self.store.current()) | self._probing
+            # listen-only: nothing is paused anywhere (discovery continues)
+            blocked = set() if self._listen_only else set(self.store.current()) | self._probing
             skipped = {m for m in blocked if m.lower() in infra}
             if skipped:
                 log.warning("refusing to enforce on router/box MACs: %s", sorted(skipped))
@@ -120,7 +131,7 @@ class Service:
             # Never spoof an address that isn't safely one device's: the gateway's
             # own IP or the box/portal IP. Stripping it here keeps it out of the firewall sets, the
             # redirect targets and the watch — and off the restore path.
-            unsafe = self._unsafe_ips(lan)
+            unsafe = self._unsafe_ips(lan) | site_ips
             devs, stripped = self._strip_unsafe(devs, unsafe)
             if stripped:
                 log.warning("refusing unsafe gateway-side addresses: %s", sorted(stripped))
@@ -134,9 +145,16 @@ class Service:
                 self._fw.apply(ruleset)
             except Exception:
                 log.exception("firewall apply failed")
-            self._redir.set_targets(devs)
+            base = {m: t for m, t in devs.items() if self._vid_of.get(m) is None}
+            self._redir.set_targets(base)
             if self._watch is not None:
-                self._watch.set_watched(devs)
+                self._watch.set_watched(base)
+            by_vid: dict[int, dict[str, TargetAddrs]] = {}
+            for m, t in devs.items():
+                vid = self._vid_of.get(m)
+                if vid is not None:
+                    by_vid.setdefault(vid, {})[m] = t
+            self._sites.set_targets(by_vid)
 
     def _lan(self):
         try:
@@ -197,15 +215,23 @@ class Service:
         with self._lock:
             self._devices[seen.mac] = TargetAddrs(mac=seen.mac, ip=seen.ip, ip6=tuple(seen.ipv6))
             self._seen_at[seen.mac] = self._clock()
+            self._vid_of[seen.mac] = seen.vid
         if seen.mac in self.store.current():
             self._apply(self.store.current())
 
     # --- reconcile (poll heals missed pushes) -------------------------------
 
     def _reconcile_once(self) -> None:
-        fetched = self._fetch(self.cfg)
-        if fetched is not None:  # None = app unreachable -> keep last set
-            self.store.set_blocked(fetched)
+        if self._fetch is not None:
+            blocked = self._fetch(self.cfg)
+            state = None if blocked is None else {"blocked": blocked}
+        else:
+            state = self._fetch_state(self.cfg)
+        if state is None:  # app unreachable -> keep last state
+            return
+        self._listen_only = bool(state.get("listen_only", False))
+        self._sites.sync({int(v) for v in state.get("covered_vlans", [])})
+        self.store.set_blocked(state["blocked"])  # always re-applies (listen_only too)
 
     def _reconcile_loop(self) -> None:
         while not self._stop.wait(self.cfg.reconcile_interval):
@@ -218,7 +244,7 @@ class Service:
 
     def _resist_once(self) -> None:
         # Always report the full set (even empty) so the backend can clear.
-        self._report(self.cfg, self._watch.counter.resisting())
+        self._report(self.cfg, self._watch.counter.resisting() | self._sites.resisting())
 
     def _resist_loop(self) -> None:
         while not self._stop.wait(self.cfg.resist_interval):
@@ -292,6 +318,8 @@ class Service:
         self._spawn(self._reconcile_loop)
         self._spawn(self._resist_loop)
         self._spawn(lambda: run_discovery(self.cfg, self._stop, self._on_seen))
+        if self.cfg.lan_iface or self.cfg.mirror_iface:
+            self._spawn(lambda: self._vlan.run(self._stop))
         self._spawn(lambda: self.signals.run_dhcp(self._stop))
         self._spawn(lambda: self.signals.run_mdns(self._stop))
         self._spawn(lambda: run_dns(self.cfg, self._portal_ip or "", self._stop))
@@ -319,6 +347,10 @@ class Service:
                 self._watch.stop()
             except Exception:
                 log.exception("resistance watch stop failed")
+        try:
+            self._sites.stop_all()
+        except Exception:
+            log.exception("site restore failed")
         try:
             self._redir.stop_all()
         except Exception:

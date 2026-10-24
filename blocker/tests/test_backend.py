@@ -129,3 +129,39 @@ def test_report_resisting_posts_sorted_list(make_stub):
 
 def test_report_resisting_false_on_unreachable():
     assert report_resisting(_cfg("http://127.0.0.1:1"), set()) is False
+
+
+def test_seen_vid_only_when_set():
+    base = dict(mac="m", ip=None, ipv6=[], hostname=None, vendor=None)
+    assert "vid" not in Seen(**base).body()
+    assert Seen(**base, vid=20).body()["vid"] == 20
+
+
+def test_report_vlans_posts_body(make_stub):
+    from blocker.backend import report_vlans
+
+    stub = make_stub(body=b"{}")
+    cfg = _cfg(stub.url)
+    vl = [{"vid": 20, "macs": 6, "subnet": None}]
+    assert report_vlans(cfg, vl) is True
+    cmd, path, _h, raw = stub.requests[0]
+    assert (cmd, path) == ("POST", "/api/v1/internal/vlans")
+    assert json.loads(raw) == {"vlans": vl}
+
+
+def test_fetch_state_parses_and_defaults(make_stub):
+    from blocker.backend import fetch_state
+
+    full = make_stub(body=b'{"blocked":["a"],"listen_only":true,"covered_vlans":[20,30]}')
+    assert fetch_state(_cfg(full.url)) == {
+        "blocked": ["a"],
+        "listen_only": True,
+        "covered_vlans": [20, 30],
+    }
+    old = make_stub(body=b'{"blocked":["a"]}')
+    assert fetch_state(_cfg(old.url)) == {
+        "blocked": ["a"],
+        "listen_only": False,
+        "covered_vlans": [],
+    }
+    assert fetch_state(_cfg("http://127.0.0.1:1")) is None

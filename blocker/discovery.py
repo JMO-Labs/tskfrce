@@ -51,6 +51,7 @@ def scan_once(
     cfg: Config,
     send: Callable = _scapy_send,
     resolve: Callable[[str], str | None] = resolve_hostname,
+    vid: int | None = None,
 ) -> list[Seen]:
     v4: dict[str, str] = {}
     for _, rcv in send("arp", cfg)[0]:
@@ -73,6 +74,7 @@ def scan_once(
             ipv6=v6.get(mac, [])[:MAX_IPV6],
             hostname=hostname[:MAX_STR] if hostname else hostname,
             vendor=vendor[:MAX_STR] if vendor else vendor,
+            vid=vid,
         )
         report_seen(cfg, seen)
         seen_list.append(seen)
@@ -80,11 +82,14 @@ def scan_once(
 
 
 def run_discovery(
-    cfg: Config, stop: threading.Event, on_seen: Callable[[Seen], None] | None = None
+    cfg: Config,
+    stop: threading.Event,
+    on_seen: Callable[[Seen], None] | None = None,
+    vid: int | None = None,
 ) -> None:
     while not stop.is_set():
         try:
-            for seen in scan_once(cfg):
+            for seen in scan_once(cfg, vid=vid):
                 if on_seen:
                     on_seen(seen)
         except Exception as e:

@@ -48,3 +48,9 @@ def test_bind_host_defaults_loopback_and_reads_env(tmp_path):
     base = {"INTERNAL_TOKEN": "t", "DATA_DIR": str(tmp_path)}
     assert Config.from_env(base).bind_host == "127.0.0.1"
     assert Config.from_env({**base, "BLOCKER_BIND": "0.0.0.0"}).bind_host == "0.0.0.0"
+
+
+def test_mirror_iface_default_empty_and_env(tmp_path):
+    base = {"INTERNAL_TOKEN": "t", "DATA_DIR": str(tmp_path)}
+    assert Config.from_env(base).mirror_iface == ""
+    assert Config.from_env({**base, "MIRROR_IFACE": "eth1"}).mirror_iface == "eth1"

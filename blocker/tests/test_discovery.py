@@ -94,7 +94,7 @@ def test_run_discovery_calls_on_seen(tmp_path, reported, monkeypatch):
     monkeypatch.setattr(
         discovery,
         "scan_once",
-        lambda cfg: real(cfg, send=_send(arp), resolve=lambda ip: None),
+        lambda cfg, **k: real(cfg, send=_send(arp), resolve=lambda ip: None, **k),
     )
     got = []
 
