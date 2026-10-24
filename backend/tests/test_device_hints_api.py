@@ -143,3 +143,31 @@ def test_device_out_fields(client, db, parent_headers):
     d = client.get("/api/v1/devices", headers=parent_headers).json()[0]
     assert d["mdns_name"] == "x" and d["model"] == "iPad1,1"
     assert d["random_mac"] is True and d["hint_of_id"] is None and d["hint_reason"] is None
+
+
+def test_hinted_device_gets_one_notice(client, db, parent, kid):
+    _old(db, kid, mdns_name="x")
+    did = seen(client, mdns_name="x")
+    kinds = [n.kind for n in db.query(Notification).all()]
+    assert "device_hint" in kinds and "new_device" not in kinds
+
+
+def test_undo_removes_copied_lock(client, db, parent_headers, kid):
+    old = _old(db, kid, mdns_name="x")
+    db.add(Override(device_id=old.id, action="lock", source="manual", created_at=_now()))
+    db.commit()
+    did = seen(client, mdns_name="x")
+    assert db.query(Override).filter_by(device_id=did).count() == 1
+    client.post(f"/api/v1/devices/{did}/hint/undo", headers=parent_headers)
+    db.expire_all()
+    assert db.query(Override).filter_by(device_id=did).count() == 0
+
+
+def test_strict_mode_hint_never_unblocks(client, db, kid):
+    from app.models.family import get_family
+
+    get_family(db).new_devices_blocked = True
+    _old(db, kid, mdns_name="x")  # kid has no chores today, so the old device is online
+    did = seen(client, mdns_name="x")
+    d = db.get(Device, did)
+    assert d.status == "unassigned" and d.hint_of_id is None

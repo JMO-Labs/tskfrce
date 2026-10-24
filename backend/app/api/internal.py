@@ -106,15 +106,15 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
         db.add(dev)
         try:
             db.flush()
-            inbox.notify(
-                db,
-                inbox.parents(db),
-                "new_device",
-                f"New device: {dev.name}",
-                "Say whose it is so it follows their rules.",
-                device_id=dev.id,
-            )
-            apply_hint(db, dev)
+            if not apply_hint(db, dev):  # a hint sends its own notice
+                inbox.notify(
+                    db,
+                    inbox.parents(db),
+                    "new_device",
+                    f"New device: {dev.name}",
+                    "Say whose it is so it follows their rules.",
+                    device_id=dev.id,
+                )
             db.commit()
         except IntegrityError:  # concurrent first report for the same MAC
             db.rollback()

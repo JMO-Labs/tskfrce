@@ -136,6 +136,7 @@ def undo_hint(device_id: int, db: Session = Depends(get_db)):
         raise HTTPException(404, "There's no suggestion to undo on this device.")
     db.merge(DeviceHintRejection(device_id=d.id, candidate_id=d.hint_of_id))
     d.owners, d.groups = [], []
+    db.query(Override).filter(Override.device_id == d.id).delete()  # incl. the copied lock
     d.status = "unassigned"
     d.hint_of_id = d.hint_reason = None
     db.commit()

@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.lock.state import desired_blocked
+from app.models.family import get_family
 from app.models.lock import Device, DeviceHintRejection, Override
 from app.models.user import UserRole
 from app.services import inbox
@@ -104,6 +105,10 @@ def apply_hint(db: Session, device: Device) -> bool:
     paused = {d.id for d in kids if d.mac in blocked}
     hint = find_hint(_signals(device), [_signals(d) for d in kids], naive, paused, rejected)
     if hint is None:
+        return False
+    # Names are self-reported: with "Block new devices" on, a hint may only keep a device
+    # paused, never bring a blocked newcomer online by copying an unpaused kid's rules.
+    if get_family(db).new_devices_blocked and hint.candidate_id not in paused:
         return False
     cand = next(d for d in kids if d.id == hint.candidate_id)
     device.owners = list(cand.owners)
