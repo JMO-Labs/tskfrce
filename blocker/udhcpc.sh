@@ -12,8 +12,10 @@ mkdir -p "$RUN"
 lease_ok() {
   case "$mask" in 1[6-9] | 2[0-9] | 30) ;; *) return 1 ;; esac
   case "$ip" in 10.* | 192.168.* | 172.1[6-9].* | 172.2[0-9].* | 172.3[01].*) ;; *) return 1 ;; esac
-  # Any non-default route to this address via another interface = overlap.
-  ! ip -4 route show to match "$ip" | grep -v '^default' | grep -qv " dev $interface "
+  # Overlap either way with a non-default route on another interface: routes inside
+  # the leased net (root) or containing it (match).
+  ! { ip -4 route show root "$ip/$mask"; ip -4 route show match "$ip/$mask"; } |
+    grep -v '^default' | grep -qv " dev $interface "
 }
 
 case "$1" in

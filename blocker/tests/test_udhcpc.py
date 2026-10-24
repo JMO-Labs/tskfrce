@@ -18,6 +18,7 @@ FAKE_IP = '#!/bin/sh\nif [ "$2" = route ]; then printf "%b" "$FAKE_ROUTES"; else
         ("192.168.20.7", "24", "", True),
         ("192.168.20.7", "24", "192.168.20.0/24 dev eth0.20 proto kernel\n", True),
         ("192.168.1.7", "24", "192.168.1.0/24 dev eth0 proto kernel\n", False),  # overlaps LAN
+        ("192.168.5.7", "16", "192.168.1.0/24 dev eth0 proto kernel\n", False),  # wraps LAN
         ("8.8.8.8", "24", "", False),  # public
         ("10.0.0.5", "8", "", False),  # too wide
         ("10.0.0.5", "30", "default via 192.168.1.1 dev eth0\n", True),
