@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -66,3 +68,30 @@ def test_cache_reports_only_on_change():
     assert rep.call_count == 3
     last = rep.call_args[0][1]
     assert (last.ip, last.hostname, last.mdns_name, last.dhcp_fp) == ("10.0.0.5", "h", "n", "1,3,6")
+
+
+def test_dhcp_rejects_spoofed_sender_and_server_replies():
+    spoofed = _discover([1, 3])
+    spoofed[Ether].src = "aa:bb:cc:dd:ee:99"
+    assert dhcp_fp_from_packet(spoofed) is None
+    reply = _discover([1, 3])
+    reply[BOOTP].op = 2
+    assert dhcp_fp_from_packet(reply) is None
+
+
+def test_unknown_mac_not_reported():
+    rep = Mock()
+    assert not Signals(CFG, rep).update(MAC, dhcp_fp="1,3")
+    rep.assert_not_called()
+
+
+def test_ambiguous_or_stale_ip_maps_to_nothing(monkeypatch):
+    sg = Signals(CFG, Mock())
+    sg.note_seen(Seen(mac=MAC, ip="10.0.0.5", ipv6=[], hostname=None, vendor=None))
+    sg.note_seen(Seen(mac="aa:bb:cc:dd:ee:02", ip="10.0.0.5", ipv6=[], hostname=None, vendor=None))
+    assert sg.mac_for_ip("10.0.0.5") is None
+    sg2 = Signals(CFG, Mock())
+    sg2.note_seen(Seen(mac=MAC, ip="10.0.0.6", ipv6=[], hostname=None, vendor=None))
+    later = time.monotonic() + 601
+    monkeypatch.setattr("blocker.signals.time.monotonic", lambda: later)
+    assert sg2.mac_for_ip("10.0.0.6") is None

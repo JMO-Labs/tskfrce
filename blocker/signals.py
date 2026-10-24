@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 
 from blocker.backend import Seen, report_seen
@@ -22,6 +24,7 @@ MDNS_TYPES = (
     "_airplay._tcp.local.",
 )
 _FIELDS = ("mdns_name", "model", "dhcp_fp")
+_FRESH = 600  # s: only trust discovery entries this recent for IP -> MAC
 
 
 def dhcp_fp_from_packet(pkt) -> tuple[str, str] | None:
@@ -37,11 +40,12 @@ def dhcp_fp_from_packet(pkt) -> tuple[str, str] | None:
         if isinstance(prl, int):
             prl = [prl]
         fp = ",".join(str(int(x)) for x in prl)
-        mac = pkt[Ether].src if pkt.haslayer(Ether) else None
-        if not mac:
-            chaddr = bytes(pkt[BOOTP].chaddr)[:6]
-            mac = ":".join(f"{b:02x}" for b in chaddr)
-        return mac.lower(), fp
+        if pkt[BOOTP].op != 1 or not pkt.haslayer(Ether):  # BOOTREQUEST from the client only
+            return None
+        mac = ":".join(f"{b:02x}" for b in bytes(pkt[BOOTP].chaddr)[:6])
+        if pkt[Ether].src.lower() != mac:  # relayed or spoofed: sender is not the client
+            return None
+        return mac, fp
     except Exception:
         return None
 
@@ -79,27 +83,32 @@ class Signals:
         self._report = report
         self._lock = threading.Lock()
         self._latest: dict[str, Seen] = {}  # last discovery result per MAC
+        self._seen_at: dict[str, float] = {}
         self._cache: dict[str, dict[str, str]] = {}  # reported signals per MAC
 
     def note_seen(self, seen: Seen) -> None:
         with self._lock:
             self._latest[seen.mac] = seen
+            self._seen_at[seen.mac] = time.monotonic()
 
     def mac_for_ip(self, ip: str) -> str | None:
+        """The one recently-seen MAC holding this IP; None if stale or ambiguous."""
+        cutoff = time.monotonic() - _FRESH
         with self._lock:
-            return next((m for m, s in self._latest.items() if s.ip == ip), None)
+            macs = [m for m, s in self._latest.items() if s.ip == ip and self._seen_at[m] >= cutoff]
+        return macs[0] if len(macs) == 1 else None
 
     def update(self, mac: str, **sig: str | None) -> bool:
         """Cache new/changed signals and report merged with last-known data."""
         sig = {k: v[:255] for k, v in sig.items() if k in _FIELDS and v}
         with self._lock:
+            base = self._latest.get(mac)
+            if base is None:  # only enrich devices discovery already knows
+                return False
             cached = self._cache.setdefault(mac, {})
             if not sig or all(cached.get(k) == v for k, v in sig.items()):
                 return False
             cached.update(sig)
-            base = self._latest.get(mac) or Seen(
-                mac=mac, ip=None, ipv6=[], hostname=None, vendor=None
-            )
             seen = replace(base, **cached)
         self._report(self.cfg, seen)
         return True
@@ -143,19 +152,34 @@ class Signals:
     def run_mdns(self, stop: threading.Event) -> None:
         zc = None
         try:
-            from zeroconf import ServiceBrowser, Zeroconf
+            from zeroconf import ServiceBrowser, ServiceStateChange, Zeroconf
+
+            pool = ThreadPoolExecutor(max_workers=2)  # bounded: an mDNS flood can't spawn threads
+            pending: set[tuple[str, str]] = set()
+
+            def resolve(zeroconf, key):
+                try:
+                    self._on_service(zeroconf, *key)
+                finally:
+                    pending.discard(key)
 
             def handler(zeroconf, service_type, name, state_change):
-                # Resolve off zeroconf's event loop thread.
-                threading.Thread(
-                    target=self._on_service, args=(zeroconf, service_type, name), daemon=True
-                ).start()
+                key = (service_type, name)
+                if (
+                    state_change is ServiceStateChange.Removed
+                    or key in pending
+                    or len(pending) > 256
+                ):
+                    return
+                pending.add(key)
+                pool.submit(resolve, zeroconf, key)  # resolve off zeroconf's event loop
 
             zc = Zeroconf()
             browsers = [ServiceBrowser(zc, t, handlers=[handler]) for t in MDNS_TYPES]
             stop.wait()
             for b in browsers:
                 b.cancel()
+            pool.shutdown(wait=False, cancel_futures=True)
         except Exception as e:
             log.warning("mdns browser stopped: %s", e)
         finally:
