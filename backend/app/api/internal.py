@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
 from app.core.config import settings
+from app.lock.hints import apply_hint
 from app.lock.loop import trigger
 from app.lock.state import desired_blocked
 from app.models.family import get_family
@@ -41,6 +42,9 @@ class SeenReport(BaseModel):
     ipv6: list[str] = Field(default_factory=list, max_length=8)
     hostname: str | None = Field(default=None, max_length=255)
     vendor: str | None = Field(default=None, max_length=255)
+    mdns_name: str | None = Field(default=None, max_length=255)
+    model: str | None = Field(default=None, max_length=255)
+    dhcp_fp: str | None = Field(default=None, max_length=255)
 
     @field_validator("mac")
     @classmethod
@@ -82,6 +86,8 @@ def _apply(dev: Device, body: SeenReport, now: datetime) -> None:
     dev.ipv6 = body.ipv6
     dev.hostname = body.hostname or dev.hostname
     dev.vendor = body.vendor or dev.vendor
+    for k in ("mdns_name", "model", "dhcp_fp"):
+        setattr(dev, k, getattr(body, k) or getattr(dev, k))
 
 
 @router.post("/devices/seen", dependencies=[Depends(require_token)])
@@ -108,6 +114,7 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
                 "Say whose it is so it follows their rules.",
                 device_id=dev.id,
             )
+            apply_hint(db, dev)
             db.commit()
         except IntegrityError:  # concurrent first report for the same MAC
             db.rollback()
@@ -116,8 +123,13 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
     if new:
         trigger()
     else:
+        before = (dev.mdns_name, dev.model, dev.dhcp_fp)
         _apply(dev, body, now)
+        changed = before != (dev.mdns_name, dev.model, dev.dhcp_fp)
+        hinted = changed and dev.status == "unassigned" and apply_hint(db, dev)
         db.commit()
+        if hinted:
+            trigger()
     return {"id": dev.id}
 
 

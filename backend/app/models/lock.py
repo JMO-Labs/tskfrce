@@ -46,6 +46,11 @@ class Device(Base):
     first_seen = Column(DateTime, nullable=False, default=datetime.utcnow)
     last_seen = Column(DateTime, nullable=True)
     resisting_since = Column(DateTime, nullable=True)
+    mdns_name = Column(String(255), nullable=True)
+    model = Column(String(255), nullable=True)
+    dhcp_fp = Column(String(255), nullable=True)
+    hint_of_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), nullable=True)
+    hint_reason = Column(String(10), nullable=True)  # name | model | timing
 
     ipv6_rows = relationship("DeviceIPv6", cascade="all, delete-orphan")
     owners = relationship("User", secondary=device_owners, backref="devices")
@@ -62,9 +67,23 @@ class Device(Base):
             DeviceIPv6(address=a) for a in want if a not in self.ipv6
         ]
 
+    @property
+    def random_mac(self) -> bool:
+        """Locally administered bit set (private Wi-Fi address)."""
+        return bool(int(self.mac[:2], 16) & 0x02)
+
     @validates("mac")
     def _lower_mac(self, _key, value):
         return value.lower()
+
+
+class DeviceHintRejection(Base):
+    """A parent said device_id is NOT the same device as candidate_id."""
+
+    __tablename__ = "device_hint_rejections"
+
+    device_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), primary_key=True)
+    candidate_id = Column(Integer, ForeignKey("devices.id", ondelete="CASCADE"), primary_key=True)
 
 
 class DeviceIPv6(Base):
