@@ -10,6 +10,7 @@ and process call goes through an injectable ``run`` so tests need no root.
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import re
 import subprocess
@@ -33,7 +34,7 @@ DHCP_TIMEOUT = 15.0
 DHCP_POLL = 1.0
 
 Run = Callable[[list[str]], tuple[int, str]]
-_INET = re.compile(r"\binet (\d+\.\d+\.\d+\.\d+)/")
+_INET = re.compile(r"\binet (\d+\.\d+\.\d+\.\d+)/(\d+)")
 _DEFAULT = re.compile(r"^default via (\S+)", re.M)
 
 
@@ -97,6 +98,19 @@ class Site:
         return f"{RUN_DIR}/udhcpc-{self.iface}.pid"
 
 
+def _router_ok(ip: str, prefix: int, router: str) -> bool:
+    """DHCP is untrusted: only spoof a router that sits inside our own leased subnet."""
+    try:
+        net = ipaddress.ip_network(f"{ip}/{prefix}", strict=False)
+        gw = ipaddress.ip_address(router)
+    except ValueError:
+        return False
+    if gw in net and gw != ipaddress.ip_address(ip):
+        return True
+    log.warning("ignoring DHCP router %s outside %s", router, net)
+    return False
+
+
 class SiteManager:
     def __init__(
         self,
@@ -151,7 +165,11 @@ class SiteManager:
 
     def _lease(self, iface: str) -> tuple[str, str] | None:
         ip, gw = self._address(iface), self._router(iface)
-        return (ip, gw) if ip and gw else None
+        return (ip, gw) if ip and gw and _router_ok(ip, self._prefix(iface), gw) else None
+
+    def _prefix(self, iface: str) -> int:
+        m = _INET.search(self._run(["ip", "-4", "-o", "addr", "show", "dev", iface])[1])
+        return int(m.group(2)) if m else 32
 
     def _wait_lease(self, iface: str) -> tuple[str, str] | None:
         waited = 0.0

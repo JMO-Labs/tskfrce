@@ -414,3 +414,14 @@ def test_stop_restores_sites():
     svc, _, _ = _svc(sites=sites)
     svc.stop()
     assert sites.stopped
+
+
+def test_sighting_on_another_vlan_keeps_base_block():
+    sites = FakeSites()
+    state = {"blocked": [MAC], "listen_only": False, "covered_vlans": [20]}
+    svc, _, redir = _svc(fetch_state=lambda cfg: state, sites=sites)
+    svc._on_seen(_seen(MAC, "192.168.1.50"))
+    svc._on_seen(_vlan_seen(MAC, "192.168.20.9", 20))  # same MAC spoofed/seen on VLAN 20
+    svc._reconcile_once()
+    assert redir.targets[MAC].ip == "192.168.1.50"  # base block not lifted
+    assert sites.targets[20][MAC].ip == "192.168.20.9"

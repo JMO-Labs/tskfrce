@@ -89,6 +89,8 @@ class Service:
         self._fetch_state = fetch_state
         self._listen_only = False
         self._vid_of: dict[str, int | None] = {}  # mac -> vlan it was last seen on
+        # (mac, vid) -> addresses + time: a MAC seen on another segment stays enforced on each
+        self._seg_seen: dict[tuple[str, int | None], tuple[TargetAddrs, float]] = {}
         self._sleep = sleep
         self._clock = clock
         self._lan_cidrs = lan_cidrs or DEFAULT_LAN_CIDRS
@@ -145,16 +147,32 @@ class Service:
                 self._fw.apply(ruleset)
             except Exception:
                 log.exception("firewall apply failed")
-            base = {m: t for m, t in devs.items() if self._vid_of.get(m) is None}
+            base, by_vid = self._by_segment(devs, unsafe)
             self._redir.set_targets(base)
             if self._watch is not None:
                 self._watch.set_watched(base)
-            by_vid: dict[int, dict[str, TargetAddrs]] = {}
-            for m, t in devs.items():
-                vid = self._vid_of.get(m)
-                if vid is not None:
-                    by_vid.setdefault(vid, {})[m] = t
             self._sites.set_targets(by_vid)
+
+    def _by_segment(self, devs: dict[str, TargetAddrs], unsafe: set[str]):
+        """Split targets per segment. A MAC is redirected on every segment it was seen on within
+        ADDR_TTL, so showing up on another VLAN never lifts the block where it already was."""
+        now = self._clock()
+        base: dict[str, TargetAddrs] = {}
+        by_vid: dict[int, dict[str, TargetAddrs]] = {}
+        for m, latest in devs.items():
+            last_vid = self._vid_of.get(m)
+            segs = {
+                vid: a
+                for (mac, vid), (a, at) in self._seg_seen.items()
+                if mac == m and now - at <= ADDR_TTL
+            }
+            segs[last_vid] = latest  # last segment always, with the vetted live addresses
+            for vid, a in segs.items():
+                if vid != last_vid:
+                    a = self._strip_unsafe({m: a}, unsafe)[0][m]
+                (base if vid is None else by_vid.setdefault(vid, {}))[m] = a
+        self._seg_seen = {k: v for k, v in self._seg_seen.items() if now - v[1] <= ADDR_TTL}
+        return base, by_vid
 
     def _lan(self):
         try:
@@ -216,6 +234,7 @@ class Service:
             self._devices[seen.mac] = TargetAddrs(mac=seen.mac, ip=seen.ip, ip6=tuple(seen.ipv6))
             self._seen_at[seen.mac] = self._clock()
             self._vid_of[seen.mac] = seen.vid
+            self._seg_seen[(seen.mac, seen.vid)] = (self._devices[seen.mac], self._clock())
         if seen.mac in self.store.current():
             self._apply(self.store.current())
 
