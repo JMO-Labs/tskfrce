@@ -7,7 +7,7 @@ RUN apt-get update \
 
 WORKDIR /opt
 COPY . /opt/blocker
-RUN pip install --no-cache-dir "scapy>=2.6"
+RUN pip install --no-cache-dir "scapy>=2.6" "zeroconf>=0.148"
 
 # Runs as root ON PURPOSE: ARP/NDP spoofing and nftables need NET_RAW and
 # NET_ADMIN, which an unprivileged user cannot hold. Compose runs it with host

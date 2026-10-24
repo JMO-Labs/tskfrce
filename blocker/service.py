@@ -21,6 +21,7 @@ from blocker.config import Config
 from blocker.discovery import run_discovery
 from blocker.portal import run_dns, run_http
 from blocker.resist import ResistanceCounter, ResistanceWatch, Tally
+from blocker.signals import Signals
 from blocker.state_store import MAC_RE, StateStore
 
 log = logging.getLogger(__name__)
@@ -94,6 +95,7 @@ class Service:
         self._probing: set[str] = set()  # MACs overlaid by test_block; guarded by _lock
         self._stop = threading.Event()
         self._api = None
+        self.signals = Signals(cfg)
         self.store.on_change(self._apply)
 
     # --- policy application -------------------------------------------------
@@ -191,6 +193,7 @@ class Service:
         return out, stripped
 
     def _on_seen(self, seen: Seen) -> None:
+        self.signals.note_seen(seen)
         with self._lock:
             self._devices[seen.mac] = TargetAddrs(mac=seen.mac, ip=seen.ip, ip6=tuple(seen.ipv6))
             self._seen_at[seen.mac] = self._clock()
@@ -289,6 +292,8 @@ class Service:
         self._spawn(self._reconcile_loop)
         self._spawn(self._resist_loop)
         self._spawn(lambda: run_discovery(self.cfg, self._stop, self._on_seen))
+        self._spawn(lambda: self.signals.run_dhcp(self._stop))
+        self._spawn(lambda: self.signals.run_mdns(self._stop))
         self._spawn(lambda: run_dns(self.cfg, self._portal_ip or "", self._stop))
         self._spawn(lambda: run_http(self.cfg, self._stop))
         self._api = make_api(

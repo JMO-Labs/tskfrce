@@ -22,6 +22,21 @@ class Seen:
     ipv6: list[str]
     hostname: str | None
     vendor: str | None
+    mdns_name: str | None = None
+    model: str | None = None
+    dhcp_fp: str | None = None
+
+    def __post_init__(self) -> None:
+        for f in ("mdns_name", "model", "dhcp_fp"):
+            v = getattr(self, f)
+            if v is not None:
+                setattr(self, f, v[:255])
+
+    def body(self) -> dict:
+        return {k: v for k, v in asdict(self).items() if v is not None or k not in _OPTIONAL}
+
+
+_OPTIONAL = ("mdns_name", "model", "dhcp_fp")
 
 
 def _request(cfg: Config, path: str, body: dict | None = None):
@@ -41,7 +56,7 @@ def _request(cfg: Config, path: str, body: dict | None = None):
 
 def report_seen(cfg: Config, seen: Seen) -> int | None:
     try:
-        return int(_request(cfg, "/devices/seen", asdict(seen))["id"])
+        return int(_request(cfg, "/devices/seen", seen.body())["id"])
     except Exception as e:
         log.warning("report_seen failed for %s: %s", seen.mac, e)
         return None
