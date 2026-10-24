@@ -55,6 +55,7 @@ services:
   frontend:
     build:
       context: ../frontend
+      target: dev
       args: {NODE_ENV: development}
     profiles: [e2e]
     depends_on: [backend]

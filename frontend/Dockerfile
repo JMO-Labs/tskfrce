@@ -1,73 +1,33 @@
-# ---- Base ----
-FROM node:24-alpine AS base
+# ---- Deps: every package, installed on the build machine's own CPU ----
+FROM --platform=$BUILDPLATFORM node:24-alpine AS deps
 WORKDIR /app
-
 ENV NEXT_TELEMETRY_DISABLED=1
-
-# Install system dependencies needed for both build & runtime
-RUN apk add --no-cache netcat-openbsd bash
-
-# Copy package.json and package-lock.json for dependency install
 COPY package*.json ./
+RUN npm ci
 
-# ---- Install Dependencies ----
-# Install only what is needed based on NODE_ENV
-ARG NODE_ENV=production
-ENV NODE_ENV=${NODE_ENV}
-
-RUN if [ "$NODE_ENV" = "production" ]; then \
-      npm ci --omit=dev; \
-    else \
-      npm ci; \
-    fi
-
-# ---- Build Stage ----
-FROM base AS build
-
-ARG NODE_ENV
-ENV NODE_ENV=${NODE_ENV}
-
-# Copy source files
+# ---- Dev: docker-compose.yml and the lab run the Next dev server from this ----
+FROM deps AS dev
+RUN apk add --no-cache netcat-openbsd bash
 COPY . .
+ENV NODE_ENV=development
+EXPOSE 3000
+ENTRYPOINT ["./entrypoint.sh"]
 
-# Only build in production
-RUN if [ "$NODE_ENV" = "production" ]; then \
-      npm run build; \
-      if [ ! -f ".next/prerender-manifest.json" ]; then \
-        echo '{"version":3,"routes":{},"dynamicRoutes":{},"notFoundRoutes":[],"preview":{"previewModeId":"development-id","previewModeSigningKey":"development-key","previewModeEncryptionKey":"development-key"}}' > .next/prerender-manifest.json; \
-      fi; \
-    else \
-      echo "Skipping production build in development"; \
-    fi
+# ---- Build: standalone server is plain JS, so one build serves amd64 and arm64 ----
+FROM deps AS build
+COPY . .
+ENV NODE_ENV=production
+RUN npm run build
 
-# ---- Runtime Stage ----
+# ---- Runtime (default target, used by docker-compose.prod.yml and CI images) ----
 FROM node:24-alpine AS runtime
 WORKDIR /app
-
-ENV NODE_ENV=${NODE_ENV}
-
-# Copy everything from build stage: node_modules, .next, public, package.json, entrypoint
-COPY --from=build /app /app
-
-# Make entrypoint executable
-RUN chmod +x entrypoint.sh
-
-# Ensure prerender-manifest.json exists in runtime (Next.js 15.x fix)
-# This must be done before switching to node user to avoid permission issues
-RUN mkdir -p .next && if [ ! -f ".next/prerender-manifest.json" ]; then \
-      echo '{"version":3,"routes":{},"dynamicRoutes":{},"notFoundRoutes":[],"preview":{"previewModeId":"development-id","previewModeSigningKey":"development-key","previewModeEncryptionKey":"development-key"}}' > .next/prerender-manifest.json; \
-    fi
-
-# Fix ownership of specific directories that need write access
-RUN chown -R node:node /app/.next /app/node_modules /app/entrypoint.sh
-
-# Use non-root user
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 HOSTNAME=0.0.0.0 PORT=3000
+COPY --from=build --chown=node:node /app/.next/standalone ./
+COPY --from=build --chown=node:node /app/.next/static ./.next/static
+COPY --from=build --chown=node:node /app/public ./public
 USER node
-
 EXPOSE 3000
-
-# Healthcheck
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
-
-ENTRYPOINT ["./entrypoint.sh"]
+CMD ["node", "server.js"]

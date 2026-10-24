@@ -15,6 +15,7 @@ export TASK4CE_SUBNET="172.29.99.0/24"
 export TASK4CE_FRONTEND_IP="172.29.99.10"
 export TASK4CE_SKIP_BLOCKER=1 # never scan the real network from a test
 export TASK4CE_YES=0
+export TASK4CE_BUILD=1 # test this checkout, not the published images
 
 cleanup() {
   (cd "$TASK4CE_DIR" && docker compose -f docker-compose.prod.yml down -v --rmi local >/dev/null 2>&1) || true

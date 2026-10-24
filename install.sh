@@ -136,7 +136,7 @@ env_value() { sed -n "s/^$1=//p" "$DIR/.env" | head -n 1; }
 wait_healthy() {
   port="$(env_value FRONTEND_PORT | sed 's/.*://')"
   api="$(env_value BACKEND_PORT | sed 's/.*://')"
-  say "Starting up. The first time takes several minutes while it builds..."
+  say "Starting up. This can take a minute..."
   waited=0
   while [ "$waited" -lt 600 ]; do
     if curl -fsS "http://127.0.0.1:${api:-8000}/health" >/dev/null 2>&1 &&
@@ -154,9 +154,13 @@ main() {
   ensure_docker
   fetch_code
   write_env
-  say "Building and starting t@sk4ce..."
-  (cd "$DIR" && $SUDO docker compose -f docker-compose.prod.yml up -d --build) ||
-    die "Docker could not build or start t@sk4ce." \
+  say "Downloading t@sk4ce..."
+  # Prebuilt amd64/arm64 images; build on the box only if the download fails.
+  # TASK4CE_BUILD=1 forces a local build (the smoke test checks this checkout's code).
+  (cd "$DIR" && { { [ "${TASK4CE_BUILD:-0}" != 1 ] && $SUDO docker compose -f docker-compose.prod.yml pull; } ||
+    { say "Building on this box instead (slow, needs 4 GB of memory)..."; $SUDO docker compose -f docker-compose.prod.yml build; }; } &&
+    $SUDO docker compose -f docker-compose.prod.yml up -d --no-build) ||
+    die "Docker could not download or start t@sk4ce." \
       "Run: cd $DIR && docker compose -f docker-compose.prod.yml logs   and share what it says when asking for help."
   wait_healthy ||
     die "t@sk4ce did not answer within 10 minutes." \

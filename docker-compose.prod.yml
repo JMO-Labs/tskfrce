@@ -1,8 +1,10 @@
-# t@sk4ce home-box stack (used by install.sh). No source mounts, production builds.
+# t@sk4ce home-box stack (used by install.sh). No source mounts.
+# install.sh pulls prebuilt amd64/arm64 images; `build:` is the fallback.
 # Settings come from .env next to this file (install.sh writes it).
 
 services:
   backend:
+    image: ghcr.io/sgtslaughta/tskfrce/backend:${TASK4CE_TAG:-latest}
     build:
       context: ./backend
     ports:
@@ -31,10 +33,9 @@ services:
       start_period: 30s
 
   frontend:
+    image: ghcr.io/sgtslaughta/tskfrce/frontend:${TASK4CE_TAG:-latest}
     build:
       context: ./frontend
-      args:
-        NODE_ENV: production
     ports:
       - "${FRONTEND_PORT:-0.0.0.0:3000}:3000"
     environment:
@@ -57,6 +58,7 @@ services:
 
   # Pauses chosen devices' internet (docs/blocker.md). Host network, two capabilities, never privileged.
   blocker:
+    image: ghcr.io/sgtslaughta/tskfrce/blocker:${TASK4CE_TAG:-latest}
     build:
       context: ./blocker
     profiles: ["blocker"]  # .env sets COMPOSE_PROFILES=blocker; install.sh can skip it
