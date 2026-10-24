@@ -45,5 +45,30 @@ Best strength wins; tie → most recently seen candidate. Two+ candidates tied o
 ### Out of scope
 Merging old + new rows; matching guests; UI (after v3 merge).
 
-## Part B: VLAN coverage (draft — awaiting owner confirmation)
-See chat playback; filled in once confirmed.
+## Part B: VLAN coverage (approved 2026-10-24)
+
+**Why.** The blocker works at layer 2, so it only reaches devices on its own VLAN. Families with a kids/IoT VLAN get nothing.
+
+**Setups (owner's choice).**
+- **One trunk port** (recommended): `LAN_IFACE` is plugged into a switch port carrying the tagged VLANs. Broadcast/multicast of every VLAN (ARP, DHCP, mDNS) reaches it, so it discovers *and* enforces.
+- **Optional mirror port**: `MIRROR_IFACE` (Ethernet only; Wi-Fi never carries tags) on a SPAN port. Listen-only: VLAN + device discovery, never transmits.
+- **"Listen only" setting** (`FamilySettings.listen_only`, default false): nothing is paused anywhere; discovery continues.
+
+**Libraries.** VLAN tags: scapy `Dot1Q` (scapy re-inserts offloaded tags from packet aux data). Interfaces: `ip link add link <LAN_IFACE> name <LAN_IFACE>.<vid> type vlan id <vid>` (iproute2, already in the image). Addresses: busybox `udhcpc` with a small script. If an interface named `<LAN_IFACE>.<vid>` or `br0.<vid>` already exists (Unraid), use it and never delete it.
+
+### Contract
+- Blocker → `POST /api/v1/internal/vlans` every 60 s: `{"vlans": [{"vid": 20, "macs": 6, "subnet": "192.168.20.0/24" | null}]}` (vid 1–4094; subnet guessed from ARP sender IPs as /24). Only tagged VLANs are listed.
+- `SeenReport` gains optional `vid` (int | null; null = the untagged LAN). Stored as `Device.vlan_id`.
+- Backend table `vlans`: `vid` PK, `name` (null), `subnet`, `device_count`, `first_seen`, `last_seen`, `covered` bool default false. Upsert on report; never auto-delete.
+- `GET /api/v1/internal/state` → `{"blocked": [...], "listen_only": bool, "covered_vlans": [20, 30]}`. When `listen_only`, `blocked` is `[]`.
+- Parent API: `GET /api/v1/network` → `{"listen_only", "vlans": [...], "trunk_detected": bool}`; `PATCH /api/v1/network` `{listen_only}`; `PATCH /api/v1/network/vlans/{vid}` `{name?, covered?}`. Changes trigger reconcile.
+
+### Blocker behaviour
+- Detection sniffs `LAN_IFACE` and `MIRROR_IFACE` (if set) for 802.1Q frames; counts distinct source MACs per vid.
+- For each covered vid: ensure the VLAN interface, bring it up, run `udhcpc`. With an address and a router from DHCP, run the existing discovery + redirection + resist machinery on that interface ("site"). Without DHCP: passive discovery only, no enforcement on that VLAN, logged.
+- Uncovered or removed vid: stop that site, restore its targets (fail open), delete the interface only if the blocker created it.
+- Discovery reports carry the site's vid. Shutdown restores every site and deletes created interfaces.
+- `MIRROR_IFACE` never transmits.
+
+### Out of scope
+Parent screens (after the v3 merge), router-API enforcement, IPv6-only VLANs.
