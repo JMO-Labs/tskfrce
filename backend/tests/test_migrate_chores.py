@@ -378,11 +378,15 @@ def test_drop_legacy_keeps_what_parents_and_lock_see(tmp_path):
             c.exec_driver_sql("insert into device_owners values (?, ?)", (did, kid))
         for col in ("mdns_name", "model", "dhcp_fp", "hint_of_id", "hint_reason"):
             c.exec_driver_sql(f"alter table devices add column {col} text")  # ORM is ahead
+        c.exec_driver_sql("alter table devices add column vlan_id integer")
+        c.exec_driver_sql("alter table family_settings add column listen_only boolean default 0")
     before = _snapshot(url)
     assert before["needs_you"] and before["runs"] and before["blocked"]
-    with create_engine(url).begin() as c:  # let the hints migration add them itself
+    with create_engine(url).begin() as c:  # let the later migrations add them itself
         c.exec_driver_sql("alter table devices drop column hint_of_id")
         for col in ("mdns_name", "model", "dhcp_fp", "hint_reason"):
             c.exec_driver_sql(f"alter table devices drop column {col}")
+        c.exec_driver_sql("alter table devices drop column vlan_id")
+        c.exec_driver_sql("alter table family_settings drop column listen_only")
     _alembic(url, "head")
     assert _snapshot(url) == before

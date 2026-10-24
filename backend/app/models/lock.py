@@ -3,6 +3,7 @@
 from datetime import datetime
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     Column,
     DateTime,
@@ -51,6 +52,7 @@ class Device(Base):
     dhcp_fp = Column(String(255), nullable=True)
     hint_of_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), nullable=True)
     hint_reason = Column(String(10), nullable=True)  # name | model | timing
+    vlan_id = Column(Integer, nullable=True)  # null = the untagged LAN
 
     ipv6_rows = relationship("DeviceIPv6", cascade="all, delete-orphan")
     owners = relationship("User", secondary=device_owners, backref="devices")
@@ -130,3 +132,18 @@ class Override(Base):
     expires_at = Column(DateTime, nullable=True)  # UTC
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+
+class Vlan(Base):
+    """A tagged VLAN the blocker has seen; rows are never auto-deleted."""
+
+    __tablename__ = "vlans"
+    __table_args__ = (CheckConstraint("vid BETWEEN 1 AND 4094", name="ck_vlan_vid"),)
+
+    vid = Column(Integer, primary_key=True, autoincrement=False)
+    name = Column(String(50), nullable=True)
+    subnet = Column(String(43), nullable=True)
+    device_count = Column(Integer, nullable=False, default=0, server_default="0")
+    first_seen = Column(DateTime, nullable=False, default=datetime.utcnow)
+    last_seen = Column(DateTime, nullable=False, default=datetime.utcnow)
+    covered = Column(Boolean, nullable=False, default=False, server_default="0")

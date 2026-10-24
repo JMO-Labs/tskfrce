@@ -194,6 +194,7 @@ def _import_all_models():
             TimeWindow,
             UsedInvite,
             User,
+            Vlan,
         )
 
         logger.info("All models imported successfully")

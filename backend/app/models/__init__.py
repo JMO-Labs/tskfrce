@@ -11,7 +11,7 @@ from .chores import Chore, ChoreAssignment, ChoreRun, ChoreStep, RunStepTick
 from .family import FamilySettings, get_family
 from .flair import KidFlair
 from .inbox import Notification
-from .lock import Device, DeviceGroup, Override, TimeWindow
+from .lock import Device, DeviceGroup, Override, TimeWindow, Vlan
 from .password_reset import PasswordReset
 from .points import Points, PointsType
 from .reward import Redemption, Reward
@@ -39,6 +39,7 @@ __all__ = [
     "Points",
     "PointsType",
     "Device",
+    "Vlan",
     "DeviceGroup",
     "TimeWindow",
     "Override",
