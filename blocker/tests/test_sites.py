@@ -151,3 +151,13 @@ def test_real_run_executes_and_survives_missing_binary():
 
     assert real_run(["echo", "hi"]) == (0, "hi\n")
     assert real_run(["definitely-not-a-binary"])[0] == 127
+
+
+def test_passive_retry_does_not_wait():
+    h = FakeHost(dhcp=False)
+    naps = []
+    m = SiteManager(CFG, run=h, parts_factory=lambda *a: None, sleep=naps.append, dhcp_timeout=2)
+    m.sync({20})
+    first = len(naps)
+    m.sync({20})  # still no lease: look once, don't sleep under the lock
+    assert first > 0 and len(naps) == first

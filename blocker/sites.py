@@ -176,8 +176,11 @@ class SiteManager:
             site.dhcp_started = True
         return site
 
-    def _activate(self, site: Site) -> None:
-        lease = self._wait_lease(site.iface) if site.dhcp_started else self._lease(site.iface)
+    def _activate(self, site: Site, wait: bool = True) -> None:
+        # Only a new site waits; retries just look, since udhcpc keeps trying in the background
+        # and sync holds the lock enforcement needs.
+        waiting = wait and site.dhcp_started
+        lease = self._wait_lease(site.iface) if waiting else self._lease(site.iface)
         if lease is None:
             log.warning("VLAN %s (%s): no DHCP address+router; passive only", site.vid, site.iface)
             return
@@ -224,8 +227,8 @@ class SiteManager:
                         continue
                     self.sites[vid] = site
                     self._activate(site)
-                elif site.parts is None:  # passive: retry, DHCP may have answered late
-                    self._activate(site)
+                elif site.parts is None:  # passive: DHCP may have answered late
+                    self._activate(site, wait=False)
 
     def stop_all(self) -> None:
         with self._lock:
