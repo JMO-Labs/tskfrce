@@ -1,12 +1,13 @@
 FROM python:3.11-slim
 
-# nftables: firewall rules. libpcap: packet capture/injection for scapy.
+# nftables: firewall rules. busybox: udhcpc for VLAN sites. libpcap: packet capture/injection for scapy.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends nftables iproute2 libpcap0.8 libpcap-dev \
+    && apt-get install -y --no-install-recommends nftables iproute2 busybox libpcap0.8 libpcap-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt
 COPY . /opt/blocker
+COPY --chmod=755 udhcpc.sh /app/udhcpc.sh
 RUN pip install --no-cache-dir "scapy>=2.6" "zeroconf>=0.148"
 
 # Runs as root ON PURPOSE: ARP/NDP spoofing and nftables need NET_RAW and

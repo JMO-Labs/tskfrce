@@ -147,3 +147,21 @@ def test_report_vlans_posts_body(make_stub):
     cmd, path, _h, raw = stub.requests[0]
     assert (cmd, path) == ("POST", "/api/v1/internal/vlans")
     assert json.loads(raw) == {"vlans": vl}
+
+
+def test_fetch_state_parses_and_defaults(make_stub):
+    from blocker.backend import fetch_state
+
+    full = make_stub(body=b'{"blocked":["a"],"listen_only":true,"covered_vlans":[20,30]}')
+    assert fetch_state(_cfg(full.url)) == {
+        "blocked": ["a"],
+        "listen_only": True,
+        "covered_vlans": [20, 30],
+    }
+    old = make_stub(body=b'{"blocked":["a"]}')
+    assert fetch_state(_cfg(old.url)) == {
+        "blocked": ["a"],
+        "listen_only": False,
+        "covered_vlans": [],
+    }
+    assert fetch_state(_cfg("http://127.0.0.1:1")) is None

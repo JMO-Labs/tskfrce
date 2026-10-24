@@ -58,14 +58,17 @@ def test_tally_ignores_link_local_for_subnet():
     assert t.snapshot()[0]["subnet"] is None
 
 
-def test_detector_packet_reports_seen_once_and_report_body():
-    seen, rep = Mock(), Mock()
-    d = VlanDetector(CFG, report_vlans=rep, report_seen=seen)
+def test_vlan_of_spoofed_arp_and_public_ip_give_no_ip():
+    spoof = Ether(src=SRC) / Dot1Q(vlan=20) / ARP(psrc="192.168.20.5", hwsrc="aa:bb:cc:99:99:99")
+    assert vlan_of(spoof) == (20, SRC, None)
+    assert vlan_of(_arp(20, ip="8.8.8.8")) == (20, SRC, None)
+
+
+def test_detector_packet_only_feeds_tally_and_report_body():
+    rep = Mock()
+    d = VlanDetector(CFG, report_vlans=rep)
     d.on_packet(_arp(20))
-    d.on_packet(_arp(20))  # rate limited
-    assert seen.call_count == 1
-    s = seen.call_args.args[1]
-    assert (s.mac, s.ip, s.vid) == (SRC, "192.168.20.5", 20)
+    d.on_packet(_arp(20))
     d.report_once()
     rep.assert_called_once_with(CFG, [{"vid": 20, "macs": 1, "subnet": "192.168.20.0/24"}])
 

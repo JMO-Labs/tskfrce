@@ -2,7 +2,8 @@
 
 Receive-only: nothing here ever transmits, so MIRROR_IFACE is safe on a SPAN port.
 Distinct source MACs and a /24 guess (from ARP sender IPs) are tallied per vid and
-reported to the backend; devices seen on a tagged VLAN are reported with their vid.
+reported to the backend. Passive observations feed ONLY the tally: device rows on a
+VLAN come from that site's own discovery, never from sniffed (spoofable) frames.
 """
 
 from __future__ import annotations
@@ -10,18 +11,16 @@ from __future__ import annotations
 import ipaddress
 import logging
 import threading
-import time
 from collections import Counter
 from collections.abc import Callable
 from typing import Any
 
-from blocker.backend import Seen, report_seen, report_vlans
+from blocker.backend import report_vlans
 from blocker.config import Config
 
 log = logging.getLogger(__name__)
 
 REPORT_INTERVAL = 60.0
-SEEN_INTERVAL = 300.0  # per-MAC device report rate limit
 
 
 def vlan_of(pkt: Any) -> tuple[int, str, str | None] | None:
@@ -36,11 +35,22 @@ def vlan_of(pkt: Any) -> tuple[int, str, str | None] | None:
             return None
         ip = None
         if pkt.haslayer(ARP):
-            psrc = str(pkt[ARP].psrc)
-            ip = psrc if psrc != "0.0.0.0" else None
+            ip = _trusted_ip(pkt[ARP], str(pkt[Ether].src))
         return vid, str(pkt[Ether].src).lower(), ip
     except Exception:
         return None
+
+
+def _trusted_ip(arp: Any, eth_src: str) -> str | None:
+    """ARP sender IP only if the frame isn't spoofed (Ether.src == hwsrc) and is private."""
+    if str(arp.hwsrc).lower() != eth_src.lower():
+        return None
+    try:
+        a = ipaddress.ip_address(str(arp.psrc))
+    except ValueError:
+        return None
+    ok = a.version == 4 and a.is_private and not (a.is_unspecified or a.is_link_local)
+    return str(a) if ok else None
 
 
 def _subnet24(ip: str) -> str | None:
@@ -97,18 +107,13 @@ class VlanDetector:
         cfg: Config,
         *,
         report_vlans: Callable[[Config, list[dict]], bool] = report_vlans,
-        report_seen: Callable[[Config, Seen], object] = report_seen,
         sniffer_factory: Callable[..., Any] = _real_sniffer,
-        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.cfg = cfg
         self.tally = VlanTally()
         self._report_vlans = report_vlans
-        self._report_seen = report_seen
         self._factory = sniffer_factory
-        self._clock = clock
         self._sniffers: list[Any] = []
-        self._last_seen: dict[tuple[int, str], float] = {}
 
     def on_packet(self, pkt: Any) -> None:
         got = vlan_of(pkt)
@@ -116,13 +121,6 @@ class VlanDetector:
             return
         vid, mac, ip = got
         self.tally.observe(vid, mac, ip)
-        now = self._clock()
-        key = (vid, mac)
-        if ip and now - self._last_seen.get(key, float("-inf")) >= SEEN_INTERVAL:
-            self._last_seen[key] = now
-            self._report_seen(
-                self.cfg, Seen(mac=mac, ip=ip, ipv6=[], hostname=None, vendor=None, vid=vid)
-            )
 
     def report_once(self) -> None:
         vlans = self.tally.snapshot()

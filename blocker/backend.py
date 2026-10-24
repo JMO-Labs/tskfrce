@@ -71,6 +71,20 @@ def fetch_blocked(cfg: Config) -> list[str] | None:
         return None
 
 
+def fetch_state(cfg: Config) -> dict | None:
+    """{"blocked": [...], "listen_only": bool, "covered_vlans": [int]}; None if unreachable."""
+    try:
+        raw = _request(cfg, "/state")
+        return {
+            "blocked": [str(m) for m in raw["blocked"]],
+            "listen_only": bool(raw.get("listen_only", False)),
+            "covered_vlans": [int(v) for v in raw.get("covered_vlans", [])],
+        }
+    except Exception as e:
+        log.warning("fetch_state failed: %s", e)
+        return None
+
+
 def report_resisting(cfg: Config, macs: set[str]) -> bool:
     try:
         _request(cfg, "/devices/resisting", {"resisting": sorted(macs)})
