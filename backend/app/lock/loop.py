@@ -8,6 +8,7 @@ from sqlalchemy.exc import OperationalError
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.logging import get_logger
+from app.eval import hooks as eval_hooks
 from app.lock.blocker_client import push_blocked
 from app.lock.state import tick
 
@@ -33,6 +34,7 @@ def _run_once() -> None:
     db = SessionLocal()
     try:
         push_blocked(tick(db, datetime.now(UTC)))
+        eval_hooks.after_tick(db)
     except OperationalError as exc:
         if "database is locked" not in str(exc):
             logger.error("Lock tick failed", error=str(exc))
