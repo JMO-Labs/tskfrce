@@ -27,12 +27,24 @@
 - Before each commit, frontend tasks: `cd /home/user/code/tskfrce-eval/frontend && npx tsc --noEmit && npm run lint && npx jest`. Never run prettier.
 - Parent UI uses `Icon` (Material Symbols names), `p-btn`, Mantine; no emojis in parent UI. Copy is plain, sentence case; error strings are full sentences.
 
-## Decisions taken (owner may override)
+## Owner decisions (2026-10-26)
+
+Accepted as planned:
+
+- **No opt-out.** Stats are anonymous and run whenever the env vars are set; there is no parent or kid switch. Task 8's notice informs only.
+- **`rule_off` mapping** (Decision 4): `hours` = an `allowed` time window deleted; `chore_lock` = a device set to `guest`; `rule_deleted` = a chore deleted or archived.
+- **Redefined `chores_stale_3d`** (Decision 7).
+- **`DISABLE_BOT_CHECK=1`** on Umami (Decision 13; Task 10 container env).
+- **Docs note** about the Supabase direct host being IPv6-only, with the session pooler as the fallback (Task 10 container env).
+
+**Follow-up note:** after v3 Plan D lands (hour rules, hour-rule switch and the chore-lock switch replace `time_windows` and the guest trick), revisit `rule_off` so it maps to the real hour-rule and chore-lock switches. Do not change it now; Plan D deletes `TimeWindow`, so this task must be re-planned then. Task 5 and `docs/eval-kit.md` carry the same note.
+
+## Decisions taken (owner answers applied, see above)
 
 1. Browser intake is `/api/v1/eval/*` (the Next proxy maps `/api/proxy/*` → `/api/v1/*`), not the spec's `/api/eval/*`.
 2. Eval settings live in their own `EvalSettings` (pydantic-settings) in `app/eval/config.py`; `app/core/config.py` is untouched. Household ID lives in `eval.db` (`kv.household`), which is inside `DATA_DIR`.
 3. Box events come from one `after_flush` listener instead of hooks in each API file: new `ChoreRun` → `chores_assigned`; status → `submitted` → `chores_done` + `chore_done` (kid = `submitted_by_id`); → `done` → `chores_approved` (+ `first_chore`); → `skipped` → `chores_skipped`; new kid `ThreadMessage` with `note_label` → `chore_note`; new manual `Override` → `override` + `manual_locks`/`manual_unlocks` (once per flush per action, not per device).
-4. `rule_off` kinds: `hours` = an `allowed` time window deleted; `chore_lock` = a device switched to `guest`; `rule_deleted` = a chore deleted or archived.
+4. `rule_off` kinds: `hours` = an `allowed` time window deleted; `chore_lock` = a device switched to `guest`; `rule_deleted` = a chore deleted or archived. (Revisit after v3 Plan D lands: map to the real hour-rule and chore-lock switches.)
 5. `first_chore` = first chore approved after `wizard_done`; `first_lock` = first device locked by hours or chores (not a manual lock) after `wizard_done`. Neither is sent before `wizard_done` is recorded.
 6. `locks_by_hours` / `locks_by_chores` count per-device transitions into that lock reason, seen by the lock loop. The first tick after boot only records a baseline.
 7. `chores_stale_3d` (the reset cancels unfinished runs nightly, so runs never stay open for 3 days) = number of (assignment, kid) pairs with a run on each of the last 3 local days and none of those runs approved, skipped or submitted.
@@ -171,6 +183,7 @@
   - `ThreadMessage` in `new` with `note_label` and an `author_id` → `emit("chore_note", {}, source="kid", age_group=kid_age(author_id), url="/kid")`.
   - `Override` in `new` with `source == "manual"`: group by `(action, minutes)` where `minutes = round((expires_at - created_at) / 60s)` or None; per group `bump("manual_locks" | "manual_unlocks")` and `emit("override", {"action": action, "duration_bucket": duration_bucket(minutes)})`.
   - `TimeWindow` in `deleted` with `kind == "allowed"` → `emit("rule_off", {"kind": "hours"})`; `Device.status` history new value `guest` → `{"kind": "chore_lock"}`; `Chore` in `deleted`, or `Chore.archived_at` history None → value → `{"kind": "rule_deleted"}`.
+  - Note (owner, 2026-10-26): revisit this `rule_off` mapping after v3 Plan D lands; it should then use the real hour-rule and chore-lock switches (Plan D removes `TimeWindow`).
   - `first_event(key: str) -> None`: when `kv_get("wizard_done_at")` is set and `once(key)` is True → `emit(key, {"minutes": round((time.time() - wizard_done_at) / 60)})`.
 - `locks.reason(f: DeviceFacts, now_local: datetime) -> str | None` → `"override"` | `"new_device"` | `"hours"` | `"chores"` | `None`, mirroring `rules.is_online` branch by branch: manual lock → `override`; guest → None; unassigned → None if online else `new_device`; outside allowed windows → `hours`; chores not done and no free window / unlock / bonus → `chores`; else None. Invariant: `reason(f, t) is None == is_online(f, t)`.
 - `locks.track(db, now_utc: datetime) -> None`: compute `reason` for every device (one `Prefetch(db, devices)`), compare with module `_last: dict[int, str | None] | None`; first call only stores the baseline. A device whose reason changes to `hours` → `bump("locks_by_hours")`, to `chores` → `bump("locks_by_chores")`; either → `listeners.first_event("first_lock")`.
@@ -318,6 +331,7 @@ Sections (in this order; plain, numbered owner steps):
 5. **Check privacy after the first event**: in Umami, the session's country/city is empty and the IP is not stored; event data keys are only the allow-listed ones.
 6. **Wipe a box between families**: `docker compose -f docker-compose.prod.yml down -v` (deletes the `task4ce_data` volume = `DATA_DIR`, including `eval.db`, the household ID and queued feedback). Warn: flush first — confirm the outbox is empty with `docker compose exec backend python -c "import sqlite3; print(sqlite3.connect('/app/data/eval.db').execute('select count(*) from outbox').fetchone())"` → `(0,)`.
 7. **Turning it off**: remove the `EVAL_*` lines and restart; everything becomes a silent no-op.
+   Also add a short "Known follow-up" note: after v3 Plan D lands, `rule_off` is revisited to use the real hour-rule and chore-lock switches.
 
 - [ ] **Step 1:** Write `docs/eval-kit.md` with the sections above, including the pinned Umami tag from the `gh` lookup.
 - [ ] **Step 2:** Local smoke test with a fake Umami: in one shell `cd /home/user/code/tskfrce-eval && $PY -c "import http.server as h; h.HTTPServer(('127.0.0.1', 8766), type('H', (h.BaseHTTPRequestHandler,), {'do_POST': lambda s: (print(s.path, s.headers.get('X-Eval-Client-IP'), s.rfile.read(int(s.headers['Content-Length']))), s.send_response(200), s.end_headers(), s.wfile.write(b'{}'))})).serve_forever()"`; in another `cd backend && export DATA_DIR=$(mktemp -d) && $PY -m alembic upgrade head && EVAL_UMAMI_URL=http://127.0.0.1:8766 EVAL_UMAMI_WEBSITE_ID=00000000-0000-0000-0000-000000000000 LOCK_LOOP_ENABLED=false $PY -m uvicorn app.main:app --port 8765`. Expected within 30 s: the fake prints `/api/send 192.0.2.1` and a body with `"name": "box_boot"` and `"source": "box"`. Stop both.
