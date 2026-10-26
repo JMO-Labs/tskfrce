@@ -28,6 +28,7 @@
     "autoprefixer": "^10.6.2",
     "axios": "^1.21.0",
     "dayjs": "^1.11.18",
+    "html-to-image": "1.11.13",
     "http-proxy-middleware": "^4.2.1",
     "material-symbols": "^0.48.3",
     "next": "^16.4.5",

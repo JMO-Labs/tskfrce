@@ -4,6 +4,7 @@ import { Tooltip } from '@mantine/core'
 import { useThreads } from '@/v2/hooks/useChat'
 import { Bell } from '@/v2/components/Bell'
 import { Icon } from './Icon'
+import { FeedbackRailButton } from '@/v2/eval/FeedbackEntry'
 
 interface RailItem {
   icon: string
@@ -70,6 +71,7 @@ export function Rail({ onLogout }: { onLogout?: () => void }) {
           </Tooltip>
         )
       })}
+      <FeedbackRailButton />
     </nav>
   )
 }
