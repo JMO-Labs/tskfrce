@@ -52,7 +52,7 @@ def clean(name: str, props: dict) -> dict | None:
         return {"form": f} if f in FORMS else None
     if name == "error_shown":
         k = props.get("kind")
-        return {"kind": k if isinstance(k, str) and _ERR.match(k) else "other"}
+        return {"kind": k if isinstance(k, str) and _ERR.fullmatch(k) else "other"}
     return None
 
 
@@ -103,4 +103,4 @@ def emit(
         body = umami_body(name, data or {}, source=source, age_group=age_group, url=url, ts=ts)
         store.enqueue("umami", body, now=ts)
     except Exception as e:
-        logger.warning("eval_emit_failed", event=name, error=str(e))
+        logger.warning("eval_emit_failed", event=name, error=type(e).__name__)
