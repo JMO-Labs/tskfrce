@@ -2,6 +2,7 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MantineProvider } from '@mantine/core'
 import { api, ApiError } from '@/v2/api'
+import { track } from '@/v2/eval/track'
 import { useEvalStatus } from '@/v2/eval/useEvalStatus'
 import { noteError } from '@/v2/eval/errors'
 import { closeFeedback, openFeedback } from '@/v2/eval/feedbackStore'
@@ -111,4 +112,35 @@ test('a failed capture reopens the drawer and offers a picture instead', async (
   await userEvent.click(screen.getByRole('button', { name: 'Capture this screen' }))
   expect(await screen.findByText("Couldn't capture the screen. Add a picture instead.", {}, { timeout: 2000 })).toBeInTheDocument()
   expect(await screen.findByRole('dialog', { name: 'Send feedback' })).toBeInTheDocument()
+})
+
+test('a capture adds a thumbnail and keeps the typed note through the close and reopen', async () => {
+  jest.useFakeTimers()
+  try {
+    const { toJpeg } = jest.requireMock('html-to-image') as { toJpeg: jest.Mock }
+    toJpeg.mockResolvedValueOnce('data:image/jpeg;base64,AAAA')
+    global.fetch = jest.fn(async () => ({ blob: async () => new Blob(['jpg'], { type: 'image/jpeg' }) })) as never
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime })
+    await openDrawer()
+    await user.type(screen.getByLabelText("What's on your mind?"), 'Hello')
+    await user.click(screen.getByRole('button', { name: 'Capture this screen' }))
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(1000)
+    })
+    expect(toJpeg).toHaveBeenCalledWith(document.body, { quality: 0.7, pixelRatio: 1 })
+    expect(await screen.findByRole('button', { name: 'Remove screenshot 1' })).toBeInTheDocument()
+    expect(screen.getByLabelText("What's on your mind?")).toHaveValue('Hello')
+    expect(await screen.findByRole('dialog', { name: 'Send feedback' })).toBeInTheDocument()
+  } finally {
+    jest.useRealTimers()
+  }
+})
+
+test('cancel with a draft counts as an abandoned form and clears it', async () => {
+  await openDrawer()
+  await userEvent.type(screen.getByLabelText("What's on your mind?"), 'Half a thought')
+  ;(track as jest.Mock).mockClear()
+  await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+  expect(track).toHaveBeenCalledWith('form_abandoned', { form: 'feedback' })
+  expect(screen.getByLabelText("What's on your mind?", { selector: 'textarea' })).toHaveValue('')
 })
