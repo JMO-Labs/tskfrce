@@ -8,6 +8,7 @@ import { AGES } from './ageGroups'
 import { useSingle } from './useSingle'
 import { toastFail, toastOk } from '../notify'
 import { useFormAbandon } from '../eval/useFormAbandon'
+import { useAgePicker } from '../eval/AgePicker'
 
 /** PIN input: digits only, exactly 4. `bad` blocks saving. */
 function usePin() {
@@ -49,6 +50,7 @@ export function KidEditor({ onCreated }: { onCreated?: (id: number) => void }) {
   const [avatar, setAvatar] = useState('')
   const [age, setAge] = useState<AgeGroup>('kid')
   const pin = usePin()
+  const statsAge = useAgePicker()
   const saved = useFormAbandon('kid', !!name.trim() || !!avatar || pin.pin !== '')
 
   const save = () => {
@@ -59,7 +61,7 @@ export function KidEditor({ onCreated }: { onCreated?: (id: number) => void }) {
     if (pin.pin) body.pin = pin.pin
     createOnce(body, {
       onError: toastFail,
-      onSuccess: (res: unknown) => { saved(); toastOk('Added'); pin.reset(); onCreated?.((res as Kid).id) },
+      onSuccess: (res: unknown) => { saved(); statsAge.save((res as Kid).id); toastOk('Added'); pin.reset(); onCreated?.((res as Kid).id) },
     })
   }
 
@@ -91,6 +93,7 @@ export function KidEditor({ onCreated }: { onCreated?: (id: number) => void }) {
           <input className="pk-input" aria-invalid={pin.bad || pin.letters} {...pin.props} />
           {pinError(pin)}
         </label>
+        {statsAge.picker}
         <div className="pk-actions">
           <button type="button" className="p-btn" data-variant="accent" onClick={save} disabled={!name.trim() || pin.bad || create.isPending} aria-busy={create.isPending}>
             <Icon name={create.isPending ? 'progress_activity' : 'check'} className={create.isPending ? 'pk-spin' : ''} />

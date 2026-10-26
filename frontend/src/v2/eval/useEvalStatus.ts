@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/v2/api'
+import { tokenManager } from '@/services/tokenManager'
 
 export interface EvalStatus {
   stats: boolean
@@ -16,5 +17,7 @@ export function useEvalStatus() {
     queryFn: () => api<EvalStatus>('/eval/status').catch(() => OFF),
     staleTime: Infinity,
     retry: false,
+    enabled: !!tokenManager.getAccessToken(), // fetched once a parent is logged in
+    placeholderData: OFF,
   })
 }
