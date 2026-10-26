@@ -1,7 +1,8 @@
+import { FeedbackDrawer } from './FeedbackDrawer'
 import { useScreenViews } from './useScreenViews'
 
-/** Mounted once in _app. The feedback drawer joins it later. */
-export function EvalRoot(): null {
+/** Mounted once in _app. */
+export function EvalRoot() {
   useScreenViews()
-  return null
+  return <FeedbackDrawer />
 }

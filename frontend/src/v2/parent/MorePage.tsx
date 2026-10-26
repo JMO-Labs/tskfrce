@@ -4,6 +4,7 @@ import { HELP_URL } from '@/v2/components/AccountMenu'
 import { useFamily } from '@/v2/hooks/useFamily'
 import { useBlocker } from '@/v2/hooks/useDevices'
 import { Icon } from './Icon'
+import { FeedbackMoreLink } from '@/v2/eval/FeedbackEntry'
 
 const SETTINGS_SECTIONS = [
   { href: '/settings?section=family', label: 'Family', sub: 'Name, time zone, points', icon: 'home' },
@@ -64,6 +65,7 @@ export function MorePage({ onLogout }: { onLogout: () => void }) {
           ))}
         </ul>
       </div>
+      <FeedbackMoreLink />
       <div className="p-more-section">
         <Link href={HELP_URL} target="_blank" rel="noopener noreferrer" className="p-more-link">
           <Icon name="help" />

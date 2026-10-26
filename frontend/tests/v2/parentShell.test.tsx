@@ -52,6 +52,8 @@ jest.mock('@/v2/parent/useLook', () => ({
   useLook: jest.fn(),
 }))
 
+jest.mock('@/v2/eval/FeedbackEntry', () => ({ FeedbackRailButton: () => null, FeedbackMoreLink: () => null }))
+
 jest.mock('@/v2/hooks/useChat', () => ({
   useThreads: jest.fn(() => ({
     data: { total: 0 },
