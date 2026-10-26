@@ -46,6 +46,7 @@ from app.core.monitoring import (
     get_health_status,
     get_metrics,
 )
+from app.eval import hooks as eval_hooks
 from app.eval.api import router as eval_router
 
 # Configure logging
@@ -269,6 +270,8 @@ async def startup_event():
 
         fastapi_app.state.lock_task = asyncio.create_task(run_forever())
 
+    eval_hooks.start(fastapi_app)
+
     logger.info("TaaskMaaster API startup complete")
 
 
@@ -277,6 +280,8 @@ async def startup_event():
 async def shutdown_event():
     """Application shutdown event."""
     logger.info("TaaskMaaster API shutting down")
+
+    eval_hooks.stop(fastapi_app)
 
     task = getattr(fastapi_app.state, "lock_task", None)
     if task:

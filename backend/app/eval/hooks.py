@@ -40,3 +40,26 @@ def after_tick(db) -> None:
 
     store.set_tz(get_family(db).timezone)
     locks.track(db, datetime.now(UTC))
+
+
+@safe
+def start(app) -> None:
+    import asyncio
+
+    from app.eval import listeners, worker
+    from app.eval.config import any_on
+    from app.eval.events import emit
+
+    if not any_on():
+        return
+    listeners.register()
+    if stats_on():
+        emit("box_boot")
+    app.state.eval_task = asyncio.create_task(worker.run_forever())
+
+
+@safe
+def stop(app) -> None:
+    task = getattr(app.state, "eval_task", None)
+    if task:
+        task.cancel()
