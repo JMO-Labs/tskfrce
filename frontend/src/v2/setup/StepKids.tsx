@@ -10,6 +10,7 @@ import { motionProps } from '../parent/reduceMotion'
 import type { Kid } from '../types'
 import { AVATARS } from './starterChores'
 import styles from './stepCards.module.css'
+import { useAgePicker } from '../eval/AgePicker'
 
 interface Props {
   kids: Kid[]
@@ -23,11 +24,13 @@ export function StepKids({ kids, name, onName, draftError, onAdd }: Props) {
   const [avatar, setAvatar] = useState(AVATARS[0])
   const [picking, setPicking] = useState(false)
   const [pin, setPin] = useState('')
+  const statsAge = useAgePicker()
   const pinBad = pin !== '' && !/^\d{4}$/.test(pin)
   const add = useMutation({
     mutationFn: () =>
       api<Kid>('/kids', { method: 'POST', body: { full_name: name.trim(), avatar, pin: pin || null } }),
     onSuccess: (k) => {
+      statsAge.save(k.id)
       onAdd(k)
       onName('')
       setPin('')
@@ -81,6 +84,7 @@ export function StepKids({ kids, name, onName, draftError, onAdd }: Props) {
             label={<span className={styles.pinlabel}>PIN (optional) <InfoPop label="About PINs" width={260}>4 digits. Lets a kid prove it&apos;s them on a shared device.</InfoPop></span>}
             onChange={(e) => setPin(e.currentTarget.value)} onKeyDown={enterAdds} error={pinBad} />
         </div>
+        {statsAge.picker}
         {pinBad && <p role="alert" className={styles.pinerr}>Use exactly 4 digits.</p>}
         {add.error && <p role="alert">Couldn&apos;t add that kid. {errorText(add.error)}</p>}
         <div className={styles.actbar}>

@@ -19,6 +19,7 @@ import { HomeworkPane } from './HomeworkPane'
 import { NotificationsPane } from './NotificationsPane'
 import { accentHex } from '@/v2/parent/accent'
 import { toastFail, toastOk } from '@/v2/notify'
+import { EvalSettings } from '@/v2/eval/EvalSettings'
 
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
@@ -72,6 +73,7 @@ function SettingsBody() {
         {section === 'hours' && <HoursSection />}
         {section === 'notifications' && <NotificationsPane />}
         {section === 'homework' && <HomeworkPane />}
+        {section === 'eval' && <EvalSettings />}
         {section === 'parents' && <ParentsPane />}
         {section === 'integrations' && <IntegrationsPane />}
       </div>
