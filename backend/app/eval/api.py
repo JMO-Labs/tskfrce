@@ -101,7 +101,7 @@ async def feedback(
         raise _bad("Pick Feature idea, Bug or Other.")
     n_stars = None
     if stars not in (None, ""):
-        if not stars.strip().isdigit() or not 1 <= int(stars) <= 5:
+        if not (stars.isascii() and stars.isdigit()) or not 1 <= int(stars) <= 5:
             raise _bad("Stars go from 1 to 5.")
         n_stars = int(stars)
     text = text.strip()
