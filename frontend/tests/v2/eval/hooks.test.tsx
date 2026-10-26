@@ -7,9 +7,11 @@ import { useWizardTelemetry } from '@/v2/eval/useWizardTelemetry'
 import { useFormAbandon } from '@/v2/eval/useFormAbandon'
 import { routePattern } from '@/v2/eval/useScreenViews'
 import { useEvalStatus } from '@/v2/eval/useEvalStatus'
+import { tokenManager } from '@/services/tokenManager'
 import * as qc from '@/v2/queryClient'
 
 jest.mock('@/v2/eval/track')
+jest.mock('@/services/tokenManager', () => ({ tokenManager: { getAccessToken: jest.fn() } }))
 jest.mock('@/v2/api', () => ({ ...jest.requireActual('@/v2/api'), api: jest.fn() }))
 
 const t = track as jest.Mock
@@ -74,7 +76,8 @@ test('routePattern', () => {
 })
 
 test('status never throws', async () => {
-  (api as jest.Mock).mockRejectedValue(new AuthError('no'))
+  (tokenManager.getAccessToken as jest.Mock).mockReturnValue('tok')
+  ;(api as jest.Mock).mockRejectedValue(new AuthError('no'))
   const client = qc.makeQueryClient()
   const wrap = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
@@ -82,4 +85,16 @@ test('status never throws', async () => {
   const { result } = renderHook(() => useEvalStatus(), { wrapper: wrap })
   await waitFor(() => expect(result.current.data).toEqual({ stats: false, feedback: false, household: null }))
   expect(result.current.isError).toBe(false)
+})
+
+test('status is not fetched without a token', async () => {
+  (tokenManager.getAccessToken as jest.Mock).mockReturnValue(null)
+  ;(api as jest.Mock).mockClear()
+  const client = qc.makeQueryClient()
+  const wrap = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  )
+  const { result } = renderHook(() => useEvalStatus(), { wrapper: wrap })
+  expect(result.current.data).toEqual({ stats: false, feedback: false, household: null })
+  expect(api).not.toHaveBeenCalled()
 })

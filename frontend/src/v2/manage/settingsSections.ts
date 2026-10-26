@@ -1,6 +1,6 @@
 import type { SettingsSection } from './SettingsList'
 
-export type S = 'family' | 'hours' | 'notifications' | 'look' | 'gifs' | 'homework' | 'parents' | 'integrations' | 'wifi' | 'updates'
+export type S = 'family' | 'hours' | 'notifications' | 'look' | 'gifs' | 'homework' | 'parents' | 'integrations' | 'wifi' | 'updates' | 'eval'
 
 /** The settings sections (spec mockup 02): one list for the Settings page and the phone More page. */
 export const SETTINGS_SECTIONS: SettingsSection<S>[] = [
@@ -14,4 +14,5 @@ export const SETTINGS_SECTIONS: SettingsSection<S>[] = [
   { id: 'integrations', label: 'Integrations', description: 'Connect other apps', icon: 'extension' },
   { id: 'wifi', label: 'Wi-Fi', description: 'Connect to networks, set region', icon: 'wifi' },
   { id: 'updates', label: 'Updates', description: 'Check for new versions, manage auto-update', icon: 'download' },
+  { id: 'eval', label: 'Usage stats (evaluation)', description: 'What this kit sends', icon: 'query_stats' },
 ]

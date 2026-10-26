@@ -31,6 +31,7 @@ import { applyBody, choreJobs, DEFAULT_DRAFTS, extrasJobs, hoursJobs, newChoreCa
 import { ClaimGate } from '@/v2/setup/ClaimGate'
 import { clearClaim, settleClaim } from '@/v2/setup/claim'
 import { finishSummary, StepFinish } from '@/v2/setup/StepFinish'
+import { EvalNotice } from '@/v2/eval/EvalNotice'
 
 export default function SetupPage() {
   useLook('parent')
@@ -299,7 +300,10 @@ export default function SetupPage() {
           {step === 6 && <StepPhones kids={kids} />}
           {step === 7 && <StepDevices kids={kids} />}
           {step > LAST && (
+            <>
             <StepFinish resetTime={fam.data?.reset_time} chores={made.data?.chores ?? chores.length} kids={kids.length} lock={fam.data?.chores_lock ?? choresLock} />
+            <EvalNotice />
+            </>
           )}
           {err && <p role="alert">Something went wrong: {err} Try again.</p>}
         </WizardFrame>
