@@ -83,8 +83,8 @@ test('status never throws', async () => {
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   )
   const { result } = renderHook(() => useEvalStatus(), { wrapper: wrap })
-  await waitFor(() => expect(result.current.data).toEqual({ stats: false, feedback: false, household: null }))
-  expect(result.current.isError).toBe(false)
+  await waitFor(() => expect(result.current.loading).toBe(false))
+  expect(result.current.data).toEqual({ stats: false, feedback: false, household: null })
 })
 
 test('status is not fetched without a token', async () => {

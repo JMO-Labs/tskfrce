@@ -12,7 +12,7 @@ import { useAgePicker } from '../eval/AgePicker'
 
 /** Edit a kid, or add one when `kid` is omitted. Only changed fields are sent. */
 export function KidEditor({ kid, onDone, onCreated, focusPin }: { kid?: Kid; onDone?: () => void; onCreated?: (id: number) => void; focusPin?: boolean }) {
-  const age = useAgePicker()
+  const age = useAgePicker('parent')
   const create = useCreateKid()
   const createOnce = useSingle(create)
   const patch = usePatchKid()
