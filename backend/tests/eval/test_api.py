@@ -124,3 +124,14 @@ def test_no_shots_dir_when_off(client, parent_headers, monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "DATA_DIR", tmp_path)
     _fb(client, parent_headers, files=[_shot()])
     assert os.listdir(tmp_path) == []
+
+
+def test_feedback_errors_trailing_newline_dropped(client, eval_on, parent_headers):
+    _fb(client, parent_headers, {"errors": "network\n,http_500", "type": "bug"})
+    assert _rows("feedback")[0].body["errors"] == ["network", "http_500"]
+
+
+def test_feedback_strips_nul(client, eval_on, parent_headers):
+    assert _fb(client, parent_headers, {"text": "a\x00b"}).status_code == 200
+    assert _rows("feedback")[0].body["text"] == "ab"
+    assert _fb(client, parent_headers, {"text": "\x00"}).status_code == 422
