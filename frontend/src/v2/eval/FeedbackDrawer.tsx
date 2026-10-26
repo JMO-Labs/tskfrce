@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
-import { Drawer, Rating } from '@mantine/core'
+import { Drawer, Rating, useComputedColorScheme } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
 import { api } from '@/v2/api'
 import { toastFail, toastOk } from '@/v2/notify'
@@ -20,11 +20,20 @@ const KINDS: { value: Kind; label: string }[] = [
 ]
 const MAX_TEXT = 2000
 
+// Mantine's light-mode stars (gray-3 empty, accent full) vanish on the white sheet; dark keeps Mantine's look.
+const star = (fill: string, stroke: string) => (
+  <svg viewBox="0 0 24 24" width={28} height={28} strokeWidth={1.5} strokeLinejoin="round" style={{ display: 'block', fill, stroke }}>
+    <path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873z" />
+  </svg>
+)
+const LIGHT_STARS = { emptySymbol: star('var(--p-soft)', 'var(--p-sub)'), fullSymbol: star('var(--p-meter)', 'var(--p-meter)') }
+
 /** Parent feedback over the current page, so "Capture this screen" captures that page (Decision 12). */
 export function FeedbackDrawer() {
   const opened = useFeedbackOpen()
   const router = useRouter()
   const small = useMediaQuery('(max-width: 767px)')
+  const light = useComputedColorScheme('light', { getInitialValueInEffect: true }) === 'light'
   const [type, setType] = useState<Kind>('feature')
   const [stars, setStars] = useState(0)
   const [text, setText] = useState('')
@@ -107,7 +116,7 @@ export function FeedbackDrawer() {
           <span className="pk-label" id="fb-stars">
             How&apos;s it going? (optional)
           </span>
-          <Rating value={stars} onChange={setStars} size="lg" color="var(--p-acc)" />
+          <Rating value={stars} onChange={setStars} size="lg" color="var(--p-acc)" {...(light ? LIGHT_STARS : {})} />
         </div>
         <div className="pk-field">
           <label className="pk-label" htmlFor="fb-text">
