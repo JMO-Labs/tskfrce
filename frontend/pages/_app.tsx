@@ -141,6 +141,7 @@ import { initBitwardenThemeFix, setBitwardenThemePreference } from '../src/utils
 import { captureClaim } from '../src/v2/setup/claim'
 import { registerSw, listenInstallPrompt } from '../src/v2/pwa'
 import { FaviconManager } from '../src/components/ui/FaviconManager'
+import { EvalRoot } from '../src/v2/eval/EvalRoot'
 // Suppress HMR ISR manifest warnings in development
 if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
   const originalWarn = console.warn;
@@ -200,6 +201,7 @@ function AppContent({ Component, pageProps }: { Component: any; pageProps: any }
         <FaviconManager />
         <Notifications position="bottom-center" pauseResetOnHover="notification" />
         <UnifiedAuthProvider>
+          <EvalRoot />
           <ErrorBoundary resetKey={asPath}>
             <Component {...pageProps} />
           </ErrorBoundary>

@@ -2,6 +2,7 @@ import { notifications } from '@mantine/notifications'
 import { ReactNode } from 'react'
 import { errorText } from './errorText'
 import { Icon } from './parent/Icon'
+import { noteError } from './eval/errors'
 
 const okIcon = <Icon name="check" size={16} />
 
@@ -68,6 +69,7 @@ export const toastOk = (message: string, options?: { undo?: () => void }) => {
  * `retryIfOffline(e, retry)`: a request that never arrived is safe to resend, a refused one is not.
  */
 export const toastFail = (e: unknown, retry?: unknown) => {
+  noteError(e)
   // `onError: toastFail` hands react-query's variables in as 2nd arg: only a function counts
   const again = typeof retry === 'function' ? (retry as () => void) : undefined
   const message = errorText(e)
