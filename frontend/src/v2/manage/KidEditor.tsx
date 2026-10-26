@@ -7,6 +7,7 @@ import { EmojiPicker } from '@/v2/components/EmojiPicker'
 import { AGES } from './ageGroups'
 import { useSingle } from './useSingle'
 import { toastFail, toastOk } from '../notify'
+import { useFormAbandon } from '../eval/useFormAbandon'
 
 /** PIN input: digits only, exactly 4. `bad` blocks saving. */
 function usePin() {
@@ -48,6 +49,7 @@ export function KidEditor({ onCreated }: { onCreated?: (id: number) => void }) {
   const [avatar, setAvatar] = useState('')
   const [age, setAge] = useState<AgeGroup>('kid')
   const pin = usePin()
+  const saved = useFormAbandon('kid', !!name.trim() || !!avatar || pin.pin !== '')
 
   const save = () => {
     if (pin.bad) return
@@ -57,7 +59,7 @@ export function KidEditor({ onCreated }: { onCreated?: (id: number) => void }) {
     if (pin.pin) body.pin = pin.pin
     createOnce(body, {
       onError: toastFail,
-      onSuccess: (res: unknown) => { toastOk('Added'); pin.reset(); onCreated?.((res as Kid).id) },
+      onSuccess: (res: unknown) => { saved(); toastOk('Added'); pin.reset(); onCreated?.((res as Kid).id) },
     })
   }
 
@@ -133,6 +135,7 @@ export function KidProfileForm({ kid, focusPin, onSaved, onCancel, onDirty, tail
 
   const dirty = name.trim() !== (kid.full_name ?? '') || avatar !== (kid.avatar ?? '') || age !== (kid.age_group ?? 'kid') || pin.pin !== ''
   useEffect(() => { onDirty?.(dirty) }, [dirty, onDirty])
+  const saved = useFormAbandon('kid', dirty)
   useEffect(() => () => onDirty?.(false), [onDirty])
   // Edit can start with the row already open (nothing else moves focus then, and Edit hides): land on Name, or the PIN for the PIN nudge
   useEffect(() => {
@@ -151,7 +154,7 @@ export function KidProfileForm({ kid, focusPin, onSaved, onCancel, onDirty, tail
     if (avatar !== (kid.avatar ?? '')) body.avatar = avatar
     if (age !== (kid.age_group ?? 'kid')) body.age_group = age
     if (pin.pin) body.pin = pin.pin
-    patchOnce({ id: kid.id, body }, { onError: toastFail, onSuccess: () => { toastOk('Saved'); onSaved() } })
+    patchOnce({ id: kid.id, body }, { onError: toastFail, onSuccess: () => { saved(); toastOk('Saved'); onSaved() } })
   }
 
   return (

@@ -20,6 +20,7 @@ import { useSingle } from './useSingle'
 import { WhoWhen } from './WhoWhen'
 import { choreHeadLine, intError, nameOf, optionsOn, otherType, schedules, stepsSummary, usedBy } from './choreMeta'
 import { toastFail, toastOk } from '../notify'
+import { useFormAbandon } from '../eval/useFormAbandon'
 
 interface Props {
   kids: Kid[]
@@ -136,6 +137,7 @@ export function ChoreDetail({ kids, chore, onSelect, onGuard }: Props) {
       drafts.delete(key)
       setDue(undefined)
       setPending({}) // saved; an open form reports again if it changes
+      saved()
       toastOk(chore ? 'Saved' : 'Added. Now choose who does it')
       if (!chore) setExit({ id: c.id })
     } catch (e) {
@@ -156,6 +158,7 @@ export function ChoreDetail({ kids, chore, onSelect, onGuard }: Props) {
       (picked !== undefined && picked !== chore.type_id) ||
       !sameSteps(steps, stepsOf(chore))
     : !!(title.trim() || steps.length || picked !== undefined)))
+  const saved = useFormAbandon('chore', dirty)
   const { guard, sheet } = useDiscardGuard(dirty, () => drafts.delete(key), { inRecord: 'allow' }) // Discard drops the draft before leaving
   useEffect(() => {
     onGuard?.(guard)

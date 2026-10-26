@@ -4,6 +4,7 @@ import { Button } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
 import { useLook } from '../parent/useLook'
 import styles from './wizard.module.css'
+import { useWizardTelemetry } from '../eval/useWizardTelemetry'
 
 const STEPS = [
   { num: 1, title: 'Welcome' },
@@ -40,6 +41,7 @@ export function WizardFrame({
   useLook('parent')
   const phone = useMediaQuery('(max-width: 767px)') // phone: dots and ticks, plus the current label only
   const [maxStepReached, setMaxStepReached] = useState(step)
+  useWizardTelemetry(step, STEPS.length)
 
   if (step > maxStepReached) setMaxStepReached(step) // adjust during render, not in an effect
 

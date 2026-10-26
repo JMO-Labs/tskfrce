@@ -13,6 +13,7 @@ import { CATEGORIES, KINDS, SUN_FIRST, presetDays } from './hoursMeta'
 import { RuleTimes, type Range } from './RuleTimes'
 import { useSingle } from './useSingle'
 import { toastOk } from '../notify'
+import { useFormAbandon } from '../eval/useFormAbandon'
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const ALL = CATEGORIES.map((c) => c.key)
@@ -71,6 +72,7 @@ function RuleForm({ rule, initial, categories = ALL, showWho = true, onClose, on
   const kids = useKids().data ?? []
   const groups = useGroups().data ?? []
   const save = useSaveRule()
+  const saved = useFormAbandon('window', !rule) // a new window closed unsaved
   const saveOnce = useSingle(save)
   const del = useDeleteRule()
   const [confirm, { open, close }] = useDisclosure(false)
@@ -114,8 +116,8 @@ function RuleForm({ rule, initial, categories = ALL, showWho = true, onClose, on
   const toggleGroup = (g: number) => setGroupIds(groupIds.includes(g) ? groupIds.filter((x) => x !== g) : [...groupIds, g])
 
   const submit = () => {
-    if (onSave) return onSave(body), onClose()
-    saveOnce({ id: rule?.id, body }, { onSuccess: () => (toastOk(rule ? 'Saved' : 'Hours added'), onClose()) })
+    if (onSave) return saved(), onSave(body), onClose()
+    saveOnce({ id: rule?.id, body }, { onSuccess: () => (saved(), toastOk(rule ? 'Saved' : 'Hours added'), onClose()) })
   }
   const remove = () => {
     if (onDelete) return onDelete(), onClose()
