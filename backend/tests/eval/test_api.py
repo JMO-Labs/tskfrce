@@ -110,6 +110,7 @@ def test_feedback_rules(client, eval_on, parent_headers):
     bad("Screenshots must be PNG, JPEG or WebP images.", files=[_shot("a.txt", "text/plain")])
     bad("Each screenshot must be under 3 MB.", files=[_shot(body=b"0" * (3 * 1024 * 1024 + 1))])
     bad("Stars go from 1 to 5.", {"stars": "6"})
+    bad("Stars go from 1 to 5.", {"stars": "²"})
     assert _rows("feedback") == []
 
 
