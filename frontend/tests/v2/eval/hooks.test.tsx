@@ -98,3 +98,22 @@ test('status is not fetched without a token', async () => {
   expect(result.current.data).toEqual({ stats: false, feedback: false, household: null })
   expect(api).not.toHaveBeenCalled()
 })
+
+test('a failed status fetch is retried on next mount and can turn on', async () => {
+  (tokenManager.getAccessToken as jest.Mock).mockReturnValue('tok')
+  const on = { stats: true, feedback: true, household: 'h' }
+  ;(api as jest.Mock).mockReset().mockRejectedValueOnce(new Error('down')).mockResolvedValue(on)
+  const client = qc.makeQueryClient()
+  const wrap = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  )
+  const first = renderHook(() => useEvalStatus(), { wrapper: wrap })
+  await waitFor(() => expect(first.result.current.loading).toBe(false))
+  expect(first.result.current.data).toEqual({ stats: false, feedback: false, household: null })
+  first.unmount()
+  const now = Date.now()
+  const spy = jest.spyOn(Date, 'now').mockReturnValue(now + 31_000)
+  const second = renderHook(() => useEvalStatus(), { wrapper: wrap })
+  await waitFor(() => expect(second.result.current.data).toEqual(on))
+  spy.mockRestore()
+})

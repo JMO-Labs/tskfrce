@@ -57,6 +57,13 @@ test('settings shows household id, or off text', () => {
   expect(screen.getByText('Usage stats are off on this box.')).toBeInTheDocument()
 })
 
+test('feedback-only box still shows Send feedback', () => {
+  status.mockReturnValue({ loading: false, data: { stats: false, feedback: true, household: null } })
+  render(ui(<EvalSettings />))
+  expect(screen.getByText('Usage stats are off on this box.')).toBeInTheDocument()
+  expect(screen.getByText('Send feedback')).toBeInTheDocument()
+})
+
 function Harness() {
   const age = useAgePicker()
   return (
