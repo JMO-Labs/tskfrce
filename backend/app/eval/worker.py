@@ -23,11 +23,11 @@ def cycle() -> None:
         finally:
             db.close()
     except Exception as exc:
-        logger.warning("Eval heartbeat failed", error=str(exc))
+        logger.warning("Eval heartbeat failed", error=type(exc).__name__)
     try:
         sender.flush()
     except Exception as exc:
-        logger.warning("Eval flush failed", error=str(exc))
+        logger.warning("Eval flush failed", error=type(exc).__name__)
 
 
 async def run_forever(interval: int = 30) -> None:

@@ -16,7 +16,7 @@ def safe(fn):
         try:
             return fn(*args, **kwargs)
         except Exception as exc:
-            logger.warning("Eval hook failed", hook=fn.__name__, error=str(exc))
+            logger.warning("Eval hook failed", hook=fn.__name__, error=type(exc).__name__)
             return None
 
     return wrapper
