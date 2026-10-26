@@ -37,6 +37,17 @@ Note: verified against the Umami docs (docs.umami.is, via context7): `POST /api/
    ```
 
    Supabase's direct host `db.<ref>.supabase.co` is IPv6-only unless the IPv4 add-on is on. If Unraid has no IPv6, use the **session pooler** host (also port 5432). The pooler's user is `postgres.<project-ref>`, not `postgres`. Copy the exact connection string from the Supabase dashboard (Connect button).
+
+   **Use a dedicated `umami` role, not `postgres`.** Then the main database password never leaves your hands. Run this once in the SQL editor (replace the password with a random one):
+   ```sql
+   create role umami login password '<random>' noinherit;
+   grant umami to postgres;
+   create schema if not exists umami authorization umami;
+   revoke all on schema public from umami;
+   grant usage, create on schema umami to umami;
+   alter role umami set search_path = umami;
+   ```
+   Then the pooler user is `umami.<project-ref>`: `DATABASE_URL=postgresql://umami.<ref>:<random>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require&schema=umami`. This role can't read the feedback table.
 3. Add a `cloudflared` container with your tunnel token. Public hostname `umami.<domain>` points to `http://<umami-container>:3000`. Put the Umami and `cloudflared` containers on the same custom Docker network in Unraid; the default bridge has no name resolution, so `<umami-container>` would not resolve.
 4. Optional: put Cloudflare Access on the dashboard paths. `/api/send` must stay open to the boxes.
 5. First login: change the default `admin` / `umami` password, add a website named "t@sk4ce eval", and copy its website ID.
