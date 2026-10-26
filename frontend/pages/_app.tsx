@@ -113,6 +113,7 @@ import { makeQueryClient } from '../src/v2/queryClient';
 import { UnifiedAuthProvider } from '../src/contexts/UnifiedAuthContext'
 import { ThemeProvider } from '../src/contexts/ThemeContext'
 import { initBitwardenThemeFix, setBitwardenThemePreference } from '../src/utils/bitwarden-theme-fix'
+import { EvalRoot } from '../src/v2/eval/EvalRoot'
 import { FaviconManager } from '../src/components/ui/FaviconManager'
 // Suppress HMR ISR manifest warnings in development
 if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
@@ -166,6 +167,7 @@ function AppContent({ Component, pageProps }: { Component: any; pageProps: any }
         <FaviconManager />
         <Notifications position="top-center" />
         <UnifiedAuthProvider>
+          <EvalRoot />
           <Component {...pageProps} />
         </UnifiedAuthProvider>
       </MantineProvider>

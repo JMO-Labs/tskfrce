@@ -13,6 +13,7 @@ import { useSingle } from './useSingle'
 import { WhoWhen } from './WhoWhen'
 import { intError, joinNames, nameOf, otherType, schedules, UNIVERSAL_NOTES, usedBy } from './choreMeta'
 import { toastFail, toastOk } from '../notify'
+import { useFormAbandon } from '../eval/useFormAbandon'
 
 interface Props {
   kids: Kid[]
@@ -75,6 +76,7 @@ export function ChoreDetail({ kids, chore, onSelect }: Props) {
       {
         onError: toastFail,
         onSuccess: (c) => {
+          saved()
           drafts.delete(key)
           toastOk(chore ? 'Saved' : 'Added. Now choose who does it.')
           if (!chore) onSelect(c.id)
@@ -86,6 +88,7 @@ export function ChoreDetail({ kids, chore, onSelect }: Props) {
     copyOnce(chore!.id, {
       onError: toastFail,
       onSuccess: (c) => {
+        saved()
         toastOk('Copied')
         onSelect(c.id)
       },
@@ -110,6 +113,8 @@ export function ChoreDetail({ kids, chore, onSelect }: Props) {
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
   }, [dirty])
+
+  const saved = useFormAbandon('chore', dirty)
 
   const when = chore ? schedules(chore).join(' + ') : ''
   const choreDue = chore?.assignments.map((a) => a.due_time?.slice(0, 5)).filter((t): t is string => !!t).sort().pop() ?? null

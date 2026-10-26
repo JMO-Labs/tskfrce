@@ -1,6 +1,7 @@
 import { notifications } from '@mantine/notifications'
 import { ReactNode } from 'react'
 import { errorText } from './errorText'
+import { noteError } from './eval/errors'
 
 /**
  * Custom notification content component that displays a message with an optional action button.
@@ -48,12 +49,14 @@ export const toastOk = (message: string, options?: { undo?: () => void }) => {
 }
 
 /** Error toast shows the backend detail from ApiError. */
-export const toastFail = (e: unknown) =>
+export const toastFail = (e: unknown) => {
+  noteError(e)
   notifications.show({
     title: "That didn't work",
     message: errorText(e),
     color: 'fridgeRed',
   })
+}
 
 /** Mutation callbacks: toast on success and on failure. */
 export const toasts = (done: string) => ({ onSuccess: () => toastOk(done), onError: toastFail })

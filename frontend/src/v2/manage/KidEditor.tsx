@@ -7,6 +7,7 @@ import { EmojiPicker } from '@/v2/components/EmojiPicker'
 import { ConfirmDelete } from './ConfirmDelete'
 import { useSingle } from './useSingle'
 import { toastFail, toastOk } from '../notify'
+import { useFormAbandon } from '../eval/useFormAbandon'
 
 /** Edit a kid, or add one when `kid` is omitted. Only changed fields are sent. */
 export function KidEditor({ kid, onDone, onCreated, focusPin }: { kid?: Kid; onDone?: () => void; onCreated?: (id: number) => void; focusPin?: boolean }) {
@@ -23,6 +24,7 @@ export function KidEditor({ kid, onDone, onCreated, focusPin }: { kid?: Kid; onD
   const [confirm, { open, close }] = useDisclosure(false)
   const label = kid?.full_name ?? kid?.username ?? 'this kid'
 
+  const saved = useFormAbandon('kid', name.trim() !== (kid?.full_name ?? '') || avatar !== (kid?.avatar ?? '') || pin !== '')
   const pinBad = pin !== '' && pin.length !== 4
 
   const save = () => {
@@ -34,6 +36,7 @@ export function KidEditor({ kid, onDone, onCreated, focusPin }: { kid?: Kid; onD
     const opts = {
       onError: toastFail,
       onSuccess: (res: unknown) => {
+        saved()
         toastOk(kid ? 'Saved' : 'Added')
         setPin('')
         setLetters(false)

@@ -6,6 +6,7 @@ import { useAddWindow, useDeleteWindow, useWindows } from '@/v2/hooks/useWindows
 import { DAYS } from '@/v2/days'
 import type { TimeWindow } from '@/v2/types'
 import { toastFail, toastOk } from '../notify'
+import { useFormAbandon } from '../eval/useFormAbandon'
 
 type Kind = TimeWindow['kind']
 const KINDS: { kind: Kind; title: string; add: string; empty: string }[] = [
@@ -32,6 +33,7 @@ export function WindowEditor({ target, label }: Props) {
   const [start, setStart] = useState('15:00')
   const [end, setEnd] = useState('19:00')
 
+  const saved = useFormAbandon('window', adding !== null)
   const mine = (windows.data ?? []).filter((w) =>
     'kid_id' in target ? w.kid_id === target.kid_id : w.group_id === target.group_id,
   )
@@ -46,6 +48,7 @@ export function WindowEditor({ target, label }: Props) {
       add.mutateAsync({ kind: adding, days: days.slice().sort().join(''), start, end, ...target }).then(
         () => {
           toastOk('Added')
+          saved()
           setAdding(null)
         },
         toastFail,

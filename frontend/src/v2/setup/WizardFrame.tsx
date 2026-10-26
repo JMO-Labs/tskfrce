@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { useState, useEffect } from 'react'
 import { Button, Group } from '@mantine/core'
 import { useLook } from '../parent/useLook'
+import { useWizardTelemetry } from '../eval/useWizardTelemetry'
 import styles from './wizard.module.css'
 
 const STEPS = [
@@ -34,6 +35,7 @@ export function WizardFrame({
   step, children, title, subtitle, onBack, onNext, nextLabel = 'Next', onSkip, onStepClick, busy
 }: Props) {
   useLook('parent')
+  useWizardTelemetry(step, STEPS.length)
   const [maxStepReached, setMaxStepReached] = useState(step)
 
   useEffect(() => {
