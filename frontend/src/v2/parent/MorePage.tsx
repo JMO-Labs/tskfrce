@@ -12,6 +12,7 @@ const SETTINGS_SECTIONS = [
   { href: '/settings?section=look', label: 'Appearance', sub: 'Accent colour, light or dark', icon: 'palette' },
   { href: '/settings?section=gifs', label: 'GIFs', sub: 'GIF search in chat', icon: 'gif_box' },
   { href: '/settings?section=parents', label: 'Parents', sub: 'Invite a parent, reset links', icon: 'group' },
+  { href: '/settings?section=eval', label: 'Usage stats (evaluation)', sub: 'What this kit sends', icon: 'query_stats' },
 ]
 
 export function MorePage({ onLogout }: { onLogout: () => void }) {

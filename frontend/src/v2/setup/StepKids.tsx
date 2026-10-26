@@ -5,6 +5,7 @@ import { api } from '../api'
 import { useSingleFlight } from '../hooks/useSingleFlight'
 import type { Kid } from '../types'
 import { AVATARS } from './starterChores'
+import { useAgePicker } from '../eval/AgePicker'
 
 interface Props {
   kids: Kid[]
@@ -17,12 +18,14 @@ interface Props {
 export function StepKids({ kids, name, onName, draftError, onAdd }: Props) {
   const [avatar, setAvatar] = useState(AVATARS[0])
   const [pin, setPin] = useState('')
+  const age = useAgePicker()
   const pinBad = pin !== '' && !/^\d{4}$/.test(pin)
   const add = useMutation({
     mutationFn: () =>
       api<Kid>('/kids', { method: 'POST', body: { full_name: name.trim(), avatar, pin: pin || null } }),
     onSuccess: (k) => {
       onAdd(k)
+      age.save(k.id)
       onName('')
       setPin('')
     },
@@ -52,6 +55,7 @@ export function StepKids({ kids, name, onName, draftError, onAdd }: Props) {
       <TextInput mt="md" label="PIN (optional)" description="4 digits. Lets a kid prove it's them on a shared device."
         inputMode="numeric" maxLength={4} value={pin} onChange={(e) => setPin(e.currentTarget.value)} onKeyDown={enterAdds}
         error={pinBad ? 'Use exactly 4 digits.' : undefined} />
+      {age.picker}
       {add.error && <p role="alert">Couldn&apos;t add that kid. {add.error.message}</p>}
       <Group mt="md">
         <Button disabled={!name.trim() || pinBad} loading={add.isPending} onClick={addKid}>Add kid</Button>

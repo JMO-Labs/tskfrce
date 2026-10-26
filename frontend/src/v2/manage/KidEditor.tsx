@@ -8,9 +8,11 @@ import { ConfirmDelete } from './ConfirmDelete'
 import { useSingle } from './useSingle'
 import { toastFail, toastOk } from '../notify'
 import { useFormAbandon } from '../eval/useFormAbandon'
+import { useAgePicker } from '../eval/AgePicker'
 
 /** Edit a kid, or add one when `kid` is omitted. Only changed fields are sent. */
 export function KidEditor({ kid, onDone, onCreated, focusPin }: { kid?: Kid; onDone?: () => void; onCreated?: (id: number) => void; focusPin?: boolean }) {
+  const age = useAgePicker()
   const create = useCreateKid()
   const createOnce = useSingle(create)
   const patch = usePatchKid()
@@ -40,7 +42,10 @@ export function KidEditor({ kid, onDone, onCreated, focusPin }: { kid?: Kid; onD
         toastOk(kid ? 'Saved' : 'Added')
         setPin('')
         setLetters(false)
-        if (!kid) onCreated?.((res as Kid).id)
+        if (!kid) {
+          age.save((res as Kid).id)
+          onCreated?.((res as Kid).id)
+        }
       },
     }
     if (kid) patchOnce({ id: kid.id, body }, opts)
@@ -78,6 +83,7 @@ export function KidEditor({ kid, onDone, onCreated, focusPin }: { kid?: Kid; onD
           {kid?.has_pin && !pinBad && <span className="pk-hint">A PIN is set. Enter a new one to change it.</span>}
           {(pinBad || letters) && <span className="pk-error">{letters ? 'A PIN is digits only, exactly 4.' : 'Use exactly 4 digits.'}</span>}
         </label>
+        {!kid && age.picker}
         <div className="pk-actions">
           <button
             type="button"

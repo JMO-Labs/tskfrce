@@ -17,6 +17,7 @@ import { StepChores } from '@/v2/setup/StepChores'
 import { StepWindows } from '@/v2/setup/StepWindows'
 import { StepRemote } from '@/v2/setup/StepRemote'
 import { StepFinish } from '@/v2/setup/StepFinish'
+import { EvalNotice } from '@/v2/eval/EvalNotice'
 
 const LAST = 7
 
@@ -216,6 +217,7 @@ export default function SetupPage() {
           {step === 6 && <StepWindows bedtime={bedtime} hasKids={kids.length > 0} onChange={setBedtime} />}
           {step === 7 && <StepRemote />}
           {step > LAST && <StepFinish kids={kids.length} chores={chores.length} devices={devices} schedules={schedules} />}
+          {step > LAST && <EvalNotice />}
           {err && <p role="alert">Something went wrong: {err} Try again.</p>}
         </WizardFrame>
       </div>

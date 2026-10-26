@@ -12,9 +12,10 @@ import { InviteSection } from './InviteSection'
 import { ParentsList } from './ParentsList'
 import { SettingsList, type SettingsSection } from './SettingsList'
 import { AppearancePane } from './AppearancePane'
+import { EvalSettings } from '@/v2/eval/EvalSettings'
 import { toastFail, toastOk } from '@/v2/notify'
 
-type S = 'family' | 'screen' | 'hours' | 'look' | 'gifs' | 'parents'
+type S = 'family' | 'screen' | 'hours' | 'look' | 'gifs' | 'parents' | 'eval'
 const SETTINGS_SECTIONS: SettingsSection<S>[] = [
   { id: 'family', label: 'Family', description: 'Name, time zone, points rules', icon: 'home' },
   { id: 'screen', label: 'Screen time', description: 'Price and early unlock', icon: 'timer' },
@@ -22,6 +23,7 @@ const SETTINGS_SECTIONS: SettingsSection<S>[] = [
   { id: 'look', label: 'Appearance', description: 'Accent colour, dark mode', icon: 'palette' },
   { id: 'gifs', label: 'GIFs', description: 'Chat GIF search', icon: 'gif_box' },
   { id: 'parents', label: 'Parents', description: 'Invite and manage parents', icon: 'supervisor_account' },
+  { id: 'eval', label: 'Usage stats (evaluation)', description: 'What this kit sends', icon: 'query_stats' },
 ]
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
@@ -70,6 +72,7 @@ function SettingsBody() {
           />
         )}
         {section === 'hours' && <HoursSection />}
+        {section === 'eval' && <EvalSettings />}
         {section === 'parents' && (
           <>
             <InfoBlock
