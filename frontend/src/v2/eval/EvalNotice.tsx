@@ -13,7 +13,8 @@ export const NOTICE = {
 
 /** What an evaluation kit sends. Only shown when the box has stats on. */
 export function EvalNotice() {
-  if (!useEvalStatus().data?.stats) return null
+  const { data, loading } = useEvalStatus()
+  if (loading || !data.stats) return null
   return (
     <section aria-label={NOTICE.title} className="f-card m-card" style={{ marginTop: 16 }}>
       <h2 className="f-display" style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
