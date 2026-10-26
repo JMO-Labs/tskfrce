@@ -38,7 +38,9 @@ def clean(name: str, props: dict) -> dict | None:
         return {"route": r if isinstance(r, str) and r in ROUTES else "other"}
     if name == "wizard_step":
         s, state = props.get("step"), props.get("state")
-        if isinstance(s, bool) or not (isinstance(s, int) or (isinstance(s, str) and s.isdigit())):
+        if isinstance(s, bool) or not (
+            isinstance(s, int) or (isinstance(s, str) and s.isascii() and s.isdigit())
+        ):
             return None
         if not 1 <= int(s) <= 7 or state not in ("started", "done"):
             return None
