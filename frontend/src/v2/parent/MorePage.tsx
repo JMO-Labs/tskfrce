@@ -6,6 +6,7 @@ import { useSettingsLines } from '@/v2/manage/useSettingsLines'
 import { SETTINGS_SECTIONS } from '@/v2/manage/settingsSections'
 import { useBlocker } from '@/v2/hooks/useDevices'
 import { Icon } from './Icon'
+import { FeedbackMoreLink } from '@/v2/eval/FeedbackEntry'
 
 const NOTO_URL = 'https://googlefonts.github.io/noto-emoji-animation/'
 const CC_BY_URL = 'https://creativecommons.org/licenses/by/4.0/'
@@ -61,6 +62,7 @@ export function MorePage({ onLogout }: { onLogout: () => void }) {
           ))}
         </ul>
       </div>
+      <FeedbackMoreLink />
       <div className="p-more-section">
         <Link href="/recap" className="p-more-link">
           <Icon name="insights" />
