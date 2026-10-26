@@ -65,7 +65,7 @@ def event(body: EventIn, user: User = Depends(get_current_active_user)):
                 if body.name == "wizard_done" and store.kv_get("wizard_done_at") is None:
                     store.kv_set("wizard_done_at", str(time.time()))
             except Exception as e:
-                logger.warning("Eval event failed", error=str(e))
+                logger.warning("Eval event failed", error=type(e).__name__)
     return Response(status_code=204)
 
 
@@ -83,7 +83,7 @@ def set_age(
         try:
             store.set_kid_age(kid_id, body.age_group)
         except Exception as e:
-            logger.warning("Eval kid age failed", error=str(e))
+            logger.warning("Eval kid age failed", error=type(e).__name__)
     return Response(status_code=204)
 
 
@@ -104,7 +104,7 @@ async def feedback(
         if not (stars.isascii() and stars.isdigit()) or not 1 <= int(stars) <= 5:
             raise _bad("Stars go from 1 to 5.")
         n_stars = int(stars)
-    text = text.strip()
+    text = text.replace("\x00", "").strip()
     if not text:
         raise _bad("Write a short note first.")
     if len(text) > 2000:
@@ -121,7 +121,7 @@ async def feedback(
         blobs.append((EXT[s.content_type], data))
     if feedback_on():
         route = route if route in ROUTES else "other"
-        errs = [e for e in (x.strip() for x in errors.split(",")) if _ERR.match(e)][:5]
+        errs = [e for e in (x.strip() for x in errors.split(",")) if _ERR.fullmatch(e)][:5]
         fid = str(uuid.uuid4())
         try:
             names = _save_shots(fid, blobs)
@@ -141,7 +141,7 @@ async def feedback(
                 },
             )
         except Exception as e:
-            logger.warning("Eval feedback save failed", error=str(e))
+            logger.warning("Eval feedback save failed", error=type(e).__name__)
             raise HTTPException(503, "Couldn't save your feedback. Try again.") from e
         emit("feedback_sent", {"type": type, "stars": n_stars or 0}, source="parent", url=route)
     return {"ok": True}

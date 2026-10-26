@@ -67,3 +67,7 @@ def test_clean_malformed_inputs():
     assert events.clean("wizard_step", {"step": True, "state": "done"}) is None
     assert events.clean("screen_view", {"route": 5}) == {"route": "other"}
     assert events.clean("error_shown", {"kind": 5}) == {"kind": "other"}
+
+
+def test_clean_error_kind_trailing_newline():
+    assert events.clean("error_shown", {"kind": "network\n"}) == {"kind": "other"}
