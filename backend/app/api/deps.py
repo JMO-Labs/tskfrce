@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.core.auth import AuthService
 from app.core.database import get_db_session
 from app.core.logging import get_logger
+from app.eval import hooks as eval_hooks
 from app.models.user import User, UserRole
 
 logger = get_logger(__name__)
@@ -59,6 +60,7 @@ def get_current_user_from_token(
     if user is None:
         raise _unauthorized()
     touch_active(db, user)
+    eval_hooks.seen(user)
     return user
 
 
