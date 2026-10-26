@@ -50,7 +50,7 @@ export function KidEditor({ onCreated }: { onCreated?: (id: number) => void }) {
   const [avatar, setAvatar] = useState('')
   const [age, setAge] = useState<AgeGroup>('kid')
   const pin = usePin()
-  const statsAge = useAgePicker()
+  const statsAge = useAgePicker('parent')
   const saved = useFormAbandon('kid', !!name.trim() || !!avatar || pin.pin !== '')
 
   const save = () => {
