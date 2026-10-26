@@ -1,0 +1,64 @@
+import uuid
+from datetime import UTC, datetime
+
+from app.eval import store
+
+
+def test_household_is_stable(eval_on):
+    a = store.household()
+    assert a == store.household()
+    uuid.UUID(a)
+
+
+def test_once(eval_on):
+    assert store.once("k") is True
+    assert store.once("k") is False
+
+
+def test_bump_and_counters(eval_on):
+    today = store.local_day()
+    store.bump("chores_done")
+    store.bump("chores_done")
+    store.bump("manual_locks", day="2026-10-24")
+    assert store.counters(today)["chores_done"] == 2
+    assert store.counters("2026-10-24") == {"manual_locks": 1}
+
+
+def test_seen_counts(eval_on):
+    for w in ("parent", "parent", "kid:3", "kid:4"):
+        store.mark_seen(w, "2026-10-25")
+    assert store.seen_counts("2026-10-25") == (1, 2)
+
+
+def test_kid_age_default(eval_on):
+    assert store.kid_age(9) == "unknown"
+    assert store.kid_age(None) == "unknown"
+    store.set_kid_age(9, "8–10")
+    assert store.kid_age(9) == "8–10"
+
+
+def test_local_day_uses_family_tz(eval_on):
+    now = datetime(2026, 10, 25, 3, 30, tzinfo=UTC)
+    store.set_tz("America/New_York")
+    assert store.local_day(now) == "2026-10-24"
+    assert store.local_day(now, days_back=1) == "2026-10-23"
+    store.set_tz("Not/AZone")
+    assert store.local_day(now) == "2026-10-25"
+
+
+def test_outbox_backoff(eval_on):
+    store.enqueue("umami", {"a": 1}, now=1000)
+    rows = store.due(1000)
+    assert len(rows) == 1 and rows[0].body == {"a": 1}
+    store.failed(rows[0].id, 1, 1000)
+    assert store.due(1100) == []
+    assert len(store.due(1121)) == 1
+    store.sent(rows[0].id)
+    assert store.due(10**9) == []
+
+
+def test_prune_age(eval_on):
+    store.enqueue("umami", {}, now=0)
+    store.enqueue("feedback", {}, now=0)
+    assert store.prune(15 * 86400) == 1
+    assert [r.kind for r in store.due(15 * 86400)] == ["feedback"]
