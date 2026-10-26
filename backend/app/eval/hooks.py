@@ -1,6 +1,7 @@
 """Eval hooks called from existing code. Never raise into callers."""
 
 import functools
+from datetime import UTC, datetime
 
 from app.core.logging import get_logger
 from app.eval import store
@@ -28,3 +29,14 @@ def seen(user) -> None:
     from app.models.user import UserRole
 
     store.mark_seen("parent" if user.role == UserRole.PARENT else f"kid:{user.id}")
+
+
+@safe
+def after_tick(db) -> None:
+    if not stats_on():
+        return
+    from app.eval import locks
+    from app.models.family import get_family
+
+    store.set_tz(get_family(db).timezone)
+    locks.track(db, datetime.now(UTC))

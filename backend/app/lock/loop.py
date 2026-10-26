@@ -8,6 +8,7 @@ from sqlalchemy.exc import OperationalError
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.logging import get_logger
+from app.eval import hooks as eval_hooks
 from app.lock.blocker_client import push_state
 from app.lock.state import tick
 from app.services import kid_alerts, notify_jobs
@@ -36,6 +37,7 @@ def _run_once() -> None:
         now = datetime.now(UTC)
         blocked, homework = tick(db, now)
         push_state(blocked, homework)
+        eval_hooks.after_tick(db)
         try:
             kid_alerts.scan(db, now)
         except Exception as exc:
