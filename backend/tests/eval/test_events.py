@@ -60,3 +60,10 @@ def test_emit_off_is_silent(monkeypatch, tmp_path):
     monkeypatch.setattr(eval_settings, "EVAL_UMAMI_URL", "")
     events.emit("box_boot")
     assert not (tmp_path / "eval.db").exists()
+
+
+def test_clean_malformed_inputs():
+    assert events.clean("wizard_step", {"step": "²", "state": "done"}) is None
+    assert events.clean("wizard_step", {"step": True, "state": "done"}) is None
+    assert events.clean("screen_view", {"route": 5}) == {"route": "other"}
+    assert events.clean("error_shown", {"kind": 5}) == {"kind": "other"}
