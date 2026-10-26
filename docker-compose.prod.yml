@@ -33,6 +33,10 @@ services:
       NTFY_UPSTREAM_URL: ${NTFY_UPSTREAM_URL-https://ntfy.sh}
       NTFY_UPSTREAM_TOKEN: ${NTFY_UPSTREAM_TOKEN:-}
       BLOCKER_URL: http://${TASK4CE_BRIDGE_GW:-172.29.50.1}:7777
+      EVAL_UMAMI_URL: ${EVAL_UMAMI_URL:-}
+      EVAL_UMAMI_WEBSITE_ID: ${EVAL_UMAMI_WEBSITE_ID:-}
+      EVAL_SUPABASE_URL: ${EVAL_SUPABASE_URL:-}
+      EVAL_SUPABASE_ANON_KEY: ${EVAL_SUPABASE_ANON_KEY:-}
     volumes:
       - task4ce_data:/app/data
       - ntfy_conf:/ntfy-conf
