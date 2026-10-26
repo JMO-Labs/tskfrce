@@ -1,6 +1,6 @@
 # Eval-kit telemetry — design
 
-Status: awaiting owner approval (builder check done) · 2026-10-25 · branch `eval` only
+Status: approved by owner 2026-10-25 · 2026-10-25 · branch `eval` only
 
 ## 1. Intent
 
