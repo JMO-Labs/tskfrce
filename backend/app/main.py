@@ -46,6 +46,7 @@ from app.core.monitoring import (
     get_health_status,
     get_metrics,
 )
+from app.eval.api import router as eval_router
 
 # Configure logging
 configure_logging()
@@ -151,6 +152,7 @@ fastapi_app.include_router(community_router)
 fastapi_app.include_router(flair_router)
 fastapi_app.include_router(redemptions_router)
 fastapi_app.include_router(tips_router)
+fastapi_app.include_router(eval_router)
 
 # Create the final app with ASGI middleware
 app = MetricsMiddleware(fastapi_app)
