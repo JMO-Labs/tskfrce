@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-
-import pytest
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import pytest
 from blocker.arp import TargetAddrs
 from blocker.config import Config
 from blocker.sites import SiteManager, SiteParts

@@ -5,10 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import Mock
 
-from scapy.all import ARP, Dot1Q, Ether, Raw
-
 from blocker.config import Config
 from blocker.vlan import VlanDetector, VlanTally, vlan_of
+from scapy.all import ARP, Dot1Q, Ether, Raw
 
 CFG = Config("http://b", "b", "t", "eth0", Path("/tmp"))
 SRC = "aa:bb:cc:00:00:01"

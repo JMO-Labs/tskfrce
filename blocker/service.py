@@ -22,8 +22,8 @@ from blocker.discovery import run_discovery
 from blocker.hits import HitCounter
 from blocker.portal import run_dns, run_http
 from blocker.resist import ResistanceCounter, ResistanceWatch, Tally
-from blocker.sites import SiteManager
 from blocker.signals import Signals
+from blocker.sites import SiteManager
 from blocker.state_store import MAC_RE, StateStore
 from blocker.vlan import VlanDetector
 

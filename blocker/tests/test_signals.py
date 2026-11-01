@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import time
-
 from pathlib import Path
 from unittest.mock import Mock
-
-from scapy.all import BOOTP, DHCP, DNS, DNSRR, IP, UDP, Ether
 
 from blocker.backend import Seen
 from blocker.config import Config
 from blocker.signals import Signals, dhcp_fp_from_packet, mdns_from_packet
+from scapy.all import BOOTP, DHCP, DNS, DNSRR, IP, UDP, Ether
 
 CFG = Config("http://b", "b", "t", "", Path("/tmp"))
 MAC = "aa:bb:cc:dd:ee:01"
@@ -147,7 +145,6 @@ def test_ambiguous_or_stale_ip_maps_to_nothing(monkeypatch):
 
 def test_query_mdns_sends_ptr_for_each_type(monkeypatch):
     import scapy.all as sa
-
     from blocker import signals as sig
 
     sent = []

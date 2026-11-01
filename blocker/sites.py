@@ -35,7 +35,7 @@ DHCP_POLL = 1.0
 
 Run = Callable[[list[str]], tuple[int, str]]
 _INET = re.compile(r"\binet (\d+\.\d+\.\d+\.\d+)/(\d+)")
-_DEFAULT = re.compile(r"^default via (\S+)", re.M)
+_DEFAULT = re.compile(r"^default via (\S+)", re.MULTILINE)
 
 
 def real_run(args: list[str]) -> tuple[int, str]:
@@ -284,7 +284,8 @@ class SiteManager:
                     continue
                 try:
                     lan = s.parts.redir._lanfacts()
-                except Exception:
+                except Exception as e:  # noqa: BLE001 - one bad segment must not stop the rest
+                    log.debug("lan facts unavailable: %s", e)
                     continue
                 macs.update(m.lower() for m in (lan.gateway_mac, lan.box_mac) if m)
                 ips.add(lan.gateway_ip)

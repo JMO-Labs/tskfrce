@@ -37,7 +37,7 @@ def vlan_of(pkt: Any) -> tuple[int, str, str | None] | None:
         if pkt.haslayer(ARP):
             ip = _trusted_ip(pkt[ARP], str(pkt[Ether].src))
         return vid, str(pkt[Ether].src).lower(), ip
-    except Exception:
+    except Exception:  # noqa: BLE001 - best effort, the daemon keeps running
         return None
 
 

@@ -80,7 +80,7 @@ def fetch_state(cfg: Config) -> dict | None:
             "listen_only": bool(raw.get("listen_only", False)),
             "covered_vlans": [int(v) for v in raw.get("covered_vlans", [])],
         }
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
         log.warning("fetch_state failed: %s", e)
         return None
 

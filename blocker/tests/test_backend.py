@@ -131,7 +131,7 @@ def test_report_resisting_false_on_unreachable():
 
 
 def test_seen_vid_only_when_set():
-    base = dict(mac="m", ip=None, ipv6=[], hostname=None, vendor=None)
+    base = {"mac": "m", "ip": None, "ipv6": [], "hostname": None, "vendor": None}
     assert "vid" not in Seen(**base).body()
     assert Seen(**base, vid=20).body()["vid"] == 20
 

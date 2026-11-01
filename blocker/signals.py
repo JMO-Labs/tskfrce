@@ -47,7 +47,7 @@ def dhcp_fp_from_packet(pkt) -> tuple[str, str] | None:
         if pkt[Ether].src.lower() != mac:  # relayed or spoofed: sender is not the client
             return None
         return mac, fp
-    except Exception:
+    except Exception:  # noqa: BLE001 - best effort, the daemon keeps running
         return None
 
 
@@ -83,7 +83,7 @@ def mdns_from_packet(pkt) -> tuple[str, str, str | None] | None:
                     if k in ("model", "md") and v and (model is None or k == "model"):
                         model = v
         return pkt[Ether].src.lower(), host, model
-    except Exception:
+    except Exception:  # noqa: BLE001 - best effort, the daemon keeps running
         return None
 
 
@@ -141,7 +141,7 @@ class Signals:
                 prn=self._on_dhcp,
                 stop_filter=lambda _p: stop.is_set(),
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
             log.warning("dhcp sniff stopped: %s", e)
 
     # --- mDNS ---------------------------------------------------------------
@@ -151,7 +151,7 @@ class Signals:
             got = mdns_from_packet(pkt)
             if got and self.mac_for_ip(pkt["IP"].src) == got[0]:
                 self.update(got[0], mdns_name=got[1], model=got[2])
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
             log.warning("mdns packet failed: %s", e)
 
     def run_mdns(self, stop: threading.Event) -> None:
@@ -173,7 +173,7 @@ class Signals:
                         break
             finally:
                 sniffer.stop()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
             log.warning("mdns sniff stopped: %s", e)
 
     def _query_mdns(self) -> None:
@@ -184,5 +184,5 @@ class Signals:
             qd = [DNSQR(qname=t, qtype="PTR") for t in MDNS_TYPES]
             pkt = IP(dst="224.0.0.251", ttl=255) / UDP(sport=5353, dport=5353) / DNS(qd=qd)
             send(pkt, iface=self.cfg.lan_iface or None, verbose=False)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
             log.warning("mdns query failed: %s", e)

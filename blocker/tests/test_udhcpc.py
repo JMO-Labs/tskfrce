@@ -5,7 +5,6 @@ import subprocess
 from pathlib import Path
 
 import pytest
-
 from blocker.sites import _router_ok
 
 SCRIPT = Path(__file__).parents[1] / "udhcpc.sh"
