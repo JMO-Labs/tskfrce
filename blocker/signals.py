@@ -17,6 +17,13 @@ from blocker.config import Config
 
 log = logging.getLogger(__name__)
 
+# Services whose answers carry a device's own name/model (Apple, Android TV, printers, etc.).
+MDNS_TYPES = (
+    "_device-info._tcp.local.",
+    "_companion-link._tcp.local.",
+    "_airplay._tcp.local.",
+)
+MDNS_QUERY_EVERY = 300  # s
 _FIELDS = ("mdns_name", "model", "dhcp_fp")
 _FRESH = 600  # s: only trust discovery entries this recent for IP -> MAC
 
@@ -148,15 +155,34 @@ class Signals:
             log.warning("mdns packet failed: %s", e)
 
     def run_mdns(self, stop: threading.Event) -> None:
+        """Sniff mDNS responses; ask the LAN every MDNS_QUERY_EVERY s so quiet devices answer."""
         try:
-            from scapy.all import sniff
+            from scapy.all import AsyncSniffer
 
-            sniff(
+            sniffer = AsyncSniffer(
                 iface=self.cfg.lan_iface or None,
                 filter="udp port 5353",
                 store=False,
                 prn=self._on_mdns,
-                stop_filter=lambda _p: stop.is_set(),
             )
+            sniffer.start()
+            try:
+                while True:
+                    self._query_mdns()
+                    if stop.wait(MDNS_QUERY_EVERY):
+                        break
+            finally:
+                sniffer.stop()
         except Exception as e:
             log.warning("mdns sniff stopped: %s", e)
+
+    def _query_mdns(self) -> None:
+        """One multicast PTR query; answers are multicast too, so the sniffer sees them."""
+        try:
+            from scapy.all import DNS, DNSQR, IP, UDP, send
+
+            qd = [DNSQR(qname=t, qtype="PTR") for t in MDNS_TYPES]
+            pkt = IP(dst="224.0.0.251", ttl=255) / UDP(sport=5353, dport=5353) / DNS(qd=qd)
+            send(pkt, iface=self.cfg.lan_iface or None, verbose=False)
+        except Exception as e:
+            log.warning("mdns query failed: %s", e)

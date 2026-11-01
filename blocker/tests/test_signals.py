@@ -143,3 +143,19 @@ def test_ambiguous_or_stale_ip_maps_to_nothing(monkeypatch):
     later = time.monotonic() + 601
     monkeypatch.setattr("blocker.signals.time.monotonic", lambda: later)
     assert sg2.mac_for_ip("10.0.0.6") is None
+
+
+def test_query_mdns_sends_ptr_for_each_type(monkeypatch):
+    import scapy.all as sa
+
+    from blocker import signals as sig
+
+    sent = []
+    monkeypatch.setattr(sa, "send", lambda pkt, **kw: sent.append(pkt))
+    s = sig.Signals.__new__(sig.Signals)
+    s.cfg = type("C", (), {"lan_iface": "eth0"})()
+    s._query_mdns()
+    (pkt,) = sent
+    assert pkt[sa.IP].dst == "224.0.0.251"
+    names = {q.qname.decode() for q in pkt[sa.DNS].qd}
+    assert names == set(sig.MDNS_TYPES)

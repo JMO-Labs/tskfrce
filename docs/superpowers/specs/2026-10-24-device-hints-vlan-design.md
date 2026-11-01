@@ -9,7 +9,7 @@ Branch `feat/device-hints-vlan` (from `feat/v2-teen-redesign` @ 59c620d). UI for
 **What.** When a new device appears and it looks like a kid's device that just went quiet, give it that device's owners and groups (so the same rules, pause included, apply) and tell parents, with Undo.
 
 ### Libraries (owner asked: reuse, don't hand-roll)
-- mDNS: **python-zeroconf** (LGPL, used by Home Assistant). `ServiceBrowser` on `_device-info._tcp.local.` and `_companion-link._tcp.local.` (iPhone/iPad), `_airplay._tcp.local.`; read server name + `model` TXT. No hand-written mDNS parsing.
+- mDNS: passive scapy sniff of udp/5353 plus a PTR query every 5 min for `_device-info._tcp.local.`, `_companion-link._tcp.local.` (iPhone/iPad) and `_airplay._tcp.local.`; read host from the A record and `model`/`md` TXT. A name is accepted only when the A record equals the packet's IP source and the sender MAC is the MAC discovery maps to that IP (anti-spoof; zeroconf could not see the sender).
 - DHCP: **scapy's `DHCP` layer** (scapy already a dependency); `sniff(filter="udp and (port 67 or 68)")` and read the `param_req_list` option. Clients broadcast DISCOVER/REQUEST, so the box sees them without being the DHCP server.
 - Random MAC bit, matching rules: a few lines each; no library does same-device continuity.
 
