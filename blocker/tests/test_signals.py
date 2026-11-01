@@ -7,11 +7,11 @@ import time
 from pathlib import Path
 from unittest.mock import Mock
 
-from scapy.all import BOOTP, DHCP, IP, UDP, Ether
+from scapy.all import BOOTP, DHCP, DNS, DNSRR, IP, UDP, Ether
 
 from blocker.backend import Seen
 from blocker.config import Config
-from blocker.signals import Signals, dhcp_fp_from_packet, mdns_from_info
+from blocker.signals import Signals, dhcp_fp_from_packet, mdns_from_packet
 
 CFG = Config("http://b", "b", "t", "", Path("/tmp"))
 MAC = "aa:bb:cc:dd:ee:01"
@@ -36,16 +36,64 @@ def test_dhcp_malformed():
     assert dhcp_fp_from_packet(Ether() / IP()) is None
 
 
-def test_mdns_parse():
-    got = mdns_from_info(
-        "Bobbys-iPad.local.", {b"model": b"iPad13,1", b"x": None}, [bytes([10, 0, 0, 5])]
+def _mdns(rdata="10.0.0.5", src="10.0.0.5", qr=1, txt=True, mac=MAC):
+    an = [DNSRR(rrname="Bobbys-iPad.local.", type="A", rdata=rdata)]
+    if txt:
+        an.append(DNSRR(rrname="x._airplay._tcp.local.", type="TXT", rdata=[b"model=iPad13,1"]))
+    pkt = (
+        Ether(src=mac)
+        / IP(src=src, dst="224.0.0.251")
+        / UDP(sport=5353, dport=5353)
+        / DNS(qr=qr, an=an)
     )
-    assert got == ("Bobbys-iPad", "iPad13,1", ["10.0.0.5"])
+    return Ether(bytes(pkt))  # dissect as on the wire
+
+
+def test_mdns_genuine():
+    assert mdns_from_packet(_mdns()) == (MAC, "Bobbys-iPad", "iPad13,1")
 
 
 def test_mdns_no_model():
-    assert mdns_from_info("h.local.", {}, []) == ("h", None, [])
-    assert mdns_from_info(None, None, None) == (None, None, [])
+    assert mdns_from_packet(_mdns(txt=False)) == (MAC, "Bobbys-iPad", None)
+
+
+def test_mdns_spoofed_rdata_ignored():
+    assert mdns_from_packet(_mdns(rdata="10.0.0.9")) is None
+
+
+def test_mdns_query_ignored():
+    assert mdns_from_packet(_mdns(qr=0)) is None
+
+
+def test_mdns_garbage():
+    assert mdns_from_packet(object()) is None
+    assert mdns_from_packet(Ether() / IP()) is None
+
+
+def _sg():
+    sg = Signals(CFG, Mock())
+    sg.note_seen(Seen(mac=MAC, ip="10.0.0.5", ipv6=[], hostname=None, vendor=None))
+    sg.update = Mock()
+    return sg
+
+
+def test_on_mdns_genuine_updates():
+    sg = _sg()
+    sg._on_mdns(_mdns())
+    sg.update.assert_called_once_with(MAC, mdns_name="Bobbys-iPad", model="iPad13,1")
+
+
+def test_on_mdns_sender_mac_mismatch():
+    sg = _sg()
+    sg._on_mdns(_mdns(mac="aa:bb:cc:dd:ee:99"))
+    sg.update.assert_not_called()
+
+
+def test_on_mdns_spoof_and_garbage_no_update():
+    sg = _sg()
+    sg._on_mdns(_mdns(rdata="10.0.0.9"))
+    sg._on_mdns(object())
+    sg.update.assert_not_called()
 
 
 def test_seen_body_optional_fields():
@@ -95,3 +143,19 @@ def test_ambiguous_or_stale_ip_maps_to_nothing(monkeypatch):
     later = time.monotonic() + 601
     monkeypatch.setattr("blocker.signals.time.monotonic", lambda: later)
     assert sg2.mac_for_ip("10.0.0.6") is None
+
+
+def test_query_mdns_sends_ptr_for_each_type(monkeypatch):
+    import scapy.all as sa
+
+    from blocker import signals as sig
+
+    sent = []
+    monkeypatch.setattr(sa, "send", lambda pkt, **kw: sent.append(pkt))
+    s = sig.Signals.__new__(sig.Signals)
+    s.cfg = type("C", (), {"lan_iface": "eth0"})()
+    s._query_mdns()
+    (pkt,) = sent
+    assert pkt[sa.IP].dst == "224.0.0.251"
+    names = {q.qname.decode() for q in pkt[sa.DNS].qd}
+    assert names == set(sig.MDNS_TYPES)
