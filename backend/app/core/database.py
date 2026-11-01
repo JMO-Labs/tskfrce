@@ -200,6 +200,7 @@ def _import_all_models():
             ThreadRead,
             UsedInvite,
             User,
+            Vlan,
         )
 
         logger.info("All models imported successfully")

@@ -76,6 +76,7 @@ class FamilyPatch(BaseModel):
     points_unlock_early: bool | None = None
     early_bonus_cap: int | None = Field(default=None, ge=0, le=50)
     screen_time_price: int | None = Field(default=None, ge=1, le=1000)
+    listen_only: bool | None = None
     chores_lock: bool | None = None
     gifs_enabled: bool | None = None
     gif_rating: Literal["g", "pg"] | None = None

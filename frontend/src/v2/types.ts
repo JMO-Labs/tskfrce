@@ -46,6 +46,29 @@ export interface Device {
   alerts: number
   address_changes?: number
   blocked_since?: string | null
+  hint_of_id?: number | null
+  hint_reason?: 'name' | 'model' | 'timing' | null
+  mdns_name?: string | null
+  model?: string | null
+  random_mac?: boolean
+  /** null/absent = the untagged LAN */
+  vlan_id?: number | null
+}
+
+/** GET /network */
+export interface NetworkVlan {
+  vid: number
+  name: string | null
+  subnet: string | null
+  device_count: number
+  covered: boolean
+  last_seen: string | null
+}
+
+export interface NetworkInfo {
+  listen_only: boolean
+  trunk_detected: boolean
+  vlans: NetworkVlan[]
 }
 
 /** GET /blocker: home box liveness */

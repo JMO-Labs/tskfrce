@@ -380,3 +380,71 @@ def test_test_block_rejects_malformed_mac():
     with pytest.raises(ValueError):
         svc.test_block("aa:bb:cc:dd:ee:ff } ; flush ruleset ; {")
     assert svc._probing == set()
+
+
+class FakeSites:
+    def __init__(self) -> None:
+        self.synced: list[set] = []
+        self.targets: dict = {}
+        self.stopped = False
+
+    def sync(self, covered) -> None:
+        self.synced.append(set(covered))
+
+    def set_targets(self, by_vid) -> None:
+        self.targets = dict(by_vid)
+
+    def resisting(self) -> set:
+        return set()
+
+    def infra(self):
+        return set(), set()
+
+    def stop_all(self) -> None:
+        self.stopped = True
+
+
+def _vlan_seen(mac, ip, vid):
+    return Seen(mac=mac, ip=ip, ipv6=[], hostname=None, vendor=None, vid=vid)
+
+
+def test_state_syncs_sites_and_routes_blocked_mac_to_its_site():
+    sites = FakeSites()
+    state = {"blocked": [MAC, MAC2], "listen_only": False, "covered_vlans": [20]}
+    svc, fw, redir = _svc(fetch_state=lambda cfg: state, sites=sites)
+    svc._on_seen(_seen(MAC, "192.168.1.50"))
+    svc._on_seen(_vlan_seen(MAC2, "192.168.20.5", 20))
+    svc._reconcile_once()
+    assert sites.synced == [{20}]
+    assert set(redir.targets) == {MAC}
+    assert set(sites.targets) == {20} and set(sites.targets[20]) == {MAC2}
+    assert "192.168.20.5" in fw.applied[-1]
+
+
+def test_listen_only_enforces_nothing_anywhere():
+    sites = FakeSites()
+    state = {"blocked": [MAC, MAC2], "listen_only": True, "covered_vlans": [20]}
+    svc, fw, redir = _svc(fetch_state=lambda cfg: state, sites=sites)
+    svc._on_seen(_seen(MAC, "192.168.1.50"))
+    svc._on_seen(_vlan_seen(MAC2, "192.168.20.5", 20))
+    svc._reconcile_once()
+    assert redir.targets == {} and sites.targets == {}
+    assert "192.168.1.50" not in fw.applied[-1] and MAC not in fw.applied[-1]
+
+
+def test_stop_restores_sites():
+    sites = FakeSites()
+    svc, _, _ = _svc(sites=sites)
+    svc.stop()
+    assert sites.stopped
+
+
+def test_sighting_on_another_vlan_keeps_base_block():
+    sites = FakeSites()
+    state = {"blocked": [MAC], "listen_only": False, "covered_vlans": [20]}
+    svc, _, redir = _svc(fetch_state=lambda cfg: state, sites=sites)
+    svc._on_seen(_seen(MAC, "192.168.1.50"))
+    svc._on_seen(_vlan_seen(MAC, "192.168.20.9", 20))  # same MAC spoofed/seen on VLAN 20
+    svc._reconcile_once()
+    assert redir.targets[MAC].ip == "192.168.1.50"  # base block not lifted
+    assert sites.targets[20][MAC].ip == "192.168.20.9"

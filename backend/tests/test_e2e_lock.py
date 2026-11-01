@@ -76,6 +76,8 @@ def _kid_with_chore(client):
 
 def test_full_flow(client, db):
     ph, kid, dev = _setup(client)
+    assert blocked(client) == []  # learning mode: new devices stay online
+    client.patch("/api/v1/family", json={"new_devices_blocked": True}, headers=ph)
     assert blocked(client) == [MAC]  # quarantine
     r = client.patch(f"/api/v1/devices/{dev['id']}", json={"owner_ids": [kid["id"]]}, headers=ph)
     assert r.json()["status"] == "assigned"

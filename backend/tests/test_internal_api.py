@@ -4,6 +4,7 @@ import time
 
 from app.core.config import settings
 from app.lock import loop
+from app.models.family import get_family
 from app.models.lock import Device
 
 BODY = {"mac": "AA:BB:CC:DD:EE:02", "ip": "10.0.0.5", "ipv6": [], "hostname": "pad", "vendor": "X"}
@@ -20,11 +21,13 @@ def test_seen_without_token_403(client):
     assert r.status_code == 403
 
 
-def test_seen_upserts_and_state_lists_blocked(client):
+def test_seen_upserts_and_state_lists_blocked(client, db):
+    get_family(db).new_devices_blocked = True  # opt out of learning mode
+    db.commit()
     for _ in range(2):
         assert client.post(URL, json=BODY, headers=tok()).status_code == 200
     r = client.get("/api/v1/internal/state", headers=tok())
-    assert r.json() == {"blocked": ["aa:bb:cc:dd:ee:02"]}
+    assert r.json()["blocked"] == ["aa:bb:cc:dd:ee:02"]
     assert client.get("/api/v1/internal/state").status_code == 403
 
 
@@ -33,10 +36,12 @@ def test_seen_invalid_mac_422(client):
     assert r.status_code == 422
 
 
-def test_seen_dash_mac_normalized(client):
+def test_seen_dash_mac_normalized(client, db):
+    get_family(db).new_devices_blocked = True  # opt out of learning mode
+    db.commit()
     client.post(URL, json={**BODY, "mac": "AA-BB-CC-DD-EE-09"}, headers=tok())
     r = client.get("/api/v1/internal/state", headers=tok())
-    assert r.json() == {"blocked": ["aa:bb:cc:dd:ee:09"]}
+    assert r.json()["blocked"] == ["aa:bb:cc:dd:ee:09"]
 
 
 def test_report_does_not_overwrite_parent_name(client, db):

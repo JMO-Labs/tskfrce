@@ -19,7 +19,14 @@ def mk_device(db, mac="aa:bb:cc:dd:ee:01", status="unassigned", owners=()):
     return d
 
 
-def test_new_device_report_creates_unassigned_blocked(db):
+def test_new_device_stays_online_by_default(db):
+    """Learning mode: fail open until a parent opts in to blocking new devices."""
+    mk_device(db)
+    assert desired_blocked(db, NOW) == []
+
+
+def test_new_device_blocked_when_parent_opts_in(db):
+    get_family(db).new_devices_blocked = True
     mk_device(db)
     assert desired_blocked(db, NOW) == ["aa:bb:cc:dd:ee:01"]
 
@@ -47,7 +54,8 @@ def test_kid_device_unblocked_after_all_approved(db, parent, kid):
 
 
 def test_expired_override_ignored(db):
-    d = mk_device(db)  # unassigned + blocked by default
+    get_family(db).new_devices_blocked = True  # opt out of learning mode
+    d = mk_device(db)
     db.add(
         Override(
             device_id=d.id,
@@ -78,6 +86,7 @@ def test_newest_unexpired_override_wins(db):
 
 
 def test_tick_deletes_expired_overrides_and_resets(db):
+    get_family(db).new_devices_blocked = True  # opt out of learning mode
     d = mk_device(db)
     db.add(
         Override(

@@ -17,7 +17,13 @@ from app.lock.state import Prefetch, device_facts
 from app.models.device_activity import DeviceEvent, DevicePresence
 from app.models.family import FamilySettings, get_family
 from app.models.hours import HourRuleTarget
-from app.models.lock import Device, DeviceGroup, Override, device_group_members
+from app.models.lock import (
+    Device,
+    DeviceGroup,
+    DeviceHintRejection,
+    Override,
+    device_group_members,
+)
 from app.models.user import User, UserRole
 from app.schemas.lock import DevicePatch, GroupIn, OverrideIn, utc_z
 
@@ -82,6 +88,12 @@ def device_out(
         "seen_now": d.last_seen is not None and now.replace(tzinfo=None) - d.last_seen <= SEEN_NOW,
         "resisting": d.resisting_since is not None,
         "needs_pins": needs_pins,
+        "hint_of_id": d.hint_of_id,
+        "hint_reason": d.hint_reason,
+        "mdns_name": d.mdns_name,
+        "model": d.model,
+        "random_mac": d.random_mac,
+        "vlan_id": d.vlan_id,
         "exempt": bool(d.exempt),
         "reason": reason or open_reason(f, now_local),
         "chores_done": sum(o.approved for o in f.owners),
@@ -173,6 +185,21 @@ def patch_device(device_id: int, body: DevicePatch, db: Session = Depends(get_db
     now = datetime.now(UTC)
     stats = activity.device_stats(db, now, [d.id])
     return device_out(db, d, get_family(db), now, addresses=True, stats=stats)
+
+
+@router.post("/devices/{device_id}/hint/undo")
+def undo_hint(device_id: int, db: Session = Depends(get_db)):
+    d = _device(db, device_id)
+    if d.hint_of_id is None:
+        raise HTTPException(404, "There's no suggestion to undo on this device.")
+    db.merge(DeviceHintRejection(device_id=d.id, candidate_id=d.hint_of_id))
+    d.owners, d.groups = [], []
+    db.query(Override).filter(Override.device_id == d.id).delete()  # incl. the copied lock
+    d.status = "unassigned"
+    d.hint_of_id = d.hint_reason = None
+    db.commit()
+    trigger()
+    return device_out(db, d, get_family(db), datetime.now(UTC))
 
 
 @router.post("/devices/{device_id}/override")

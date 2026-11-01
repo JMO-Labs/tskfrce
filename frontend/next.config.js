@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  output: 'standalone', // docker runtime image ships only .next/standalone
+  // ponytail: no next/image, so drop sharp's per-CPU binary and keep the image arch-neutral
+  images: { unoptimized: true },
+  outputFileTracingExcludes: { '*': ['node_modules/@img/**', 'node_modules/sharp/**'] },
   devIndicators: false,
 
   // Suppress HMR warnings in development
