@@ -1,0 +1,32 @@
+# Dependency updates. Minor/patch bumps are grouped (one PR per ecosystem per week)
+# because every PR runs the ~17 min lab job; .github/workflows/dependabot-automerge.yml
+# auto-merges those groups once required checks pass. Majors get their own PR for review.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    groups:
+      minor-patch: { update-types: [minor, patch] }
+
+  - package-ecosystem: pip
+    directories: [/backend, /blocker]
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    groups:
+      minor-patch: { update-types: [minor, patch] }
+
+  - package-ecosystem: docker
+    directories: [/backend, /blocker, /frontend, /lab/host, /lab/router]
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    groups:
+      minor-patch: { update-types: [minor, patch] }
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    groups:
+      minor-patch: { update-types: [minor, patch] }
