@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: homelab
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

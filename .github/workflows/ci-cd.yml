@@ -12,7 +12,7 @@ env:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: homelab
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python
@@ -38,7 +38,7 @@ jobs:
         npm run type-check
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: homelab
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python
@@ -51,7 +51,7 @@ jobs:
       run: cd backend && python -m pytest tests -q
 
   installer:
-    runs-on: ubuntu-latest
+    runs-on: homelab
     needs: [lint, test]
     timeout-minutes: 30
     steps:
@@ -62,7 +62,7 @@ jobs:
       run: bash scripts/test-install.sh
 
   lab:
-    runs-on: ubuntu-latest
+    runs-on: homelab
     needs: [lint, test]
     timeout-minutes: 40
     steps:
@@ -99,7 +99,7 @@ jobs:
       run: bash scripts/lab.sh down
 
   security-scan:
-    runs-on: ubuntu-latest
+    runs-on: homelab
     needs: [test, lint]
     
     steps:
@@ -127,7 +127,7 @@ jobs:
         path: trivy-results.sarif
 
   build-and-push:
-    runs-on: ubuntu-latest
+    runs-on: homelab
     needs: [test, lint, security-scan]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
