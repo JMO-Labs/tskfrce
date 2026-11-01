@@ -1,5 +1,5 @@
 """
-Authentication schemas for TaaskMaaster.
+Authentication schemas for t@sk4ce.
 
 This module contains Pydantic schemas for authentication-related API operations.
 """
@@ -33,6 +33,7 @@ class LoginRequest(BaseModel):
 
     username: str = Field(..., description="Username or email")
     password: str = Field(..., description="Password")
+    remember: bool = Field(False, description="Keep me logged in: longer refresh token")
 
 
 class LoginResponse(BaseModel):

@@ -344,6 +344,7 @@ def _snapshot(url: str) -> dict:
     from app.api.family import _needs_you
     from app.lock.state import desired_blocked
     from app.models.chores import ChoreRun
+    from app.models.family import get_family
     from app.models.user import User
     from app.services import chores as svc
     from sqlalchemy import create_engine
@@ -353,14 +354,17 @@ def _snapshot(url: str) -> dict:
         runs = svc.day_runs(db, date(2026, 10, 21)).order_by(ChoreRun.id).all()
         names = {u.id: u.full_name for u in db.query(User)}
         return {
-            "needs_you": _needs_you(db, runs, names),
+            "needs_you": _needs_you(db, runs, names, get_family(db)),
             "runs": [(r.id, r.attempt, r.last_note, r.status, svc.run_kid_ids(r)) for r in runs],
             "blocked": desired_blocked(db, datetime(2026, 10, 21, 12, 0, tzinfo=UTC)),
         }
 
 
 def test_drop_legacy_keeps_what_parents_and_lock_see(tmp_path):
+    from app.models.lock import Device
+    from app.models.user import User
     from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session, load_only
 
     url = f"sqlite:///{tmp_path / 'm.db'}"
     _alembic(url, OLD)
@@ -368,25 +372,16 @@ def test_drop_legacy_keeps_what_parents_and_lock_see(tmp_path):
     _seed(con.cursor())
     con.commit()
     con.close()
-    _alembic(url, "d0e1f2a3b4c5")
-    with create_engine(url).begin() as c:  # raw SQL: the ORM model is ahead of this revision
-        for i, (kid,) in enumerate(c.exec_driver_sql("select id from users where id in (2,3)")):
-            did = c.exec_driver_sql(
-                "insert into devices (mac, name, status, first_seen) values (?, ?, 'assigned', ?)",
-                (f"aa:bb:cc:dd:ee:0{i}", f"d{i}", "2026-10-20 00:00:00"),
-            ).lastrowid
-            c.exec_driver_sql("insert into device_owners values (?, ?)", (did, kid))
-        for col in ("mdns_name", "model", "dhcp_fp", "hint_of_id", "hint_reason"):
-            c.exec_driver_sql(f"alter table devices add column {col} text")  # ORM is ahead
-        c.exec_driver_sql("alter table devices add column vlan_id integer")
-        c.exec_driver_sql("alter table family_settings add column listen_only boolean default 0")
+    _alembic(url, "head")  # ORM inserts below need every current column
+    with Session(create_engine(url)) as db:
+        for i, kid in enumerate(
+            db.query(User).options(load_only(User.id)).filter(User.id.in_([2, 3]))
+        ):
+            db.add(
+                Device(mac=f"aa:bb:cc:dd:ee:0{i}", name=f"d{i}", status="assigned", owners=[kid])
+            )
+        db.commit()
     before = _snapshot(url)
     assert before["needs_you"] and before["runs"] and before["blocked"]
-    with create_engine(url).begin() as c:  # let the later migrations add them itself
-        c.exec_driver_sql("alter table devices drop column hint_of_id")
-        for col in ("mdns_name", "model", "dhcp_fp", "hint_reason"):
-            c.exec_driver_sql(f"alter table devices drop column {col}")
-        c.exec_driver_sql("alter table devices drop column vlan_id")
-        c.exec_driver_sql("alter table family_settings drop column listen_only")
-    _alembic(url, "head")
+    # Snapshot at final state should match
     assert _snapshot(url) == before

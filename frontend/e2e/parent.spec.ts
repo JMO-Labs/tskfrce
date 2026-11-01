@@ -6,6 +6,7 @@ test.describe('parent journeys', () => {
 
   test('send back needs a note, approve clears the item', async ({ page }) => {
     await page.goto('/')
+    await page.getByRole('tab', { name: /Needs you/ }).click()
     const needs = page.getByRole('region', { name: 'Needs you' })
     await expect(needs).toContainText('E2E sweep')
 
@@ -20,49 +21,44 @@ test.describe('parent journeys', () => {
     await expect(needs.getByText('E2E sweep')).toHaveCount(0)
 
     // approving the other one clears it too
-    const card = needs
-      .locator('div')
-      .filter({ hasText: 'E2E dishes' })
-      .filter({ has: page.getByRole('button', { name: 'Approve', exact: true }) })
-      .last()
+    const card = needs.locator('.p-needs-item').filter({ hasText: 'E2E dishes' })
     await card.getByRole('button', { name: 'Approve', exact: true }).click()
     await expect(needs.getByText('E2E dishes')).toHaveCount(0)
   })
 
-  test('create a race chore with steps, copy it, edit it', async ({ page }) => {
+  test('create a race chore with steps, duplicate it, edit it', async ({ page }) => {
     const api = await parentApi()
-    const a = await makeKid(api, 'Race A')
-    const b = await makeKid(api, 'Race B')
+    // unique names: a run killed mid-test leaves its kids behind
+    const tag = Date.now().toString(36).slice(-4)
+    const a = await makeKid(api, `Race A ${tag}`)
+    const b = await makeKid(api, `Race B ${tag}`)
     try {
       await page.goto('/kids?section=chores')
       await page.getByRole('button', { name: 'New chore' }).click()
-      const drawer = page.getByRole('dialog')
-      await drawer.getByLabel('Chore', { exact: true }).fill('E2E race')
+      // the editor swaps from the open chore to the empty form after the route change
+      await expect(page.getByRole('heading', { name: 'New chore' })).toBeVisible()
+      await page.getByLabel('Chore name', { exact: true }).fill('E2E race')
       for (const s of ['First step', 'Second step']) {
-        await drawer.getByLabel('Add a step').fill(s)
-        await drawer.getByRole('button', { name: 'Add step' }).click()
+        await page.getByLabel('Add a step').fill(s)
+        await page.getByLabel('Add a step').press('Enter')
       }
-      await drawer.getByRole('button', { name: 'Save', exact: true }).click()
+      await page.getByRole('button', { name: 'Save chore' }).click()
 
       // saving a new chore opens it; assign it to both kids as a race
-      await drawer.getByRole('button', { name: 'Assign' }).click()
-      await drawer.getByText('Race A', { exact: true }).click()
-      await drawer.getByText('Race B', { exact: true }).click()
-      await drawer.getByText('Race', { exact: true }).click()
-      await drawer.getByRole('button', { name: 'Save', exact: true }).click()
-      await expect(drawer.getByText(/Race A, Race B · Every day · race/)).toBeVisible()
-      await drawer.getByRole('button', { name: 'Cancel' }).click()
-      const row = page.getByRole('button', { name: /^E2E race 2 steps/ })
-      await expect(row).toBeVisible()
-      await expect(row).toContainText('2 steps')
+      const who = page.getByRole('region', { name: 'Who and when' })
+      await who.getByRole('button', { name: `Race A ${tag}` }).click()
+      await who.getByRole('button', { name: `Race B ${tag}` }).click()
+      await who.getByText('First one wins', { exact: true }).click()
+      await page.getByRole('button', { name: 'Save chore' }).click() // one Save sends the chore and Who & when
+      const card = page.getByRole('button', { name: /^E2E race/ }).first()
+      await expect(card).toContainText('2 steps')
 
-      await row.click()
-      await page.getByRole('button', { name: 'Copy' }).click()
-      await expect(page.getByLabel('Chore', { exact: true })).toHaveValue('E2E race (copy)')
-      await page.getByLabel('Chore', { exact: true }).fill('E2E race edited')
-      await page.getByRole('button', { name: 'Save', exact: true }).click()
+      await page.getByRole('button', { name: 'Duplicate' }).click()
+      const name = page.getByLabel('Chore name', { exact: true })
+      await expect(name).toHaveValue('E2E race (copy)') // wait for the editor to switch to the copy
+      await name.fill('E2E race edited')
+      await page.getByRole('button', { name: 'Save chore' }).click()
       await expect(page.getByRole('button', { name: /E2E race edited/ })).toBeVisible()
-      await expect(page.getByRole('button', { name: /E2E race \(copy\)/ })).toHaveCount(0)
     } finally {
       const chores = await (await api.get('/api/proxy/chores/')).json()
       for (const c of chores.filter((c: { title: string }) => c.title.startsWith('E2E race')))
@@ -84,7 +80,7 @@ test.describe('parent journeys', () => {
     try {
       await page.goto('/kids?section=kids')
       await page.getByRole('button', { name: /Bonus Kid/ }).click()
-      await page.getByRole('button', { name: 'Give bonus points' }).click()
+      await page.getByRole('button', { name: 'Bonus', exact: true }).click()
       await page.getByLabel(/Points \(1 to 500\)/).fill('5')
       await page.getByLabel('Why?').fill('Great teamwork')
       await page.getByRole('button', { name: 'Send points' }).click()
@@ -99,10 +95,11 @@ test.describe('parent journeys', () => {
     const api = await parentApi()
     const before = (await (await api.get('/api/proxy/family')).json()).screen_time_price
     try {
-      await page.goto('/settings?section=screen')
-      const price = page.getByLabel(/Screen time price/)
-      await price.fill(String(before + 1))
-      await page.getByRole('button', { name: 'Save settings' }).click()
+      // screen time lives under Rewards (spec §11 errata 1)
+      await page.goto('/kids?section=rewards&item=screen')
+      const how = page.getByRole('region', { name: 'How it works' })
+      await how.getByLabel('Price (points per 15 min)').fill(String(before + 1))
+      await how.getByRole('button', { name: 'Save' }).click()
       await expect
         .poll(async () => (await (await api.get('/api/proxy/family')).json()).screen_time_price)
         .toBe(before + 1)

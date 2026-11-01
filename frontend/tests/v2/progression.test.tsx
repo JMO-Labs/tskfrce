@@ -8,7 +8,6 @@ import { KidPage } from '@/v2/kid/KidPage'
 import { Leaderboard } from '@/v2/components/Leaderboard'
 import { ProfileModal } from '@/v2/components/ProfileModal'
 import { ProgressHeader } from '@/v2/components/ProgressHeader'
-import { KidCard } from '@/v2/today/KidCard'
 import { api } from '@/v2/api'
 import { fridgeTheme } from '@/v2/theme'
 import type { Badge, Profile } from '@/v2/types'
@@ -83,15 +82,6 @@ describe('flair on identity surfaces', () => {
     expect(await screen.findByText('👑')).toBeInTheDocument()
   })
 
-  test('parent Today kid card renders the equipped card', () => {
-    const kid = {
-      id: 1, name: 'Ana', avatar: '🦊', online_all: true, chores: [], devices: [],
-      progress: { level: 8, title: 'Clutch', xp: 1200, floor: 1000, next: 1400, streak: 1, flair: gold },
-    }
-    const { container } = wrap(<KidCard kid={kid} />)
-    expect(container.querySelector('.flair-card.flair-card-sheen')).toBeTruthy()
-  })
-
   test('leaderboard row renders the equipped card', () => {
     const row = { kid_id: 1, name: 'Amy', avatar: null, score: 5, level: 8, title: 'Clutch', rank: 1, flair: gold }
     const { container } = wrap(<Leaderboard rows={[row]} />)
@@ -132,9 +122,10 @@ describe('kid page family', () => {
       return []
     })
     wrap(<KidPage />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Me' }))
     expect(await screen.findByText('Lv 2 · Rookie')).toBeInTheDocument()
-    await userEvent.click(await screen.findByRole('button', { name: "See Ben's profile" }))
+    await userEvent.click(await screen.findByRole('button', { name: /^Ben/ }))
     await waitFor(() => expect(screen.getByText('On Fire')).toBeInTheDocument())
-    expect(screen.queryByRole('button', { name: "See Ana's profile" })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Ana/ })).toBeNull()
   })
 })

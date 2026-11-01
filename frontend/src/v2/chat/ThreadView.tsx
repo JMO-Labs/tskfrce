@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
-import { Button, Modal } from '@mantine/core'
-import { IconPhoto } from '@tabler/icons-react'
+import { Fragment, useEffect, useRef, useState } from 'react'
+import { Button, VisuallyHidden } from '@mantine/core'
+import { useMediaQuery } from '@mantine/hooks'
 import { GifPicker } from '@/v2/chat/GifPicker'
+import { Icon } from '@/v2/parent/Icon'
 import {
   fetchEarlier,
+  onMessageChanged,
   useMarkRead,
   usePost,
   useThread,
@@ -12,78 +14,19 @@ import {
   type ChatMessage,
   type ThreadKind,
 } from '@/v2/hooks/useChat'
-import { LoadError, LoadingCards } from '@/v2/components/States'
+import { useSingleFlight } from '@/v2/hooks/useSingleFlight'
+import { useRunDetail } from '@/v2/hooks/useChores'
+import { ErrorPanel, Skeleton } from '@/v2/parent/states'
 import { toastFail } from '@/v2/notify'
-import { useAuthImage } from '@/v2/today/PhotoViewer'
-
-/** Server photo paths are `/api/v1/...`; the proxy wants them without that prefix. */
-const proxyPath = (url: string) => url.replace(/^\/api\/v1/, '')
-
-const dayLabel = (iso: string) =>
-  new Date(iso).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })
-const timeLabel = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
-
-function Photo({ url }: { url: string }) {
-  const [open, setOpen] = useState(false)
-  const path = proxyPath(url)
-  const thumb = useAuthImage(`${path}/thumb`)
-  const full = useAuthImage(open ? path : null)
-  return (
-    <>
-      <button
-        type="button"
-        aria-label="Open photo"
-        onClick={() => setOpen(true)}
-        style={{ display: 'block', width: 160, height: 120, padding: 0, border: 0, borderRadius: 6, overflow: 'hidden', background: 'var(--f-mute)', cursor: 'pointer' }}
-      >
-        {thumb && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        )}
-      </button>
-      <Modal opened={open} onClose={() => setOpen(false)} title="Photo" size="lg" transitionProps={{ duration: 0 }}>
-        {full && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={full} alt="Chat photo" style={{ width: '100%', borderRadius: 6 }} />
-        )}
-      </Modal>
-    </>
-  )
-}
-
-function Bubble({ m, mine }: { m: ChatMessage; mine: boolean }) {
-  if (m.kind === 'system') {
-    return (
-      <div data-testid="msg-system" className="f-cap" style={{ textAlign: 'center', margin: '8px 0' }}>
-        {m.body}
-        {m.photo_url && <Photo url={m.photo_url} />}
-      </div>
-    )
-  }
-  return (
-    <div
-      data-testid={mine ? 'msg-mine' : 'msg-other'}
-      style={{ alignSelf: mine ? 'flex-end' : 'flex-start', maxWidth: '80%', display: 'flex', flexDirection: 'column', gap: 4 }}
-    >
-      {!mine && <span className="f-cap">{m.author_name ?? 'Someone'}</span>}
-      <div
-        style={{
-          padding: '8px 12px',
-          borderRadius: 10,
-          border: '1.5px solid var(--f-edge)',
-          background: mine ? 'var(--f-ink)' : 'var(--f-card)',
-          color: mine ? 'var(--f-card)' : 'inherit',
-          whiteSpace: 'pre-wrap',
-          overflowWrap: 'anywhere',
-        }}
-      >
-        {m.photo_url && <Photo url={m.photo_url} />}
-        {m.body}
-      </div>
-      <span className="f-cap" style={{ alignSelf: mine ? 'flex-end' : 'flex-start' }}>{timeLabel(m.created_at)}</span>
-    </div>
-  )
-}
+import { groupProofPhotos } from './groupPhotos'
+import { DaySep, ParentBubble, dayName } from './ParentBubble'
+import { ThreadHead } from './ThreadHead'
+import { ThreadSidePanel } from './ThreadSidePanel'
+import { MentionMenu, useComposerBox } from './MentionMenu'
+import { QuickReplies } from './QuickReplies'
+import { shownTitle } from './ThreadList'
+import { TypingLine } from './TypingLine'
+import type { ChatReply } from './dock'
 
 /** One conversation: messages (newest at the bottom), "Load earlier", and a composer. */
 export function ThreadView({
@@ -91,28 +34,46 @@ export function ThreadView({
   refId,
   meId,
   kid = false,
+  bare = false,
+  focus = false,
+  reply: replyIn,
+  onReplySent,
 }: {
   kind: ThreadKind
   refId: string
   meId: number | null
   kid?: boolean
+  bare?: boolean
+  /** focus the composer on mount */
+  focus?: boolean
+  /** start the composer answering this step/photo; the parent remounts (key) for a new one */
+  reply?: ChatReply
+  /** the composer's reply target was sent (or dropped) */
+  onReplySent?: () => void
 }) {
   const thread = useThread(kind, refId, kid)
   const post = usePost(kid)
   const upload = useUploadChatPhoto(kid)
-  const gifsOn = !!useThreads(kid).data?.gifs_enabled
+  const list = useThreads(kid).data
+  const gifsOn = !!list?.gifs_enabled
   const [gifOpen, setGifOpen] = useState(false)
   const markRead = useMarkRead(kid)
   const [older, setOlder] = useState<ChatMessage[]>([])
   const [hasMore, setHasMore] = useState<boolean | null>(null)
   const [text, setText] = useState('')
   const [photoId, setPhotoId] = useState<number | null>(null)
+  const [reply, setReply] = useState<ChatReply | undefined>(replyIn)
   const fileRef = useRef<HTMLInputElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
+  const wideLay = useMediaQuery('(min-width: 1250px)')
 
   const data = thread.data
+  const runDetail = useRunDetail(kind === 'chore' && !kid ? Number(refId) : null) // parent-only route
   const latest = data?.messages ?? []
   const lastId = latest.length ? latest[latest.length - 1].id : 0
+  // the last bubble growing a chip row would otherwise push it below the fold
+  const lastChips = !!latest[latest.length - 1]?.reactions?.length
+  const nearBottom = useRef(true)
   const messages = [...older.filter((o) => !latest.some((l) => l.id === o.id)), ...latest]
 
   // opening (and every new message while open) marks the thread read
@@ -123,6 +84,18 @@ export function ThreadView({
   useEffect(() => {
     endRef.current?.scrollIntoView?.({ block: 'end' })
   }, [lastId])
+  useEffect(() => {
+    if (lastChips && nearBottom.current) endRef.current?.scrollIntoView?.({ block: 'end' })
+  }, [lastChips])
+  const onScroll = (e: React.UIEvent<HTMLElement>) => {
+    const el = e.currentTarget
+    nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+  }
+  // "Load earlier" pages live outside the query cache: patch them when a message changes
+  useEffect(
+    () => onMessageChanged((id, m) => setOlder((o) => (m ? o.map((x) => (x.id === id ? m : x)) : o.filter((x) => x.id !== id)))),
+    [],
+  )
 
   const loadEarlier = async () => {
     if (!messages.length) return
@@ -136,21 +109,39 @@ export function ThreadView({
   }
 
   const canSend = (text.trim().length > 0 || photoId !== null) && !post.isPending && !!data
-  const send = async () => {
-    if (!canSend || !data) return
+  const once = useSingleFlight()
+  const send = () =>
+    once(async () => {
+      if (!canSend || !data) return
+      try {
+        await post.mutateAsync({
+          threadId: data.id,
+          body: text.trim(),
+          photoId: photoId ?? undefined,
+          stepId: reply?.step_id,
+          proofPhotoId: reply?.proof_photo_id,
+        })
+        setText('')
+        setPhotoId(null)
+        setReply(undefined)
+        onReplySent?.()
+      } catch (e) {
+        toastFail(e)
+      }
+    })
+  const sendGif = async (id: number) => {
+    if (!data) return
     try {
-      await post.mutateAsync({ threadId: data.id, body: text.trim(), photoId: photoId ?? undefined })
+      await post.mutateAsync({ threadId: data.id, body: text.trim(), photoId: id })
       setText('')
-      setPhotoId(null)
     } catch (e) {
       toastFail(e)
     }
   }
-  const sendGif = async (id: number) => {
-    if (!data) return
-    await post.mutateAsync({ threadId: data.id, body: text.trim(), photoId: id })
-    setText('')
-  }
+  const box = useComposerBox({ text, setText, send, members: data?.members, meId, threadId: data?.id ?? null, kid })
+  const names = (data?.members ?? []).map((x) => x.name)
+  const typing = data?.typing?.length ? <TypingLine names={data.typing} /> : null
+  const at = <MentionMenu {...box.menu} />
   const pick = async (file?: File) => {
     if (!file || !data) return
     try {
@@ -161,74 +152,100 @@ export function ThreadView({
   }
 
   let day = ''
+
+  // header, messages, composer, side panel
+  const run = kind === 'chore' ? runDetail.data : undefined
+  const photoN = run && reply?.proof_photo_id ? run.photos.findIndex((p) => p.id === reply.proof_photo_id) + 1 : 0
+  const replyLabel = photoN ? `Photo ${photoN}` : reply?.label
+  const labelPending = kind === 'chore' && !!reply?.proof_photo_id && runDetail.isPending // photo number unknown until the run loads
+  const sideKid = kind === 'private' ? Number(refId) : (run?.kid_ids[0] ?? null)
+  const side = wideLay && !bare && ((kind === 'chore' && !!run) || kind === 'private')
   return (
-    <section aria-label={data?.title ?? 'Conversation'} style={{ display: 'flex', flexDirection: 'column', minHeight: 0, height: '100%' }}>
-      {thread.isError && <LoadError error={thread.error} onRetry={() => thread.refetch()} />}
-      {thread.isPending && !thread.isError && <LoadingCards n={3} h={48} />}
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8, padding: '4px 2px', minHeight: 240 }}>
-        {(hasMore ?? data?.has_more) && (
-          <Button variant="default" size="xs" onClick={loadEarlier} style={{ alignSelf: 'center' }}>
-            Load earlier
-          </Button>
-        )}
-        {data && messages.length === 0 && <p className="f-note">Nothing here yet. Say hi!</p>}
-        {messages.map((m) => {
-          const d = dayLabel(m.created_at)
-          const sep = d !== day
-          day = d
-          return (
-            <div key={m.id} style={{ display: 'flex', flexDirection: 'column' }}>
-              {sep && <div className="f-cap" data-testid="day-sep" style={{ textAlign: 'center', margin: '8px 0' }}>{d}</div>}
-              <Bubble m={m} mine={m.author_id !== null && m.author_id === meId} />
-            </div>
-          )
-        })}
-        <div ref={endRef} />
-      </div>
-      <form
-        className="f-row"
-        style={{ flexWrap: 'nowrap', alignItems: 'flex-end', paddingTop: 8, position: 'sticky', bottom: 0, background: 'var(--f-bg, transparent)' }}
-        onSubmit={(e) => {
-          e.preventDefault()
-          void send()
-        }}
-      >
-        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden aria-label="Photo file" onChange={(e) => pick(e.target.files?.[0])} />
-        <Button
-          variant={photoId ? 'filled' : 'default'}
-          aria-label={photoId ? 'Photo added' : 'Add photo'}
-          onClick={() => fileRef.current?.click()}
-          loading={upload.isPending}
-        >
-          <IconPhoto size={18} />
-        </Button>
-        {gifsOn && (
-          <Button variant="default" aria-label="Add GIF" onClick={() => setGifOpen(true)}>
-            GIF
-          </Button>
-        )}
-        <textarea
-          aria-label="Message"
-          value={text}
-          rows={1}
-          maxLength={2000}
-          placeholder="Write a message"
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              void send()
-            }
+    <div className="pc-grid" data-side={side} data-bare={bare}>
+      <section className="pc-thread" aria-label={data ? shownTitle({ kind, title: data.title }, kid) : 'Conversation'}>
+        {data && !bare && <ThreadHead kind={kind} title={data.title} run={run} glyph={list?.threads.find((t) => t.id === data.id)?.glyph} />}
+        {thread.isError && !data && <ErrorPanel kind="unreachable" error={thread.error} onRetry={() => thread.refetch()} />}
+        {thread.isError && data && <p className="pc-empty" role="alert">Can&apos;t reach your home box. Showing what we have.</p>}
+        {thread.isPending && !thread.isError && <Skeleton rows={3} />}
+        <div className="pc-msgs" data-chat-scroll onScroll={onScroll}>
+          {(hasMore ?? data?.has_more) && (
+            <Button variant="default" size="xs" onClick={loadEarlier} style={{ alignSelf: 'center' }}>
+              Load earlier
+            </Button>
+          )}
+          {data && messages.length === 0 && <p className="pc-empty">Nothing here yet. Say hi!</p>}
+          {groupProofPhotos(messages).map(({ m, more }) => {
+            const d = dayName(m.created_at)
+            const sep = d !== day
+            day = d
+            return (
+              <Fragment key={m.id}>
+                {sep && <DaySep label={d} />}
+                <ParentBubble m={m} more={more} mine={m.author_id !== null && m.author_id === meId} names={names} kid={kid} kidName={kid ? 'You' : (data?.who ?? undefined)} />
+              </Fragment>
+            )
+          })}
+          {typing}
+          <div ref={endRef} />
+        </div>
+        {kind === 'chore' && !kid && data && <QuickReplies threadId={data.id} run={run} onFill={box.fill} />}
+        <form
+          className="pc-reply"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void send()
           }}
-          style={{ flex: 1, minWidth: 0, resize: 'none', font: 'inherit', padding: 8 }}
-        />
-        <Button type="submit" disabled={!canSend}>
-          Send
-        </Button>
-      </form>
-      {gifsOn && data && (
-        <GifPicker threadId={data.id} kid={kid} opened={gifOpen} onClose={() => setGifOpen(false)} onPicked={sendGif} />
-      )}
-    </section>
+        >
+          {reply && (
+            <span className="pc-q" data-testid="replying" title={labelPending ? 'Replying' : `Replying to ${replyLabel}`}>
+              <Icon name="subdirectory_arrow_right" size={14} />
+              <span>
+                <VisuallyHidden component="span">Replying to </VisuallyHidden>
+                {labelPending ? <i className="pc-q-sk" data-testid="reply-sk" aria-label="Loading" /> : replyLabel}
+              </span>
+              <button type="button" aria-label="Stop replying" title="Stop replying" onClick={() => {
+                setReply(undefined)
+                onReplySent?.()
+              }}>
+                <Icon name="close" size={14} />
+              </button>
+            </span>
+          )}
+          {at}
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden aria-label="Photo file" onChange={(e) => pick(e.target.files?.[0])} />
+          <button type="button" className="pc-ib" data-on={!!photoId} aria-label={photoId ? 'Photo added' : 'Add photo'} title={photoId ? 'Photo added' : 'Add photo'} disabled={upload.isPending} onClick={() => fileRef.current?.click()}>
+            <Icon name={photoId ? 'image' : 'add_photo_alternate'} size={20} />
+          </button>
+          {gifsOn && (
+            <button type="button" className="pc-ib" aria-label="Add GIF" title="Add GIF" onClick={() => setGifOpen(true)}>
+              <Icon name="gif_box" size={20} />
+            </button>
+          )}
+          <button type="button" className="pc-ib" aria-label="Mention someone" title="Mention someone" disabled={!data} onClick={box.mention}>
+            <Icon name="alternate_email" size={20} />
+          </button>
+          <textarea
+            ref={box.box}
+            autoFocus={!!replyIn || focus} // a "Reply on photo" request lands in the composer
+            aria-label="Message"
+            value={text}
+            rows={1}
+            maxLength={2000}
+            placeholder={reply ? 'Reply…' : kid ? 'Write a message' : 'Message…'}
+            onChange={box.onChange}
+            onKeyDown={box.onKeyDown}
+            onSelect={box.onSelect}
+            onBlur={box.onBlur}
+          />
+          <button type="submit" className="pc-send" aria-label="Send" title="Send" aria-busy={post.isPending} disabled={!canSend}>
+            <Icon name={post.isPending ? "progress_activity" : "send"} size={16} className={post.isPending ? "pc-spin" : undefined} />
+          </button>
+        </form>
+        {gifsOn && data && (
+          <GifPicker threadId={data.id} kid={kid} opened={gifOpen} onClose={() => setGifOpen(false)} onPicked={sendGif} />
+        )}
+      </section>
+      {side && <ThreadSidePanel run={run} kidIds={run ? run.kid_ids : sideKid ? [sideKid] : []} />}
+    </div>
   )
 }

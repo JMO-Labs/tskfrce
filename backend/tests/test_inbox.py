@@ -59,9 +59,7 @@ def test_resisting_and_new_device_notify_parents(client, db, parent, kid):
     db.add(d)
     db.commit()
     client.post("/api/v1/internal/devices/resisting", json={"resisting": [d.mac]}, headers=tok())
-    assert [(n.user_id, n.device_id) for n in _all(db, kind="device_resisting")] == [
-        (parent.id, d.id)
-    ]
+    assert [(n.user_id, n.device_id) for n in _all(db, kind="device_bypass")] == [(parent.id, d.id)]
     client.post(
         "/api/v1/internal/devices/seen",
         json={"mac": "aa:bb:cc:dd:ee:77", "hostname": "Newbie"},
@@ -118,3 +116,82 @@ def test_cascades(client, db, parent, kid, parent_headers):
     assert client.delete(f"/api/v1/kids/{kid.id}", headers=parent_headers).status_code == 200
     db.expire_all()
     assert not _all(db, run_id=r.id) and not _all(db, user_id=kid.id)
+
+
+def test_dismiss_own_only(client, db, parent, parent_headers, kid_headers):
+    n = Notification(user_id=parent.id, kind="level_up", title="x")
+    db.add(n)
+    db.commit()
+    assert client.delete(f"{N}/{n.id}", headers=kid_headers).status_code == 404
+    assert client.delete(f"{N}/{n.id}", headers=parent_headers).status_code == 204
+    assert client.get(N, headers=parent_headers).json()["items"] == []
+
+
+def test_notify_dedup(db, kid):
+    from app.services import inbox
+
+    n1 = inbox.notify(db, [kid.id], "due_soon", "x", dedup_key="soon:r1")
+    db.commit()
+    n2 = inbox.notify(db, [kid.id], "due_soon", "x", dedup_key="soon:r1")
+    db.commit()
+    assert (n1, n2) == (1, 0)
+    assert len(_all(db, user_id=kid.id, kind="due_soon")) == 1
+
+
+def test_family_relay_defaults_off(db):
+    assert get_family(db).ntfy_upstream_relay is False
+
+
+def _item(client, headers, kind):
+    items = client.get(N, headers=headers).json()["items"]
+    return next(i for i in items if i["kind"] == kind)
+
+
+def test_items_carry_kid_glyph_points_pending(client, db, parent, kid, parent_headers):
+    r = _submit(db, parent, kid)
+    it = _item(client, parent_headers, "chore_submitted")
+    assert it["glyph"] == "task_alt" and it["points"] == r.assignment.chore.points
+    assert it["kid_id"] == kid.id and it["kid_name"] == kid.full_name and it["pending"] is True
+    assert client.post(f"/api/v1/chores/{r.id}/approve", headers=parent_headers).status_code == 200
+    assert _item(client, parent_headers, "chore_submitted")["pending"] is False
+
+
+def test_note_pending_until_flag_clears(client, db, parent, kid, parent_headers):
+    r = make_run(db, parent, kid, day=svc.today(db, datetime.now(UTC)))
+    mkdev(db, kid)
+    kh = kid_hdr(db, kid)
+    res = from_ip("192.168.1.50").post(
+        f"/api/v1/kid/chores/{r.id}/note", json={"label": "Need help"}, headers=kh
+    )
+    assert res.status_code == 200
+    assert _item(client, parent_headers, "chore_note")["pending"] is True
+    tid = client.get(f"/api/v1/chat/threads/chore/{r.id}", headers=parent_headers).json()["id"]
+    client.post(f"/api/v1/chat/threads/{tid}/messages", json={"body": "ok"}, headers=parent_headers)
+    assert _item(client, parent_headers, "chore_note")["pending"] is False
+
+
+def test_two_notes_on_one_run_count_once(client, db, parent, kid, parent_headers):
+    r = make_run(db, parent, kid, day=svc.today(db, datetime.now(UTC)))
+    mkdev(db, kid)
+    kh = kid_hdr(db, kid)
+    for label in ("Need help", "Ran out of time"):
+        res = from_ip("192.168.1.50").post(
+            f"/api/v1/kid/chores/{r.id}/note", json={"label": label}, headers=kh
+        )
+        assert res.status_code == 200
+    items = client.get(N, headers=parent_headers).json()["items"]
+    notes = [i for i in items if i["kind"] == "chore_note"]
+    assert len(notes) == 2 and [i["pending"] for i in notes] == [True, False]
+
+
+def test_new_device_pending_until_assigned(client, db, parent, kid, parent_headers):
+    d = Device(mac="aa:bb:cc:dd:ee:66", name="Y", status="unassigned")
+    db.add(d)
+    db.commit()
+    db.add(Notification(user_id=parent.id, kind="new_device", title="t", device_id=d.id))
+    db.commit()
+    get = lambda: client.get(N, headers=parent_headers).json()["items"][0]["pending"]  # noqa: E731
+    assert get() is True
+    d.status = "assigned"
+    db.commit()
+    assert get() is False

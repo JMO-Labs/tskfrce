@@ -1,8 +1,10 @@
 """
-Users API router for TaaskMaaster.
+Users API router for t@sk4ce.
 
 This module contains API endpoints for user management and authentication.
 """
+
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -15,7 +17,7 @@ from app.api.deps import (
 )
 from app.core.auth import INVITE_TTL, AuthService
 from app.core.database import get_db_session
-from app.models.user import User, UserRole
+from app.models.user import PendingInvite, UsedInvite, User, UserRole
 from app.schemas.user import (
     InviteIn,
     UserCreate,
@@ -125,8 +127,56 @@ async def invite_parent(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="That username is taken. Pick another one.",
         )
-    token = AuthService(db).create_invite_token(body.username, current_user.id)
+    for old in db.query(PendingInvite).filter(PendingInvite.username == body.username).all():
+        # a new link replaces the live one for the same name
+        if db.get(UsedInvite, old.jti) is None:
+            db.add(UsedInvite(jti=old.jti))
+        db.delete(old)
+    auth = AuthService(db)
+    token = auth.create_invite_token(body.username, current_user.id)
+    jti = auth.read_invite(token)[1]
+    db.add(
+        PendingInvite(
+            jti=jti,
+            username=body.username,
+            invited_by=current_user.id,
+            expires_at=datetime.utcnow() + INVITE_TTL,
+        )
+    )
+    db.commit()
     return {"token": token, "expires_in": int(INVITE_TTL.total_seconds())}
+
+
+@router.get("/invites")
+async def list_invites(
+    db: Session = Depends(get_db_session), current_user: User = Depends(require_parent)
+) -> list[dict]:
+    """Invites that can still be used. Expired ones are dropped here."""
+    now = datetime.utcnow()
+    db.query(PendingInvite).filter(PendingInvite.expires_at <= now).delete()
+    db.commit()
+    taken = db.query(User.username).filter(User.username == PendingInvite.username).exists()
+    rows = db.query(PendingInvite).filter(~taken).order_by(PendingInvite.created_at).all()
+    return [
+        {
+            "jti": r.jti,
+            "username": r.username,
+            "expires_in": int((r.expires_at - now).total_seconds()),
+        }
+        for r in rows
+    ]
+
+
+@router.delete("/invites/{jti}", status_code=status.HTTP_204_NO_CONTENT)
+async def cancel_invite(
+    jti: str, db: Session = Depends(get_db_session), current_user: User = Depends(require_parent)
+):
+    """Cancel an invite: its link stops working."""
+    if db.query(PendingInvite).filter(PendingInvite.jti == jti).delete() == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="That invite is gone.")
+    if db.get(UsedInvite, jti) is None:
+        db.add(UsedInvite(jti=jti))
+    db.commit()
 
 
 # Password change endpoint (must come before /{user_id} routes)

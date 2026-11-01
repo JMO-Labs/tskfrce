@@ -1,6 +1,9 @@
 import { request, type APIRequestContext, type Page } from '@playwright/test'
 
-export const PARENT = { username: 'labparent', password: 'labpassword1' }
+export const PARENT = {
+  username: process.env.E2E_PARENT_USER ?? 'labparent',
+  password: process.env.E2E_PARENT_PASSWORD ?? 'labpassword1',
+}
 const BASE = process.env.E2E_BASE_URL ?? 'http://10.99.0.5:3000'
 
 /** Log in through the form (the same path a parent takes). */
@@ -8,8 +11,8 @@ export async function loginUi(page: Page, next = '/') {
   await page.goto(`/login?next=${encodeURIComponent(next)}`)
   // login is rate limited (10/min): when a burst of screens hits it, wait it out and retry
   for (let attempt = 0; attempt < 4; attempt++) {
-    await page.getByLabel('Username').fill(PARENT.username)
-    await page.getByLabel('Password').fill(PARENT.password)
+    await page.getByLabel('Username', { exact: true }).fill(PARENT.username)
+    await page.getByLabel('Password', { exact: true }).fill(PARENT.password)
     await page.getByRole('button', { name: 'Log in' }).click()
     try {
       await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 15_000 })

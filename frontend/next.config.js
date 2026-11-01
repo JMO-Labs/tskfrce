@@ -5,8 +5,8 @@ const nextConfig = {
   // ponytail: no next/image, so drop sharp's per-CPU binary and keep the image arch-neutral
   images: { unoptimized: true },
   outputFileTracingExcludes: { '*': ['node_modules/@img/**', 'node_modules/sharp/**'] },
-  
-  
+  devIndicators: false,
+
   // Suppress HMR warnings in development
   onDemandEntries: {
     // period (in ms) where the server will keep pages in the buffer
@@ -21,7 +21,8 @@ const nextConfig = {
   
   // Environment variables
   env: {
-    NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME || 'TaaskMaaster',
+    NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME || 't@sk4ce',
+    NEXT_PUBLIC_APP_VERSION: require('./package.json').version,
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '/api/proxy',
   },
   

@@ -1,7 +1,7 @@
 /**
  * @fileoverview Health Check API Endpoint
  * @description Simple health check endpoint for Docker health monitoring
- * @author TaaskMaaster Team
+ * @author t@sk4ce Team
  * @version 1.0.0
  */
 
@@ -18,7 +18,7 @@ export default function handler(req, res) {
   res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    service: 'taaskmaaster-frontend',
+    service: 'task4ce-frontend',
     version: process.env.npm_package_version || '1.0.0'
   });
 }

@@ -17,7 +17,7 @@ The box must run **Linux** to pause the internet. A Windows PC or a Mac can show
 
 ## 2. An ordinary home router
 
-Any normal router from your internet company works. A few kinds, mostly "mesh" Wi-Fi systems, can stop the box from doing its job. See the [router list](../routers.md). You can also just try it: setup includes a "Test block" button that tells you if it works.
+Any normal router from your internet company works. A few kinds, mostly "mesh" Wi-Fi systems, can stop the box from doing its job. See the [router list](../routers.md). You can also just try it: after setup, the **Test block** button on each device tells you if it works.
 
 ## 3. Your kids' devices on your home Wi-Fi
 

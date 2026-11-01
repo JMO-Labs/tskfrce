@@ -4,17 +4,23 @@ import hmac
 import ipaddress
 import re
 from datetime import UTC, datetime
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
 from app.core.config import settings
+from app.lock import activity
 from app.lock.hints import apply_hint
 from app.lock.loop import trigger
-from app.lock.state import desired_blocked
+from app.lock.rules import block_reason
+from app.lock.schedule import local_now
+from app.lock.state import Prefetch, desired_blocked, device_facts
+from app.models.device_activity import DeviceEvent
 from app.models.family import get_family
 from app.models.lock import Device, Vlan
 from app.services import inbox
@@ -99,6 +105,18 @@ class ResistingReport(BaseModel):
         return out
 
 
+class HitsReport(BaseModel):
+    hits: dict[str, Annotated[int, Field(ge=1, le=10000)]] = Field(max_length=1000)
+
+    @field_validator("hits")
+    @classmethod
+    def _macs(cls, v: dict[str, int]) -> dict[str, int]:
+        out = {m.strip().lower().replace("-", ":"): n for m, n in v.items()}
+        if not all(MAC_RE.match(m) for m in out):
+            raise ValueError("MAC address must look like aa:bb:cc:dd:ee:ff.")
+        return out
+
+
 def _apply(dev: Device, body: SeenReport, now: datetime) -> None:
     dev.ip, dev.last_seen = body.ip, now
     dev.ipv6 = body.ipv6
@@ -115,6 +133,7 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
     now = datetime.now(UTC).replace(tzinfo=None)
     dev = db.query(Device).filter(Device.mac == body.mac).first()
     new = dev is None
+    hinted = False
     if new:
         dev = Device(
             mac=body.mac,
@@ -127,9 +146,8 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
         try:
             db.flush()
             if not apply_hint(db, dev):  # a hint sends its own notice
-                inbox.notify(
+                inbox.notify_parents(
                     db,
-                    inbox.parents(db),
                     "new_device",
                     f"New device: {dev.name}",
                     "Say whose it is so it follows their rules.",
@@ -143,14 +161,45 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
     if new:
         trigger()
     else:
+        old_ip = dev.ip
         before = (dev.mdns_name, dev.model, dev.dhcp_fp)
         _apply(dev, body, now)
+        if old_ip is not None and body.ip is not None and old_ip != body.ip:
+            activity.log(db, dev.id, "address_change", now, detail=f"{old_ip} → {body.ip}")
         changed = before != (dev.mdns_name, dev.model, dev.dhcp_fp)
         hinted = changed and dev.status == "unassigned" and apply_hint(db, dev)
-        db.commit()
-        if hinted:
-            trigger()
+    if new and dev.hostname:
+        _note_new_address(db, dev, now)
+    activity.sample(db, dev, now)
+    db.commit()
+    if hinted:
+        trigger()
     return {"id": dev.id}
+
+
+def _note_new_address(db: Session, new: Device, now: datetime) -> None:
+    """A fresh device sharing a hostname with one locked moments ago is probably the same hardware."""
+    other = (
+        db.query(Device)
+        .filter(
+            Device.id != new.id,
+            func.lower(Device.hostname) == new.hostname.lower(),
+            Device.blocked_since >= now - activity.SLOT,
+        )
+        .first()
+    )
+    if other:
+        mins = round((now - other.blocked_since).total_seconds() / 60)
+        activity.log(db, other.id, "new_address", now, other_device_id=new.id, minutes=mins)
+        # security ping: ignores quiet hours like the resist detector's bypass
+        inbox.notify_parents(
+            db,
+            "device_bypass",
+            f"{other.name} got around the lock",
+            f"A new address showed up {mins} min after {other.name} was locked. "
+            "It may be the same device with a new Wi-Fi address. Tap to check.",
+            device_id=other.id,
+        )
 
 
 @router.get("/state", dependencies=[Depends(require_token)])
@@ -185,18 +234,18 @@ def devices_resisting(body: ResistingReport, db: Session = Depends(get_db)) -> d
     listed = set(body.resisting)
     flagged = cleared = 0
     try:
-        parents = inbox.parents(db)
         for dev in db.query(Device).all():
             if dev.mac in listed:
                 if dev.resisting_since is not None:
                     continue
                 dev.resisting_since = now
                 flagged += 1
-                inbox.notify(
+                activity.log(db, dev.id, "bypass", now)
+                # security ping: notify.ping applies quiet hours (quiet_security)
+                inbox.notify_parents(
                     db,
-                    parents,
-                    "device_resisting",
-                    f"{dev.name} is getting around the block",
+                    "device_bypass",
+                    f"{dev.name} got around the lock",
                     f"{dev.name} is still reaching the internet while it "
                     "should be paused. Someone may have changed its network "
                     "settings. Tap for what to check.",
@@ -205,8 +254,41 @@ def devices_resisting(body: ResistingReport, db: Session = Depends(get_db)) -> d
             elif dev.resisting_since is not None:
                 dev.resisting_since = None
                 cleared += 1
+                open_ev = (
+                    db.query(DeviceEvent)
+                    .filter(
+                        DeviceEvent.device_id == dev.id,
+                        DeviceEvent.kind == "bypass",
+                        DeviceEvent.last_at.is_(None),
+                    )
+                    .order_by(DeviceEvent.at.desc(), DeviceEvent.id.desc())
+                    .first()
+                )
+                if open_ev:
+                    open_ev.last_at = now
         db.commit()
     except Exception:
         db.rollback()
         raise
     return {"flagged": flagged, "cleared": cleared}
+
+
+@router.post("/devices/hits", dependencies=[Depends(require_token)])
+def devices_hits(body: HitsReport, db: Session = Depends(get_db)) -> dict:
+    """Portal hits from blocked devices become 'tried while locked' alerts."""
+    _touch(db)
+    now = datetime.now(UTC).replace(tzinfo=None)
+    devs = (
+        db.query(Device).filter(Device.mac.in_(body.hits), Device.blocked_since.isnot(None)).all()
+    )
+    fam, logged = get_family(db), 0
+    local, pre = local_now(fam.timezone, now), Prefetch(db, devs)
+    for d in devs:
+        reason = block_reason(device_facts(db, d, fam, now, pre), local)
+        if reason is None:  # open now; the next tick clears blocked_since
+            continue
+        kind = "outside_hours" if reason == "schedule" else "locked_try"
+        activity.log(db, d.id, kind, now, merge_minutes=30, count=body.hits[d.mac], reason=reason)
+        logged += 1
+    db.commit()
+    return {"logged": logged}

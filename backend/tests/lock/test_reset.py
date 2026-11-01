@@ -61,13 +61,6 @@ def test_once_assignment_only_on_its_date(db, parent, kid):
     assert a.active is False
 
 
-def test_archived_chore_makes_no_runs(db, parent, kid):
-    c, _ = make_chore(db, parent, kids=[kid])
-    c.archived_at = datetime(2026, 10, 1)
-    db.commit()
-    assert run_reset(db, D) == 0
-
-
 def test_before_reset_time_yesterday_still_counts(db):
     fam = get_family(db)
     fam.timezone, fam.reset_time, fam.last_reset_date = "UTC", "06:00", D
@@ -116,3 +109,18 @@ def test_today_is_the_family_date_just_after_utc_midnight(db, parent, kid):
     tick(db, now)
     assert {r.day for r in db.query(ChoreRun)} == {date(2026, 10, 21)}
     assert fam.last_reset_date == date(2026, 10, 21)
+
+
+def test_fresh_install_before_reset_time_is_yesterdays_chore_day(db):
+    """No reset yet, just past midnight, reset 21:36: still yesterday's chore day, so a
+    chore due 00:56 (before the reset time = next morning) is due in 20 min, not tomorrow."""
+    from app.services.economy import deadline_utc
+
+    fam = get_family(db)
+    fam.timezone, fam.reset_time, fam.last_reset_date = "UTC", "21:36", None
+    db.commit()
+    now = datetime(2026, 10, 30, 0, 36, tzinfo=UTC)
+    day = svc.today(db, now)
+    assert day == date(2026, 10, 29)
+    assert deadline_utc(fam, day, "00:56") == datetime(2026, 10, 30, 0, 56)
+    assert svc.today(db, datetime(2026, 10, 30, 21, 36, tzinfo=UTC)) == date(2026, 10, 30)

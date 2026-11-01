@@ -60,21 +60,24 @@ def test_bedtime_beats_screen_time():
     s = h + 2 if h <= 20 else h - 3
     w = parent(
         "POST",
-        "/api/v1/windows",
+        "/api/v1/hours",
         {
+            "name": "Lab hours",
+            "category": "other",
             "kind": "allowed",
             "days": "0123456",
-            "start": f"{s:02d}:00",
-            "end": f"{s + 1:02d}:00",
-            "kid_id": a["id"],
+            "kid_ids": [a["id"]],
+            "times": [{"start": f"{s:02d}:00", "end": f"{s + 1:02d}:00"}],
         },
     )
-    on_cleanup(lambda: parent("DELETE", f"/api/v1/windows/{w['id']}"))
+    on_cleanup(lambda: parent("DELETE", f"/api/v1/hours/{w['id']}"))
     make_chore([a["id"]])
     wait_online("kid1", False)
-    r = request_screen(a)
-    parent("POST", f"/api/v1/redemptions/{r['id']}/approve")
-    assert balance(a) == 15  # paid, yet the window still wins
+    # default rule: screen time only works inside allowed hours, so nothing is charged
+    with pytest.raises(HTTPError) as e:
+        request_screen(a)
+    assert e.value.status == 409
+    assert balance(a) == 20
     assert not wait_for(lambda: online("kid1"), timeout=15)
 
 

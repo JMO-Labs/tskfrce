@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MantineProvider } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { api } from '@/v2/api'
-import { BonusForm } from '@/v2/manage/BonusForm'
+import { PointsForm } from '@/v2/manage/PointsForm'
 
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
@@ -20,18 +20,19 @@ beforeEach(() => {
   ;(notifications.show as unknown as Mock).mockReset()
 })
 
-const setup = async () => {
+const onClose = jest.fn()
+const setup = async (kind: 'bonus' | 'deduct' = 'bonus') => {
+  onClose.mockReset()
   render(
     <QueryClientProvider client={new QueryClient()}>
       <MantineProvider>
-        <BonusForm kid={kid} />
+        <PointsForm kid={kid} kind={kind} onClose={onClose} />
       </MantineProvider>
     </QueryClientProvider>,
   )
-  await userEvent.click(screen.getByRole('button', { name: 'Give bonus points' }))
 }
 
-describe('BonusForm', () => {
+describe('PointsForm', () => {
   test('needs amount 1-500 and a note', async () => {
     await setup()
     const send = screen.getByRole('button', { name: 'Send points' }) as HTMLButtonElement
@@ -44,6 +45,27 @@ describe('BonusForm', () => {
     expect(send.disabled).toBe(true)
   })
 
+  test.each([['0', 'Must be at least 1.'], ['-5', 'Must be at least 1.'], ['501', 'Must be 500 or less.'], ['2.5', 'Use a whole number.'], ['abc', 'Numbers only.']])(
+    'amount "%s" shows "%s" inline and sends nothing',
+    async (value, msg) => {
+      await setup()
+      await userEvent.type(screen.getByLabelText(/Points/), value)
+      await userEvent.type(screen.getByLabelText('Why?'), 'Helped out')
+      expect(screen.getByText(msg)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Send points' })).toBeDisabled()
+      expect(apiMock).not.toHaveBeenCalled()
+    },
+  )
+
+  test('a failed send shows exactly one error toast', async () => {
+    apiMock.mockRejectedValue(new Error('boom'))
+    await setup()
+    await userEvent.type(screen.getByLabelText(/Points/), '25')
+    await userEvent.type(screen.getByLabelText('Why?'), 'Helped out')
+    await userEvent.click(screen.getByRole('button', { name: 'Send points' }))
+    await waitFor(() => expect(notifications.show).toHaveBeenCalledTimes(1))
+  })
+
   test('posts the exact body and confirms', async () => {
     await setup()
     await userEvent.type(screen.getByLabelText(/Points/), '25')
@@ -54,6 +76,54 @@ describe('BonusForm', () => {
     )
     await waitFor(() =>
       expect(notifications.show).toHaveBeenCalledWith(expect.objectContaining({ message: 'Sent! Maya got +25' })),
+    )
+  })
+
+  test('closes after a successful send', async () => {
+    await setup()
+    await userEvent.type(screen.getByLabelText(/Points/), '25')
+    await userEvent.type(screen.getByLabelText('Why?'), 'Helped out')
+    await userEvent.click(screen.getByRole('button', { name: 'Send points' }))
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+  })
+
+  test('deduct presets −5 / −10 / −20 fill the amount; Custom clears it', async () => {
+    await setup('deduct')
+    await userEvent.click(screen.getByRole('button', { name: '−20' }))
+    expect(screen.getByLabelText(/Points/)).toHaveValue('20')
+    await userEvent.click(screen.getByRole('button', { name: 'Custom' }))
+    expect(screen.getByLabelText(/Points/)).toHaveValue('')
+    expect(screen.getByRole('button', { name: 'Custom' })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(screen.getByRole('button', { name: '−10' }))
+    await userEvent.type(screen.getByLabelText('Why?'), 'Broke a rule')
+    await userEvent.click(screen.getByRole('button', { name: 'Take points' }))
+    await waitFor(() =>
+      expect(apiMock).toHaveBeenCalledWith('/kids/3/deduct', { method: 'POST', body: { amount: 10, note: 'Broke a rule' } }),
+    )
+  })
+
+  test('deduct posts to /deduct and reports what was taken', async () => {
+    apiMock.mockResolvedValue({ balance: 5, deducted: 10 })
+    await setup('deduct')
+    await userEvent.type(screen.getByLabelText(/Points/), '30')
+    await userEvent.type(screen.getByLabelText('Why?'), 'Broke a rule')
+    await userEvent.click(screen.getByRole('button', { name: 'Take points' }))
+    await waitFor(() =>
+      expect(apiMock).toHaveBeenCalledWith('/kids/3/deduct', { method: 'POST', body: { amount: 30, note: 'Broke a rule' } }),
+    )
+    await waitFor(() =>
+      expect(notifications.show).toHaveBeenCalledWith(expect.objectContaining({ message: 'Deducted 10 from Maya' })),
+    )
+  })
+
+  test('deduct at a zero balance says nothing was taken', async () => {
+    apiMock.mockResolvedValue({ balance: 0, deducted: 0 })
+    await setup('deduct')
+    await userEvent.type(screen.getByLabelText(/Points/), '30')
+    await userEvent.type(screen.getByLabelText('Why?'), 'Broke a rule')
+    await userEvent.click(screen.getByRole('button', { name: 'Take points' }))
+    await waitFor(() =>
+      expect(notifications.show).toHaveBeenCalledWith(expect.objectContaining({ message: 'Nothing left to take — balance is 0.' })),
     )
   })
 })

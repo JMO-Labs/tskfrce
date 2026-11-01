@@ -5,7 +5,6 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 import pytest
-
 from blocker import backend
 from blocker.backend import Seen, fetch_blocked, report_resisting, report_seen
 from blocker.config import Config
@@ -165,3 +164,17 @@ def test_fetch_state_parses_and_defaults(make_stub):
         "covered_vlans": [],
     }
     assert fetch_state(_cfg("http://127.0.0.1:1")) is None
+
+
+def test_report_hits_posts_body(make_stub):
+    s = make_stub(body=b"{}")
+    assert backend.report_hits(_cfg(s.url), {"aa:aa:aa:aa:aa:01": 3}) is True
+    method, path, headers, raw = s.requests[0]
+    assert method == "POST"
+    assert path == "/api/v1/internal/devices/hits"
+    assert headers["X-Internal-Token"] == "tok"
+    assert json.loads(raw) == {"hits": {"aa:aa:aa:aa:aa:01": 3}}
+
+
+def test_report_hits_false_on_unreachable():
+    assert backend.report_hits(_cfg("http://127.0.0.1:1"), {"aa:aa:aa:aa:aa:01": 1}) is False

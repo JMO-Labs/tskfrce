@@ -166,6 +166,9 @@ def check_badges(db: Session, kid: User, fam: FamilySettings) -> list[BadgeAward
         a.tier, a.seen_by_kid, a.earned_at = tier, False, datetime.utcnow()
         won.append(a)
         inbox.notify(db, [kid.id], "badge_earned", f"New badge: {b.name}", TIERS[tier - 1])
+        inbox.notify_parents(
+            db, "badge_earned", f"{kid.full_name} reached {b.name} · {TIERS[tier - 1]}"
+        )
     db.flush()
     return won
 
@@ -186,7 +189,7 @@ def badge_info(db: Session, a: BadgeAward, customs: dict[int, CustomBadge] | Non
             if customs is not None
             else db.get(CustomBadge, a.custom_badge_id)
         )
-        name, icon, desc = (c.name, c.icon, c.description) if c else ("Badge", "🏅", "")
+        name, icon, desc = (c.name, c.icon, c.description) if c else ("Badge", "military_tech", "")
         key = f"custom:{a.custom_badge_id}"
     else:
         b = CATALOG[a.badge_key]
@@ -221,7 +224,9 @@ def badges_for_many(db: Session, kid_ids: list[int]) -> dict[int, list[dict]]:
     return out
 
 
-def give_custom(db: Session, kid: User, badge: CustomBadge) -> BadgeAward:
+def give_custom(
+    db: Session, kid: User, badge: CustomBadge, by: User, note: str | None = None
+) -> BadgeAward:
     """Parent award: that kid's tier +1 (409 at max). Caller commits."""
     a = db.query(BadgeAward).filter_by(kid_id=kid.id, custom_badge_id=badge.id).first()
     if a is None:
@@ -230,7 +235,10 @@ def give_custom(db: Session, kid: User, badge: CustomBadge) -> BadgeAward:
     if a.tier >= len(TIERS):
         raise HTTPException(409, "This badge is already at the top tier.")
     a.tier, a.seen_by_kid, a.earned_at = a.tier + 1, False, datetime.utcnow()
-    inbox.notify(db, [kid.id], "badge_earned", f"New badge: {badge.name}", TIERS[a.tier - 1])
+    a.note, a.awarded_by_id = note, by.id
+    tier_name = TIERS[a.tier - 1]
+    body = f"{tier_name} · {note}" if note else tier_name
+    inbox.notify(db, [kid.id], "badge_earned", f"New badge: {badge.name}", body)
     db.flush()
     return a
 
@@ -262,7 +270,9 @@ def celebrations(db: Session, kid: User) -> list[dict]:
                 },
             )
         )
-    for p in db.query(Points).filter(Points.user_id == kid.id, Points.seen_by_kid.is_(False)):
+    for p in db.query(Points).filter(
+        Points.user_id == kid.id, Points.seen_by_kid.is_(False), Points.amount > 0
+    ):
         items.append(
             (
                 p.created_at,
@@ -279,18 +289,17 @@ def celebrations(db: Session, kid: User) -> list[dict]:
         BadgeAward.kid_id == kid.id, BadgeAward.seen_by_kid.is_(False)
     ):
         info = badge_info(db, a)
-        items.append(
-            (
-                a.earned_at,
-                {
-                    "key": f"b:{a.id}",
-                    "kind": "badge",
-                    "title": f"{info['icon']} {info['name']}",
-                    "detail": info["tier_name"],
-                    "size": "big" if a.tier >= 3 else "small",
-                },
-            )
-        )
+        item = {
+            "key": f"b:{a.id}",
+            "kind": "badge",
+            "title": f"{info['icon']} {info['name']}",
+            "detail": info["tier_name"],
+            "size": "big" if a.tier >= 3 else "small",
+        }
+        if info["custom"]:
+            item["title"], item["glyph"] = info["name"], info["icon"]
+            item["note"] = a.note
+        items.append((a.earned_at, item))
     items.sort(key=lambda x: x[0])
     out = [i for _, i in items]
     lv = progression.level_for(progression.xp(db, kid.id))

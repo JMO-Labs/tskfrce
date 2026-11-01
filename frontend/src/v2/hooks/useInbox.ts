@@ -13,6 +13,13 @@ export interface InboxItem {
   redemption_id: number | null
   device_id: number | null
   thread_id: number | null
+  points: number | null
+  kid_id: number | null
+  kid_name: string | null
+  /** the chore's picture (Material Symbols name) */
+  glyph: string | null
+  /** still waiting on a parent (server-computed) */
+  pending: boolean
 }
 
 export interface Inbox {
@@ -23,13 +30,15 @@ export interface Inbox {
 
 const key = (kid: boolean) => ['inbox', kid ? 'kid' : 'parent']
 
-/** Own notifications, refetched every 30 s while the tab is visible. */
-export const useInbox = (kid = false) =>
+/** Own notifications, refetched every 30 s, in the background too (OS notifications).
+ *  `enabled = false` never fetches (parent preview, Little mode). */
+export const useInbox = (kid = false, enabled = true) =>
   useQuery({
     queryKey: key(kid),
+    enabled,
     queryFn: () => api<Inbox>('/notifications', { kid }),
     refetchInterval: 30_000,
-    refetchIntervalInBackground: false,
+    refetchIntervalInBackground: true,
   })
 
 function useInboxMutation<V>(kid: boolean, fn: (v: V) => Promise<unknown>) {
@@ -46,3 +55,6 @@ export const useMarkRead = (kid = false) =>
 
 export const useMarkAllRead = (kid = false) =>
   useInboxMutation(kid, () => api('/notifications/read-all', { method: 'POST', kid }))
+
+export const useDismiss = (kid = false) =>
+  useInboxMutation(kid, (id: number) => api(`/notifications/${id}`, { method: 'DELETE', kid }))

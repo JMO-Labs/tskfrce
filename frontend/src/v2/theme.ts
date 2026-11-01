@@ -34,15 +34,20 @@ export const fridgeTheme: MantineThemeOverride = createTheme({
     Switch: { classNames: { track: 'f-switch' } },
     Checkbox: { classNames: { input: 'f-check' } },
     Chip: { classNames: { label: 'f-chipctl', iconWrapper: 'f-chipicon' } },
-    Menu: { classNames: { dropdown: 'f-pop', item: 'f-pop-item', divider: 'f-pop-div' } },
-    Popover: { classNames: { dropdown: 'f-pop' } },
-    Select: { classNames: { dropdown: 'f-pop', option: 'f-pop-item' } },
-    MultiSelect: { classNames: { dropdown: 'f-pop', option: 'f-pop-item' } },
+    Menu: { classNames: { dropdown: 'p-pop', item: 'p-pop-item', divider: 'p-pop-div' } },
+    Popover: { classNames: { dropdown: 'p-pop' } },
+    Select: { classNames: { dropdown: 'p-pop', option: 'p-pop-item' } },
+    MultiSelect: { classNames: { dropdown: 'p-pop', option: 'p-pop-item' } },
     Tooltip: { classNames: { tooltip: 'f-tip' } },
+    Notification: { defaultProps: { closeButtonProps: { 'aria-label': 'Dismiss' } } },
     Drawer: {
+      // unlabeled ✕ is an axe critical; the dialog <header> is a second banner landmark at 390 (axe)
+      defaultProps: { closeButtonProps: { 'aria-label': 'Close' }, attributes: { header: { role: 'presentation' } } },
       classNames: { content: 'f-sheet', header: 'f-sheet-head', title: 'f-sheet-title', close: 'f-sheet-close', body: 'f-sheet-body', overlay: 'f-overlay' },
     },
     Modal: {
+      // unlabeled ✕ is an axe critical; the dialog <header> is a second banner landmark at 390 (axe)
+      defaultProps: { closeButtonProps: { 'aria-label': 'Close' }, attributes: { header: { role: 'presentation' } } },
       classNames: { content: 'f-sheet', header: 'f-sheet-head', title: 'f-sheet-title', close: 'f-sheet-close', body: 'f-sheet-body', overlay: 'f-overlay' },
     },
   },

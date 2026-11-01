@@ -58,7 +58,7 @@ def _request(cfg: Config, path: str, body: dict | None = None):
 def report_seen(cfg: Config, seen: Seen) -> int | None:
     try:
         return int(_request(cfg, "/devices/seen", seen.body())["id"])
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
         log.warning("report_seen failed for %s: %s", seen.mac, e)
         return None
 
@@ -66,7 +66,7 @@ def report_seen(cfg: Config, seen: Seen) -> int | None:
 def fetch_blocked(cfg: Config) -> list[str] | None:
     try:
         return [str(m) for m in _request(cfg, "/state")["blocked"]]
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
         log.warning("fetch_blocked failed: %s", e)
         return None
 
@@ -89,7 +89,7 @@ def report_resisting(cfg: Config, macs: set[str]) -> bool:
     try:
         _request(cfg, "/devices/resisting", {"resisting": sorted(macs)})
         return True
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
         log.warning("report_resisting failed: %s", e)
         return False
 
@@ -98,6 +98,15 @@ def report_vlans(cfg: Config, vlans: list[dict]) -> bool:
     try:
         _request(cfg, "/vlans", {"vlans": vlans})
         return True
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
         log.warning("report_vlans failed: %s", e)
+        return False
+
+
+def report_hits(cfg: Config, hits: dict[str, int]) -> bool:
+    try:
+        _request(cfg, "/devices/hits", {"hits": hits})
+        return True
+    except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
+        log.warning("report_hits failed: %s", e)
         return False

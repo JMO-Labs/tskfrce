@@ -9,8 +9,10 @@ from app.core.client_ip import client_ip
 from app.core.config import settings
 from app.core.database import get_db_session
 from app.core.ratelimit import limit
+from app.models.family import FamilySettings
 from app.models.user import User, UserRole
-from app.services.password_reset import EXPIRED, create_reset, redeem_reset
+from app.schemas.lock import utc_z
+from app.services.password_reset import EXPIRED, create_reset, redeem_reset, reset_valid
 
 router = APIRouter(tags=["password-reset"])
 
@@ -20,8 +22,14 @@ class ResetIn(BaseModel):
     password: str = Field(..., min_length=8)
 
 
-def reset_url(request: Request, token: str) -> str:
-    base = settings.BOX_URL or request.headers.get("origin") or str(request.base_url)
+def reset_url(request: Request, db: Session, token: str) -> str:
+    fam = db.get(FamilySettings, 1)
+    base = (
+        (fam and fam.app_address)
+        or settings.BOX_URL
+        or request.headers.get("origin")
+        or str(request.base_url)
+    )
     return f"{base.rstrip('/')}/reset?token={token}"
 
 
@@ -35,8 +43,17 @@ def list_parents(
         .order_by(User.id)
         .all()
     )
+    fam = db.get(FamilySettings, 1)
+    owner = fam.owner_id if fam and fam.owner_id else (rows[0].id if rows else None)
     return [
-        {"id": u.id, "username": u.username, "full_name": u.full_name, "is_me": u.id == me.id}
+        {
+            "id": u.id,
+            "username": u.username,
+            "full_name": u.full_name,
+            "is_me": u.id == me.id,
+            "is_owner": u.id == owner,
+            "last_active_at": utc_z(u.last_active_at),
+        }
         for u in rows
     ]
 
@@ -53,7 +70,7 @@ def make_reset_link(
     target = db.get(User, parent_id)
     if target is None or target.role != UserRole.PARENT or not target.is_active:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "That parent was not found.")
-    return {"url": reset_url(request, create_reset(db, target, me))}
+    return {"url": reset_url(request, db, create_reset(db, target, me))}
 
 
 @router.post("/api/v1/auth/reset", status_code=status.HTTP_204_NO_CONTENT)
@@ -62,5 +79,14 @@ def reset_password(
 ) -> Response:
     limit(f"reset:{client_ip(request)}", 10, 60)
     if not redeem_reset(db, body.token, body.password):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, EXPIRED)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/api/v1/auth/reset/{token}", status_code=status.HTTP_204_NO_CONTENT)
+def check_reset(token: str, request: Request, db: Session = Depends(get_db_session)) -> Response:
+    """Public check so the reset page can say 'expired' on open instead of after submit."""
+    limit(f"reset:{client_ip(request)}", 10, 60)
+    if not reset_valid(db, token):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, EXPIRED)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

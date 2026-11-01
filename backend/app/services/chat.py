@@ -1,15 +1,18 @@
 """Chat threads: lazy creation, access rules, posting and unread counts."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import func, or_
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, joinedload, selectinload
 
-from app.models.chat import ChatPhoto, Thread, ThreadMessage, ThreadRead
-from app.models.chores import ChoreAssignment, ChoreRun
+from app.models.chat import ChatPhoto, MessageReaction, Thread, ThreadMessage, ThreadRead
+from app.models.chore_extra import ChorePhoto
+from app.models.chores import Chore, ChoreAssignment, ChoreRun
 from app.models.user import User, UserRole
 from app.schemas.lock import utc_z
-from app.services.chores import kid_runs_filter
+from app.services import kid_events
+from app.services.chores import chore_of, clear_note, kid_runs_filter, run_kid_ids
 
 
 def _target_ok(db: Session, user: User, kind: str, run_id: int | None, kid_id: int | None) -> bool:
@@ -80,23 +83,104 @@ def post(
     body: str | None,
     photo_id: int | None = None,
     kind: str = "user",
+    note_label: str | None = None,
+    step_id: int | None = None,
+    proof_photo_id: int | None = None,
 ) -> ThreadMessage:
-    """Add a message. Flushes, never commits."""
+    """Add a message. Flushes, never commits. A parent's chore-thread message clears the note."""
     m = ThreadMessage(
         thread_id=thread.id,
         author_id=author.id if author else None,
         kind=kind,
         body=body,
         photo_id=photo_id,
+        note_label=note_label,
+        step_id=step_id,
+        proof_photo_id=proof_photo_id,
     )
     db.add(m)
+    if author and author.role == UserRole.PARENT and thread.kind == "chore":
+        run = db.get(ChoreRun, thread.run_id)
+        if run:
+            clear_note(run)
     db.flush()
+    kid_events.parent_reply(db, thread, author, body)
     return m
 
 
-def system(db: Session, run: ChoreRun, body: str, photo_id: int | None = None) -> None:
-    """System line in the run's thread; `photo_id` is a ChorePhoto (proof)."""
-    post(db, thread_for(db, "chore", run_id=run.id), None, body, photo_id, kind="system")
+def resync_note(db: Session, thread: Thread) -> None:
+    """After a note message is deleted: flag the run from the latest remaining note, else clear."""
+    run = db.get(ChoreRun, thread.run_id) if thread.kind == "chore" else None
+    if run is None:
+        return
+    last = (
+        db.query(ThreadMessage)
+        .filter(ThreadMessage.thread_id == thread.id, ThreadMessage.note_label.isnot(None))
+        .order_by(ThreadMessage.id.desc())
+        .first()
+    )
+    if last is None:
+        clear_note(run)
+    else:
+        run.note_label, run.note_at = last.note_label, last.created_at
+
+
+def system(
+    db: Session, run: ChoreRun, body: str, photo_id: int | None = None, actor: User | None = None
+) -> None:
+    """System line in the run's thread; `photo_id` is a ChorePhoto (proof).
+    `actor` (a kid's own action) keeps it out of that kid's unread count."""
+    post(db, thread_for(db, "chore", run_id=run.id), actor, body, photo_id, kind="system")
+
+
+PHOTO_BURST = timedelta(minutes=2)  # same window the chat uses to fold photos into one bubble
+
+
+def photo_line(db: Session, run: ChoreRun, kid: User) -> str:
+    """ "Photo added", or "N photos added" when it joins a burst of this kid's photos, so the
+    thread list preview counts them like the folded chat bubble does."""
+    tail = []
+    for m in (
+        db.query(ThreadMessage)
+        .filter(ThreadMessage.thread_id == thread_for(db, "chore", run_id=run.id).id)
+        .order_by(ThreadMessage.id.desc())
+        .limit(50)
+    ):
+        if m.kind != "system" or not m.photo_id or m.author_id != kid.id:
+            break
+        tail.append(m.created_at)
+    start, n = None, 0
+    for at in [*reversed(tail), datetime.utcnow()]:
+        if start is None or at - start > PHOTO_BURST:
+            start, n = at, 1
+        else:
+            n += 1
+    return "Photo added" if n == 1 else f"{n} photos added"
+
+
+def step_ok(db: Session, thread: Thread, step_id: int) -> bool:
+    """A step of the chore this chore thread is about."""
+    run = db.get(ChoreRun, thread.run_id) if thread.kind == "chore" else None
+    return run is not None and any(s.id == step_id for s in chore_of(run).steps)
+
+
+def proof_ok(db: Session, thread: Thread, photo_id: int) -> bool:
+    """A proof photo of the run this chore thread is about."""
+    return (
+        thread.kind == "chore"
+        and db.query(ChorePhoto.id)
+        .filter(ChorePhoto.id == photo_id, ChorePhoto.run_id == thread.run_id)
+        .first()
+        is not None
+    )
+
+
+def proof_numbers(db: Session, thread: Thread) -> dict[int, int]:
+    """Proof photo id -> 1-based "Photo N" within the run, oldest first."""
+    if thread.kind != "chore":
+        return {}
+    ids = db.query(ChorePhoto.id).filter(ChorePhoto.run_id == thread.run_id).order_by(ChorePhoto.id)
+    return {pid: n for n, (pid,) in enumerate(ids, 1)}
 
 
 def photo_ok(db: Session, thread: Thread, photo_id: int) -> bool:
@@ -122,9 +206,20 @@ def mark_read(db: Session, thread: Thread, user: User) -> None:
     r = db.get(ThreadRead, (thread.id, user.id))
     now = datetime.utcnow()
     if r is None:
-        db.add(ThreadRead(thread_id=thread.id, user_id=user.id, last_read_at=now))
-    else:
-        r.last_read_at = now
+        try:
+            with db.begin_nested():  # two opens at once can race us to the same row
+                db.add(ThreadRead(thread_id=thread.id, user_id=user.id, last_read_at=now))
+            return
+        except IntegrityError:
+            r = db.query(ThreadRead).filter_by(thread_id=thread.id, user_id=user.id).one()
+    r.last_read_at = now
+
+
+def mark_existing_read(db: Session, user: User) -> None:
+    """A new user starts with the family thread (and any private one of theirs) already read. Flushes, never commits."""
+    for t in (find(db, "family"), find(db, "private", kid_id=user.id)):
+        if t is not None:
+            mark_read(db, t, user)
 
 
 def _title(
@@ -154,6 +249,15 @@ def title(db: Session, t: Thread) -> str:
     return _title(db, t, {kid.id: kid.full_name or kid.username} if kid else {})
 
 
+def who(db: Session, t: Thread) -> str | None:
+    """Kids a chore thread is about ("Bobby", "Bobby & Susan"); None for other threads."""
+    run = db.get(ChoreRun, t.run_id) if t.kind == "chore" else None
+    if run is None:
+        return None
+    kids = db.query(User).filter(User.id.in_(run_kid_ids(run))).order_by(User.id)
+    return " & ".join(k.full_name or k.username for k in kids) or None
+
+
 def _preview(m: ThreadMessage | None) -> dict:
     """Newest message of a thread for list rows: when, who, and a one-line text."""
     if m is None:
@@ -166,7 +270,9 @@ def _preview(m: ThreadMessage | None) -> dict:
     return {
         "last_message_at": utc_z(m.created_at),
         "last_author": who,
-        "last_text": (m.body or "").strip()[:140] or ("Photo" if m.photo_id else None),
+        "last_text": (m.body or "").strip()[:140]
+        or m.note_label
+        or ("Photo" if m.photo_id else None),
     }
 
 
@@ -215,14 +321,23 @@ def unread(db: Session, user: User) -> dict:
         .options(joinedload(ThreadMessage.author))
     }
     run_ids = [t.run_id for t in threads if t.kind == "chore"]
-    chores = {}
+    chores, run_kids, notes, glyphs = {}, {}, {}, {}
     if run_ids:
         runs = (
             db.query(ChoreRun)
             .filter(ChoreRun.id.in_(run_ids))
-            .options(joinedload(ChoreRun.assignment).joinedload(ChoreAssignment.chore))
+            .options(
+                joinedload(ChoreRun.assignment)
+                .joinedload(ChoreAssignment.chore)
+                .joinedload(Chore.type),
+                selectinload(ChoreRun.kids),
+            )
+            .all()
         )
         chores = {r.id: r.assignment.chore.title for r in runs}
+        run_kids = {r.id: run_kid_ids(r) for r in runs}
+        notes = {r.id: bool(r.note_label) for r in runs}
+        glyphs = {r.id: r.assignment.chore.type.glyph for r in runs}
     out = [
         {
             **_preview(latest.get(t.id)),
@@ -230,8 +345,11 @@ def unread(db: Session, user: User) -> dict:
             "kind": t.kind,
             "task_id": t.run_id,  # key kept for the frontend; it is the run id
             "kid_id": t.kid_id,
+            "kid_ids": run_kids.get(t.run_id, []) if t.kind == "chore" else [],
             "title": _title(db, t, names, chores),
             "unread": counts.get(t.id, 0),
+            "note": notes.get(t.run_id, False) if t.kind == "chore" else False,
+            "glyph": glyphs.get(t.run_id) if t.kind == "chore" else None,
         }
         for t in threads
     ]
@@ -244,5 +362,57 @@ def purge_kid(db: Session, kid_id: int) -> None:
         db.query(ThreadRead).filter(ThreadRead.thread_id == t.id).delete()
         db.delete(t)
     db.query(ThreadRead).filter(ThreadRead.user_id == kid_id).delete()
+    db.query(MessageReaction).filter(MessageReaction.user_id == kid_id).delete()
     db.query(ThreadMessage).filter(ThreadMessage.author_id == kid_id).update({"author_id": None})
     db.query(ChatPhoto).filter(ChatPhoto.uploaded_by_id == kid_id).update({"uploaded_by_id": None})
+
+
+MAX_REACTIONS = 10  # distinct emoji per user per message
+
+
+def toggle_reaction(db: Session, m: ThreadMessage, user: User, emoji: str) -> bool:
+    """Add `user`'s `emoji` to `m`, or take it off if already there. False = at the cap.
+    Flushes, never commits."""
+    q = db.query(MessageReaction).filter_by(message_id=m.id, user_id=user.id, emoji=emoji)
+    if q.delete():
+        db.flush()
+        return True
+    if (
+        db.query(MessageReaction).filter_by(message_id=m.id, user_id=user.id).count()
+        >= MAX_REACTIONS
+    ):
+        return False
+    try:
+        with db.begin_nested():  # a double click can race us to the same row
+            db.add(MessageReaction(message_id=m.id, user_id=user.id, emoji=emoji))
+    except IntegrityError:
+        pass  # the other request added it: same outcome
+    return True
+
+
+def reactions(db: Session, message_ids: list[int], me: User) -> dict[int, list[dict]]:
+    """{message id: [{emoji, count, mine, names}]} for a page of messages, in one query."""
+    if not message_ids:
+        return {}
+    rows = (
+        db.query(
+            MessageReaction.message_id,
+            MessageReaction.emoji,
+            User.id,
+            User.full_name,
+            User.username,
+        )
+        .join(User, User.id == MessageReaction.user_id)
+        .filter(MessageReaction.message_id.in_(message_ids))
+        .order_by(MessageReaction.id)
+        .all()
+    )
+    out: dict[int, dict[str, dict]] = {}
+    for mid, emoji, uid, full, username in rows:
+        r = out.setdefault(mid, {}).setdefault(
+            emoji, {"emoji": emoji, "count": 0, "mine": False, "names": []}
+        )
+        r["count"] += 1
+        r["mine"] = r["mine"] or uid == me.id
+        r["names"].append(full or username)
+    return {mid: list(by.values()) for mid, by in out.items()}

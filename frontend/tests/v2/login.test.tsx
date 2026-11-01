@@ -1,3 +1,4 @@
+import React from 'react'
 import { beforeEach, describe, expect, test } from '@jest/globals'
 import type { Mock } from 'jest-mock'
 import { render, screen, waitFor } from '@testing-library/react'
@@ -6,7 +7,7 @@ import { MantineProvider } from '@mantine/core'
 import { fridgeTheme } from '@/v2/theme'
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext'
 import { api } from '@/v2/api'
-import { LoginForm, safeNext } from '@/v2/login/LoginForm'
+import { footerText, LoginForm, safeNext } from '@/v2/login/LoginForm'
 
 const replace = jest.fn()
 const login = jest.fn()
@@ -38,10 +39,10 @@ beforeEach(() => {
 describe('LoginForm', () => {
   test('wrong password shows the message inline and does not log', async () => {
     const spy = jest.spyOn(console, 'error')
-    login.mockRejectedValue(new Error('Incorrect username or password') as never)
+    login.mockRejectedValue(new Error("That username and password don't match.") as never)
     wrap()
     await fill()
-    expect(await screen.findByRole('alert')).toHaveTextContent('Incorrect username or password')
+    expect(await screen.findByRole('alert')).toHaveTextContent("That username and password don't match.")
     expect(replace).not.toHaveBeenCalled()
     expect(spy).not.toHaveBeenCalled()
     spy.mockRestore()
@@ -62,7 +63,7 @@ describe('LoginForm', () => {
     )
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/devices'))
     expect(replace).toHaveBeenCalledTimes(1)
-    expect(login).toHaveBeenCalledWith({ username: 'admin', password: 'secret' })
+    expect(login).toHaveBeenCalledWith({ username: 'admin', password: 'secret', remember: true })
   })
 
   test('first-run box sends you to /setup', async () => {
@@ -79,4 +80,68 @@ describe('LoginForm', () => {
     expect(safeNext('https://evil.com')).toBe('/')
     expect(safeNext(undefined)).toBe('/')
   })
+
+  test('after a session expiry the login says to log in again, and leaves the flag for a reload', async () => {
+    sessionStorage.setItem('task4ce-session-expired', '1')
+    wrap()
+    expect(await screen.findByText(/Please log in again/)).toBeInTheDocument()
+    expect(sessionStorage.getItem('task4ce-session-expired')).toBe('1')
+  })
+
+  test('login panel has no status or activity', () => {
+    wrap()
+    const container = document.querySelector('.p-auth-form-side') as HTMLElement
+    expect(container.textContent).not.toMatch(/\bstatus\b/i)
+    expect(container.textContent).not.toMatch(/\bactivity\b/i)
+  })
+
+  test('headline wifi on is a single nowrap span', () => {
+    wrap()
+    const headline = screen.getByText(/Chores done/)
+    const em = headline.querySelector('em')
+    expect(em).toBeInTheDocument()
+    expect(em?.textContent).toContain('Wi‑Fi on')
+    expect(em?.className).not.toContain('break-all')
+  })
+
+  test('kid card links to /kid', () => {
+    wrap()
+    const kidCard = screen.getByRole('link', { name: /I'm a kid/ })
+    expect(kidCard).toHaveAttribute('href', '/kid')
+  })
+
+  test('forgot pane shows cli command', async () => {
+    wrap()
+    const forgotButton = screen.getByRole('button', { name: 'Forgot password?' })
+    await userEvent.click(forgotButton)
+    const cliText = await screen.findByText(/docker compose exec backend python -m app.cli reset-password/)
+    expect(cliText).toBeInTheDocument()
+  })
+})
+
+test('forgot pane moves focus to its heading and back to the trigger', async () => {
+  wrap()
+  await userEvent.click(screen.getByRole('button', { name: 'Forgot password?' }))
+  expect(screen.getByRole('heading', { name: 'Forgot your password?' })).toHaveFocus()
+  await userEvent.click(screen.getByRole('button', { name: 'Back to log in' }))
+  expect(screen.getByRole('button', { name: 'Forgot password?' })).toHaveFocus()
+})
+
+describe('footer', () => {
+  test('shows version and box address', () => {
+    expect(footerText('chores.local', '2.0.0')).toBe('t@sk4ce v2.0.0 · chores.local')
+    expect(footerText('', undefined)).toBe('t@sk4ce')
+  })
+})
+
+test('the session-expired note survives React strict mode running effects twice', async () => {
+  sessionStorage.setItem('task4ce-session-expired', '1')
+  render(
+    <React.StrictMode>
+      <MantineProvider theme={fridgeTheme}>
+        <LoginForm />
+      </MantineProvider>
+    </React.StrictMode>,
+  )
+  expect(await screen.findByText('Please log in again.')).toBeInTheDocument()
 })

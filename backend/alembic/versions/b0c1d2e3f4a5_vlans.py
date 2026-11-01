@@ -36,4 +36,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    raise NotImplementedError("forward-only")
+    with op.batch_alter_table("family_settings") as b:
+        b.drop_column("listen_only")
+    with op.batch_alter_table("devices") as b:
+        b.drop_column("vlan_id")
+    op.drop_table("vlans")

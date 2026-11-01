@@ -1,3 +1,5 @@
+import { useCallback, useEffect, useRef } from 'react'
+import { useDebouncedValue } from '@mantine/hooks'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/v2/api'
 
@@ -8,12 +10,18 @@ export interface ThreadSummary {
   kind: ThreadKind
   task_id: number | null
   kid_id: number | null
+  /** chore threads: the kids the chore is for */
+  kid_ids?: number[]
   title: string
   unread: number
   last_message_at: string | null
   last_author?: string | null
   /** one-line text of the newest message; "Photo" for a photo-only one */
   last_text?: string | null
+  /** chore threads: the run has a note */
+  note: boolean
+  /** chore threads: the chore type's glyph */
+  glyph: string | null
 }
 
 export interface ChatMessage {
@@ -24,6 +32,23 @@ export interface ChatMessage {
   body: string | null
   photo_url: string | null
   created_at: string
+  edited_at?: string | null
+  /** chore threads: the step this answers */
+  step_id?: number | null
+  step_title?: string | null
+  /** chore threads: "Photo N" (1-based among the run's photos) this answers */
+  proof_photo_n?: number | null
+  /** a kid's ready-made note ("Out of supplies") */
+  note_label?: string | null
+  reactions?: Reaction[]
+}
+
+/** One emoji on a message: how many, whether I'm one of them, and who. */
+export interface Reaction {
+  emoji: string
+  count: number
+  mine: boolean
+  names: string[]
 }
 
 export interface ThreadPage {
@@ -32,6 +57,12 @@ export interface ThreadPage {
   title: string
   messages: ChatMessage[]
   has_more: boolean
+  run_id?: number
+  /** chore threads: the kid(s) it is about */
+  who?: string | null
+  /** first names typing now (not me) */
+  typing: string[]
+  members: { id: number; name: string }[]
 }
 
 /** URL ref for a thread: chore task id, kid id, or "family". */
@@ -41,9 +72,10 @@ export const refOf = (t: Pick<ThreadSummary, 'kind' | 'task_id' | 'kid_id'>) =>
 const poll = (ms: number) => ({ refetchInterval: ms, refetchIntervalInBackground: false })
 
 /** GET /chat/threads: threads with unread counts, refreshed every 15 s while the tab is visible. */
-export const useThreads = (kid = false) =>
+export const useThreads = (kid = false, enabled = true) =>
   useQuery({
     queryKey: ['chat-threads', kid],
+    enabled,
     queryFn: () => api<{ total: number; threads: ThreadSummary[]; gifs_enabled?: boolean }>('/chat/threads', { kid }),
     ...poll(15_000),
   })
@@ -92,13 +124,55 @@ export const useUploadChatPhoto = (kid = false) =>
 export const usePost = (kid = false) => {
   const refresh = useRefresh(kid)
   return useMutation({
-    mutationFn: ({ threadId, body, photoId }: { threadId: number; body?: string; photoId?: number }) =>
+    mutationFn: ({ threadId, body, photoId, stepId, proofPhotoId }: { threadId: number; body?: string; photoId?: number; stepId?: number; proofPhotoId?: number }) =>
       api<ChatMessage>(`/chat/threads/${Number(threadId)}/messages`, {
         method: 'POST',
-        body: { body: body || null, photo_id: photoId ?? null },
+        body: { body: body || null, photo_id: photoId ?? null, ...(stepId ? { step_id: stepId } : {}), ...(proofPhotoId ? { proof_photo_id: proofPhotoId } : {}) },
         kid,
       }),
     onSuccess: refresh,
+  })
+}
+
+const CHANGED = 'chat-message-changed'
+
+/** Edits, deletes and reactions announce the new message (null = gone) so pages loaded with
+ * "Load earlier" (outside the query cache) can update too. Returns the unsubscribe. */
+export function onMessageChanged(fn: (id: number, m: ChatMessage | null) => void) {
+  const h = (e: Event) => {
+    const d = (e as CustomEvent<{ id: number; m: ChatMessage | null }>).detail
+    fn(d.id, d.m)
+  }
+  window.addEventListener(CHANGED, h)
+  return () => window.removeEventListener(CHANGED, h)
+}
+const changed = (id: number, m: ChatMessage | null) =>
+  window.dispatchEvent(new CustomEvent(CHANGED, { detail: { id, m } }))
+
+export const useEditMessage = (kid = false) => {
+  const refresh = useRefresh(kid)
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: string }) =>
+      api<ChatMessage>(`/chat/messages/${Number(id)}`, { method: 'PATCH', body: { body }, kid }),
+    onSuccess: (m, v) => (m && changed(v.id, m), refresh()),
+  })
+}
+
+export const useDeleteMessage = (kid = false) => {
+  const refresh = useRefresh(kid)
+  return useMutation({
+    mutationFn: (id: number) => api(`/chat/messages/${Number(id)}`, { method: 'DELETE', kid }),
+    onSuccess: (_, id) => (changed(id, null), refresh()),
+  })
+}
+
+/** Toggle my emoji on a message (adds it, or takes it off if already there). */
+export const useReact = (kid = false) => {
+  const refresh = useRefresh(kid)
+  return useMutation({
+    mutationFn: ({ id, emoji }: { id: number; emoji: string }) =>
+      api<ChatMessage>(`/chat/messages/${Number(id)}/reactions`, { method: 'POST', body: { emoji }, kid }),
+    onSuccess: (m, v) => (m && changed(v.id, m), refresh()),
   })
 }
 
@@ -137,3 +211,30 @@ export const usePickGif = (kid = false) =>
         kid,
       }),
   })
+
+const PING_MS = 3_000
+
+/** Returns a function to call on each keystroke; it POSTs a typing ping at most once per 3 s. */
+export function useTypingPing(threadId: number | null, kid = false): () => void {
+  const last = useRef(0)
+  useEffect(() => {
+    last.current = 0
+  }, [threadId])
+  return useCallback(() => {
+    const now = Date.now()
+    if (threadId == null || now - last.current < PING_MS) return
+    last.current = now
+    api(`/chat/threads/${Number(threadId)}/typing`, { method: 'POST', kid }).catch(() => {})
+  }, [threadId, kid])
+}
+
+/** GET /chat/search?q=: ids of threads with a matching message (min 2 chars, 300 ms debounce). */
+export function useChatSearch(q: string, kid = false) {
+  const [dq] = useDebouncedValue(q.trim(), 300)
+  return useQuery({
+    queryKey: ['chat-search', kid, dq],
+    queryFn: () => api<{ thread_ids: number[] }>(`/chat/search?q=${encodeURIComponent(dq)}`, { kid }),
+    enabled: dq.length >= 2 && q.trim().length >= 2,
+    staleTime: 30_000,
+  })
+}

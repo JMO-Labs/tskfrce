@@ -23,6 +23,8 @@ _mac_of() {
 TOKEN_FILE="${XDG_RUNTIME_DIR:-/tmp}/task4ce-lab.token"
 _token() {
   local t
+  # access tokens live 30 min: log in again once the cached one is 20 min old
+  find "$TOKEN_FILE" -mmin +20 -delete 2>/dev/null || true
   t=$(cat "$TOKEN_FILE" 2>/dev/null || true)
   if [ -z "$t" ] || [ "$t" = null ]; then
     t=$(_curl_parent -X POST "$API/api/v1/auth/login" -H 'Content-Type: application/json' \
@@ -64,6 +66,9 @@ _up() {
   _wait_http "$BLK/health"
   _curl_parent -o /dev/null -X POST "$API/api/v1/setup" -H 'Content-Type: application/json' \
     -d "{\"family_name\":\"Lab\",\"timezone\":\"UTC\",\"parent\":{\"username\":\"$USER_\",\"password\":\"$PASS_\",\"full_name\":\"Lab Parent\"}}" || true
+  # API setup leaves the wizard "in progress"; mark it finished so the parent pages don't resume it
+  _curl_parent -o /dev/null -X PUT -H "Authorization: Bearer $(_token)" -H 'Content-Type: application/json' \
+    -d '{"step":null}' "$API/api/v1/setup/step"
   for _ in $(seq 30); do
     if [ -n "$(_id_of kid1 2>/dev/null || true)" ] && [ -n "$(_id_of kid2 2>/dev/null || true)" ]; then
       local id

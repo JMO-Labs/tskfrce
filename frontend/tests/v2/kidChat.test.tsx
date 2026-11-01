@@ -25,7 +25,9 @@ const threads = {
   ],
 }
 
+let noteMsgs: object[] = []
 beforeEach(() => {
+  noteMsgs = []
   apiMock.mockReset()
   localStorage.setItem(KID_TOKEN_KEY, 'tok')
   localStorage.setItem('task4ce-kid-id', '1')
@@ -35,7 +37,7 @@ beforeEach(() => {
       return { locked: true, points_balance: 0, chores: [{ id: 7, title: 'Dishes', points: 5, state: 'todo' }] }
     if (p === '/chat/threads') return threads
     if (p.startsWith('/chat/threads/chore/7'))
-      return { id: 3, kind: 'chore', title: 'Dishes', messages: [], has_more: false }
+      return { id: 3, kind: 'chore', title: 'Dishes', messages: noteMsgs, has_more: false }
     if (p.startsWith('/chat/threads/')) return { id: 1, kind: 'family', title: 'Family', messages: [], has_more: false }
     return undefined
   })
@@ -51,27 +53,46 @@ const renderKid = () =>
   )
 
 describe('kid chat', () => {
-  test('dock lists only what the API returns, with a summed unread badge', async () => {
+  test('the Chat nav item opens the dock list, with a summed unread badge', async () => {
     renderKid()
-    expect(await screen.findByTestId('dock-unread')).toHaveTextContent('5')
-    await userEvent.click(screen.getByRole('button', { name: /^Chat, 5 unread/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Chat 5' }))
     const list = await screen.findByRole('list', { name: 'Conversations' })
     expect(list).toHaveTextContent('Family')
-    expect(list).toHaveTextContent('Mom & Dad')
+    expect(list).toHaveTextContent('Parents')
     expect(list).not.toHaveTextContent('Maya')
+    // a full-width tab in the page, not a floating dialog
+    expect(screen.getByRole('region', { name: 'Chat' })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Chat' })).toBeNull()
+    expect(screen.getByRole('button', { name: /^Chat/ })).toHaveAttribute('aria-current', 'page')
   })
 
   test('chore chat link opens its thread with the kid token', async () => {
     renderKid()
-    await userEvent.click(await screen.findByRole('button', { name: /^Chat about Dishes/ }))
+    await userEvent.click(await screen.findByRole('button', { name: /^Open Dishes/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Chat' }))
     await waitFor(() =>
       expect(apiMock).toHaveBeenCalledWith('/chat/threads/chore/7', expect.objectContaining({ kid: true })),
     )
     expect(await screen.findByRole('region', { name: 'Dishes' })).toBeInTheDocument()
   })
 
-  test('chore link shows its unread count', async () => {
+  test('the floating launcher is hidden: the nav has Chat', async () => {
     renderKid()
-    expect(await screen.findByRole('button', { name: 'Chat about Dishes, 4 unread' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Chat 5' })).toBeInTheDocument()
+    expect(screen.queryByTestId('dock-unread')).toBeNull()
+    expect(screen.queryByRole('button', { name: /unread/ })).toBeNull()
+  })
+
+  test('a text-less note and a step reply render their label and quote', async () => {
+    const base = { author_id: 1, author_name: 'Ana', kind: 'user', photo_url: null, created_at: new Date().toISOString() }
+    noteMsgs = [
+      { ...base, id: 1, body: null, note_label: 'Need help' },
+      { ...base, id: 2, body: 'on it', step_title: 'Rinse' },
+    ]
+    renderKid()
+    await userEvent.click(await screen.findByRole('button', { name: /^Open Dishes/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Chat' }))
+    expect(await screen.findByText('Note: Need help')).toBeInTheDocument()
+    expect(screen.getByText(/Rinse/)).toBeInTheDocument()
   })
 })

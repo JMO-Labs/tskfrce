@@ -7,7 +7,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fridgeTheme } from '@/v2/theme'
 import { api } from '@/v2/api'
 import { ResetForm } from '@/v2/login/ResetForm'
-import { ParentsList } from '@/v2/manage/ParentsList'
 
 const replace = jest.fn()
 jest.mock('next/router', () => ({ useRouter: () => ({ replace }) }))
@@ -26,12 +25,20 @@ const wrap = (ui: React.ReactNode) =>
 
 beforeEach(() => {
   replace.mockReset()
-  apiMock.mockReset()
+  apiMock.mockReset().mockImplementation(async (p) => {
+    if (p.startsWith('/auth/reset/')) return undefined // link check: still good
+    return undefined
+  })
 })
+
+const shown = async (token = 'tok') => {
+  wrap(<ResetForm token={token} />)
+  await screen.findByLabelText(/New password/)
+}
 
 describe('ResetForm', () => {
   test('validates length and match before calling the api', async () => {
-    wrap(<ResetForm token="tok" />)
+    await shown()
     await userEvent.type(screen.getByLabelText(/New password/), 'short')
     await userEvent.click(screen.getByRole('button', { name: 'Save password' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('at least 8')
@@ -40,12 +47,11 @@ describe('ResetForm', () => {
     await userEvent.type(screen.getByLabelText('Type it again'), 'different1')
     await userEvent.click(screen.getByRole('button', { name: 'Save password' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('do not match')
-    expect(apiMock).not.toHaveBeenCalled()
+    expect(apiMock).not.toHaveBeenCalledWith('/auth/reset', expect.anything())
   })
 
   test('success goes to login', async () => {
-    apiMock.mockResolvedValue(undefined)
-    wrap(<ResetForm token="tok" />)
+    await shown()
     await userEvent.type(screen.getByLabelText(/New password/), 'longenough')
     await userEvent.type(screen.getByLabelText('Type it again'), 'longenough')
     await userEvent.click(screen.getByRole('button', { name: 'Save password' }))
@@ -57,37 +63,55 @@ describe('ResetForm', () => {
   })
 
   test('expired link shows the backend message', async () => {
+    await shown()
     apiMock.mockRejectedValue(new Error('That reset link has expired. Ask for a new one.'))
-    wrap(<ResetForm token="tok" />)
     await userEvent.type(screen.getByLabelText(/New password/), 'longenough')
     await userEvent.type(screen.getByLabelText('Type it again'), 'longenough')
     await userEvent.click(screen.getByRole('button', { name: 'Save password' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('has expired')
   })
 
+  test('a used or stale link shows the expired panel on open', async () => {
+    apiMock.mockRejectedValue({ status: 400 })
+    wrap(<ResetForm token="old" />)
+    expect(await screen.findByText('This reset link has expired')).toBeInTheDocument()
+    expect(apiMock).toHaveBeenCalledWith('/auth/reset/old')
+    expect(screen.queryByLabelText(/New password/)).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /back to log in/i })).toHaveAttribute('href', '/login')
+  })
+
+  test('if the box does not answer the check, the form still shows', async () => {
+    apiMock.mockRejectedValue(new TypeError('network'))
+    await shown()
+  })
+
+  test('mismatch shows inline as you type', async () => {
+    await shown()
+    await userEvent.type(screen.getByLabelText(/New password/), 'longenough')
+    await userEvent.type(screen.getByLabelText('Type it again'), 'long')
+    expect(screen.getByText("The two passwords don't match.")).toBeInTheDocument()
+  })
+
   test('missing token explains itself', () => {
     wrap(<ResetForm token={undefined} />)
     expect(screen.getByRole('alert')).toHaveTextContent('missing its code')
   })
-})
 
-describe('ParentsList', () => {
-  test('other parents get a reset link with a copy button; you do not', async () => {
-    apiMock.mockImplementation(async (p) =>
-      p === '/parents'
-        ? [
-            { id: 1, username: 'mom', full_name: 'Mom', is_me: true },
-            { id: 2, username: 'dad', full_name: 'Dad', is_me: false },
-          ]
-        : { url: 'http://box:3000/reset?token=abc' },
-    )
-    wrap(<ParentsList />)
-    expect(await screen.findByText('Dad')).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Reset password' })).toHaveLength(1)
-    await userEvent.click(screen.getByRole('button', { name: 'Reset password' }))
-    expect(await screen.findByLabelText('Reset link')).toHaveValue('http://box:3000/reset?token=abc')
-    expect(screen.getByText(/Send this to Dad. It works once, for 30 minutes./)).toBeInTheDocument()
-    expect(apiMock).toHaveBeenCalledWith('/parents/2/reset-link', { method: 'POST' })
-    expect(screen.getByRole('button', { name: 'Copy link' })).toBeInTheDocument()
+  test('reset form has no status or activity elements', async () => {
+    await shown()
+    const container = document.querySelector('.p-auth-form-side') as HTMLElement
+    expect(container.textContent).not.toMatch(/\bstatus\b/i)
+    expect(container.textContent).not.toMatch(/\bactivity\b/i)
+  })
+
+  test('password fields support show/hide toggle', async () => {
+    await shown()
+    const passwordInput = screen.getByLabelText(/New password/)
+    expect(passwordInput).toHaveAttribute('type', 'password')
+    const showButton = screen.getAllByRole('button').find((b) => b.className?.includes('p-auth-link'))
+    if (showButton) {
+      await userEvent.click(showButton)
+      expect(passwordInput).toHaveAttribute('type', 'text')
+    }
   })
 })

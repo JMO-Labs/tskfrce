@@ -1,7 +1,7 @@
 """
 Application configuration settings.
 
-This module contains all configuration settings for the TaaskMaaster application,
+This module contains all configuration settings for the t@sk4ce application,
 including database, authentication, and external service configurations.
 """
 
@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     """
 
     # Application settings
-    APP_NAME: str = "TaaskMaaster"
+    APP_NAME: str = "t@sk4ce"
     DEBUG: bool = False
     ENVIRONMENT: str = "development"
 
@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str | None = None
     INTERNAL_TOKEN: str | None = None
     BOX_URL: str | None = None  # e.g. http://192.168.1.20:3000, used in reset links
+    NTFY_URL: str | None = None  # internal backend -> ntfy, e.g. http://ntfy:80
+    NTFY_PUBLIC_URL: str | None = None  # what phones use
+    NTFY_PORT: str = "2586"  # host port mapping ("2586" or "0.0.0.0:2586"); builds the phone URL
+    NTFY_CONF_FILE: str | None = None  # shared server.yml the ntfy container reads
     BLOCKER_URL: str = "http://127.0.0.1:7777"
     LOCK_INTERVAL_SECONDS: int = 30
     LOCK_LOOP_ENABLED: bool = True
@@ -38,6 +42,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    REFRESH_TOKEN_REMEMBER_DAYS: int = 30  # 'Keep me logged in'
 
     # Database settings
     DATABASE_URL: str | None = None  # default: sqlite:///{DATA_DIR}/task4ce.db

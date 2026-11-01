@@ -1,11 +1,11 @@
 import io
 from datetime import date, datetime, timedelta
 
-from app.models.chat import ThreadMessage
+from app.models.chat import MessageReaction, ThreadMessage
 from app.models.chore_extra import ChorePhoto
-from app.models.chores import Chore, ChoreAssignment, ChoreRun
+from app.models.chores import Chore, ChoreAssignment, ChoreRun, ChoreStep
 from app.models.family import get_family
-from app.models.user import UserRole
+from app.models.user import User, UserRole
 from PIL import Image
 
 from tests.conftest import _headers, _make_user
@@ -170,7 +170,7 @@ def test_chore_actions_write_system_messages(client, db, parent_headers):
     assert client.post(f"/api/v1/chores/{cid}/approve", headers=parent_headers).status_code == 200
     msgs = client.get(f"{C}/threads/chore/{cid}", headers=lh).json()["messages"]
     assert [(m["kind"], m["author_id"], m["body"]) for m in msgs] == [
-        ("system", None, "Photo added"),
+        ("system", leo.id, "Photo added"),
         ("system", None, "Sent back: Wipe the sink"),
         ("system", None, "Approved · +15"),
     ]
@@ -233,6 +233,17 @@ def test_delete_rules(client, db, parent_headers):
     assert client.delete(f"{C}/messages/{old}", headers=parent_headers).status_code == 404
 
 
+def test_kid_cannot_delete_own_system_message(client, db, parent_headers):
+    leo, maya, lh, mh, _ = _world(db, client, parent_headers)
+    tid = _tid(client, lh, "family", "family")
+    sysm = ThreadMessage(thread_id=tid, author_id=leo.id, kind="system", body="photo submitted")
+    db.add(sysm)
+    db.commit()
+    assert client.delete(f"{C}/messages/{sysm.id}", headers=lh).status_code == 403
+    db.expire_all()
+    assert db.get(ThreadMessage, sysm.id) is not None
+
+
 def test_delete_kid_with_chat(client, db, parent_headers):
     leo, maya, lh, mh, _ = _world(db, client, parent_headers)
     _say(client, lh, _tid(client, lh, "family", "family"))
@@ -254,3 +265,242 @@ def test_thread_list_previews_latest_message(client, db, parent_headers):
     assert row["last_message_at"]
     quiet = next(r for r in rows if r["kind"] == "family")
     assert quiet["last_text"] is None and quiet["last_author"] is None
+
+
+def test_edit_rules(client, db, parent_headers):
+    leo, maya, lh, mh, _ = _world(db, client, parent_headers)
+    tid = _tid(client, lh, "family", "family")
+    mine = _say(client, lh, tid).json()["id"]
+    r = client.patch(f"{C}/messages/{mine}", json={"body": " fixed "}, headers=lh)
+    assert r.status_code == 200 and r.json()["body"] == "fixed" and r.json()["edited_at"]
+    assert client.patch(f"{C}/messages/{mine}", json={"body": " "}, headers=lh).status_code == 422
+    assert client.patch(f"{C}/messages/{mine}", json={"body": "x"}, headers=mh).status_code == 403
+    assert (
+        client.patch(f"{C}/messages/{mine}", json={"body": "x"}, headers=parent_headers).status_code
+        == 403
+    )
+    db.get(ThreadMessage, mine).created_at = datetime.utcnow() - timedelta(minutes=6)
+    db.commit()
+    assert client.patch(f"{C}/messages/{mine}", json={"body": "x"}, headers=lh).status_code == 403
+    sysm = ThreadMessage(thread_id=tid, author_id=None, kind="system", body="done")
+    db.add(sysm)
+    db.commit()
+    assert (
+        client.patch(
+            f"{C}/messages/{sysm.id}", json={"body": "x"}, headers=parent_headers
+        ).status_code
+        == 403
+    )
+
+
+def test_parent_edits_own_any_time(client, db, parent_headers):
+    leo, maya, lh, mh, _ = _world(db, client, parent_headers)
+    tid = _tid(client, parent_headers, "family", "family")
+    mid = _say(client, parent_headers, tid).json()["id"]
+    db.get(ThreadMessage, mid).created_at = datetime.utcnow() - timedelta(days=2)
+    db.commit()
+    r = client.patch(f"{C}/messages/{mid}", json={"body": "later"}, headers=parent_headers)
+    assert r.status_code == 200
+    got = client.get(f"{C}/threads/family/family", headers=lh).json()["messages"][-1]
+    assert got["body"] == "later" and got["edited_at"].endswith("Z")
+
+
+def test_step_reply(client, db, parent_headers):
+    leo, maya, lh, mh, _ = _world(db, client, parent_headers)
+    api_chore(client, parent_headers, [leo], title="Dishes", steps=["rinse", "stack"])
+    run = (
+        db.query(ChoreRun)
+        .filter(ChoreRun.assignment.has(ChoreAssignment.chore.has(Chore.title == "Dishes")))
+        .one()
+    )
+    api_chore(client, parent_headers, [maya], title="Sweep", steps=["broom"])
+    step = db.query(ChoreStep).filter(ChoreStep.chore_id == run.assignment.chore_id).first()
+    tid = _tid(client, parent_headers, "chore", run.id)
+    r = client.post(
+        f"{C}/threads/{tid}/messages",
+        json={"body": "this one", "step_id": step.id},
+        headers=parent_headers,
+    )
+    assert r.status_code == 200
+    assert (r.json()["step_id"], r.json()["step_title"]) == (step.id, step.title)
+    foreign = db.query(ChoreStep).filter(ChoreStep.chore_id != run.assignment.chore_id).first()
+    for bad in (99999, foreign.id):
+        r = client.post(
+            f"{C}/threads/{tid}/messages",
+            json={"body": "x", "step_id": bad},
+            headers=parent_headers,
+        )
+        assert r.status_code == 422 and r.json()["detail"] == "We couldn't find that step."
+    fid = _tid(client, parent_headers, "family", "family")
+    r = client.post(
+        f"{C}/threads/{fid}/messages",
+        json={"body": "x", "step_id": step.id},
+        headers=parent_headers,
+    )
+    assert r.status_code == 422
+
+
+def test_proof_photo_reply(client, db, parent_headers):
+    leo, maya, lh, mh, chore = _world(db, client, parent_headers)
+    run, other = chore("Homework", [leo]), chore("Sweep", [maya])
+    mine = [
+        ChorePhoto(run_id=run, uploaded_by_id=leo.id, path="a", thumb_path="a") for _ in range(2)
+    ]
+    foreign = ChorePhoto(run_id=other, uploaded_by_id=maya.id, path="b", thumb_path="b")
+    db.add_all([*mine, foreign])
+    db.commit()
+    tid = _tid(client, parent_headers, "chore", run)
+    post = lambda **kw: client.post(  # noqa: E731
+        f"{C}/threads/{tid}/messages", json={"body": "nice", **kw}, headers=parent_headers
+    )
+    r = post(proof_photo_id=mine[1].id)
+    assert r.status_code == 200 and r.json()["proof_photo_n"] == 2
+    got = client.get(f"{C}/threads/chore/{run}", headers=parent_headers).json()["messages"]
+    assert got[-1]["proof_photo_n"] == 2
+    assert post(proof_photo_id=foreign.id).status_code == 422
+    fid = _tid(client, parent_headers, "family", "family")
+    r = client.post(
+        f"{C}/threads/{fid}/messages",
+        json={"body": "x", "proof_photo_id": mine[0].id},
+        headers=parent_headers,
+    )
+    assert r.status_code == 422
+
+
+def _react(client, h, mid, emoji="👍"):
+    return client.post(f"{C}/messages/{mid}/reactions", json={"emoji": emoji}, headers=h)
+
+
+def test_reaction_toggles_and_aggregates(client, db, parent_headers):
+    leo, maya, lh, mh, _ = _world(db, client, parent_headers)
+    tid = _tid(client, lh, "family", "family")
+    mid = _say(client, lh, tid).json()["id"]
+    r = _react(client, lh, mid)  # kids may react, own messages included
+    assert r.status_code == 200, r.text
+    assert r.json()["reactions"] == [{"emoji": "👍", "count": 1, "mine": True, "names": ["Leo"]}]
+    _react(client, mh, mid)
+    _react(client, mh, mid, "❤️")
+    msgs = client.get(f"{C}/threads/family/family", headers=parent_headers).json()["messages"]
+    assert msgs[-1]["reactions"] == [
+        {"emoji": "👍", "count": 2, "mine": False, "names": ["Leo", "Maya"]},
+        {"emoji": "❤️", "count": 1, "mine": False, "names": ["Maya"]},
+    ]
+    r = _react(client, lh, mid)  # same emoji again removes it
+    assert r.json()["reactions"][0] == {"emoji": "👍", "count": 1, "mine": False, "names": ["Maya"]}
+    assert db.query(MessageReaction).count() == 2
+
+
+def test_reaction_rules(client, db, parent_headers):
+    leo, maya, lh, mh, chore = _world(db, client, parent_headers)
+    mid = _say(client, lh, _tid(client, lh, "private", leo.id)).json()["id"]
+    assert _react(client, mh, mid).status_code == 404  # sibling can't see the thread
+    for bad in ["", "ok", "👍 ", "1", "👍" * 17, "é", "日", "\u200b👍", "\u202e👍", "\u200d", "!!"]:
+        assert _react(client, lh, mid, bad).status_code == 422, bad
+    sysm = ThreadMessage(thread_id=_tid(client, lh, "family", "family"), kind="system", body="x")
+    db.add(sysm)
+    db.commit()
+    r = _react(client, lh, sysm.id)
+    assert r.status_code == 422 and r.json()["detail"] == "You can't react to that."
+
+
+def test_reactions_cascade_with_message(client, db, parent_headers):
+    leo, maya, lh, mh, _ = _world(db, client, parent_headers)
+    tid = _tid(client, lh, "family", "family")
+    mid = _say(client, lh, tid).json()["id"]
+    _react(client, mh, mid)
+    _react(client, parent_headers, mid, "😂")
+    assert client.delete(f"{C}/messages/{mid}", headers=parent_headers).status_code == 204
+    db.expire_all()
+    assert db.query(MessageReaction).count() == 0
+
+
+def test_reactions_load_in_one_query(client, db, parent_headers):
+    from sqlalchemy import event
+
+    leo, maya, lh, mh, _ = _world(db, client, parent_headers)
+    tid = _tid(client, lh, "family", "family")
+
+    def count():
+        seen = []
+        hook = lambda *a: seen.append(a[2])  # noqa: E731
+        event.listen(db.get_bind(), "before_cursor_execute", hook)
+        client.get(f"{C}/threads/family/family", headers=parent_headers)
+        event.remove(db.get_bind(), "before_cursor_execute", hook)
+        return sum("message_reactions" in s for s in seen)
+
+    for _ in range(4):
+        mid = _say(client, lh, tid).json()["id"]
+        _react(client, mh, mid)
+    assert count() == 1
+
+
+def test_reaction_cap_and_chore_access(client, db, parent_headers):
+    leo, maya, lh, mh, chore = _world(db, client, parent_headers)
+    cid = chore("Dishes", [leo])
+    mid = _say(client, lh, _tid(client, lh, "chore", cid)).json()["id"]
+    assert _react(client, mh, mid).status_code == 404  # maya isn't on leo's chore
+    ten = ["👍", "❤️", "😂", "😮", "😢", "🙏", "🎉", "🔥", "⭐", "🍕"]
+    for e in ten:
+        assert _react(client, lh, mid, e).status_code == 200
+    r = _react(client, lh, mid, "🧑‍🍳")
+    assert r.status_code == 422 and r.json()["detail"] == "That's enough reactions."
+    assert _react(client, lh, mid, "👍").status_code == 200  # removing still works at the cap
+    assert _react(client, parent_headers, mid, "🧑‍🍳").status_code == 200  # cap is per user
+
+
+def test_kids_own_system_line_is_not_unread_for_them(client, db, parent_headers):
+    leo, maya, lh, mh, chore = _world(db, client, parent_headers)
+    cid = chore("Dishes", [leo])
+    client.post(
+        f"/api/v1/kid/chores/{cid}/photos",
+        files={"file": ("a.jpg", _jpeg(), "image/jpeg")},
+        headers=lh,
+    )
+    assert client.get(f"{C}/threads", headers=lh).json()["total"] == 0
+    assert client.get(f"{C}/threads", headers=parent_headers).json()["total"] == 1
+    msgs = client.get(f"{C}/threads/chore/{cid}", headers=lh).json()["messages"]
+    assert (
+        msgs[0]["author_id"] == leo.id and msgs[0]["author_name"]
+    )  # a proof line names who added it
+
+
+def test_new_kid_starts_with_existing_chat_read(client, db, parent_headers):
+    leo, _, _, _, _ = _world(db, client, parent_headers)
+    fam = _tid(client, parent_headers, "family", "family")
+    _say(client, parent_headers, fam, "old news")
+    r = client.post("/api/v1/kids", json={"full_name": "Newbie"}, headers=parent_headers)
+    assert r.status_code == 200, r.text
+    new = db.get(User, r.json()["id"])
+    j = client.get(f"{C}/threads", headers=_headers(db, new)).json()
+    assert j["total"] == 0
+    _say(client, parent_headers, fam, "fresh")
+    assert client.get(f"{C}/threads", headers=_headers(db, new)).json()["total"] == 1
+
+
+def test_sibling_sees_who_added_a_proof_photo(client, db, parent_headers):
+    leo, maya, lh, mh, chore = _world(db, client, parent_headers)
+    cid = chore("Trash", [leo, maya], "race")
+    client.post(
+        f"/api/v1/kid/chores/{cid}/photos",
+        files={"file": ("a.jpg", _jpeg(), "image/jpeg")},
+        headers=lh,
+    )
+    line = client.get(f"{C}/threads/chore/{cid}", headers=mh).json()["messages"][-1]
+    assert line["kind"] == "system" and line["author_id"] == leo.id
+    assert client.delete(f"{C}/messages/{line['id']}", headers=mh).status_code in (403, 404)
+
+
+def test_mark_read_survives_a_racing_insert(client, db, parent_headers, monkeypatch):
+    from app.models.chat import Thread, ThreadRead
+    from app.services import chat
+
+    leo, maya, lh, mh, _ = _world(db, client, parent_headers)
+    t = db.get(Thread, _tid(client, lh, "family", "family"))
+    chat.mark_read(db, t, leo)
+    db.commit()
+    real_get = db.get
+    # the other request inserted the row after our lookup
+    monkeypatch.setattr(db, "get", lambda m, k: None if m is ThreadRead else real_get(m, k))
+    chat.mark_read(db, t, leo)
+    db.commit()
+    assert db.query(ThreadRead).filter_by(thread_id=t.id, user_id=leo.id).count() == 1

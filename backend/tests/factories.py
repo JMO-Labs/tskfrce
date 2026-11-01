@@ -3,6 +3,8 @@
 from datetime import date, datetime
 
 from app.models.chores import Chore, ChoreAssignment, ChoreRun, ChoreStep
+from app.models.hours import HourRule, HourRuleTarget, HourRuleTime
+from app.services.chore_types import other_id
 
 DAY = date(2026, 10, 20)  # a Tuesday
 
@@ -22,7 +24,13 @@ def make_chore(
     needs_photo=False,
 ):
     """A chore with one assignment (no runs yet)."""
-    c = Chore(title=title, points=points, needs_photo=needs_photo, created_by_id=parent.id)
+    c = Chore(
+        title=title,
+        points=points,
+        needs_photo=needs_photo,
+        created_by_id=parent.id,
+        type_id=other_id(db),
+    )
     c.steps = [ChoreStep(title=s, position=i) for i, s in enumerate(steps)]
     a = ChoreAssignment(
         chore=c, mode=mode, repeat=repeat, days=days, on_date=on_date, due_time=due_time
@@ -98,3 +106,36 @@ def api_chore(client, ph, kids, mode="each", repeat=None, title="Trash", points=
     r = client.post(f"/api/v1/chores/{chore['id']}/assignments", json=a, headers=ph)
     assert r.status_code == 200, r.text
     return chore, r.json()
+
+
+def make_rule(
+    db,
+    *,
+    kind="allowed",
+    days="0123456",
+    times=(("00:00", "23:59"),),
+    kid_ids=(),
+    group_ids=(),
+    everyone=False,
+    category="other",
+    start_date=None,
+    end_date=None,
+    name="Hours",
+):
+    """An hour rule with its times and targets."""
+    r = HourRule(
+        name=name,
+        category=category,
+        kind=kind,
+        days=days,
+        start_date=start_date,
+        end_date=end_date,
+        everyone=everyone,
+    )
+    r.times = [HourRuleTime(start=s, end=e) for s, e in times]
+    r.targets = [HourRuleTarget(kid_id=k) for k in kid_ids] + [
+        HourRuleTarget(group_id=g) for g in group_ids
+    ]
+    db.add(r)
+    db.commit()
+    return r

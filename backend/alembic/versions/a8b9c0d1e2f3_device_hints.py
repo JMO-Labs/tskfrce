@@ -1,7 +1,7 @@
 """device hint signals, hint link, rejections, device_hint notification kind
 
 Revision ID: a8b9c0d1e2f3
-Revises: f7a8b9c0d1e2
+Revises: t3c4d5e6f7a8
 Create Date: 2026-10-24 12:00:00.000000
 """
 
@@ -12,21 +12,32 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "a8b9c0d1e2f3"
-down_revision: str | Sequence[str] | None = "f7a8b9c0d1e2"
+down_revision: str | Sequence[str] | None = "t3c4d5e6f7a8"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-KINDS = (
+# Kinds as of t3c4d5e6f7a8 (main head before this branch); this migration adds "device_hint".
+OLD_KINDS = (
     "chore_submitted",
     "redemption_request",
     "redemption_decided",
     "device_resisting",
     "new_device",
-    "device_hint",
     "badge_earned",
     "level_up",
     "chat_message",
+    "chore_note",
+    "chore_new",
+    "due_soon",
+    "missed_deadline",
+    "chore_approved",
+    "chore_sent_back",
+    "points_taken",
+    "lock_warning",
+    "device_bypass",
+    "box_offline",
 )
+KINDS = (*OLD_KINDS, "device_hint")
 
 
 def _check(kinds) -> str:
@@ -64,4 +75,12 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    raise NotImplementedError("forward-only")
+    op.execute("DELETE FROM notifications WHERE kind = 'device_hint'")
+    with op.batch_alter_table("notifications") as b:
+        b.drop_constraint("ck_notification_kind", type_="check")
+        b.create_check_constraint("ck_notification_kind", _check(OLD_KINDS))
+    op.drop_table("device_hint_rejections")
+    with op.batch_alter_table("devices") as b:
+        b.drop_constraint("fk_devices_hint_of_id", type_="foreignkey")
+        for col in ("hint_reason", "hint_of_id", "dhcp_fp", "model", "mdns_name"):
+            b.drop_column(col)

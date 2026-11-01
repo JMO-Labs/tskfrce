@@ -3,28 +3,30 @@
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_current_active_user, get_db
-from app.api.rewards import redemption_name
 from app.core.auth import AuthService
 from app.core.client_ip import client_ip, norm_ip
 from app.core.ratelimit import check, hit
+from app.lock import activity
 from app.lock.loop import trigger
 from app.lock.rules import is_online
 from app.lock.schedule import local_now
 from app.lock.state import Prefetch, device_facts
 from app.models.badge import BadgeAward
-from app.models.chores import ChoreRun
+from app.models.chores import ChoreRun, ChoreSeen
 from app.models.family import get_family
 from app.models.lock import Device, DeviceIPv6
 from app.models.points import Points
-from app.models.reward import Redemption, Reward
+from app.models.reward import Redemption
 from app.models.user import User, UserRole
 from app.schemas.lock import utc_z
-from app.services import badges, chat, economy, inbox, progression
+from app.services import badges, chat, economy, inbox, kid_view, progression
 from app.services import chores as svc
+from app.services.chore_types import notes_for
 from app.services.photos import save_photo
 
 router = APIRouter(prefix="/api/v1/kid", tags=["kid"])
@@ -32,14 +34,13 @@ router = APIRouter(prefix="/api/v1/kid", tags=["kid"])
 NOT_YOURS = "This device doesn't belong to you. Ask a parent."
 
 
-class RedeemIn(BaseModel):
-    kind: str
-    reward_id: int | None = None
-    minutes: int | None = None
-
-
 class SubtaskIn(BaseModel):
     done: bool
+
+
+class NoteIn(BaseModel):
+    label: str
+    text: str | None = Field(None, max_length=200)
 
 
 class KidLogin(BaseModel):
@@ -108,6 +109,15 @@ def login(body: KidLogin, request: Request, db: Session = Depends(get_db)):
     auth = AuthService(db)
     if kid.pin_hash and not (body.pin and auth.verify_password(body.pin, kid.pin_hash)):
         hit(key, 60)
+        activity.log(
+            db,
+            dev.id,
+            "sign_in",
+            datetime.now(UTC).replace(tzinfo=None),
+            merge_minutes=10,
+            kid_id=kid.id,
+        )
+        db.commit()
         raise HTTPException(status_code=401, detail="Wrong PIN. Try again.")
     return {"access_token": auth.create_access_token(data={"sub": str(kid.id)})}
 
@@ -124,24 +134,6 @@ def _locked(db: Session, kid: User, ip: str, now: datetime, counts: dict) -> boo
     return any(not is_online(device_facts(db, d, fam, now, pre), local) for d in devs)
 
 
-def _names(db: Session, ids: set[int]) -> dict[int, User]:
-    return {u.id: u for u in db.query(User).filter(User.id.in_(ids))} if ids else {}
-
-
-def _kid_extras(run: ChoreRun, kid: User, takers: dict[int, User]) -> dict:
-    """Fields the kid screen needs beyond the basics."""
-    c, mode = svc.chore_of(run), svc.mode_of(run)
-    taker = takers.get(run.submitted_by_id)
-    return {
-        "mode": mode,
-        "needs_photo": bool(c.needs_photo),
-        "photo_count_current": svc.photo_count(run),
-        "last_note": run.last_note,
-        "subtasks": svc.steps_out(run),
-        "taken_by": (taker.full_name or taker.username) if taker and mode == "race" else None,
-    }
-
-
 @router.get("/today")
 def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(view_kid)):
     now = datetime.now(UTC)
@@ -151,11 +143,17 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
         .order_by(ChoreRun.id)
         .all()
     )
+    fam = get_family(db)
     balances: dict = {}
-    prog = progression.progress(db, kid, get_family(db), balances)
-    takers = _names(db, {r.submitted_by_id for r in runs} - {None, kid.id})
+    prog = progression.progress(db, kid, fam, balances)
+    takers = kid_view.names(db, {r.submitted_by_id for r in runs} - {None, kid.id})
     done = sum(svc.state(r) == "done" for r in runs)
+    deds = svc.deductions(db, runs)
+    texts = svc.note_texts(db, runs)
+    seen = kid_view.seen_ids(db, kid.id, {r.assignment_id for r in runs})
     return {
+        "age_group": kid.age_group,
+        "locks_at": kid_view.locks_at(db, kid, fam, now),
         "locked": _locked(
             db,
             kid,
@@ -170,12 +168,16 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
                 "points": svc.chore_of(r).points or 0,
                 "state": svc.state(r),
                 "due_time": r.assignment.due_time,
-                **_kid_extras(r, kid, takers),
+                **kid_view.extras(
+                    r, fam, takers, kid_view.mine(deds.get(r.id, []), kid.id), texts, seen, now
+                ),
             }
             for r in runs
         ],
         "points_balance": balances[kid.id],
+        "points_held": economy.pending_cost(db, kid.id),
         "progress": prog,
+        "timezone": fam.timezone,
     }
 
 
@@ -205,6 +207,30 @@ def tick_subtask(
     return {"id": sub_id, "done": body.done}
 
 
+@router.post("/chores/{run_id}/note")
+def leave_note(
+    run_id: int, body: NoteIn, db: Session = Depends(get_db), kid: User = Depends(require_kid)
+):
+    r = _open_run(db, kid, run_id)
+    c = svc.chore_of(r)
+    if body.label not in {n["label"] for n in notes_for(c.type)}:
+        raise HTTPException(422, "Pick one of the notes.")
+    text = body.text.strip() if body.text else None
+    chat.post(
+        db, chat.thread_for(db, "chore", run_id=r.id), kid, text or None, note_label=body.label
+    )
+    r.note_label, r.note_at = body.label, datetime.now(UTC).replace(tzinfo=None)
+    inbox.notify_parents(
+        db,
+        "chore_note",
+        f"{kid.full_name} left a note on {c.title}",
+        body.label + (f' · "{text}"' if text else ""),
+        run_id=r.id,
+    )
+    db.commit()
+    return {"ok": True}
+
+
 @router.post("/chores/{chore_id}/photos")
 def add_photo(
     chore_id: int,
@@ -214,9 +240,10 @@ def add_photo(
 ):
     r = _open_run(db, kid, chore_id)
     p = save_photo(file, r, kid)
+    line = chat.photo_line(db, r, kid)
     db.add(p)
     db.flush()
-    chat.system(db, r, "Photo added", p.id)
+    chat.system(db, r, line, p.id, actor=kid)
     db.commit()
     return {"id": p.id, "attempt": p.attempt}
 
@@ -237,9 +264,8 @@ def done(chore_id: int, db: Session = Depends(get_db), kid: User = Depends(requi
     r.status = "submitted"
     r.submitted_at = now
     r.submitted_by_id = kid.id
-    inbox.notify(
+    inbox.notify_parents(
         db,
-        inbox.parents(db),
         "chore_submitted",
         f"{kid.full_name} finished {c.title}",
         "Take a look and approve it.",
@@ -254,77 +280,17 @@ def done(chore_id: int, db: Session = Depends(get_db), kid: User = Depends(requi
     }
 
 
-@router.get("/rewards")
-def rewards(db: Session = Depends(get_db), kid: User = Depends(view_kid)):
-    fam = get_family(db)
-    pending = db.query(Redemption).filter(
-        Redemption.kid_id == kid.id, Redemption.status == "pending"
-    )
-    return {
-        "balance": economy.balance(db, kid.id),
-        "screen_time_price": fam.screen_time_price,
-        "screen_time_enabled": bool(fam.points_unlock_early),
-        "rewards": [
-            {"id": r.id, "name": r.name, "price": r.price, "icon": r.icon}
-            for r in db.query(Reward).filter(Reward.active).order_by(Reward.id)
-        ],
-        "pending": [
-            {
-                "id": p.id,
-                "kind": p.kind,
-                "reward_id": p.reward_id,
-                "minutes": p.minutes,
-                "cost": p.cost,
-            }
-            for p in pending.order_by(Redemption.id)
-        ],
-    }
-
-
-@router.post("/redeem")
-def redeem(body: RedeemIn, db: Session = Depends(get_db), kid: User = Depends(require_kid)):
-    r = economy.request(db, kid, body.kind, body.reward_id, body.minutes)
-    return {
-        "id": r.id,
-        "kind": r.kind,
-        "reward_id": r.reward_id,
-        "minutes": r.minutes,
-        "cost": r.cost,
-        "status": r.status,
-    }
-
-
-@router.get("/awards")
-def awards(db: Session = Depends(get_db), kid: User = Depends(view_kid)):
-    rows = (
-        db.query(Redemption)
-        .filter(
-            Redemption.kid_id == kid.id,
-            Redemption.status == "approved",
-            Redemption.seen_by_kid.is_(False),
-        )
-        .order_by(Redemption.id)
-        .all()
-    )
-    return [
-        {
-            "id": r.id,
-            "kind": r.kind,
-            "name": redemption_name(db, r),
-            "minutes": r.minutes,
-            "cost": r.cost,
-        }
-        for r in rows
-    ]
-
-
-@router.post("/awards/{award_id}/seen", status_code=204)
-def award_seen(award_id: int, db: Session = Depends(get_db), kid: User = Depends(require_kid)):
-    r = db.get(Redemption, award_id)
-    if r is None or r.kid_id != kid.id:
-        raise HTTPException(404, "That award isn't yours.")
-    r.seen_by_kid = True
-    db.commit()
+@router.post("/chores/{run_id}/seen", status_code=204)
+def chore_seen(run_id: int, db: Session = Depends(get_db), kid: User = Depends(require_kid)):
+    r = db.query(ChoreRun).filter(ChoreRun.id == run_id, svc.kid_runs_filter(kid.id)).first()
+    if r is None:
+        raise HTTPException(404, "We couldn't find that chore.")
+    if db.get(ChoreSeen, (r.assignment_id, kid.id)) is None:
+        db.add(ChoreSeen(assignment_id=r.assignment_id, kid_id=kid.id))
+        try:
+            db.commit()
+        except IntegrityError:  # double tap raced us; already seen
+            db.rollback()
     return Response(status_code=204)
 
 

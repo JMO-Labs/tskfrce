@@ -7,14 +7,20 @@ import { MantineProvider } from '@mantine/core'
 import { api } from '@/v2/api'
 import { ChatDock } from '@/v2/chat/ChatDock'
 import { openChat } from '@/v2/chat/dock'
-import { FridgeShell, NAV } from '@/v2/components/FridgeShell'
+
+jest.mock('@/v2/parent/useLook', () => ({
+  useLook: jest.fn(),
+}))
+jest.mock('@/v2/parent/ParentShell', () => ({
+  ParentShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
 
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
 jest.mock('next/router', () => ({ useRouter: () => ({ pathname: '/', query: {}, replace: jest.fn() }) }))
 jest.mock('@/contexts/UnifiedAuthContext', () => ({ useUnifiedAuth: () => ({ logout: jest.fn(), user: { id: 1 } }) }))
 
-const apiMock = api as unknown as Mock<(p: string) => Promise<unknown>>
+const apiMock = api as unknown as Mock<(p: string, i?: object) => Promise<unknown>>
 const th = (id: number, kind: string, title: string, unread: number, over: object = {}) => ({
   id, kind, title, unread, task_id: null, kid_id: null, last_message_at: null, ...over,
 })
@@ -37,52 +43,88 @@ const wrap = (ui: React.ReactElement) =>
       <MantineProvider>{ui}</MantineProvider>
     </QueryClientProvider>,
   )
-const launcher = () => screen.getByRole('button', { name: /^Chat/ })
+const open = () => act(() => openChat('private', '3'))
 
 describe('ChatDock', () => {
-  test('launcher shows the unread total', async () => {
+  test('has no floating launcher', async () => {
     wrap(<ChatDock meId={1} />)
-    expect(await screen.findByTestId('dock-unread')).toHaveTextContent('3')
-    expect(launcher()).toHaveAttribute('aria-expanded', 'false')
+    await waitFor(() => expect(apiMock).toHaveBeenCalled())
+    expect(screen.queryByRole('button', { name: /^Chat/ })).toBeNull()
+    expect(screen.queryByTestId('dock-unread')).toBeNull()
   })
 
-  test('opens to the list, picks a thread, goes back', async () => {
+  test('openChat opens straight to a thread; back goes to the list', async () => {
     wrap(<ChatDock meId={1} />)
-    await userEvent.click(launcher())
-    expect(screen.getByRole('dialog', { name: 'Chat' })).toBeInTheDocument()
-    expect(launcher()).toHaveAttribute('aria-expanded', 'true')
-    await userEvent.click(await screen.findByRole('button', { name: /Maya/ }))
+    open()
     expect(await screen.findByRole('region', { name: 'Maya' })).toBeInTheDocument()
+    expect(apiMock.mock.calls.some(([p]) => p === '/chat/threads/private/3')).toBe(true)
     await userEvent.click(screen.getByRole('button', { name: 'Back to conversations' }))
     expect(await screen.findByRole('list', { name: 'Conversations' })).toBeInTheDocument()
   })
 
-  test('Escape closes and returns focus to the launcher', async () => {
+  test('Escape closes the panel', async () => {
     wrap(<ChatDock meId={1} />)
-    await userEvent.click(launcher())
+    open()
     await waitFor(() => expect(screen.getByRole('dialog')).toHaveFocus())
     await userEvent.keyboard('{Escape}')
     expect(screen.queryByRole('dialog')).toBeNull()
-    expect(launcher()).toHaveFocus()
   })
 
-  test('openChat opens straight to a thread', async () => {
+  test('Escape returns focus to what opened the dock', async () => {
+    wrap(
+      <>
+        <button>opener</button>
+        <ChatDock meId={1} />
+      </>,
+    )
+    const opener = screen.getByRole('button', { name: 'opener' })
+    opener.focus()
+    open()
+    await waitFor(() => expect(screen.getByRole('dialog')).toHaveFocus())
+    await userEvent.keyboard('{Escape}')
+    expect(opener).toHaveFocus()
+  })
+
+  test('openChat with a reply target shows a removable Replying to bar', async () => {
     wrap(<ChatDock meId={1} />)
-    act(() => openChat('private', '3'))
-    expect(await screen.findByRole('region', { name: 'Maya' })).toBeInTheDocument()
-    expect(apiMock.mock.calls.some(([p]) => p === '/chat/threads/private/3')).toBe(true)
+    act(() => openChat('private', '3', { label: 'Photo 1' }))
+    expect(await screen.findByTestId('replying')).toHaveTextContent('Replying to Photo 1')
+    await userEvent.click(screen.getByRole('button', { name: 'Stop replying' }))
+    expect(screen.queryByTestId('replying')).toBeNull()
+  })
+
+  test('a chore photo reply shows a placeholder, then the real photo number', async () => {
+    let release: (v: unknown) => void = () => {}
+    apiMock.mockImplementation(async (p) => {
+      if (p === '/chat/threads') return threads
+      if (p === '/chores/5') return new Promise((r) => (release = r))
+      if (p.startsWith('/chat/threads/chore/')) return { id: 4, kind: 'chore', title: 'Dishes', messages: [], has_more: false }
+      return undefined
+    })
+    wrap(<ChatDock meId={1} />)
+    act(() => openChat('chore', '5', { proof_photo_id: 7, label: 'Photo' }))
+    expect(await screen.findByTestId('reply-sk')).toBeInTheDocument()
+    expect(screen.getByTestId('replying')).not.toHaveTextContent('Photo')
+    await act(async () => release({ id: 5, kid_ids: [], photos: [{ id: 6 }, { id: 7 }] }))
+    await waitFor(() => expect(screen.getByTestId('replying')).toHaveTextContent('Replying to Photo 2'))
+    expect(screen.queryByTestId('reply-sk')).toBeNull()
+  })
+
+  test('a photo reply sends the proof photo id, not text', async () => {
+    wrap(<ChatDock meId={1} />)
+    act(() => openChat('private', '3', { proof_photo_id: 7, label: 'Photo' }))
+    await userEvent.type(await screen.findByLabelText('Message'), 'nice{Enter}')
+    await waitFor(() =>
+      expect(apiMock).toHaveBeenCalledWith(
+        '/chat/threads/2/messages',
+        expect.objectContaining({ body: expect.objectContaining({ body: 'nice', proof_photo_id: 7 }) }),
+      ),
+    )
   })
 
   test('openChat with an invalid ref does nothing', () => {
     wrap(<ChatDock meId={1} />)
     act(() => openChat('private', '../x'))
     expect(screen.queryByRole('dialog')).toBeNull()
-  })
-
-  test('the top nav has no Chat link, the shell has the dock', async () => {
-    expect((NAV as readonly { label: string }[]).some((n) => n.label === 'Chat')).toBe(false)
-    wrap(<FridgeShell title="Today">x</FridgeShell>)
-    expect(screen.queryByRole('link', { name: /Chat/ })).toBeNull()
-    expect(await screen.findByTestId('dock-unread')).toBeInTheDocument()
   })
 })

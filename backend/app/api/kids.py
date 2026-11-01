@@ -12,16 +12,18 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, require_parent
 from app.core.auth import AuthService
 from app.lock.loop import trigger
-from app.lock.overrides import clear_override, set_override
+from app.lock.overrides import clear_override
 from app.models.badge import BadgeAward
 from app.models.chore_extra import ChorePhoto
 from app.models.chores import ChoreAssignment, ChoreRun, RunStepTick, assignment_kids, run_kids
 from app.models.flair import KidFlair
-from app.models.lock import Override, TimeWindow, device_owners
+from app.models.hours import HourRuleTarget
+from app.models.lock import Override, device_owners
 from app.models.points import Points, PointsType
 from app.models.reward import Redemption
+from app.models.tips import DismissedTip
 from app.models.user import User, UserRole
-from app.schemas.lock import KidCreate, KidPatch, OverrideIn
+from app.schemas.lock import KidCreate, KidPatch, utc_z
 from app.services import chat, economy
 from app.services import chores as svc
 from app.services.photos import storage
@@ -36,6 +38,7 @@ def _out(k: User) -> dict:
         "username": k.username,
         "avatar": k.avatar,
         "has_pin": bool(k.pin_hash),
+        "age_group": k.age_group,
     }
 
 
@@ -73,8 +76,11 @@ def create_kid(body: KidCreate, db: Session = Depends(get_db)):
         role=UserRole.KID,
         avatar=body.avatar,
         pin_hash=auth.get_password_hash(body.pin) if body.pin else None,
+        age_group=body.age_group or "kid",
     )
     db.add(kid)
+    db.flush()
+    chat.mark_existing_read(db, kid)
     db.commit()
     trigger()
     return _out(kid)
@@ -89,6 +95,8 @@ def patch_kid(kid_id: int, body: KidPatch, db: Session = Depends(get_db)):
         kid.avatar = body.avatar
     if body.pin is not None:
         kid.pin_hash = AuthService(db).get_password_hash(body.pin)
+    if body.age_group is not None:
+        kid.age_group = body.age_group
     if body.clear_pin:
         kid.pin_hash = None
     db.commit()
@@ -121,7 +129,7 @@ def delete_kid(kid_id: int, db: Session = Depends(get_db)):
         elif len(a.kids) == 1:
             a.mode = "each"
     db.flush()  # expire_all below would drop unflushed changes
-    db.query(TimeWindow).filter(TimeWindow.kid_id == kid.id).delete()
+    db.query(HourRuleTarget).filter_by(kid_id=kid.id).delete()
     db.query(Override).filter(Override.created_by_id == kid.id).update({"created_by_id": None})
     db.execute(delete(device_owners).where(device_owners.c.user_id == kid.id))
     chat.purge_kid(db, kid.id)
@@ -132,6 +140,7 @@ def delete_kid(kid_id: int, db: Session = Depends(get_db)):
     db.query(Redemption).filter(Redemption.kid_id == kid.id).delete()
     db.query(BadgeAward).filter(BadgeAward.kid_id == kid.id).delete()
     db.query(KidFlair).filter(KidFlair.kid_id == kid.id).delete()
+    db.query(DismissedTip).filter(DismissedTip.user_id == kid.id).delete()
     db.flush()
     db.expire_all()
     for d in owned:
@@ -167,20 +176,61 @@ def give_points(kid_id: int, body: BonusIn, db: Session = Depends(get_db)):
     return {"balance": economy.balance(db, kid.id)}
 
 
-@router.post("/{kid_id}/override")
-def kid_override(
+@router.post("/{kid_id}/deduct")
+def deduct_points(
     kid_id: int,
-    body: OverrideIn,
+    body: BonusIn,
     db: Session = Depends(get_db),
     parent: User = Depends(require_parent),
 ):
+    """Take points away with a reason the kid sees; the balance never goes below zero."""
     kid = _kid(db, kid_id)
-    set_override(db, [d.id for d in kid.devices], body.action, body.minutes, parent.id)
+    take = economy.deduct(db, kid.id, body.amount, body.note, parent.id)
     db.commit()
-    trigger()
-    return {"ok": True}
+    return {"balance": economy.balance(db, kid.id), "deducted": take}
 
 
+_REASON_LABEL = {
+    "chore": "Chore approved",
+    "early_bonus": "Early bonus",
+    "team_share": "Team chore",
+    "redemption": "Reward",
+    "bonus": "Bonus",
+    "adjustment": "Adjustment",
+    "deduction": "Points taken",
+}
+
+
+def _label(p: Points) -> str:
+    """Ledger wording: "Homework approved" for a chore row, else the note or a generic reason."""
+    if p.reason == "chore" and p.description:
+        return f"{p.description} approved"
+    return p.description or _REASON_LABEL.get(p.reason, "Points")
+
+
+@router.get("/{kid_id}/points")
+def points_history(kid_id: int, limit: int = 20, db: Session = Depends(get_db)):
+    """Newest ledger rows for the kid's profile (02 Kids → Points history)."""
+    kid = _kid(db, kid_id)
+    rows = (
+        db.query(Points)
+        .filter(Points.user_id == kid.id)
+        .order_by(Points.created_at.desc(), Points.id.desc())
+        .limit(max(1, min(limit, 100)))
+    )
+    return [
+        {
+            "id": p.id,
+            "amount": p.amount,
+            "reason": p.reason,
+            "label": _label(p),
+            "at": utc_z(p.created_at),
+        }
+        for p in rows
+    ]
+
+
+# POST /kids/{kid_id}/override lives in device_activity.py (409 when the kid has no devices)
 @router.delete("/{kid_id}/override")
 def kid_clear_override(kid_id: int, db: Session = Depends(get_db)):
     kid = _kid(db, kid_id)

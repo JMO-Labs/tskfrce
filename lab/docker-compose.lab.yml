@@ -42,9 +42,7 @@ services:
       INTERNAL_TOKEN: labtoken
       BLOCKER_URL: http://10.99.0.4:7777
       TRUSTED_HOSTS: "*"
-      DISABLE_RATE_LIMITING: "true"
-      DISABLE_LOGIN_RATE_LIMIT: "true"
-      TRUSTED_PROXY_IPS: 10.99.0.5
+      TRUSTED_PROXY_IPS: 10.99.0.5,10.99.0.6  # frontend proxy; e2e runner seeds kid logins (notifications.spec)
     volumes: !override
       - ../backend:/app
       - /app/data
@@ -77,6 +75,9 @@ services:
       - ../frontend:/work
     environment:
       E2E_BASE_URL: http://10.99.0.5:3000
+      E2E_API_URL: http://10.99.0.3:8000  # device seeding goes straight to the backend
+      E2E_INTERNAL_TOKEN: labtoken
+      E2E_BACKEND_URL: http://10.99.0.3:8000  # notifications.spec kid-device seeding
       E2E_KID_RUN:  # passed through from lab/e2e_run.py
       E2E_KID_TOKEN:
       E2E_JPEG:

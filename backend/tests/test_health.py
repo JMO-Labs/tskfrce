@@ -1,5 +1,5 @@
 """
-Health check tests for TaaskMaaster backend.
+Health check tests for t@sk4ce backend.
 
 These tests verify that the basic health endpoints and infrastructure
 are working correctly.
@@ -11,6 +11,9 @@ import pytest
 class TestHealthEndpoints:
     """Test health check endpoints."""
 
+    def test_root_message_uses_current_name(self, client):
+        assert client.get("/").json()["message"] == "Welcome to the t@sk4ce API"
+
     def test_health_endpoint(self, client):
         """Test the basic health endpoint."""
         response = client.get("/health")
@@ -19,7 +22,7 @@ class TestHealthEndpoints:
         assert "status" in data
         assert data["status"] == "healthy"
         assert "timestamp" in data
-        assert "version" in data
+        assert data["version"] == "2.0.0"
 
     def test_health_services(self, client):
         """Test the health endpoint includes service status."""

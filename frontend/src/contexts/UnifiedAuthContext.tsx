@@ -1,7 +1,6 @@
 /**
- * @fileoverview Unified Authentication Context for TaaskMaaster
+ * @fileoverview Unified Authentication Context
  * @description Centralized authentication state with synchronized token management
- * @author TaaskMaaster Team  
  * @version 2.0.0
  */
 
@@ -55,7 +54,7 @@ interface AuthState {
  */
 interface UnifiedAuthContextType extends AuthState {
   /** Login function */
-  login: (credentials: { username: string; password: string }) => Promise<void>;
+  login: (credentials: { username: string; password: string; remember?: boolean }) => Promise<void>;
   /** Log in with an access token already issued by the backend (first-run setup) */
   loginWithToken: (accessToken: string, refreshToken: string, expiresIn: number) => Promise<void>;
   /** Logout function */
@@ -104,23 +103,6 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, []);
 
   /**
-   * @description Validate that all auth systems are synchronized
-   */
-  const validateAuthSync = useCallback((): boolean => {
-    const cookieState = getLoginState();
-    const accessToken = tokenManager.getAccessToken();
-    const authServiceToken = authService.getAccessToken();
-    
-    // All systems should have the same token or all should be empty
-    const tokensMatch = (
-      cookieState?.token === accessToken &&
-      accessToken === authServiceToken
-    );
-    
-    return tokensMatch && !!accessToken;
-  }, []);
-
-  /**
    * @description Synchronize all authentication systems
    */
   const syncAuthSystems = useCallback(async (user?: User) => {
@@ -137,7 +119,6 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
             username: user.username,
             email: user.email,
             role: user.role,
-            token: accessToken,
             lastLogin: Date.now(),
           });
           
@@ -171,6 +152,7 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
   /**
    * @description Initialize authentication from stored state
    */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const initializeAuth = useCallback(async () => {
     if (initializationRef.current) return;
     initializationRef.current = true;
@@ -180,19 +162,19 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       // Initialize TokenManager
       tokenManager.initialize();
-      
+
       // Check for existing authentication
       const cookieState = getLoginState();
       const accessToken = tokenManager.getAccessToken();
-      
+
       if (cookieState && accessToken) {
         // Validate token
         const tokenValidation = tokenManager.validateAccessToken();
-        
+
         if (tokenValidation.isValid && !tokenValidation.isExpired) {
           // Token is valid, set up auth state
           authService.setAccessToken(accessToken);
-          
+
           try {
             const currentUser = await authService.getCurrentUser();
             const user: User = {
@@ -201,7 +183,7 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
               email: currentUser.email,
               role: toRole(currentUser.role, currentUser.is_superuser),
             };
-            
+
             updateAuthState({
               isAuthenticated: true,
               user,
@@ -209,9 +191,9 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
               isLoading: false,
               isInitialized: true,
             });
-            
+
           } catch (userError) {
-            console.error('Failed to fetch current user:', userError);
+            console.warn('Failed to fetch current user:', userError);
             // Token might be invalid, try refresh
             await attemptTokenRefresh();
           }
@@ -231,12 +213,13 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
     } catch (error) {
       console.error('Auth initialization error:', error);
       await syncAuthSystems();
-      updateAuthState({ 
+      updateAuthState({
         error: 'Authentication initialization failed',
         isLoading: false,
         isInitialized: true,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [syncAuthSystems, updateAuthState]);
 
   /**
@@ -268,6 +251,9 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
           isLoading: false,
           isInitialized: true,
         });
+      } else if (refreshResult.shouldLogout === false) {
+        // box unreachable: keep the tokens; the route guard shows "Can't reach your home box"
+        updateAuthState({ isLoading: false, isInitialized: true });
       } else {
         throw new Error('Token refresh failed');
       }
@@ -285,13 +271,14 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
   /**
    * @description Login function
    */
-  const login = useCallback(async (credentials: { username: string; password: string }) => {
+  const login = useCallback(async (credentials: { username: string; password: string; remember?: boolean }) => {
     try {
       updateAuthState({ isLoading: true, error: null });
 
       const loginResponse = await authService.login({
         username: credentials.username,
-        password: credentials.password
+        password: credentials.password,
+        remember: credentials.remember ?? false, // "Keep me logged in": longer refresh token (§9)
       });
       
       const user: User = {
@@ -383,18 +370,16 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
     
     // Direct validation - check if we have valid tokens (more lenient approach)
-    const cookieState = getLoginState();
     const accessToken = tokenManager.getAccessToken();
     const authServiceToken = authService.getAccessToken();
     
     // More lenient check: just ensure we have tokens and they're not obviously broken
-    const hasValidTokens = !!(accessToken && cookieState?.token && authServiceToken);
+    const hasValidTokens = !!(accessToken && authServiceToken);
     
     if (!hasValidTokens) {
       console.log('🔍 AuthReady: Missing tokens:', {
         tokenDetails: {
           accessToken: !!accessToken,
-          cookieToken: !!cookieState?.token,
           authServiceToken: !!authServiceToken
         }
       });
@@ -420,7 +405,7 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
         if (cookieState) {
           try {
             const refreshResult = await tokenManager.refreshTokens();
-            if (!refreshResult.success) {
+            if (!refreshResult.success && refreshResult.shouldLogout !== false) {
               // Clear auth state on refresh failure
               tokenManager.clearTokens();
               clearLoginState();
@@ -456,6 +441,7 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
       tokenManager.removeEventListener('expired', handleTokenRefresh);
       tokenManager.removeEventListener('invalid', handleTokenInvalid);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.isAuthenticated]);
 
   const contextValue: UnifiedAuthContextType = {

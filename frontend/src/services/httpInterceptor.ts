@@ -1,7 +1,6 @@
 /**
- * @fileoverview HTTP Interceptor for TaaskMaaster
+ * @fileoverview HTTP Interceptor
  * @description Enhanced HTTP interceptor with robust token management, retry logic, and error handling
- * @author TaaskMaaster Team
  * @version 1.0.0
  */
 
@@ -346,7 +345,7 @@ export class HttpInterceptor {
     // a wrong password is an expected 4xx, not an error worth an overlay
     if (this.isAuthEndpoint(config?.url) && response && response.status < 500) return;
 
-    console.error('❌ HTTP Error:', {
+    console.warn('❌ HTTP Error:', {
       url: config?.url,
       method: config?.method?.toUpperCase(),
       status: response?.status,

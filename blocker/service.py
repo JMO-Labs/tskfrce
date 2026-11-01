@@ -16,9 +16,10 @@ from dataclasses import replace
 from blocker import firewall as fw
 from blocker.api import make_api
 from blocker.arp import RedirectionManager, TargetAddrs
-from blocker.backend import Seen, fetch_state, report_resisting
+from blocker.backend import Seen, fetch_state, report_hits, report_resisting
 from blocker.config import Config
 from blocker.discovery import run_discovery
+from blocker.hits import HitCounter
 from blocker.portal import run_dns, run_http
 from blocker.resist import ResistanceCounter, ResistanceWatch, Tally
 from blocker.sites import SiteManager
@@ -46,7 +47,7 @@ def _detect_box_ip(cfg: Config) -> str:
         from scapy.all import get_if_addr
 
         return get_if_addr(cfg.lan_iface or "eth0")
-    except Exception:
+    except Exception:  # noqa: BLE001 - best effort, the daemon keeps running
         return ""
 
 
@@ -81,6 +82,7 @@ class Service:
         portal_ip: str | None = None,
         watch: ResistanceWatch | None = None,
         report: Callable[[Config, set[str]], bool] = report_resisting,
+        report_hits: Callable[[Config, dict[str, int]], bool] = report_hits,
     ) -> None:
         self.cfg = cfg
         self._fw = firewall
@@ -98,6 +100,9 @@ class Service:
         self._portal_ip = portal_ip
         self._watch = watch
         self._report = report
+        self._report_hits = report_hits
+        self._ip_mac: dict[str, str] = {}
+        self.hits = HitCounter(self._mac_for_ip)
         self.store = StateStore()
         self._devices: dict[str, TargetAddrs] = {}
         self._seen_at: dict[str, float] = {}
@@ -147,6 +152,7 @@ class Service:
                 self._fw.apply(ruleset)
             except Exception:
                 log.exception("firewall apply failed")
+            self._ip_mac = {ip: mac for mac, t in devs.items() for ip in (t.ip, *t.ip6) if ip}
             base, by_vid = self._by_segment(devs, unsafe)
             self._redir.set_targets(base)
             if self._watch is not None:
@@ -174,10 +180,13 @@ class Service:
         self._seg_seen = {k: v for k, v in self._seg_seen.items() if now - v[1] <= ADDR_TTL}
         return base, by_vid
 
+    def _mac_for_ip(self, ip: str) -> str | None:
+        return self._ip_mac.get(ip)
+
     def _lan(self):
         try:
             return self._redir._lanfacts()
-        except Exception:
+        except Exception:  # noqa: BLE001 - best effort, the daemon keeps running
             return None  # LAN detection failed -> gateway/box facts unknown
 
     def _live_addrs(self, mac: str) -> TargetAddrs:
@@ -264,6 +273,9 @@ class Service:
     def _resist_once(self) -> None:
         # Always report the full set (even empty) so the backend can clear.
         self._report(self.cfg, self._watch.counter.resisting() | self._sites.resisting())
+        h = self.hits.drain()
+        if h:
+            self._report_hits(self.cfg, h)
 
     def _resist_loop(self) -> None:
         while not self._stop.wait(self.cfg.resist_interval):
@@ -342,7 +354,7 @@ class Service:
         self._spawn(lambda: self.signals.run_dhcp(self._stop))
         self._spawn(lambda: self.signals.run_mdns(self._stop))
         self._spawn(lambda: run_dns(self.cfg, self._portal_ip or "", self._stop))
-        self._spawn(lambda: run_http(self.cfg, self._stop))
+        self._spawn(lambda: run_http(self.cfg, self._stop, on_hit=self.hits.add))
         self._api = make_api(
             self.store,
             self.cfg.internal_token,
@@ -382,7 +394,7 @@ class Service:
         if self._api is not None:
             try:
                 self._api.shutdown()
-            except Exception:
+            except Exception:  # noqa: BLE001, S110 - best effort shutdown
                 pass
 
 

@@ -2,9 +2,9 @@
 
 import re
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator
 
 HHMM = r"([01]\d|2[0-3]):[0-5]\d"
 
@@ -39,17 +39,21 @@ class DevicePatch(BaseModel):
     status: Literal["unassigned", "assigned", "guest"] | None = None
     owner_ids: list[int] | None = None
     group_ids: list[int] | None = None
+    exempt: bool | None = None
 
 
 class GroupIn(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     device_ids: list[int] = []
+    icon: str | None = Field(default=None, min_length=1, max_length=40)
+    chore_lock: bool | None = None
 
 
 class KidCreate(BaseModel):
     full_name: str = Field(min_length=1, max_length=100)
     avatar: str | None = Field(default=None, max_length=255)
     pin: str | None = None
+    age_group: Literal["little", "kid", "teen"] | None = None
 
     _pin = field_validator("pin")(_pin)
 
@@ -59,26 +63,9 @@ class KidPatch(BaseModel):
     avatar: str | None = Field(default=None, max_length=255)
     pin: str | None = None
     clear_pin: bool = False
+    age_group: Literal["little", "kid", "teen"] | None = None
 
     _pin = field_validator("pin")(_pin)
-
-
-class WindowIn(BaseModel):
-    kind: Literal["allowed", "free"]
-    days: str
-    start: str
-    end: str
-    kid_id: int | None = None
-    group_id: int | None = None
-
-    @field_validator("days")
-    @classmethod
-    def _days(cls, v):
-        if not (1 <= len(v) <= 7 and len(set(v)) == len(v) and re.fullmatch(r"[0-6]+", v)):
-            raise ValueError("Days must be 1-7 different digits from 0 (Mon) to 6 (Sun).")
-        return v
-
-    _times = field_validator("start", "end")(_hhmm)
 
 
 class FamilyPatch(BaseModel):
@@ -90,8 +77,25 @@ class FamilyPatch(BaseModel):
     early_bonus_cap: int | None = Field(default=None, ge=0, le=50)
     screen_time_price: int | None = Field(default=None, ge=1, le=1000)
     listen_only: bool | None = None
+    chores_lock: bool | None = None
     gifs_enabled: bool | None = None
     gif_rating: Literal["g", "pg"] | None = None
+    ntfy_upstream_relay: bool | None = None
+    quick_replies: (
+        list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60)]]
+        | None
+    ) = Field(default=None, max_length=8)
     giphy_api_key: str | None = Field(default=None, max_length=100)  # "" clears
+    accent: (
+        Literal[
+            "neon", "sun", "tangerine", "bubblegum", "lilac", "sky", "aqua", "mint", "peach", "ice"
+        ]
+        | None
+    ) = None
+
+    @field_validator("quick_replies")
+    @classmethod
+    def _dedupe_replies(cls, v: list[str] | None) -> list[str] | None:
+        return None if v is None else list(dict.fromkeys(v))  # keep order, drop repeats
 
     _rt = field_validator("reset_time")(_hhmm)

@@ -34,7 +34,7 @@ def test_create_chore_with_steps_makes_no_runs(client, db, parent_headers):
     _day(db)
     c = _mk(client, parent_headers, steps=["rinse", "stack"], points=7, needs_photo=True)
     assert [s["title"] for s in c["steps"]] == ["rinse", "stack"]
-    assert (c["points"], c["needs_photo"], c["assignments"], c["archived"]) == (7, True, [], False)
+    assert (c["points"], c["needs_photo"], c["assignments"]) == (7, True, [])
     assert db.query(ChoreRun).count() == 0
     assert (
         client.post("/api/v1/chores/", json={"title": ""}, headers=parent_headers).status_code
@@ -146,20 +146,38 @@ def test_removing_a_step_drops_its_ticks_and_keeps_order(
     assert [(s["title"], s["done"]) for s in got] == [("c", False), ("a", True)]
 
 
-def test_delete_with_history_archives_and_history_renders(client, db, kid, parent, parent_headers):
+def test_delete_purges_chore_runs_photos_and_chat_but_keeps_points(
+    client, db, kid, parent, parent_headers, kid_headers
+):
+    from app.models.chat import Thread, ThreadMessage
+    from app.models.chore_extra import ChorePhoto
+    from app.services.economy import balance
+    from app.services.photos import storage
+
+    from tests.test_chore_proof import _up
+
     _day(db)
     c, a = api_chore(client, parent_headers, [kid], title="Dishes")
-    run = db.query(ChoreRun).one()
-    run.status, run.approved_by_id = "done", parent.id
-    db.commit()
+    rid = db.query(ChoreRun).one().id
+    assert _up(client, kid_headers, rid).status_code == 200
+    keys = [k for p in db.query(ChorePhoto) for k in (p.path, p.thumb_path)]
+    assert all(storage().open(k) for k in keys)
+    client.post(f"/api/v1/kid/chores/{rid}/done", headers=kid_headers)
+    client.post(f"/api/v1/chores/{rid}/approve", headers=parent_headers)
+    held = balance(db, kid.id)
+    assert held > 0 and db.query(ThreadMessage).count() > 0
     assert client.delete(f"/api/v1/chores/{c['id']}", headers=parent_headers).status_code == 204
-    assert db.get(Chore, c["id"]).archived_at is not None
-    assert not db.get(ChoreAssignment, a["id"]).active
+    db.expire_all()
+    assert db.get(Chore, c["id"]) is None and db.get(ChoreAssignment, a["id"]) is None
+    assert db.query(ChoreRun).count() == db.query(ChorePhoto).count() == 0
+    assert db.query(Thread).filter(Thread.kind == "chore").count() == 0
+    assert db.query(ThreadMessage).count() == 0
+    for k in keys:
+        assert not (storage().root / k).exists()
+    assert balance(db, kid.id) == held
+    assert {p.run_id for p in db.query(Points)} == {None}
     assert client.get("/api/v1/chores/", headers=parent_headers).json() == []
-    arch = client.get("/api/v1/chores/?archived=true", headers=parent_headers).json()
-    assert arch[0]["archived"] is True
-    k = client.get("/api/v1/today", headers=parent_headers).json()["kids"][0]
-    assert k["chores"][0]["title"] == "Dishes" and k["chores"][0]["state"] == "done"
+    assert client.delete(f"/api/v1/chores/{c['id']}", headers=parent_headers).status_code == 404
 
 
 def test_delete_assignment_with_runs_retires_it(client, db, kid, parent_headers):
@@ -188,3 +206,55 @@ def test_delete_kid_with_runs_photos_and_chat(client, db, parent, kid, parent_he
     client.post(f"/api/v1/chores/{rid}/approve", headers=parent_headers)
     assert client.delete(f"/api/v1/kids/{kid.id}", headers=parent_headers).status_code == 200
     assert db.query(ChoreRun).count() == 0 and db.query(Points).count() == 0
+
+
+def test_create_with_type_and_step_objects(client, parent_headers):
+    steps = [
+        {"title": "A", "after_previous": True},
+        {"title": "B", "after_previous": True, "due_time": "16:30"},
+    ]
+    c = _mk(client, parent_headers, steps=steps)
+    assert [(s["title"], s["after_previous"], s["due_time"]) for s in c["steps"]] == [
+        ("A", False, None),
+        ("B", True, "16:30"),
+    ]
+    types = client.get("/api/v1/chore-types", headers=parent_headers).json()
+    c2 = _mk(client, parent_headers, type_id=types[1]["id"])
+    assert c2["type_id"] == types[1]["id"] and c["type_id"] == types[-1]["id"]
+    bad = client.post(
+        "/api/v1/chores/", json={"title": "x", "type_id": 999}, headers=parent_headers
+    )
+    assert (bad.status_code, bad.json()["detail"]) == (422, "Pick a chore type from the list.")
+
+
+def test_patch_steps_keeps_ticks_and_flags(client, db, kid, parent_headers, kid_headers):
+    _day(db)
+    c, _ = api_chore(client, parent_headers, [kid], steps=["A", "B"])
+    run = client.get("/api/v1/kid/today", headers=kid_headers).json()["chores"][0]
+    a_id = run["subtasks"][0]["id"]
+    client.post(
+        f"/api/v1/kid/chores/{run['id']}/subtasks/{a_id}", json={"done": True}, headers=kid_headers
+    )
+    r = client.patch(
+        f"/api/v1/chores/{c['id']}",
+        json={"steps": [{"title": "B"}, {"title": "A", "after_previous": True}]},
+        headers=parent_headers,
+    )
+    out = r.json()["steps"]
+    assert [(s["title"], s["after_previous"]) for s in out] == [("B", False), ("A", True)]
+    assert out[1]["id"] == a_id
+    assert [s.position for s in db.query(ChoreStep).order_by(ChoreStep.position)] == [0, 1]
+    got = client.get("/api/v1/kid/today", headers=kid_headers).json()["chores"][0]["subtasks"]
+    assert [(s["title"], s["done"]) for s in got] == [("B", False), ("A", True)]
+
+
+def test_copy_keeps_type_and_step_fields(client, parent_headers):
+    types = client.get("/api/v1/chore-types", headers=parent_headers).json()
+    steps = [{"title": "A"}, {"title": "B", "after_previous": True, "due_time": "16:30"}]
+    c = _mk(client, parent_headers, steps=steps, type_id=types[2]["id"])
+    n = client.post(f"/api/v1/chores/{c['id']}/copy", headers=parent_headers).json()
+    assert n["type_id"] == types[2]["id"]
+    assert [(s["after_previous"], s["due_time"]) for s in n["steps"]] == [
+        (False, None),
+        (True, "16:30"),
+    ]

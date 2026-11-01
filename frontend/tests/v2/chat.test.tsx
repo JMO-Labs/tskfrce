@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, test } from "@jest/globals";
 import type { Mock } from "jest-mock";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MantineProvider } from "@mantine/core";
 import { api } from "@/v2/api";
 import { ThreadView } from "@/v2/chat/ThreadView";
-import { FridgeShell } from "@/v2/components/FridgeShell";
-import { KidCard } from "@/v2/today/KidCard";
+import { ThreadList } from "@/v2/chat/ThreadList";
 import type { TodayKid } from "@/v2/types";
+import * as mantineHooks from "@mantine/hooks";
 
 jest.mock("@/v2/api", () => ({ api: jest.fn() }));
 jest.mock("@mantine/notifications", () => ({ notifications: { show: jest.fn() } }));
@@ -32,6 +32,8 @@ beforeEach(() => {
     if (p === "/chat/threads") return threads;
     if (p.startsWith("/chat/threads/private/3?before=")) return { ...page, messages: [msg(1)], has_more: false };
     if (p.startsWith("/chat/threads/private/")) return page;
+    if (p.startsWith("/chat/threads/chore/3?before=")) return { ...page, kind: "chore", messages: [msg(1)], has_more: false };
+    if (p.startsWith("/chat/threads/chore/")) return { ...page, kind: "chore", title: "Chore task" };
     if (p.endsWith("/messages")) return msg(99, { author_id: 1 });
     if (init?.method === "POST") return { ok: true };
     return undefined;
@@ -84,6 +86,24 @@ describe("ThreadView", () => {
     expect(screen.queryByRole("button", { name: "Load earlier" })).toBeNull();
   });
 
+  test("reactions and deletes update messages loaded with Load earlier", async () => {
+    page.messages = [msg(7)];
+    page.has_more = true;
+    const base = apiMock.getMockImplementation()!;
+    apiMock.mockImplementation(async (p, init) =>
+      p === "/chat/messages/1/reactions" ? msg(1, { reactions: [{ emoji: "👍", count: 1, mine: true, names: ["Mom"] }] }) : base(p, init),
+    );
+    view();
+    await userEvent.click(await screen.findByRole("button", { name: "Load earlier" }));
+    const old = (await screen.findByText("m1")).closest(".pc-msg") as HTMLElement;
+    await userEvent.click(within(old).getByRole("button", { name: "Add reaction" }));
+    await userEvent.click(within(old).getByRole("button", { name: "React 👍" }));
+    expect(await screen.findByRole("button", { name: "👍 1: Mom" })).toBeInTheDocument();
+    await userEvent.click(within(old).getByRole("button", { name: "Delete message" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(screen.queryByText("m1")).toBeNull());
+  });
+
   test("opening marks the thread read", async () => {
     page.messages = [msg(1)];
     view();
@@ -93,27 +113,70 @@ describe("ThreadView", () => {
   });
 });
 
-test("Today chat box shows the latest message across the kid's threads", async () => {
-  threads = {
-    total: 1,
-    threads: [
-      { id: 1, kind: "private", task_id: null, kid_id: 3, title: "Maya", unread: 0, last_message_at: "2020-01-01T10:00:00Z", last_author: "Maya", last_text: "older" },
-      { id: 2, kind: "chore", task_id: 5, kid_id: null, title: "Dishes", unread: 1, last_message_at: "2020-01-02T10:00:00Z", last_author: "Maya", last_text: "all done" },
-      { id: 3, kind: "chore", task_id: 99, kid_id: null, title: "Other kid", unread: 4, last_message_at: "2020-01-03T10:00:00Z", last_author: "Sam", last_text: "not hers" },
-    ],
-  };
-  const kid = { id: 3, name: "Maya", chores: [{ id: 5, title: "Dishes" }], devices: [], progress: undefined } as unknown as TodayKid;
-  wrap(<KidCard kid={kid} />);
-  expect(await screen.findByText(/all done/)).toBeInTheDocument();
-  expect(screen.getByText(/in Dishes/)).toBeInTheDocument();
-  expect(screen.getByText(/1 new/)).toBeInTheDocument();
-  expect(screen.queryByText(/not hers/)).toBeNull();
-  expect(screen.getByRole("button", { name: "Open chat" })).toBeInTheDocument();
-});
+describe("Chat page (parent restyle)", () => {
+  test("search filters threads", async () => {
+    const sampleThreads = [
+      { id: 1, kind: "private" as const, task_id: null, kid_id: 3, title: "Maya chat", unread: 0, last_message_at: "2020-01-01T10:00:00Z", last_author: "Maya", last_text: "hello", note: false, glyph: null },
+      { id: 2, kind: "chore" as const, task_id: 5, kid_id: null, title: "Dishes", unread: 0, last_message_at: "2020-01-02T10:00:00Z", last_author: "Maya", last_text: "looks good", note: true, glyph: null },
+      { id: 3, kind: "family" as const, task_id: null, kid_id: null, title: "Family", unread: 0, last_message_at: "2020-01-03T10:00:00Z", last_author: "Sam", last_text: "family chat", note: false, glyph: null },
+    ];
+    wrap(<ThreadList threads={sampleThreads} selected={null} onPick={() => {}} />);
+    const searchBox = screen.getByLabelText("Search threads") as HTMLInputElement;
 
-test("Today chat box invites you to say hi when nothing was said", async () => {
-  const kid = { id: 3, name: "Maya", chores: [], devices: [], progress: undefined } as unknown as TodayKid;
-  wrap(<KidCard kid={kid} />);
-  expect(await screen.findByText("Nothing yet. Say hi to Maya.")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Say hi to Maya" })).toBeInTheDocument();
+    // Verify all threads are visible initially (the chore nests under Family until expanded)
+    expect(screen.getByText("Maya chat")).toBeInTheDocument();
+    expect(screen.queryByText("Dishes")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Show 1 chore chat" }));
+    expect(screen.getByText("Dishes")).toBeInTheDocument();
+    expect(screen.getAllByText("Family")[0]).toBeInTheDocument();
+
+    // Search by title
+    await userEvent.type(searchBox, "Dishes");
+    expect(screen.getByText("Dishes")).toBeInTheDocument();
+    expect(screen.queryByText("Maya chat")).toBeNull();
+    // Check that Family thread is not in the conversation list (tab might still show "Family")
+    const conversationList = screen.getByLabelText("Conversations");
+    expect(conversationList.textContent).not.toContain("family chat");
+
+    // Clear and search by last_text
+    await userEvent.clear(searchBox);
+    await userEvent.type(searchBox, "family chat");
+    expect(screen.getAllByText("Family")[0]).toBeInTheDocument();
+    expect(screen.queryByText("Dishes")).toBeNull();
+  });
+
+  test("tabs: All, Chores, Notes and Family with counts", async () => {
+    const t = (id: number, kind: "private" | "chore" | "family", note = false) =>
+      ({ id, kind, task_id: id, kid_id: 3, title: `T${id}`, unread: 0, last_message_at: null, note, glyph: null });
+    wrap(<ThreadList threads={[t(1, "family"), t(2, "chore"), t(3, "chore", true), t(4, "private")]} selected={null} onPick={() => {}} />);
+    const tabs = screen.getByRole("group", { name: "Filter chats" });
+    expect(within(tabs).getAllByRole("button").map((b) => b.textContent)).toEqual(["All", "Chores · 2", "Notes · 1", "Family"]);
+    await userEvent.click(within(tabs).getByRole("button", { name: "Notes · 1" }));
+    const rows = screen.getByLabelText("Conversations");
+    expect(rows).toHaveTextContent("T3");
+    expect(rows).not.toHaveTextContent("T2");
+  });
+
+  test("side panel hidden below 1250px", async () => {
+    // Mock useMediaQuery to return false for wide layout
+    jest.spyOn(mantineHooks, "useMediaQuery").mockReturnValue(false);
+
+    page.messages = [msg(1)];
+    wrap(<ThreadView kind="chore" refId="3" meId={1} />);
+
+    // Wait for component to render
+    await waitFor(() => expect(screen.getByTestId("msg-other")).toBeInTheDocument());
+
+    // Check that side panel is not rendered
+    const sidePanelHeading = screen.queryByText("Steps");
+    expect(sidePanelHeading).toBeNull();
+
+    jest.restoreAllMocks();
+  });
+
+  test("day separator renders", async () => {
+    page.messages = [msg(1)];
+    view();
+    expect(await screen.findByTestId("day-sep")).toBeInTheDocument();
+  });
 });

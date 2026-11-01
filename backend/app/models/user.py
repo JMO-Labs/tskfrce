@@ -1,5 +1,5 @@
 """
-User model for TaaskMaaster.
+User model for t@sk4ce.
 
 This module contains the User model for authentication and user management.
 """
@@ -7,7 +7,7 @@ This module contains the User model for authentication and user management.
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
@@ -46,6 +46,9 @@ class User(Base):
     """
 
     __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint("age_group IN ('little','kid','teen')", name="ck_user_age_group"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), unique=True, index=True, nullable=False)
@@ -63,9 +66,12 @@ class User(Base):
     pin_hash = Column(String(255), nullable=True)
     avatar = Column(String(255), nullable=True)
     celebrated_level = Column(Integer, nullable=False, default=1, server_default="1")
+    age_group = Column(String(6), nullable=False, default="kid", server_default="kid")
+    push_topic = Column(String(40), nullable=True, unique=True)
+    last_active_at = Column(DateTime, nullable=True)  # naive UTC; touched at most every 5 min
 
     # Relationships
-    points = relationship("Points", back_populates="user")
+    points = relationship("Points", back_populates="user", foreign_keys="Points.user_id")
 
     def __repr__(self) -> str:
         """String representation of User."""
@@ -82,3 +88,15 @@ class UsedInvite(Base):
 
     jti = Column(String(64), primary_key=True)
     used_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class PendingInvite(Base):
+    """An invite link a parent made that hasn't been used, cancelled or expired yet."""
+
+    __tablename__ = "pending_invites"
+
+    jti = Column(String(64), primary_key=True)
+    username = Column(String(50), nullable=False)
+    invited_by = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=False)

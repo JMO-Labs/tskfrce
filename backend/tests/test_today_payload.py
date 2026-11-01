@@ -9,7 +9,7 @@ from app.models.reward import Redemption
 from app.models.user import UserRole
 
 from tests.conftest import _headers, _make_user
-from tests.factories import api_chore
+from tests.factories import api_chore, make_rule
 
 DAY = date(2026, 10, 20)
 
@@ -118,3 +118,99 @@ def test_shared_race_under_both_kids_and_taken_by(client, db, parent_headers):
     assert kids[a.id]["chores"][0]["taken_by"] == b.full_name
     assert kids[a.id]["chores"][0]["state"] == "done"
     assert kids[a.id]["done"] == 1
+
+
+def test_kid_points_next_reward_and_locks_at(client, db, parent_headers):
+    from app.models.reward import Reward
+
+    a, b, _, _ = _setup(db)
+    db.add(Points(user_id=a.id, points_type=PointsType.BONUS, amount=30, description="t"))
+    db.add_all([Reward(name="Cheap", price=20), Reward(name="Big", price=70)])
+    make_rule(db, kid_ids=[a.id])
+    kids = {k["id"]: k for k in _today(client, parent_headers)["kids"]}
+    assert kids[a.id]["points"] == 30
+    assert kids[a.id]["next_reward"] == 40  # 70 - 30; "Cheap" is already affordable
+    locks = kids[a.id]["locks_at"]  # None only in the last minute of the local day
+    assert locks is None or datetime.fromisoformat(locks.replace("Z", "+00:00")) > datetime.now(UTC)
+    assert kids[b.id]["locks_at"] is None and kids[b.id]["next_reward"] == 20
+
+
+def test_today_needs_you_includes_pending_notes(client, db, parent_headers):
+    a, b, ha, _ = _setup(db)
+    _create(client, parent_headers, [a], title="Dishes")
+    _create(client, parent_headers, [b], title="Bins")
+    rid = _ids(client, ha)[0]
+    assert [x for x in _today(client, parent_headers)["needs_you"] if x["type"] == "note"] == []
+    res = client.post(f"/api/v1/kid/chores/{rid}/note", json={"label": "Need help"}, headers=ha)
+    assert res.status_code == 200
+    notes = [x for x in _today(client, parent_headers)["needs_you"] if x["type"] == "note"]
+    assert notes == [
+        {
+            "type": "note",
+            "id": rid,
+            "kid_id": a.id,
+            "kid_name": a.full_name,
+            "title": "Dishes",
+            "note": "Need help",
+        }
+    ]
+    bell = client.get("/api/v1/notifications", headers=parent_headers).json()["items"]
+    assert next(i for i in bell if i["kind"] == "chore_note")["pending"] is True
+    tid = client.get(f"/api/v1/chat/threads/chore/{rid}", headers=parent_headers).json()["id"]
+    client.post(f"/api/v1/chat/threads/{tid}/messages", json={"body": "ok"}, headers=parent_headers)
+    assert [x for x in _today(client, parent_headers)["needs_you"] if x["type"] == "note"] == []
+    bell = client.get("/api/v1/notifications", headers=parent_headers).json()["items"]
+    assert next(i for i in bell if i["kind"] == "chore_note")["pending"] is False
+
+
+def test_done_chore_carries_done_at(client, db, parent_headers):
+    a, _, ha, _ = _setup(db)
+    _create(client, parent_headers, [a], title="Dishes")
+    rid = _ids(client, ha)[0]
+    chores = lambda: _today(client, parent_headers)["kids"][0]["chores"]  # noqa: E731
+    assert chores()[0]["done_at"] is None
+    client.post(f"/api/v1/kid/chores/{rid}/done", headers=ha)
+    assert chores()[0]["done_at"].endswith("Z")
+
+
+def test_needs_you_photos_and_row_counts(client, db, parent_headers):
+    a, _, ha, _ = _setup(db)
+    _create(client, parent_headers, [a])
+    cid = _ids(client, ha)[0]
+    client.post(f"/api/v1/kid/chores/{cid}/done", headers=ha)
+    db.add(ChorePhoto(run_id=cid, attempt=1, uploaded_by_id=a.id, path="p", thumb_path="t"))
+    db.get(ChoreRun, cid).attempt = 2
+    db.add(ChorePhoto(run_id=cid, attempt=2, uploaded_by_id=a.id, path="p2", thumb_path="t2"))
+    db.commit()
+    tid = client.get(f"/api/v1/chat/threads/chore/{cid}", headers=parent_headers).json()["id"]
+    msg = {"body": "hi"}
+    client.post(f"/api/v1/chat/threads/{tid}/messages", json=msg, headers=parent_headers)
+    t = _today(client, parent_headers)
+    assert [p["earlier"] for p in t["needs_you"][0]["photos"]] == [True, False]
+    ch = t["kids"][0]["chores"][0]
+    assert ch["photos"] == 1  # current attempt only
+    assert ch["messages"] == 1
+    detail = client.get(f"/api/v1/chores/{cid}", headers=parent_headers).json()
+    assert [p["earlier"] for p in detail["photos"]] == [True, False]
+
+
+def test_kid_earned_is_ledger_net(client, db, parent_headers):
+    a, _, ha, _ = _setup(db)
+    _create(client, parent_headers, [a], points=10)
+    cid = _ids(client, ha)[0]
+    client.post(f"/api/v1/kid/chores/{cid}/done", headers=ha)
+    client.post(f"/api/v1/chores/{cid}/approve", headers=parent_headers)
+    db.add(
+        Points(
+            user_id=a.id,
+            points_type=PointsType.BONUS,
+            amount=-4,
+            reason="deduction",
+            run_id=cid,
+            description="x",
+        )
+    )
+    db.commit()
+    ledger = sum(p.amount for p in db.query(Points).filter(Points.run_id == cid))
+    assert ledger >= 6
+    assert _today(client, parent_headers)["kids"][0]["earned"] == ledger
