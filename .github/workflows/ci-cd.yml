@@ -71,6 +71,8 @@ jobs:
       with: { python-version: '3.11' }
     - run: pip install pytest pyyaml
     - name: Enable IPv6 on Docker bridges
+      # homelab runners: dind sidecar already runs with --ipv6 (homelab_k3s arc/values.yaml)
+      if: runner.environment == 'github-hosted'
       run: |
         echo '{"ipv6": true, "fixed-cidr-v6": "fd00:d0c::/64"}' | sudo tee /etc/docker/daemon.json
         sudo systemctl restart docker
