@@ -3,7 +3,7 @@ name = "task4ce-blocker"
 version = "0.1.0"
 description = "LAN device discovery and enforcement service for t@sk4ce"
 requires-python = ">=3.11"
-dependencies = ["scapy>=2.6", "zeroconf>=0.148"]
+dependencies = ["scapy>=2.6"]
 
 [build-system]
 requires = ["hatchling"]

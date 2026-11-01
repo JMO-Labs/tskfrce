@@ -1,4 +1,4 @@
-"""Passive device signals: DHCP fingerprint (scapy) and mDNS name/model (zeroconf).
+"""Passive device signals: DHCP fingerprint and mDNS name/model (both passive scapy sniffs).
 
 Best-effort: failures are logged, never raised. A signal is reported to the
 backend only when it first appears or changes for a MAC.
@@ -10,7 +10,6 @@ import logging
 import threading
 import time
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 
 from blocker.backend import Seen, report_seen
@@ -18,11 +17,6 @@ from blocker.config import Config
 
 log = logging.getLogger(__name__)
 
-MDNS_TYPES = (
-    "_device-info._tcp.local.",
-    "_companion-link._tcp.local.",
-    "_airplay._tcp.local.",
-)
 _FIELDS = ("mdns_name", "model", "dhcp_fp")
 _FRESH = 600  # s: only trust discovery entries this recent for IP -> MAC
 
@@ -56,25 +50,34 @@ def _text(v) -> str | None:
     return v or None if isinstance(v, str) or v is None else str(v)
 
 
-def mdns_from_info(server, properties, addresses) -> tuple[str | None, str | None, list[str]]:
-    """(name, model, ipv4 list) from a resolved service. Never raises."""
+def mdns_from_packet(pkt) -> tuple[str, str, str | None] | None:
+    """(sender mac, host, model) from an mDNS response whose A record matches the
+    packet's IP source, else None. Never raises."""
     try:
-        name = _text(server)
-        if name:
-            name = name.rstrip(".").removesuffix(".local") or None
-        model = None
-        for k, v in (properties or {}).items():
-            if _text(k) == "model":
-                model = _text(v)
-        ips = []
-        for a in addresses or []:
-            if isinstance(a, bytes) and len(a) == 4:
-                ips.append(".".join(str(b) for b in a))
-            elif isinstance(a, str):
-                ips.append(a)
-        return name, model, ips
+        from scapy.all import DNS, IP, Ether
+
+        if not (pkt.haslayer(Ether) and pkt.haslayer(IP) and pkt.haslayer(DNS)):
+            return None
+        dns = pkt[DNS]
+        if dns.qr != 1:
+            return None
+        src = pkt[IP].src
+        recs = [r for sec in (dns.an, dns.ar) if sec for r in sec]
+        host = model = None
+        for r in recs:
+            if r.type == 1 and _text(r.rdata) == src and host is None:
+                host = (_text(r.rrname) or "").rstrip(".").removesuffix(".local") or None
+        if host is None:
+            return None
+        for r in recs:
+            if r.type == 16:
+                for item in r.rdata if isinstance(r.rdata, list) else [r.rdata]:
+                    k, _, v = (_text(item) or "").partition("=")
+                    if k in ("model", "md") and v and (model is None or k == "model"):
+                        model = v
+        return pkt[Ether].src.lower(), host, model
     except Exception:
-        return None, None, []
+        return None
 
 
 class Signals:
@@ -136,55 +139,24 @@ class Signals:
 
     # --- mDNS ---------------------------------------------------------------
 
-    def _on_service(self, zc, type_: str, name: str) -> None:
+    def _on_mdns(self, pkt) -> None:
         try:
-            info = zc.get_service_info(type_, name, timeout=3000)
-            if info is None:
-                return
-            host, model, ips = mdns_from_info(info.server, info.properties, info.addresses)
-            for ip in ips:
-                mac = self.mac_for_ip(ip)
-                if mac:
-                    self.update(mac, mdns_name=host, model=model)
+            got = mdns_from_packet(pkt)
+            if got and self.mac_for_ip(pkt["IP"].src) == got[0]:
+                self.update(got[0], mdns_name=got[1], model=got[2])
         except Exception as e:
-            log.warning("mdns service %s failed: %s", name, e)
+            log.warning("mdns packet failed: %s", e)
 
     def run_mdns(self, stop: threading.Event) -> None:
-        zc = None
         try:
-            from zeroconf import ServiceBrowser, ServiceStateChange, Zeroconf
+            from scapy.all import sniff
 
-            pool = ThreadPoolExecutor(max_workers=2)  # bounded: an mDNS flood can't spawn threads
-            pending: set[tuple[str, str]] = set()
-
-            def resolve(zeroconf, key):
-                try:
-                    self._on_service(zeroconf, *key)
-                finally:
-                    pending.discard(key)
-
-            def handler(zeroconf, service_type, name, state_change):
-                key = (service_type, name)
-                if (
-                    state_change is ServiceStateChange.Removed
-                    or key in pending
-                    or len(pending) > 256
-                ):
-                    return
-                pending.add(key)
-                pool.submit(resolve, zeroconf, key)  # resolve off zeroconf's event loop
-
-            zc = Zeroconf()
-            browsers = [ServiceBrowser(zc, t, handlers=[handler]) for t in MDNS_TYPES]
-            stop.wait()
-            for b in browsers:
-                b.cancel()
-            pool.shutdown(wait=False, cancel_futures=True)
+            sniff(
+                iface=self.cfg.lan_iface or None,
+                filter="udp port 5353",
+                store=False,
+                prn=self._on_mdns,
+                stop_filter=lambda _p: stop.is_set(),
+            )
         except Exception as e:
-            log.warning("mdns browser stopped: %s", e)
-        finally:
-            if zc is not None:
-                try:
-                    zc.close()
-                except Exception:
-                    pass
+            log.warning("mdns sniff stopped: %s", e)
