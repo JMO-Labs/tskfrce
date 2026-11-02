@@ -53,3 +53,15 @@ export async function makeKid(api: APIRequestContext, name: string) {
   const kid = await res.json()
   return { kid, undo: () => api.delete(`/api/proxy/kids/${kid.id}`) }
 }
+
+/**
+ * Kid overlays (first-visit intro, badge celebrations) show up on their own schedule, later on
+ * slow CI VMs. Dismiss one whenever it covers the page Playwright is about to act on.
+ */
+const cheered = new WeakSet<Page>()
+export async function cheer(kp: Page) {
+  if (cheered.has(kp)) return
+  cheered.add(kp)
+  await kp.addLocatorHandler(kp.locator('.award-back'), (o) => o.getByRole('button', { name: 'Nice!' }).click())
+  await kp.addLocatorHandler(kp.locator('.k-intro-back'), (o) => o.getByRole('button', { name: 'Skip', exact: true }).click())
+}

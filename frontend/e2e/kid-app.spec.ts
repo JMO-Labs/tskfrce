@@ -1,21 +1,9 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
-import { loginUi, parentApi } from './seed'
+import { expect, test, type APIRequestContext } from '@playwright/test'
+import { cheer, loginUi, parentApi } from './seed'
 
 const BASE = process.env.E2E_BASE_URL ?? 'http://10.99.0.5:3000'
 
 test.use({ actionTimeout: 15_000 })
-
-// first-visit intro and badge celebrations (a parent approving a chore earns one) cover the page
-async function cheer(kp: Page) {
-  const gates = [kp.getByRole('button', { name: 'Nice!' }), kp.getByRole('button', { name: 'Skip', exact: true })]
-  await kp.waitForTimeout(1500)
-  for (let i = 0; i < 8; i++) {
-    const open = (await Promise.all(gates.map((g) => g.isVisible()))).indexOf(true)
-    if (open < 0) return
-    await gates[open].click()
-    await kp.waitForTimeout(600)
-  }
-}
 
 /** "HH:MM" in the family's timezone, `min` minutes from now, cut to the whole minute. */
 async function hhmmIn(api: APIRequestContext, min: number) {
