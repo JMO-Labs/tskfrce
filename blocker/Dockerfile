@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.15-slim
 
 # nftables: firewall rules. busybox: udhcpc for VLAN sites. libpcap: packet capture/injection for scapy.
 RUN apt-get update \
