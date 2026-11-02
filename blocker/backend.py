@@ -22,6 +22,22 @@ class Seen:
     ipv6: list[str]
     hostname: str | None
     vendor: str | None
+    mdns_name: str | None = None
+    model: str | None = None
+    dhcp_fp: str | None = None
+    vid: int | None = None  # tagged VLAN; None = the untagged LAN
+
+    def __post_init__(self) -> None:
+        for f in ("mdns_name", "model", "dhcp_fp"):
+            v = getattr(self, f)
+            if v is not None:
+                setattr(self, f, v[:255])
+
+    def body(self) -> dict:
+        return {k: v for k, v in asdict(self).items() if v is not None or k not in _OPTIONAL}
+
+
+_OPTIONAL = ("mdns_name", "model", "dhcp_fp", "vid")
 
 
 def _request(cfg: Config, path: str, body: dict | None = None):
@@ -41,7 +57,7 @@ def _request(cfg: Config, path: str, body: dict | None = None):
 
 def report_seen(cfg: Config, seen: Seen) -> int | None:
     try:
-        return int(_request(cfg, "/devices/seen", asdict(seen))["id"])
+        return int(_request(cfg, "/devices/seen", seen.body())["id"])
     except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
         log.warning("report_seen failed for %s: %s", seen.mac, e)
         return None
@@ -55,12 +71,35 @@ def fetch_blocked(cfg: Config) -> list[str] | None:
         return None
 
 
+def fetch_state(cfg: Config) -> dict | None:
+    """{"blocked": [...], "listen_only": bool, "covered_vlans": [int]}; None if unreachable."""
+    try:
+        raw = _request(cfg, "/state")
+        return {
+            "blocked": [str(m) for m in raw["blocked"]],
+            "listen_only": bool(raw.get("listen_only", False)),
+            "covered_vlans": [int(v) for v in raw.get("covered_vlans", [])],
+        }
+    except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
+        log.warning("fetch_state failed: %s", e)
+        return None
+
+
 def report_resisting(cfg: Config, macs: set[str]) -> bool:
     try:
         _request(cfg, "/devices/resisting", {"resisting": sorted(macs)})
         return True
     except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
         log.warning("report_resisting failed: %s", e)
+        return False
+
+
+def report_vlans(cfg: Config, vlans: list[dict]) -> bool:
+    try:
+        _request(cfg, "/vlans", {"vlans": vlans})
+        return True
+    except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
+        log.warning("report_vlans failed: %s", e)
         return False
 
 

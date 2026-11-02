@@ -1,4 +1,13 @@
-from blocker.identity import friendly_name, vendor_for
+from blocker.identity import PRIVATE_MAC, friendly_name, vendor_for
+
+
+def test_full_ieee_table_loaded():
+    assert vendor_for("00:1A:11:00:00:00") == "Google, Inc."
+
+
+def test_randomized_mac_flagged_private():
+    for mac in ("DA:A1:19:00:00:01", "02:00:00:00:00:00", "fe:ed:00:00:00:00"):
+        assert vendor_for(mac) == PRIVATE_MAC
 
 
 def test_known_prefix_returns_vendor():
@@ -16,7 +25,7 @@ def test_vendor_with_comma():
 
 
 def test_unknown_returns_none():
-    assert vendor_for("00:00:00:00:00:00") is None
+    assert vendor_for("0C:00:00:00:00:00") is None  # unassigned prefix
     assert vendor_for("zz") is None
 
 

@@ -117,7 +117,7 @@ In **Kids & chores → Badges** you see who has what (**All badges**), what was 
 
 ![The Devices page with one device open](img/devices.jpg)
 
-**Devices** lists every device the box has seen, grouped by owner: **Who's this?** (new devices), one group for each kid, **Shared**, **Guests** and **No owner**. New devices stay paused until you give them an owner. You can change that in **Settings → Family** (**Block new devices until I assign them**).
+**Devices** lists every device the box has seen, grouped by owner: **Who's this?** (new devices), one group for each kid, **Shared**, **Guests** and **No owner**. New devices stay online until you give them an owner. To pause them until you do, turn on **Block new devices until I assign them** in **Settings → Family**.
 
 Tap a device to open it:
 

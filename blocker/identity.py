@@ -16,10 +16,17 @@ def _load() -> dict[str, str]:
 
 
 _OUI = _load()
+PRIVATE_MAC = "Private MAC"
 
 
+# ponytail: MA-L (24-bit) prefixes only; MA-M/MA-S sub-blocks resolve to the parent block's owner.
 def vendor_for(mac: str) -> str | None:
     hexes = re.sub(r"[^0-9A-Fa-f]", "", mac).upper()
+    if len(hexes) < 6:
+        return None
+    # Locally-administered bit = randomized MAC (iOS/Android/Windows privacy); no vendor exists.
+    if int(hexes[:2], 16) & 0x02:
+        return PRIVATE_MAC
     return _OUI.get(hexes[:6])
 
 

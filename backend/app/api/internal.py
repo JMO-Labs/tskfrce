@@ -15,13 +15,14 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db
 from app.core.config import settings
 from app.lock import activity
+from app.lock.hints import apply_hint
 from app.lock.loop import trigger
 from app.lock.rules import block_reason
 from app.lock.schedule import local_now
 from app.lock.state import Prefetch, desired_blocked, device_facts
 from app.models.device_activity import DeviceEvent
 from app.models.family import get_family
-from app.models.lock import Device
+from app.models.lock import Device, Vlan
 from app.services import inbox
 
 MAC_RE = re.compile(r"^([0-9a-f]{2}:){5}[0-9a-f]{2}$")
@@ -47,6 +48,10 @@ class SeenReport(BaseModel):
     ipv6: list[str] = Field(default_factory=list, max_length=8)
     hostname: str | None = Field(default=None, max_length=255)
     vendor: str | None = Field(default=None, max_length=255)
+    mdns_name: str | None = Field(default=None, max_length=255)
+    model: str | None = Field(default=None, max_length=255)
+    dhcp_fp: str | None = Field(default=None, max_length=255)
+    vid: int | None = Field(default=None, ge=1, le=4094)  # null = untagged LAN
 
     @field_validator("mac")
     @classmethod
@@ -69,6 +74,23 @@ class SeenReport(BaseModel):
         for a in v:
             ipaddress.IPv6Address(a)
         return v
+
+
+class VlanItem(BaseModel):
+    vid: int = Field(ge=1, le=4094)
+    macs: int = Field(default=0, ge=0, le=100000)
+    subnet: str | None = None
+
+    @field_validator("subnet")
+    @classmethod
+    def _subnet(cls, v: str | None) -> str | None:
+        if v is not None:
+            v = str(ipaddress.ip_network(v, strict=False))
+        return v
+
+
+class VlansReport(BaseModel):
+    vlans: list[VlanItem] = Field(max_length=4094)
 
 
 class ResistingReport(BaseModel):
@@ -100,6 +122,10 @@ def _apply(dev: Device, body: SeenReport, now: datetime) -> None:
     dev.ipv6 = body.ipv6
     dev.hostname = body.hostname or dev.hostname
     dev.vendor = body.vendor or dev.vendor
+    if "vid" in body.model_fields_set:  # absent key keeps the old value; explicit null = untagged
+        dev.vlan_id = body.vid
+    for k in ("mdns_name", "model", "dhcp_fp"):
+        setattr(dev, k, getattr(body, k) or getattr(dev, k))
 
 
 @router.post("/devices/seen", dependencies=[Depends(require_token)])
@@ -107,6 +133,7 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
     now = datetime.now(UTC).replace(tzinfo=None)
     dev = db.query(Device).filter(Device.mac == body.mac).first()
     new = dev is None
+    hinted = False
     if new:
         dev = Device(
             mac=body.mac,
@@ -118,13 +145,14 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
         db.add(dev)
         try:
             db.flush()
-            inbox.notify_parents(
-                db,
-                "new_device",
-                f"New device: {dev.name}",
-                "Say whose it is so it follows their rules.",
-                device_id=dev.id,
-            )
+            if not apply_hint(db, dev):  # a hint sends its own notice
+                inbox.notify_parents(
+                    db,
+                    "new_device",
+                    f"New device: {dev.name}",
+                    "Say whose it is so it follows their rules.",
+                    device_id=dev.id,
+                )
             db.commit()
         except IntegrityError:  # concurrent first report for the same MAC
             db.rollback()
@@ -134,13 +162,18 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
         trigger()
     else:
         old_ip = dev.ip
+        before = (dev.mdns_name, dev.model, dev.dhcp_fp)
         _apply(dev, body, now)
         if old_ip is not None and body.ip is not None and old_ip != body.ip:
             activity.log(db, dev.id, "address_change", now, detail=f"{old_ip} → {body.ip}")
+        changed = before != (dev.mdns_name, dev.model, dev.dhcp_fp)
+        hinted = changed and dev.status == "unassigned" and apply_hint(db, dev)
     if new and dev.hostname:
         _note_new_address(db, dev, now)
     activity.sample(db, dev, now)
     db.commit()
+    if hinted:
+        trigger()
     return {"id": dev.id}
 
 
@@ -172,7 +205,26 @@ def _note_new_address(db: Session, new: Device, now: datetime) -> None:
 @router.get("/state", dependencies=[Depends(require_token)])
 def state(db: Session = Depends(get_db)) -> dict:
     _touch(db)
-    return {"blocked": desired_blocked(db, datetime.now(UTC))}
+    fam = get_family(db)
+    covered = [v for (v,) in db.query(Vlan.vid).filter(Vlan.covered.is_(True)).order_by(Vlan.vid)]
+    blocked = [] if fam.listen_only else desired_blocked(db, datetime.now(UTC))
+    return {"blocked": blocked, "listen_only": fam.listen_only, "covered_vlans": covered}
+
+
+@router.post("/vlans", dependencies=[Depends(require_token)])
+def vlans_report(body: VlansReport, db: Session = Depends(get_db)) -> dict:
+    now = datetime.now(UTC).replace(tzinfo=None)
+    items = {i.vid: i for i in body.vlans}  # a repeated vid: last one wins
+    rows = {v.vid: v for v in db.query(Vlan).filter(Vlan.vid.in_(items))}
+    for vid, i in items.items():
+        row = rows.get(vid)
+        if row is None:
+            row = Vlan(vid=vid, first_seen=now)
+            db.add(row)
+        row.device_count, row.last_seen = i.macs, now
+        row.subnet = i.subnet or row.subnet
+    db.commit()
+    return {"count": len(items)}
 
 
 @router.post("/devices/resisting", dependencies=[Depends(require_token)])

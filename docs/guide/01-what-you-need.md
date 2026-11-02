@@ -8,7 +8,7 @@ This is a small computer that stays on all the time. It runs t@sk4ce and pauses 
 
 Good choices:
 
-- **A Raspberry Pi 4 or 5** (best). Small, cheap and uses very little power. Get one with 4 GB of memory or more (the first install builds the app on the box, and 2 GB can run out), a power supply, a memory card (32 GB or more) and a network cable.
+- **A Raspberry Pi 3B+, 4 or 5** (best). Small, cheap and uses very little power. 1 GB of memory is enough; 2 GB gives more room. Get a power supply, a network cable, and a memory card (32 GB or more) or, better, a small USB SSD, which lasts longer than a memory card.
 - **An old computer that runs Linux** and can stay on all day.
 
 The box must run **Linux** to pause the internet. A Windows PC or a Mac can show you the app, but it cannot pause anything.

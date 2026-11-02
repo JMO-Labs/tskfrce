@@ -21,6 +21,7 @@ class Config:
     reconcile_interval: float = 30
     resist_interval: float = 15
     portal_redirect_url: str = "http://task4ce.local/kid"
+    mirror_iface: str = ""  # optional SPAN port: listen-only VLAN/device discovery
 
     @classmethod
     def from_env(cls, environ: Mapping) -> Config:
@@ -40,6 +41,7 @@ class Config:
             reconcile_interval=float(environ.get("RECONCILE_INTERVAL", 30)),
             resist_interval=float(environ.get("RESIST_INTERVAL", 15)),
             portal_redirect_url=environ.get("PORTAL_REDIRECT_URL", "http://task4ce.local/kid"),
+            mirror_iface=environ.get("MIRROR_IFACE", ""),
         )
 
 

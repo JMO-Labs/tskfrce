@@ -30,13 +30,14 @@ class FamilySettings(Base):
     name = Column(String(100), nullable=False, default="My Family")
     timezone = Column(String(50), nullable=False, default="UTC")
     reset_time = Column(String(5), nullable=False, default="06:00")
-    new_devices_blocked = Column(Boolean, nullable=False, default=True)
+    new_devices_blocked = Column(Boolean, nullable=False, default=False)  # learning mode: fail open
     points_unlock_early = Column(Boolean, nullable=False, default=False)
     early_bonus_cap = Column(Integer, nullable=False, default=5, server_default="5")
     screen_time_price = Column(Integer, nullable=False, default=20, server_default="20")
     gifs_enabled = Column(Boolean, nullable=False, default=False, server_default="0")
     giphy_api_key = Column(String(100), nullable=True)  # write-only through the API
     gif_rating = Column(String(2), nullable=False, default="g", server_default="g")
+    listen_only = Column(Boolean, nullable=False, default=False, server_default="0")
     accent = Column(String(12), nullable=False, default="neon", server_default="neon")
     chores_lock = Column(Boolean, nullable=False, default=True, server_default="1")
     last_reset_date = Column(Date, nullable=True)
