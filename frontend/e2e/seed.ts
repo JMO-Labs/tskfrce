@@ -59,9 +59,11 @@ export async function makeKid(api: APIRequestContext, name: string) {
  * slow CI VMs. Dismiss one whenever it covers the page Playwright is about to act on.
  */
 const cheered = new WeakSet<Page>()
+// celebrations queue: Nice! swaps in the next card, so don't wait for the overlay to go; re-run on retry
+const again = { noWaitAfter: true }
 export async function cheer(kp: Page) {
   if (cheered.has(kp)) return
   cheered.add(kp)
-  await kp.addLocatorHandler(kp.locator('.award-back'), (o) => o.getByRole('button', { name: 'Nice!' }).click())
-  await kp.addLocatorHandler(kp.locator('.k-intro-back'), (o) => o.getByRole('button', { name: 'Skip', exact: true }).click())
+  await kp.addLocatorHandler(kp.locator('.award-back'), (o) => o.getByRole('button', { name: 'Nice!' }).click(), again)
+  await kp.addLocatorHandler(kp.locator('.k-intro-back'), (o) => o.getByRole('button', { name: 'Skip', exact: true }).click(), again)
 }
