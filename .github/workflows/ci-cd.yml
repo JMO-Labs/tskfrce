@@ -17,7 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v7
       with:
         python-version: '3.11'
     - name: Set up Node.js
@@ -43,7 +43,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v7
       with:
         python-version: '3.11'
     - name: Install dependencies
@@ -68,7 +68,7 @@ jobs:
     timeout-minutes: 40
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/setup-python@v4
+    - uses: actions/setup-python@v7
       with: { python-version: '3.11' }
     - run: pip install pytest pyyaml
     - name: Enable IPv6 on Docker bridges
