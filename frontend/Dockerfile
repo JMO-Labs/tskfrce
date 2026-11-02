@@ -1,5 +1,5 @@
 # ---- Deps: every package, installed on the build machine's own CPU ----
-FROM --platform=$BUILDPLATFORM node:24-alpine AS deps
+FROM --platform=$BUILDPLATFORM node:26-alpine AS deps
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY package*.json ./
@@ -20,7 +20,7 @@ ENV NODE_ENV=production
 RUN npm run build
 
 # ---- Runtime (default target, used by docker-compose.prod.yml and CI images) ----
-FROM node:24-alpine AS runtime
+FROM node:26-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 HOSTNAME=0.0.0.0 PORT=3000
 COPY --from=build --chown=node:node /app/.next/standalone ./
