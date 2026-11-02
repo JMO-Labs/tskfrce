@@ -63,6 +63,7 @@ test.describe('every screen', () => {
   }
 
   test('parent routes', async ({ page }, info) => {
+    test.slow() // 12 screens, each compiled on first visit; slow on CI VMs
     await loginUi(page)
     errors = [] // the login page itself is covered above
     for (const route of PARENT_ROUTES) {
