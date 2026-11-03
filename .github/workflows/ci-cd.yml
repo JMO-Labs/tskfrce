@@ -104,7 +104,11 @@ jobs:
   security-scan:
     runs-on: homelab
     needs: [test, lint]
-    
+    permissions:
+      contents: read
+      actions: read
+      security-events: write  # upload-sarif; org default token is read-only
+
     steps:
     - uses: actions/checkout@v7
     
