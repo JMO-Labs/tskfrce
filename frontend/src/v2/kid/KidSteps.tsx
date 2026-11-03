@@ -1,4 +1,5 @@
 import { Icon } from '@/v2/parent/Icon'
+import { useNow } from '../today/useClock'
 import { useTickSubtask } from '../hooks/useKid'
 import type { KidChore } from '../types'
 import { nextStep, stepBadge, stepChip, stepHint } from './kidChips'
@@ -18,7 +19,7 @@ export function KidSteps({
   const tick = useTickSubtask()
   const steps = c.subtasks ?? []
   const next = nextStep(steps)
-  const now = Date.now()
+  const now = useNow()
   return (
     <div className="k-steps" data-size={size}>
       {steps.map((s, i) => {

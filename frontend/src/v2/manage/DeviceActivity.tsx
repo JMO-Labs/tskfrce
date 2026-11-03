@@ -7,6 +7,7 @@ import type { Device, DeviceActivity as Activity, DeviceEvent, EventKind, Kid } 
 import { eventText, whenLabel } from './activityText'
 import { nameOf } from './choreMeta'
 import { LockHistory } from './LockHistory'
+import { useNow } from '../today/useClock'
 import { toastFail, toastOk } from '../notify'
 
 // mirrors backend FILTERS (app/models/device_activity.py)
@@ -47,9 +48,9 @@ export function DeviceActivity({ device, kids, timeZone }: Props) {
   const markOk = useMarkOk()
   const merge = useMergeDevice()
   const lockKid = useLockKid()
+  const now = useNow()
   if (isLoading || !data) return <Skeleton rows={3} />
 
-  const now = Date.now()
   const owner = kids.find((k) => k.id === device.owner_ids[0])
   const kidOf = (e: DeviceEvent) =>
     e.kind === 'sign_in' ? (e.kid_id ? { id: e.kid_id, name: e.kid_name ?? kids.find((k) => k.id === e.kid_id)?.username ?? 'kid' } : null)

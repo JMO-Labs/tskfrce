@@ -150,16 +150,60 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, [updateAuthState]);
 
   /**
+   * @description Attempt to refresh tokens
+   */
+  const attemptTokenRefresh = useCallback(async () => {
+    try {
+      const refreshToken = tokenManager.getRefreshToken();
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      const refreshResult = await tokenManager.refreshTokens();
+      
+      if (refreshResult.success && refreshResult.tokens) {
+        // Get user info and sync systems
+        authService.setAccessToken(refreshResult.tokens.access_token);
+        const currentUser = await authService.getCurrentUser();
+        
+        const user: User = {
+          id: currentUser.user_id.toString(),
+          username: currentUser.username,
+          email: currentUser.email,
+          role: toRole(currentUser.role, currentUser.is_superuser),
+        };
+        
+        await syncAuthSystems(user);
+        updateAuthState({
+          isLoading: false,
+          isInitialized: true,
+        });
+      } else if (refreshResult.shouldLogout === false) {
+        // box unreachable: keep the tokens; the route guard shows "Can't reach your home box"
+        updateAuthState({ isLoading: false, isInitialized: true });
+      } else {
+        throw new Error('Token refresh failed');
+      }
+    } catch (refreshError) {
+      console.error('Token refresh failed:', refreshError);
+      await syncAuthSystems();
+      updateAuthState({ 
+        error: 'Session expired. Please log in again.',
+        isLoading: false,
+        isInitialized: true,
+      });
+    }
+  }, [syncAuthSystems, updateAuthState]);
+
+  /**
    * @description Initialize authentication from stored state
    */
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const initializeAuth = useCallback(async () => {
     if (initializationRef.current) return;
     initializationRef.current = true;
 
     try {
-      updateAuthState({ isLoading: true, error: null });
-
+      // state already starts as isLoading: true, error: null
       // Initialize TokenManager
       tokenManager.initialize();
 
@@ -219,54 +263,7 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
         isInitialized: true,
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [syncAuthSystems, updateAuthState]);
-
-  /**
-   * @description Attempt to refresh tokens
-   */
-  const attemptTokenRefresh = useCallback(async () => {
-    try {
-      const refreshToken = tokenManager.getRefreshToken();
-      if (!refreshToken) {
-        throw new Error('No refresh token available');
-      }
-
-      const refreshResult = await tokenManager.refreshTokens();
-      
-      if (refreshResult.success && refreshResult.tokens) {
-        // Get user info and sync systems
-        authService.setAccessToken(refreshResult.tokens.access_token);
-        const currentUser = await authService.getCurrentUser();
-        
-        const user: User = {
-          id: currentUser.user_id.toString(),
-          username: currentUser.username,
-          email: currentUser.email,
-          role: toRole(currentUser.role, currentUser.is_superuser),
-        };
-        
-        await syncAuthSystems(user);
-        updateAuthState({
-          isLoading: false,
-          isInitialized: true,
-        });
-      } else if (refreshResult.shouldLogout === false) {
-        // box unreachable: keep the tokens; the route guard shows "Can't reach your home box"
-        updateAuthState({ isLoading: false, isInitialized: true });
-      } else {
-        throw new Error('Token refresh failed');
-      }
-    } catch (refreshError) {
-      console.error('Token refresh failed:', refreshError);
-      await syncAuthSystems();
-      updateAuthState({ 
-        error: 'Session expired. Please log in again.',
-        isLoading: false,
-        isInitialized: true,
-      });
-    }
-  }, [syncAuthSystems, updateAuthState]);
+  }, [syncAuthSystems, updateAuthState, attemptTokenRefresh]);
 
   /**
    * @description Login function
@@ -393,7 +390,7 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   // Initialize auth on mount
   useEffect(() => {
-    initializeAuth();
+    queueMicrotask(initializeAuth); // async init: its state updates must not run synchronously in the effect
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 

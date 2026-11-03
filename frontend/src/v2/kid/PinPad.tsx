@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Icon } from '@/v2/parent/Icon'
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫']
@@ -14,12 +14,15 @@ export function PinPad({
   busy?: boolean
 }) {
   const [pin, setPin] = useState('')
-  const submit = useRef(onSubmit)
-  submit.current = onSubmit
 
   const press = (k: string) => {
     if (busy) return
-    setPin((p) => (k === '⌫' ? p.slice(0, -1) : p.length < 4 ? p + k : p))
+    const next = k === '⌫' ? pin.slice(0, -1) : pin.length < 4 ? pin + k : pin
+    if (next.length === 4) {
+      // full: submit, and wipe so a wrong PIN can be retyped
+      onSubmit(next)
+      setPin('')
+    } else setPin(next)
   }
   // keyboard support
   useEffect(() => {
@@ -31,13 +34,6 @@ export function PinPad({
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)
   })
-  // submit when full; wipe so a wrong PIN can be retyped
-  useEffect(() => {
-    if (pin.length === 4) {
-      submit.current(pin)
-      setPin('')
-    }
-  }, [pin])
 
   return (
     <div role="group" aria-label="PIN" className="k-pin">
