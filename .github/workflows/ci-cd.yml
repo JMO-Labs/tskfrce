@@ -149,7 +149,7 @@ jobs:
     - uses: actions/checkout@v7
 
     # arm64 for Raspberry Pi; frontend compiles natively, python images use QEMU
-    - uses: docker/setup-qemu-action@v3
+    - uses: docker/setup-qemu-action@v4
     - uses: docker/setup-buildx-action@v3
 
     - name: Log in to Container Registry
