@@ -26,7 +26,7 @@ jobs:
       with:
         python-version: '3.11'
     - name: Set up Node.js
-      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with:
         node-version: '18'
         cache: 'npm'
@@ -88,7 +88,7 @@ jobs:
         sudo systemctl restart docker
     - name: Lab integration tests
       run: cd blocker && RUN_INTEGRATION=1 python -m pytest tests/lab -v
-    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
       with: { node-version: '18', cache: 'npm', cache-dependency-path: frontend/package-lock.json }
     # the e2e container sits on the offline lab network; it uses these node_modules
     - run: cd frontend && npm ci
@@ -130,7 +130,7 @@ jobs:
         output: 'trivy-results.sarif'
     
     - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@a3d1b77a1ba1550fbb5c74db1dc3a11f4a481126 # v3
+      uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
       if: always()
       with:
         sarif_file: 'trivy-results.sarif'
@@ -170,7 +170,7 @@ jobs:
 
     - name: Image tags
       id: meta
-      uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+      uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}
         tags: |
@@ -179,7 +179,7 @@ jobs:
           type=semver,pattern={{version}}
 
     - name: Build and push ${{ matrix.service }}
-      uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+      uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
       with:
         context: ./${{ matrix.service }}
         platforms: linux/amd64,linux/arm64
