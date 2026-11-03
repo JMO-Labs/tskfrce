@@ -1,27 +1,24 @@
 import { ReactNode } from 'react';
-// Simple Icons are imported individually to avoid bloating the bundle
-import { siApple, siSamsung, siGoogle, siNintendoswitch, siSony, siLg, siAmazon } from 'simple-icons';
+// Simple Icons are imported individually to avoid bloating the bundle.
+// Amazon and Nintendo were removed upstream (v16, trademark requests), so those vendors get no logo.
+import { siApple, siSamsung, siGoogle, siSony, siLg } from 'simple-icons';
 
-export type MakerKey = 'apple' | 'samsung' | 'google' | 'nintendoswitch' | 'sony' | 'lg' | 'amazon';
+export type MakerKey = 'apple' | 'samsung' | 'google' | 'sony' | 'lg';
 
 const MAKER_MAP: Record<string, MakerKey> = {
   apple: 'apple',
   samsung: 'samsung',
   google: 'google',
-  nintendo: 'nintendoswitch',
   sony: 'sony',
   lg: 'lg',
-  amazon: 'amazon',
 };
 
 const ICONS: Record<MakerKey, { title: string; path: string }> = {
   apple: siApple,
   samsung: siSamsung,
   google: siGoogle,
-  nintendoswitch: siNintendoswitch,
   sony: siSony,
   lg: siLg,
-  amazon: siAmazon,
 };
 
 /**
