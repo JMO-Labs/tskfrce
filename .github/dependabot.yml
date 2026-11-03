@@ -1,6 +1,9 @@
 # Dependency updates. Minor/patch bumps are grouped (one PR per ecosystem per week)
 # because every PR runs the ~17 min lab job; .github/workflows/dependabot-automerge.yml
-# auto-merges those groups once required checks pass. Majors get their own PR for review.
+# auto-merges those groups once required checks pass. Majors get their own PR for review,
+# except packages that must move together (grouped below across all update types).
+# Security updates are unaffected: they open immediately and ungrouped (groups here
+# only apply to version updates).
 version: 2
 
 updates:
@@ -9,6 +12,11 @@ updates:
     schedule: { interval: weekly, day: monday }
     open-pull-requests-limit: 5
     groups:
+      # Coupled packages: one PR even for majors (a lone @mantine/hooks major can't install).
+      mantine: { patterns: ["@mantine/*"] }
+      next: { patterns: ["next", "eslint-config-next", "@next/*"] }
+      react: { patterns: ["react", "react-dom", "@types/react", "@types/react-dom"] }
+      testing-library: { patterns: ["@testing-library/*"] }
       minor-patch: { update-types: [minor, patch] }
     ignore:
       # eslint-config-next 15.x peers eslint <=9 (v16 needs Next 16); eslint-plugin-react
@@ -38,4 +46,5 @@ updates:
     directory: /
     schedule: { interval: weekly, day: monday }
     groups:
-      minor-patch: { update-types: [minor, patch] }
+      # All action bumps (majors too) in one weekly PR; pins are SHAs, so review the diff.
+      actions: { patterns: ["*"] }
