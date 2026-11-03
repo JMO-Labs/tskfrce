@@ -61,6 +61,7 @@ services:
       NODE_ENV: development
       BACKEND_INTERNAL_URL: http://10.99.0.3:8000
       NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_DEV_ORIGINS: 10.99.0.5
       NODE_OPTIONS: --max-old-space-size=2048
     networks:
       lab: {ipv4_address: 10.99.0.5, ipv6_address: "fd00:99::5"}

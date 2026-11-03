@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { KidStrip } from '@/v2/today/KidStrip'
 import type { TodayKid } from '@/v2/types'
 
-jest.mock('next/link', () => ({ children, href, ...p }: any) => <a href={href} {...p}>{children}</a>)
+jest.mock('next/link', () => {
+  const Link = ({ children, href, ...p }: any) => <a href={href} {...p}>{children}</a>
+  return Link
+})
 
 const k = (id: number, name: string, extra: Partial<TodayKid>): TodayKid =>
   ({ id, name, avatar: null, online_all: false, chores: [], devices: [], ...extra }) as TodayKid
