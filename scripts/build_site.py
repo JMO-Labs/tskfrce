@@ -98,12 +98,12 @@ def rewrite_links(html, source_file):
     # Links to other repo files: docs/*.md, LICENSE, etc -> GitHub URLs
     html = re.sub(
         r'href="\.\./((?:routers|blocker)\.md)"',
-        r'href="https://github.com/sgtslaughta/tskfrce/blob/main/docs/\1"',
+        r'href="https://github.com/JMO-Labs/tskfrce/blob/main/docs/\1"',
         html,
     )
     html = re.sub(
         r'href="\.\./\.\./(LICENSE)"',
-        r'href="https://github.com/sgtslaughta/tskfrce/blob/main/\1"',
+        r'href="https://github.com/JMO-Labs/tskfrce/blob/main/\1"',
         html,
     )
 

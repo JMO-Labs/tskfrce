@@ -1,6 +1,6 @@
 #!/bin/sh
 # t@sk4ce installer for a home box (Raspberry Pi OS, Debian, Ubuntu; 64-bit Intel/AMD or ARM).
-#   curl -fsSL https://sgtslaughta.github.io/tskfrce/install.sh | sh
+#   curl -fsSL https://jmo-labs.github.io/tskfrce/install.sh | sh
 # Run it again any time to update. Your settings and data are kept.
 #
 # Optional settings (environment variables):
@@ -19,7 +19,7 @@ DIR="${TASK4CE_DIR:-$HOME/task4ce}"
 REF="${TASK4CE_REF:-main}"
 PORT="${TASK4CE_PORT:-3000}"
 API_PORT="${TASK4CE_API_PORT:-8000}"
-REPO="sgtslaughta/tskfrce"
+REPO="JMO-Labs/tskfrce"
 SUDO=""
 
 say() { printf '%s\n' "$*"; }

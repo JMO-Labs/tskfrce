@@ -10,7 +10,7 @@ export function StepRemote() {
         <li>On your phone, open the home box&apos;s Tailscale address in your browser.</li>
       </ol>
       <p style={{ marginTop: 10 }}>
-        Full steps are in <a href="https://github.com/sgtslaughta/tskfrce/blob/main/docs/remote-access.md" target="_blank" rel="noreferrer">docs/remote-access.md</a>.
+        Full steps are in <a href="https://github.com/JMO-Labs/tskfrce/blob/main/docs/remote-access.md" target="_blank" rel="noreferrer">docs/remote-access.md</a>.
       </p>
     </div>
   )

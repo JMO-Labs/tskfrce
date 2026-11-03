@@ -1,6 +1,6 @@
 #!/bin/sh
 # t@sk4ce one-paste box prep for a fresh Ubuntu/Debian box (x86_64 or arm64, incl. Raspberry Pi).
-#   curl -fsSL https://raw.githubusercontent.com/sgtslaughta/tskfrce/main/scripts/prep-box.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/JMO-Labs/tskfrce/main/scripts/prep-box.sh | sh
 # Run as your normal user (not root); it asks for your password once for sudo.
 # Updates the OS, adds tools, swap (small RAM), SSH, auto security updates, Docker,
 # then runs install.sh. Safe to run again.
@@ -60,7 +60,7 @@ sudo docker compose version >/dev/null 2>&1 || die "Docker compose plugin is mis
 sudo usermod -aG docker "$(id -un)"
 
 say "Installing t@sk4ce ($REF)"
-curl -fsSL "https://raw.githubusercontent.com/sgtslaughta/tskfrce/$REF/install.sh" |
+curl -fsSL "https://raw.githubusercontent.com/JMO-Labs/tskfrce/$REF/install.sh" |
   TASK4CE_REF="$REF" TASK4CE_YES=1 sh
 
 say "Done. Log out and back in once so 'docker' works without sudo."

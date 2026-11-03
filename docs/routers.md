@@ -12,4 +12,4 @@ The home box pauses a device by stepping in between it and your router. Some rou
 
 ## Report your router
 
-If you tried "Test block" and your router isn't on this list, or it's listed but doesn't match what you see, [open a router report](https://github.com/sgtslaughta/tskfrce/issues/new?labels=router). Include your router's make and model, and what "Test block" said.
+If you tried "Test block" and your router isn't on this list, or it's listed but doesn't match what you see, [open a router report](https://github.com/JMO-Labs/tskfrce/issues/new?labels=router). Include your router's make and model, and what "Test block" said.
