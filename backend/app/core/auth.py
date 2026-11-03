@@ -8,13 +8,14 @@ and authorization utilities.
 import secrets
 from datetime import datetime, timedelta
 
+import bcrypt
 import jwt
-from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.models.user import User
+from app.schemas.password import BCRYPT_MAX_BYTES
 from app.services.user_service import UserService
 
 logger = get_logger(__name__)
@@ -26,8 +27,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 INVITE_TTL = timedelta(hours=24)
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# bcrypt only uses the first 72 bytes. Hashing rejects longer input (API schemas
+# validate first); verifying truncates so legacy hashes made under silent truncation still work.
 
 
 class AuthService:
@@ -49,7 +50,12 @@ class AuthService:
         Returns:
             True if password matches, False otherwise
         """
-        return pwd_context.verify(plain_password, hashed_password)
+        try:
+            return bcrypt.checkpw(
+                plain_password.encode()[:BCRYPT_MAX_BYTES], hashed_password.encode()
+            )
+        except ValueError:  # malformed stored hash
+            return False
 
     def get_password_hash(self, password: str) -> str:
         """
@@ -61,7 +67,10 @@ class AuthService:
         Returns:
             Hashed password
         """
-        return pwd_context.hash(password)
+        raw = password.encode()
+        if len(raw) > BCRYPT_MAX_BYTES:
+            raise ValueError(f"Password must be at most {BCRYPT_MAX_BYTES} bytes.")
+        return bcrypt.hashpw(raw, bcrypt.gensalt()).decode()
 
     def authenticate_user(self, username: str, password: str) -> User | None:
         """

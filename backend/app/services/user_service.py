@@ -34,10 +34,10 @@ class UserService:
             Created user instance
         """
         # Import here to avoid circular import
-        from app.core.auth import pwd_context
+        from app.core.auth import AuthService
 
         # Hash the password
-        hashed_password = pwd_context.hash(user_data.password)
+        hashed_password = AuthService(self.db).get_password_hash(user_data.password)
 
         user = User(
             username=user_data.username,
@@ -175,7 +175,7 @@ class UserService:
             User instance if authenticated, None otherwise
         """
         # Import here to avoid circular import
-        from app.core.auth import pwd_context
+        from app.core.auth import AuthService
 
         # Try to find user by username or email
         user = self.get_user_by_username(username)
@@ -186,7 +186,7 @@ class UserService:
             return None
 
         # Verify password
-        if not pwd_context.verify(password, user.hashed_password):
+        if not AuthService(self.db).verify_password(password, user.hashed_password):
             return None
 
         if not user.is_active:

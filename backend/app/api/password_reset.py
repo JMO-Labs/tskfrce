@@ -12,6 +12,7 @@ from app.core.ratelimit import limit
 from app.models.family import FamilySettings
 from app.models.user import User, UserRole
 from app.schemas.lock import utc_z
+from app.schemas.password import Password
 from app.services.password_reset import EXPIRED, create_reset, redeem_reset, reset_valid
 
 router = APIRouter(tags=["password-reset"])
@@ -19,7 +20,7 @@ router = APIRouter(tags=["password-reset"])
 
 class ResetIn(BaseModel):
     token: str = Field(..., min_length=1, max_length=200)
-    password: str = Field(..., min_length=8)
+    password: Password
 
 
 def reset_url(request: Request, db: Session, token: str) -> str:
