@@ -7,6 +7,11 @@ on:
   pull_request:
     branches: [ main ]
 
+# One run per PR/branch: a new push to a PR cancels its stale run. main/tags never cancel.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -66,6 +71,10 @@ jobs:
     runs-on: homelab
     needs: [lint, test]
     timeout-minutes: 40
+    # One lab at a time repo-wide (heavy, ~17 min); others wait in order without holding a runner.
+    concurrency:
+      group: lab-${{ github.repository }}
+      queue: max
     steps:
     - uses: actions/checkout@v7
     - uses: actions/setup-python@v7
