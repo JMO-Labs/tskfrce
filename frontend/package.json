@@ -27,7 +27,7 @@
     "autoprefixer": "^10.6.2",
     "axios": "^1.21.0",
     "dayjs": "^1.11.18",
-    "http-proxy-middleware": "^3.0.5",
+    "http-proxy-middleware": "^4.2.1",
     "material-symbols": "^0.48.2",
     "next": "^15.5.28",
     "postcss": "^8.5.32",
