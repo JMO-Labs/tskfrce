@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useResetState } from '@/v2/hooks/useResetState'
 import { useQueryClient } from '@tanstack/react-query'
 import { Icon } from './Icon'
 import { useOnline } from '../hooks/useOnline'
@@ -37,16 +38,16 @@ export function Freshness() {
   const qc = useQueryClient()
   const { updating, since, failed } = useFreshness()
   const online = useOnline()
-  const [slow, setSlow] = useState(false)
+  const [slow, setSlow] = useResetState(false, updating) // back to false whenever updating flips
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
-    if (!updating) return setSlow(false)
+    if (!updating) return
     const t = setTimeout(() => {
       setNow(Date.now())
       setSlow(true)
     }, SHOW_AFTER_MS)
     return () => clearTimeout(t)
-  }, [updating])
+  }, [updating, setSlow])
 
   if (!online) return null // the offline banner already says it
   if (failed)

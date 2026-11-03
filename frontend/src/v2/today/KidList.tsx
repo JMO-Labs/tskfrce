@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useOnChange } from '@/v2/hooks/useOnChange'
 import { useRouter } from 'next/router'
 import { Tabs } from '@mantine/core'
 import { useToday } from '../hooks/useToday'
@@ -22,9 +23,7 @@ export function KidList({ onSelectKid, selectedKid }: { onSelectKid: (kid: Today
   const { data } = useToday()
   const [tab, setTab] = useState<string | null>('today')
   const want = useRouter().query.tab // ?tab=needs from a notification
-  useEffect(() => {
-    if (want === 'needs') setTab('needs')
-  }, [want])
+  useOnChange(want, (w) => w === 'needs' && setTab('needs'))
   const needsYouCount = (data?.needs_you?.length ?? 0)
 
   return (

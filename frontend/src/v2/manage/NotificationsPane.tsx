@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useResetState } from '@/v2/hooks/useResetState'
 import { Switch, TextInput } from '@mantine/core'
 import { TimeInput } from '@mantine/dates'
 import { useNotifySettings, usePatchNotifySettings, usePlaces, type NotifySettings, type SettingsPatch } from '@/v2/hooks/useNotify'
@@ -13,8 +14,7 @@ const QUIET = { quiet_start: '21:30', quiet_end: '07:00' }
 
 /** Saves a text field when it loses focus, if it changed. */
 function useBlurField(saved: string, save: (v: string) => unknown) {
-  const [v, setV] = useState(saved)
-  useEffect(() => setV(saved), [saved])
+  const [v, setV] = useResetState(saved)
   return { value: v, onChange: (e: React.ChangeEvent<HTMLInputElement>) => setV(e.currentTarget.value), onBlur: () => v !== saved && void Promise.resolve(save(v)).then((ok) => ok === false && setV(saved)) }
 }
 

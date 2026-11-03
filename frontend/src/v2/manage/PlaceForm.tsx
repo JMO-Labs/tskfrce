@@ -17,12 +17,14 @@ export function PlaceForm({ opened, onClose, place }: Props) {
   const patch = usePatchPlace()
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
-  useEffect(() => {
+  const [wasOpened, setWasOpened] = useState(opened)
+  if (opened !== wasOpened) {
+    setWasOpened(opened)
     if (opened) {
       setName('')
       setUrl('')
     }
-  }, [opened])
+  }
   const busy = add.isPending || patch.isPending
   const ready = url.trim() !== '' && (place !== undefined || name.trim() !== '')
   const done = () => {

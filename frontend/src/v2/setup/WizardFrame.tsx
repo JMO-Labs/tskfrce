@@ -38,9 +38,7 @@ export function WizardFrame({
   useLook('parent')
   const [maxStepReached, setMaxStepReached] = useState(step)
 
-  useEffect(() => {
-    if (step > maxStepReached) setMaxStepReached(step)
-  }, [step, maxStepReached])
+  if (step > maxStepReached) setMaxStepReached(step) // adjust during render, not in an effect
 
   // phone: the step strip scrolls sideways; keep the active step in view
   const stepsRef = useRef<HTMLDivElement>(null)
