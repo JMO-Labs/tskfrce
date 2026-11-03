@@ -98,3 +98,25 @@
   width: 3rem !important; /* 48px */
   height: 3rem !important;
 }
+
+/* Mantine 9 moved the password reveal icon from px to rem sizes (15px -> 20px) and redarkened
+   every "gray light" color. Restore the 8.x look for the PasswordInput eye toggle. */
+.mantine-PasswordInput-root {
+  --psi-icon-size-xs: 12px;
+  --psi-icon-size-sm: 15px;
+  --psi-icon-size-md: 17px;
+  --psi-icon-size-lg: 19px;
+  --psi-icon-size-xl: 21px;
+}
+
+:root[data-mantine-color-scheme="light"] .mantine-PasswordInput-root {
+  --mantine-color-gray-light: rgba(134, 142, 150, 0.1);
+  --mantine-color-gray-light-hover: rgba(134, 142, 150, 0.12);
+  --mantine-color-gray-light-color: var(--mantine-color-gray-6);
+}
+
+:root[data-mantine-color-scheme="dark"] .mantine-PasswordInput-root {
+  --mantine-color-gray-light: rgba(134, 142, 150, 0.15);
+  --mantine-color-gray-light-hover: rgba(134, 142, 150, 0.2);
+  --mantine-color-gray-light-color: var(--mantine-color-gray-3);
+}

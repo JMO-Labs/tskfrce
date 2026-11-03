@@ -4,6 +4,7 @@ import { useBlocker } from '@/v2/hooks/useDevices'
 import { usePatchFamily } from '@/v2/hooks/useFamily'
 import { useSingleFlight } from '@/v2/hooks/useSingleFlight'
 import type { Family } from '@/v2/types'
+import { PasswordEye } from '@/v2/components/PasswordEye'
 import { toastFail, toastOk } from '../notify'
 import { PaneCard, PaneHead } from './PaneParts'
 import { Chip } from '@/v2/parent/Chip'
@@ -155,6 +156,7 @@ export function GifsCard({ fam }: { fam: Family }) {
               />
             </Input.Wrapper>
             <PasswordInput
+              visibilityToggleIcon={PasswordEye}
               label="GIPHY key"
               autoComplete="off"
               placeholder={fam.giphy_key_set ? 'Saved' : ''}

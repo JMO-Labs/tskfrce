@@ -1,5 +1,6 @@
 import { useState, type ChangeEvent } from 'react'
 import { PasswordInput, TextInput } from '@mantine/core'
+import { PasswordEye } from '@/v2/components/PasswordEye'
 
 export interface ParentForm { username: string; password: string; again: string; fullName: string }
 
@@ -28,9 +29,9 @@ export function StepParent({ value, showError, onChange }: Props) {
       <TextInput label="Your name" value={value.fullName} onChange={set('fullName')} error={showError ? err.fullName : undefined} />
       <TextInput mt="md" label="Username" value={value.username} onChange={set('username')} autoComplete="username"
         error={showError ? err.username : undefined} />
-      <PasswordInput mt="md" label="Password" value={value.password} onChange={set('password')} autoComplete="new-password"
+      <PasswordInput visibilityToggleIcon={PasswordEye} mt="md" label="Password" value={value.password} onChange={set('password')} autoComplete="new-password"
         description={showError && err.password ? undefined : 'At least 8 characters.'} error={showError ? err.password : undefined} />
-      <PasswordInput mt="md" label="Type it again" value={value.again} onChange={set('again')} autoComplete="new-password"
+      <PasswordInput visibilityToggleIcon={PasswordEye} mt="md" label="Type it again" value={value.again} onChange={set('again')} autoComplete="new-password"
         onBlur={() => setAgainSeen(true)} error={showError || againSeen ? err.again : undefined} />
     </>
   )
