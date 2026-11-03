@@ -105,7 +105,7 @@ jobs:
         if-no-files-found: ignore
     - name: Lab logs on failure
       if: failure()
-      run: INTERNAL_TOKEN=labtoken docker compose -f lab/docker-compose.lab.yml logs --no-color
+      run: INTERNAL_TOKEN=labtoken docker compose -f lab/docker-compose.lab.yml --profile e2e logs --no-color  # e2e profile = frontend
     - name: Lab teardown
       if: always()
       run: bash scripts/lab.sh down

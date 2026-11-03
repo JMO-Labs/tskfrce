@@ -115,7 +115,7 @@ _e2e() {
 cmd=${1:-}; shift || true
 case "$cmd" in
   up) _up ;;
-  down) rm -f "$TOKEN_FILE"; _bridges -D 2>/dev/null || true; $COMPOSE down -v ;;
+  down) rm -f "$TOKEN_FILE"; _bridges -D 2>/dev/null || true; $COMPOSE --profile e2e down -v ;;  # profile: also remove frontend
   e2e) _e2e ;;
   token) _token ;;
   device-id) _need_id "$1" ;;

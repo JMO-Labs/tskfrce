@@ -61,6 +61,12 @@ app.prepare()
       }
     });
 
+    // Node closes idle keep-alive sockets after 5s. When the dev server's event loop stalls
+    // (on-demand page compiles), a request already queued on a reused socket is reset instead
+    // of answered (Playwright's `read ECONNRESET`). Outlive any stall.
+    server.keepAliveTimeout = 65000;
+    server.headersTimeout = 66000;
+
     // WebSocket proxy configuration
     const backendUrl = process.env.BACKEND_INTERNAL_URL || 'http://backend:8000';
     console.log('[WebSocket Proxy] Backend target:', backendUrl);
