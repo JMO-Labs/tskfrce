@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useOnChange } from "@/v2/hooks/useOnChange";
 import { viewAs } from '@/v2/kid/viewAs'
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
@@ -36,17 +37,13 @@ export function TodayPage() {
   const small = useMediaQuery("(max-width: 767px)");
   const [phoneTab, setPhoneTab] = useState<"today" | "needs">("today");
   const wantNeeds = router.query.tab === "needs";
-  useEffect(() => {
-    if (wantNeeds) setPhoneTab("needs");
-  }, [wantNeeds]);
+  useOnChange(wantNeeds, (w) => w && setPhoneTab("needs"));
   const needs = data?.needs_you ?? [];
   const showNeeds = !!small && phoneTab === "needs" && !!data;
   const [openChoreId, setOpenChoreId] = useState<number | null>(null);
   // ?chore=<run id> (from a notification) opens that chore on its kid's day
   const runId = Number(router.query.chore) || null;
-  useEffect(() => {
-    if (runId) setOpenChoreId(runId);
-  }, [runId]);
+  useOnChange(runId, (id) => id && setOpenChoreId(id));
 
   // link from a notification: say what is opening while the day loads
   const run = useRunDetail(runId);

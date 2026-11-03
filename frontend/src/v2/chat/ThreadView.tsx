@@ -138,7 +138,7 @@ export function ThreadView({
       toastFail(e)
     }
   }
-  const box = useComposerBox({ text, setText, send, members: data?.members, meId, threadId: data?.id ?? null, kid })
+  const { box: boxRef, ...box } = useComposerBox({ text, setText, send, members: data?.members, meId, threadId: data?.id ?? null, kid })
   const names = (data?.members ?? []).map((x) => x.name)
   const typing = data?.typing?.length ? <TypingLine names={data.typing} /> : null
   const at = <MentionMenu {...box.menu} />
@@ -150,8 +150,6 @@ export function ThreadView({
       toastFail(e)
     }
   }
-
-  let day = ''
 
   // header, messages, composer, side panel
   const run = kind === 'chore' ? runDetail.data : undefined
@@ -174,10 +172,9 @@ export function ThreadView({
             </Button>
           )}
           {data && messages.length === 0 && <p className="pc-empty">Nothing here yet. Say hi!</p>}
-          {groupProofPhotos(messages).map(({ m, more }) => {
+          {groupProofPhotos(messages).map(({ m, more }, i, all) => {
             const d = dayName(m.created_at)
-            const sep = d !== day
-            day = d
+            const sep = d !== (i ? dayName(all[i - 1].m.created_at) : '')
             return (
               <Fragment key={m.id}>
                 {sep && <DaySep label={d} />}
@@ -225,7 +222,7 @@ export function ThreadView({
             <Icon name="alternate_email" size={20} />
           </button>
           <textarea
-            ref={box.box}
+            ref={boxRef}
             autoFocus={!!replyIn || focus} // a "Reply on photo" request lands in the composer
             aria-label="Message"
             value={text}

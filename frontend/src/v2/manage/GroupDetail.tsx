@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useResetState } from '@/v2/hooks/useResetState'
 import { useDisclosure } from '@mantine/hooks'
 import { useDeleteGroup, useSaveGroup } from '@/v2/hooks/useDevices'
 import Link from 'next/link'
@@ -41,10 +42,9 @@ export function GroupDetail({ group, devices, kids, groups, rules, onSelect, onR
   const del = useDeleteGroup()
   const once = useSingleFlight()
   const [confirm, { open, close }] = useDisclosure(false)
-  const [name, setName] = useState(group?.name ?? '')
+  const [name, setName] = useResetState(group?.name ?? '')
   const [draftIds, setDraftIds] = useState<number[]>([])
   const [draft, setDraft] = useState<{ icon?: string; chore_lock?: boolean }>({})
-  useEffect(() => setName(group?.name ?? ''), [group?.name])
 
   const icon = group?.icon ?? draft.icon ?? 'devices'
   const choreLock = group?.chore_lock ?? draft.chore_lock ?? true

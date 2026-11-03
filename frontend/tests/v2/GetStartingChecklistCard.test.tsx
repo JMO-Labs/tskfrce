@@ -49,9 +49,10 @@ jest.mock('@/v2/hooks/useTips', () => ({
   useTipState: () => ({ ready: true, isDismissed: (k: string) => dismissed.has(k), dismiss }),
 }))
 jest.mock('next/link', () => {
-  return ({ children, href }: { children: React.ReactNode; href: string }) => (
+  const Link = ({ children, href }: { children: React.ReactNode; href: string }) => (
     <a href={href}>{children}</a>
   )
+  return Link
 })
 
 const mockKid = (overrides = {}): TodayKid => ({

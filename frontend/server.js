@@ -32,7 +32,9 @@ process.on('SIGBUS', (signal) => {
 
 // Initialize Next.js app with error handling
 console.log('Initializing Next.js app...');
-const app = next({ dev, hostname, port });
+// dev stays on webpack: Next 16 Turbopack dev (pages router) serves _clientMiddlewareManifest.js as JSON,
+// which logs a MIME console error on every page. `next build` uses Turbopack either way.
+const app = next({ dev, hostname, port, ...(dev && { webpack: true }) });
 const handle = app.getRequestHandler();
 
 console.log('Preparing Next.js app...');
@@ -130,10 +132,9 @@ app.prepare()
           });
           
           proxyReq.end();
-        } else if (req.url.includes('/_next/webpack-hmr')) {
-          // Handle Next.js HMR WebSocket connections
-          console.log('[HMR WebSocket] Next.js HMR connection attempt - allowing');
-          // Don't destroy HMR connections, let them pass through
+        } else if (req.url.startsWith('/_next/')) {
+          // Next dev HMR socket (/_next/hmr in Next 16): Next attaches its own upgrade
+          // listener, so leave it alone instead of destroying it.
         } else {
           console.log('[WebSocket] Unknown WebSocket connection, destroying:', req.url.split('?')[0]);
           socket.destroy();

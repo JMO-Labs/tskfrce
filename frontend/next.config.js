@@ -6,6 +6,8 @@ const nextConfig = {
   images: { unoptimized: true },
   outputFileTracingExcludes: { '*': ['node_modules/@img/**', 'node_modules/sharp/**'] },
   devIndicators: false,
+  // Next 16 blocks dev-server HMR/resources from any host but localhost; list LAN hosts via NEXT_DEV_ORIGINS (comma separated)
+  allowedDevOrigins: (process.env.NEXT_DEV_ORIGINS || '').split(',').filter(Boolean),
 
   // Suppress HMR warnings in development
   onDemandEntries: {
@@ -26,42 +28,6 @@ const nextConfig = {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '/api/proxy',
   },
   
-  // Configure webpack dev server for HMR over network
-  webpack: (config, { dev, isServer }) => {
-    if (dev && !isServer) {
-      config.devServer = {
-        ...config.devServer,
-        host: '0.0.0.0',
-        allowedHosts: 'all',
-        // Improve HMR stability
-        hot: true,
-        liveReload: false,
-        // Suppress HMR warnings
-        client: {
-          overlay: {
-            errors: true,
-            warnings: false,
-          },
-        },
-      };
-      
-      // Suppress specific HMR warnings
-      config.infrastructureLogging = {
-        level: 'error',
-      };
-      
-      // Suppress ISR manifest warnings in webpack
-      config.stats = {
-        ...config.stats,
-        warningsFilter: [
-          /Invalid message.*isrManifest/,
-          /handleStaticIndicator/,
-        ],
-      };
-    }
-    return config;
-  },
-
   // WebSocket Proxy (API proxy handled by pages/api/proxy/[...path].ts)
   async rewrites() {
     return [

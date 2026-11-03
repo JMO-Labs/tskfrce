@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useClientValue } from '../hooks/useClientValue'
 import { Select, TextInput } from '@mantine/core'
 
 export const detectTz = () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 
+let zonesCache: string[] | undefined
 const allZones = (): string[] => {
   const all = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.('timeZone') ?? []
-  return Array.from(new Set([detectTz(), ...all]))
+  return (zonesCache ??= Array.from(new Set([detectTz(), ...all])))
 }
 
 interface Props {
@@ -18,8 +19,7 @@ interface Props {
 
 export function StepFamily({ name, tz, showError, onName, onTz }: Props) {
   // empty on the server so hydration matches; filled after mount
-  const [zones, setZones] = useState<string[]>([tz])
-  useEffect(() => setZones(allZones()), [])
+  const zones = useClientValue(allZones, [tz])
   return (
     <>
       <TextInput label="Family name" placeholder="The Smiths" value={name} onChange={(e) => onName(e.currentTarget.value)}

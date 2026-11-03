@@ -12,6 +12,8 @@ import { LAST, saveStep } from '@/v2/setup/setupStep'
 import { useSingleFlight } from '@/v2/hooks/useSingleFlight'
 import { useLook } from '@/v2/parent/useLook'
 import { WizardFrame } from '@/v2/setup/WizardFrame'
+import { useOnChange } from '@/v2/hooks/useOnChange'
+import { useClientValue } from '@/v2/hooks/useClientValue'
 import { StepFamily, detectTz } from '@/v2/setup/StepFamily'
 import { StepParent, parentErrors, type ParentForm } from '@/v2/setup/StepParent'
 import { StepKids } from '@/v2/setup/StepKids'
@@ -33,10 +35,11 @@ export default function SetupPage() {
   const [accountDone, setAccountDone] = useState(false)
   const [loginFailed, setLoginFailed] = useState(false)
   const [kidDraft, setKidDraft] = useState('')
-  const justCreated = useRef(false)
+  const [justCreated, setJustCreated] = useState(false)
   const once = useSingleFlight()
-  const [family, setFamily] = useState({ name: '', tz: 'UTC' })
-  useEffect(() => setFamily((f) => ({ ...f, tz: detectTz() })), []) // after mount: server renders UTC
+  const [familyEdit, setFamily] = useState<{ name: string; tz: string | null }>({ name: '', tz: null })
+  const detectedTz = useClientValue(detectTz, 'UTC') // server renders UTC
+  const family = { name: familyEdit.name, tz: familyEdit.tz ?? detectedTz }
   const [parent, setParent] = useState<ParentForm>({ username: '', password: '', again: '', fullName: '' })
   const [kids, setKids] = useState<Kid[]>([])
   const [chores, setChores] = useState<string[]>([])
@@ -44,11 +47,12 @@ export default function SetupPage() {
   const [hours, setHours] = useState<RuleBody[]>(DEFAULT_DRAFTS)
   const [choresLock, setChoresLock] = useState(true)
   const applied = useRef(new Set<string>())
+  const [schedules, setSchedules] = useState(0) // applied schedule rules, mirrored for render
   const choreIds = useRef(new Map<string, number>()) // created chores, so a retry only redoes the assignment
 
   // Already set up (and not by us a moment ago): a parent who never reached Finish resumes; anyone else logs in.
   const status = useQuery({ queryKey: ['setup'], queryFn: () => api<SetupStatus>('/setup'), staleTime: Infinity })
-  const returning = status.data?.needed === false && !justCreated.current
+  const returning = status.data?.needed === false && !justCreated
   const resume = useQuery({
     queryKey: STEP_KEY,
     queryFn: () => api<{ step: number | null }>('/setup/step'),
@@ -62,16 +66,20 @@ export default function SetupPage() {
     if (resumeAt === null && !accountDone) router.replace('/login') // Finish clears the saved step: stay for "all set"
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status.data, isInitialized, isAuthenticated, resume.isPending, resumeAt])
-  useEffect(() => {
-    if (resumeAt === null || accountDone) return
+  const [resumed, setResumed] = useState(false) // this wizard picked up a saved step (not one we just created)
+  useOnChange(resumeAt, (at) => {
+    if (at === null || accountDone) return
     setAccountDone(true)
-    setStep(resumeAt)
+    setStep(at)
+    setResumed(true)
+  })
+  useEffect(() => {
+    if (!resumed) return
     api<Kid[]>('/kids').then(setKids).catch(() => {}) // the wizard forgot them; steps 4-5 need them
     api<LibChore[]>('/chores/') // ...and the starters it already made
       .then((have) => Array.isArray(have) && setAdded(have.map((h) => h.title).filter((t) => starter(t))))
       .catch(() => {})
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [resumeAt])
+  }, [resumed])
 
   const create = useMutation({
     mutationFn: async () => {
@@ -84,7 +92,7 @@ export default function SetupPage() {
         },
       })
       // The account exists from here on. Never POST /setup again, even if logging in fails.
-      justCreated.current = true
+      setJustCreated(true)
       setAccountDone(true)
       markSetupDone(qc)
       try {
@@ -111,6 +119,7 @@ export default function SetupPage() {
         if (applied.current.has(j.key)) continue
         await j.run()
         applied.current.add(j.key)
+        setSchedules(Array.from(applied.current).filter((k) => k.startsWith('rule:')).length)
       }
     },
     onSuccess: () => go(step + 1),
@@ -121,7 +130,7 @@ export default function SetupPage() {
     create.reset()
     apply.reset()
     setStep(n)
-    if (justCreated.current || accountDone) saveStep(qc, n)
+    if (justCreated || accountDone) saveStep(qc, n)
   }
 
   // one request per click even on a double-click; failures show via apply.error
@@ -223,7 +232,6 @@ export default function SetupPage() {
     retry: false,
   })
   const devices = (qc.getQueryData<Device[]>(['setup-devices']) ?? []).filter((d) => d.status !== 'unassigned').length
-  const schedules = Array.from(applied.current).filter((k) => k.startsWith('rule:')).length
 
   if (returning && !accountDone)
     return (

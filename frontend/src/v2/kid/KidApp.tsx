@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { ChatDock } from '../chat/ChatDock'
 import { openChat, openChatList, OPEN_CHAT_EVENT, OPEN_CHAT_LIST_EVENT } from '../chat/dock'
+import { useNow } from '../today/useClock'
 import { useThreads } from '../hooks/useChat'
 import { useInbox } from '../hooks/useInbox'
 import { useMarkSeen } from '../hooks/useKid'
@@ -44,6 +45,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
   const [focusId, setFocusId] = useState<number | null>(null)
   const mode = d.age_group === 'little' || d.age_group === 'teen' ? d.age_group : 'kid'
   const seen = useMarkSeen()
+  const now = useNow()
   const threads = useThreads(true, !preview && mode !== 'little')
   const inbox = useInbox(true, !preview && mode !== 'little')
   useOsNotify(inbox.data?.items, noop) // OS pop-ups while the tab is in the background, as the old bell did
@@ -105,7 +107,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
           focusId={focusId}
           name={name}
           avatar={avatar}
-          now={Date.now()}
+          now={now}
           onDone={done.mutate}
           busyId={done.isPending ? done.variables ?? null : null}
           onSeen={seen.mutate}

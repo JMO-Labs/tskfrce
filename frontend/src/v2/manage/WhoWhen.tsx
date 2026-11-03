@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useResetState } from '@/v2/hooks/useResetState'
 import { Chip } from '@/v2/parent/Chip'
 import { Icon } from '@/v2/parent/Icon'
 import type { Kid, LibChore } from '@/v2/types'
@@ -18,8 +19,7 @@ export function WhoWhen({
   dueTouched?: boolean
   report: (key: string, p: PendingAssignment | null) => void
 }) {
-  const [adding, setAdding] = useState(false)
-  useEffect(() => setAdding(false), [chore.assignments.length])
+  const [adding, setAdding] = useResetState(false, chore.assignments.length)
   const has = chore.assignments.length > 0
   return (
     <section className="pk-panel" aria-label="Who and when">

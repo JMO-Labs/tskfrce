@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useClientValue } from '@/v2/hooks/useClientValue'
 import { peekSessionExpired } from './sessionExpired'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
@@ -34,10 +35,9 @@ export function LoginForm() {
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [remember, setRemember] = useState(true)
+  // latched: setTokens / log out clear the flag, but a mid-session 401 hard reload must still show it
   const [expired, setExpired] = useState(false)
-  useEffect(() => {
-    if (peekSessionExpired()) setExpired(true) // setTokens / log out clear it; a mid-session 401 hard reload must still show it
-  }, [])
+  if (useClientValue(peekSessionExpired, false) && !expired) setExpired(true)
   const [error, setError] = useState('')
   const [showForgot, setShowForgot] = useState(false)
   const forgotBtn = useRef<HTMLButtonElement>(null)
@@ -48,15 +48,13 @@ export function LoginForm() {
     ;(showForgot ? forgotTitle : forgotBtn).current?.focus() // keep keyboard / screen-reader users in place
   }, [showForgot])
   const [busy, setBusy] = useState(false)
-  const [host, setHost] = useState('')
+  const host = useClientValue(() => window.location.host, '')
   const next = safeNext(router.query?.next)
 
   useEffect(() => {
     if (isAuthenticated) router.replace(next)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, next])
-
-  useEffect(() => setHost(window.location.host), [])
 
   useEffect(() => {
     // first run: nobody can log in yet

@@ -1,4 +1,5 @@
 import { useFamily } from '@/v2/hooks/useFamily'
+import { useResetState } from '@/v2/hooks/useResetState'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { notifications } from '@mantine/notifications'
@@ -42,9 +43,8 @@ export function DeviceDetail({ device, kids, groups = [], onDeleted, onRequestOv
   const once = useSingleFlight()
   const onceTest = useSingleFlight() // a slow test must not swallow the next save
   const [tab, setTab] = useState<string | null>('overview')
-  const [name, setName] = useState(device.name)
+  const [name, setName] = useResetState(device.name)
   const [confirm, { open, close }] = useDisclosure(false)
-  useEffect(() => setName(device.name), [device.name])
 
   const guest = device.status === 'guest'
   const unknown = device.status === 'unassigned'

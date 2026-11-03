@@ -150,7 +150,9 @@ const RETRY_EVERY = 8
 function AutoRetry({ onRetry }: { onRetry: () => void }) {
   const [left, setLeft] = useState(RETRY_EVERY)
   const retry = useRef(onRetry)
-  retry.current = onRetry
+  useEffect(() => {
+    retry.current = onRetry
+  })
   const count = useRef(RETRY_EVERY)
   useEffect(() => {
     const t = setInterval(() => {

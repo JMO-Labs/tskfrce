@@ -79,13 +79,17 @@ export function RequireParent({ children }: { children: ReactNode }) {
   // the box came back but auth couldn't be confirmed while it was down: reload once so it re-checks the kept tokens
   // A refetch of a never-loaded query flips it back to "pending", so remember the failure (and when it began)
   // here: the box-starting window must not restart, nor the panel flash a spinner, on every poll.
-  const failure = useRef<{ error: unknown; since: number } | null>(null)
-  if (setup.isError && !failure.current) failure.current = { error: setup.error, since: Date.now() }
+  // A failure is "live" until the query next succeeds (data newer than the error); the next error then starts a new one.
+  const [failure, setFailure] = useState<{ error: unknown; since: number } | null>(null)
+  const live = failure && setup.dataUpdatedAt <= failure.since ? failure : null
+  if (setup.isError && !live) setFailure({ error: setup.error, since: setup.errorUpdatedAt })
+  const recovered = failure && !live && setup.isSuccess ? failure : null
+  const reloaded = useRef<object | null>(null)
   useEffect(() => {
-    if (!setup.isSuccess || !failure.current) return
-    failure.current = null
+    if (!recovered || reloaded.current === recovered) return
+    reloaded.current = recovered
     if (isInitialized && !isAuthenticated && tokenManager.getRefreshToken()) window.location.reload()
-  }, [setup.isSuccess, isInitialized, isAuthenticated])
+  }, [recovered, isInitialized, isAuthenticated])
 
   const wasSignedIn = useRef(false)
   useEffect(() => {
@@ -113,8 +117,8 @@ export function RequireParent({ children }: { children: ReactNode }) {
 
   // signed-in state could not be confirmed while the box was down: reload so auth re-checks the kept tokens
   if (out) return <Guard><WaitingState title="Signing you out…" /></Guard>
-  if (failure.current && !setup.isSuccess)
-    return <Unreachable error={setup.error ?? failure.current.error} since={failure.current.since} onRetry={() => (isAuthenticated ? setup.refetch() : window.location.reload())} onPoll={() => void setup.refetch()} />
+  if (live && !setup.isSuccess)
+    return <Unreachable error={setup.error ?? live.error} since={live.since} onRetry={() => (isAuthenticated ? setup.refetch() : window.location.reload())} onPoll={() => void setup.refetch()} />
   if (kidDevice && !setup.data?.needed) return <ForParents onGo={() => router.replace('/kid')} />
   if (target === '/setup' && resumeStep) return <Guard><SetupResuming step={resumeStep} /></Guard>
   if (target !== '') return <Checking />
@@ -157,12 +161,12 @@ function Guard({ children }: { children: ReactNode }) {
  * still starting (polls quietly); anything else, or waiting too long, is the "can't reach" panel.
  */
 function Unreachable({ error, since, onRetry, onPoll }: { error: unknown; since: number; onRetry: () => void; onPoll: () => void }) {
-  const [, tick] = useState(0)
-  const starting = startingUp(error, Date.now() - since)
+  const [now, setNow] = useState(() => Date.now())
+  const starting = startingUp(error, now - since)
   useEffect(() => {
     if (!starting) return
     const t = setInterval(() => {
-      tick((n) => n + 1)
+      setNow(Date.now())
       onPoll()
     }, 3000)
     return () => clearInterval(t)

@@ -26,18 +26,18 @@ export const useGroups = () => useQuery({ queryKey: ['groups'], queryFn: () => a
 export function useExpired(iso: string | null | undefined): boolean {
   const qc = useQueryClient()
   const at = iso ? new Date(iso).getTime() : 0
-  const [, tick] = useState(0)
+  const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     if (!at) return
     const wait = at - Date.now()
     if (wait > 2 ** 31 - 1) return
     const t = setTimeout(() => {
-      tick((n) => n + 1)
+      setNow(Date.now())
       qc.invalidateQueries({ queryKey: ['devices'] })
     }, Math.max(wait, 0) + 500)
     return () => clearTimeout(t)
   }, [at, qc])
-  return !!at && at <= Date.now()
+  return !!at && at <= now
 }
 
 /** Run a mutation then refresh devices, groups and today. */
