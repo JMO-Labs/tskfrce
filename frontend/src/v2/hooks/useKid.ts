@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useClientValue } from './useClientValue'
 import { api, ApiError, AuthError, KID_TOKEN_KEY } from '../api'
 import { blocked, kidInit, useAsKid } from './usePreview'
 import { retryIfOffline, toastFail, toastOk } from '../notify'
@@ -45,14 +46,13 @@ export const loginMessage = (e: unknown): string =>
 /** Kid session: token in localStorage, whoami, login, logout. */
 export function useKidSession() {
   const qc = useQueryClient()
-  const [authed, setAuthed] = useState(false)
-  const [ready, setReady] = useState(false)
-  const [kidId, setKidId] = useState<number | null>(null)
-  useEffect(() => {
-    setAuthed(!!readToken())
-    setKidId(readId())
-    setReady(true)
-  }, [])
+  // localStorage is client-only: the server render and hydration see "not ready"; login/logout override it
+  const ready = useClientValue(() => true, false)
+  const storedAuthed = useClientValue(() => !!readToken(), false)
+  const storedId = useClientValue(readId, null)
+  const [session, setSession] = useState<{ authed: boolean; kidId: number | null } | null>(null)
+  const authed = session ? session.authed : storedAuthed
+  const kidId = session ? session.kidId : storedId
 
   const whoami = useQuery({
     queryKey: ['kid', 'whoami'],
@@ -63,15 +63,13 @@ export function useKidSession() {
       api<{ access_token: string }>('/kid/login', { method: 'POST', body: v, kid: true }),
     onSuccess: (r, v) => {
       writeToken(r.access_token, v.kid_id)
-      setKidId(v.kid_id)
-      setAuthed(true)
+      setSession({ authed: true, kidId: v.kid_id })
     },
   })
   /** Clear the token and start again at whoami. */
   const logout = () => {
     writeToken(null)
-    setKidId(null)
-    setAuthed(false)
+    setSession({ authed: false, kidId: null })
     login.reset()
     qc.removeQueries({ queryKey: ['kid', 'today'] })
     qc.invalidateQueries({ queryKey: ['kid', 'whoami'] })

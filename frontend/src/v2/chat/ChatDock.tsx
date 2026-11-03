@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useClientValue } from '@/v2/hooks/useClientValue'
 import { Button, Drawer } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
 import { IconArrowLeft, IconX } from '@tabler/icons-react'
@@ -11,9 +12,16 @@ import { ThreadView } from './ThreadView'
 type Pick = { kind: ThreadKind; ref: string }
 const KEY = 'task4ce-chat-dock'
 
-function load(): { open: boolean; pick: Pick | null } {
+const stored = () => {
   try {
-    const s = JSON.parse(sessionStorage.getItem(KEY) ?? 'null')
+    return sessionStorage.getItem(KEY)
+  } catch {
+    return null
+  }
+}
+function parse(raw: string | null): { open: boolean; pick: Pick | null } {
+  try {
+    const s = JSON.parse(raw ?? 'null')
     const p = s?.pick
     return { open: s?.open === true, pick: p && validRef(p.kind, p.ref) ? { kind: p.kind, ref: p.ref } : null }
   } catch {
@@ -31,8 +39,12 @@ function save(open: boolean, pick: Pick | null) {
 /** Chat opened by openChat / openChatList (no launcher: parents use the rail / tab bar, kids their nav).
  *  Parents get a bottom sheet on phones (mockup 04) and a floating panel on desktop; kids a panel. */
 export function ChatDock({ kid = false, meId, meName, inline = false }: { kid?: boolean; meId: number | null; meName?: string; inline?: boolean }) {
-  const [open, setOpen] = useState(inline) // inline: always shown, the kid Chat tab hosts it
-  const [pick, setPick] = useState<Pick | null>(null)
+  // kid: restored from sessionStorage (client-only, so the server render sees null); any dock action overrides it
+  const raw = useClientValue(stored, null)
+  const saved = useMemo(() => (kid ? parse(raw) : { open: false, pick: null }), [kid, raw])
+  const [edit, setEdit] = useState<{ open: boolean; pick: Pick | null } | null>(null)
+  const open = edit ? edit.open : inline || saved.open // inline: always shown, the kid Chat tab hosts it
+  const pick = edit ? edit.pick : saved.pick
   const [reply, setReply] = useState<{ to: ChatReply; n: number } | null>(null) // n remounts the composer per request
   const panel = useRef<HTMLDivElement>(null)
   const opener = useRef<Element | null>(null) // what had focus before the dock opened
@@ -40,27 +52,18 @@ export function ChatDock({ kid = false, meId, meName, inline = false }: { kid?: 
   const phone = useMediaQuery('(max-width: 767px)')
   const sheet = !kid && !!phone
 
-  // restore after mount (sessionStorage is client-only)
-  useEffect(() => {
-    if (!kid) return
-    const s = load()
-    setOpen(inline || s.open)
-    setPick(s.pick)
-  }, [kid, inline])
   useEffect(() => {
     const on = (e: Event) => {
       const d = (e as CustomEvent<Pick & { reply?: ChatReply }>).detail
       if (!d || !validRef(d.kind, d.ref)) return
-      setPick({ kind: d.kind, ref: d.ref })
+      setEdit({ open: true, pick: { kind: d.kind, ref: d.ref } })
       setReply((r) => (d.reply ? { to: d.reply, n: (r?.n ?? 0) + 1 } : null))
       if (!panel.current?.contains(document.activeElement)) opener.current = document.activeElement
-      setOpen(true)
       if (kid) save(true, { kind: d.kind, ref: d.ref })
     }
     const list = () => {
-      setPick(null)
+      setEdit({ open: true, pick: null })
       setReply(null)
-      setOpen(true)
       if (kid) save(true, null)
     }
     window.addEventListener(OPEN_CHAT_EVENT, on)
@@ -76,8 +79,7 @@ export function ChatDock({ kid = false, meId, meName, inline = false }: { kid?: 
   }, [open, pick, inline])
 
   const set = (o: boolean, p: Pick | null) => {
-    setOpen(o)
-    setPick(p)
+    setEdit({ open: o, pick: p })
     if (p !== pick) setReply(null)
     if (kid) save(o, p)
   }

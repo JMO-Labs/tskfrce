@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useClientValue } from '../v2/hooks/useClientValue';
 import { 
   getThemePreference, 
   saveThemePreference, 
@@ -46,90 +47,39 @@ const getSystemTheme = (): boolean => {
   return false;
 };
 
+type ThemePref = 'light' | 'dark' | 'system';
+
+const subscribeSystemTheme = (cb: () => void) => {
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  mq.addEventListener('change', cb);
+  return () => mq.removeEventListener('change', cb);
+};
+
+// getSnapshot must be referentially stable, so the saved colors are cached per cookie value
+let brandCache: { key: string; colors: BrandColors } | undefined;
+const getSavedBrandColors = (): BrandColors => {
+  const saved = getUserSettings()?.brandColors;
+  const key = JSON.stringify(saved ?? null);
+  if (brandCache?.key !== key) brandCache = { key, colors: saved ?? defaultBrandColors };
+  return brandCache.colors;
+};
+
 /**
  * @description Theme provider component
  * Manages dark mode state and persists user preference
  */
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [theme, setThemeState] = useState<'light' | 'dark' | 'system'>('system');
-  const [brandColors, setBrandColorsState] = useState<BrandColors>(defaultBrandColors);
-  const [mantineTheme, setMantineTheme] = useState<any>(createMantineTheme());
-  const [isInitialized, setIsInitialized] = useState(false);
-
-  /**
-   * @description Initialize theme from cookies or system preference
-   */
-  useEffect(() => {
-    try {
-      // Get theme preference from cookies
-      const savedTheme = getThemePreference();
-      setThemeState(savedTheme);
-      
-      // Get saved user settings including brand colors
-      const userSettings = getUserSettings();
-      if (userSettings?.brandColors) {
-        setBrandColorsState(userSettings.brandColors);
-      }
-      
-      // Determine actual theme based on preference
-      let actualDarkMode = false;
-      
-      switch (savedTheme) {
-        case 'light':
-          actualDarkMode = false;
-          break;
-        case 'dark':
-          actualDarkMode = true;
-          break;
-        case 'system':
-        default:
-          actualDarkMode = getSystemTheme();
-          break;
-      }
-      
-      setIsDarkMode(actualDarkMode);
-    } catch (error) {
-      console.error('Failed to initialize theme:', error);
-      // Fallback to system theme
-      setIsDarkMode(getSystemTheme());
-      setThemeState('system');
-    }
-    
-    setIsInitialized(true);
-  }, []);
-
-  /**
-   * @description Listen for system theme changes
-   */
-  useEffect(() => {
-    if (!isInitialized || typeof window === 'undefined') return;
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
-    const handleSystemThemeChange = (e: MediaQueryListEvent) => {
-      // Only update if theme preference is set to 'system'
-      if (theme === 'system') {
-        setIsDarkMode(e.matches);
-        console.log('System theme changed to:', e.matches ? 'dark' : 'light');
-      }
-    };
-
-    // Modern browsers
-    if (mediaQuery.addEventListener) {
-      mediaQuery.addEventListener('change', handleSystemThemeChange);
-      return () => {
-        mediaQuery.removeEventListener('change', handleSystemThemeChange);
-      };
-    } 
-    // Fallback for older browsers
-    else if (mediaQuery.addListener) {
-      mediaQuery.addListener(handleSystemThemeChange);
-      return () => {
-        mediaQuery.removeListener(handleSystemThemeChange);
-      };
-    }
-  }, [isInitialized, theme]);
+  // Cookie-backed values read on the client only (server and hydration render the defaults); edits override them.
+  const savedTheme = useClientValue<ThemePref>(getThemePreference, 'system');
+  const savedBrand = useClientValue(getSavedBrandColors, defaultBrandColors);
+  const [themeEdit, setThemeEdit] = useState<ThemePref | null>(null);
+  const [brandEdit, setBrandEdit] = useState<BrandColors | null>(null);
+  const isInitialized = useClientValue(() => true, false);
+  const systemDark = useSyncExternalStore(subscribeSystemTheme, getSystemTheme, () => false);
+  const theme = themeEdit ?? savedTheme;
+  const brandColors = brandEdit ?? savedBrand;
+  const isDarkMode = theme === 'dark' || (theme === 'system' && systemDark);
+  const mantineTheme = useMemo(() => createMantineTheme(brandColors), [brandColors]);
 
   /**
    * @description Apply theme to document
@@ -151,26 +101,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   /**
    * @description Set theme preference
    */
-  const setTheme = (newTheme: 'light' | 'dark' | 'system') => {
-    setThemeState(newTheme);
+  const setTheme = (newTheme: ThemePref) => {
+    setThemeEdit(newTheme);
     saveThemePreference(newTheme);
-    
-    // Update actual theme based on new preference
-    let actualDarkMode = false;
-    
-    switch (newTheme) {
-      case 'light':
-        actualDarkMode = false;
-        break;
-      case 'dark':
-        actualDarkMode = true;
-        break;
-      case 'system':
-        actualDarkMode = getSystemTheme();
-        break;
-    }
-    
-    setIsDarkMode(actualDarkMode);
   };
 
   /**
@@ -194,11 +127,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
    */
   const setBrandColors = (colors: Partial<BrandColors>) => {
     const newBrandColors = { ...brandColors, ...colors };
-    setBrandColorsState(newBrandColors);
-    
-    // Update Mantine theme with new colors
-    setMantineTheme(createMantineTheme(newBrandColors));
-    
+    setBrandEdit(newBrandColors);
+
     // Save to user settings
     try {
       const currentSettings = getUserSettings() || {};
@@ -215,8 +145,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
    * @description Reset brand colors to default
    */
   const resetBrandColors = () => {
-    setBrandColorsState(defaultBrandColors);
-    setMantineTheme(createMantineTheme(defaultBrandColors));
+    setBrandEdit(defaultBrandColors);
     
     // Remove from user settings
     try {
@@ -227,15 +156,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       console.error('Failed to reset brand colors:', error);
     }
   };
-
-  /**
-   * @description Update Mantine theme when brand colors change
-   */
-  useEffect(() => {
-    if (isInitialized) {
-      setMantineTheme(createMantineTheme(brandColors));
-    }
-  }, [brandColors, isInitialized]);
 
   return (
     <ThemeContext.Provider value={{ 
