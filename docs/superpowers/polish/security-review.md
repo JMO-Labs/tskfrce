@@ -149,7 +149,7 @@ All test suites passing
 ### Authentication & Authorization
 - ✓ JWT token implementation (HS256, proper expiry)
 - ✓ JWT token validation
-- ✓ Password hashing (bcrypt with passlib)
+- ✓ Password hashing (bcrypt)
 - ✓ X-Real-IP trust chain (only trusted from proxy)
 - ✓ Rate limiting on auth endpoints (10/60s on login)
 - ✓ Setup endpoint properly gated (one-time only)

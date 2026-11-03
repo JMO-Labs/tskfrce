@@ -43,3 +43,13 @@ def test_api_rejects_long_password(client, parent_headers):
     )
     assert r.status_code == 422
     assert "72 bytes" in r.text
+
+
+def test_user_service_create_and_authenticate(db):
+    from app.schemas.user import UserCreate
+    from app.services.user_service import UserService
+
+    svc = UserService(db)
+    svc.create_user(UserCreate(username="hasher", email="h@example.com", password="s3cretpass"))
+    assert svc.authenticate_user("hasher", "s3cretpass") is not None
+    assert svc.authenticate_user("hasher", "wrongpass1") is None

@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.models.user import User
+from app.schemas.password import BCRYPT_MAX_BYTES
 from app.services.user_service import UserService
 
 logger = get_logger(__name__)
@@ -28,7 +29,6 @@ INVITE_TTL = timedelta(hours=24)
 
 # bcrypt only uses the first 72 bytes. Hashing rejects longer input (API schemas
 # validate first); verifying truncates so legacy hashes made under silent truncation still work.
-BCRYPT_MAX_BYTES = 72
 
 
 class AuthService:
