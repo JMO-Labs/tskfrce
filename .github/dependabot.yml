@@ -15,6 +15,10 @@ updates:
       # (peer ^9.7), -import and -jsx-a11y also lack eslint 10. Revisit after Next 16 + plugins.
       - dependency-name: eslint
         versions: ["10.x"]
+      # typescript-eslint 8.72 (pulled in by eslint-config-next) peers typescript <6.1.0;
+      # TS 7 is the native compiler. Revisit once typescript-eslint and Next support 7.
+      - dependency-name: typescript
+        versions: ["7.x"]
 
   - package-ecosystem: pip
     directories: [/backend, /blocker]
