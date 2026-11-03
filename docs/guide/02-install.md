@@ -19,6 +19,12 @@ In the Terminal on the box, copy this line, paste it (right-click and Paste, or 
 curl -fsSL https://sgtslaughta.github.io/tskfrce/install.sh | sh
 ```
 
+**Fresh Ubuntu or Debian box?** This line does everything instead: it updates the system, adds swap on small boxes, turns on SSH and automatic security updates, installs Docker, then runs the installer:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/sgtslaughta/tskfrce/main/scripts/prep-box.sh | sh
+```
+
 If it asks "Install Docker now?", type `y` and press Enter. It may ask for the box's password. Docker is a free program that runs t@sk4ce. You install it once and then forget it.
 
 This takes a few minutes the first time. Leave it alone until it stops.

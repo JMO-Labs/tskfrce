@@ -57,7 +57,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Shellcheck
-      run: shellcheck install.sh scripts/test-install.sh scripts/start.sh
+      run: shellcheck install.sh scripts/test-install.sh scripts/start.sh scripts/prep-box.sh
     - name: Installer smoke test
       run: bash scripts/test-install.sh
 
