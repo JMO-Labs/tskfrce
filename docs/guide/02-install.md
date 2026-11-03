@@ -16,13 +16,13 @@ The **Terminal** is a window where you type commands. On a box with a screen, fi
 In the Terminal on the box, copy this line, paste it (right-click and Paste, or Ctrl+Shift+V), and press Enter:
 
 ```bash
-curl -fsSL https://sgtslaughta.github.io/tskfrce/install.sh | sh
+curl -fsSL https://jmo-labs.github.io/tskfrce/install.sh | sh
 ```
 
 **Fresh Ubuntu or Debian box?** This line does everything instead: it updates the system, adds swap on small boxes, turns on SSH and automatic security updates, installs Docker, then runs the installer:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/sgtslaughta/tskfrce/main/scripts/prep-box.sh | sh
+curl -fsSL https://raw.githubusercontent.com/JMO-Labs/tskfrce/main/scripts/prep-box.sh | sh
 ```
 
 If it asks "Install Docker now?", type `y` and press Enter. It may ask for the box's password. Docker is a free program that runs t@sk4ce. You install it once and then forget it.
@@ -56,7 +56,7 @@ t@sk4ce restarts by itself after a power cut.
 The installer does these things. You can do them yourself instead:
 
 1. Install Docker from https://docs.docker.com/engine/install/ and check with `docker --version`.
-2. Download the code: `git clone https://github.com/sgtslaughta/tskfrce.git task4ce && cd task4ce`.
+2. Download the code: `git clone https://github.com/JMO-Labs/tskfrce.git task4ce && cd task4ce`.
 3. Write a `.env` file with `SECRET_KEY` and `INTERNAL_TOKEN` (each a long random string, for example from `openssl rand -hex 32`), `BOX_URL=http://<box address>:3000`, `NTFY_PUBLIC_URL=http://<box address>:2586` (for kids' phone alerts), `LAN_IFACE=<network name: the word after "dev" in the output of ip route show default, for example eth0>` and `COMPOSE_PROFILES=blocker`.
 4. Start it: `docker compose -f docker-compose.prod.yml up -d --build`.
 

@@ -112,4 +112,4 @@ Then run the install line from [Install](02-install.md) again. You will see the 
 
 ## Still stuck
 
-Open an issue at https://github.com/sgtslaughta/tskfrce/issues and tell us what you see. For router problems, use the [router report](https://github.com/sgtslaughta/tskfrce/issues/new?labels=router).
+Open an issue at https://github.com/JMO-Labs/tskfrce/issues and tell us what you see. For router problems, use the [router report](https://github.com/JMO-Labs/tskfrce/issues/new?labels=router).

@@ -78,4 +78,4 @@ Run the install line again (see [Install](02-install.md)). Your family, chores a
 
 ## How do I report a bug or ask for a feature?
 
-Open an issue at https://github.com/sgtslaughta/tskfrce/issues.
+Open an issue at https://github.com/JMO-Labs/tskfrce/issues.

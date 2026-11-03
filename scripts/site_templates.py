@@ -23,8 +23,8 @@ FOOTER = """    <footer class="f-footer">
         <div>
           <h2>t@sk4ce</h2>
           <ul>
-            <li><a href="https://github.com/sgtslaughta/tskfrce">GitHub</a></li>
-            <li><a href="https://github.com/sgtslaughta/tskfrce/blob/main/LICENSE">GPL-3.0</a></li>
+            <li><a href="https://github.com/JMO-Labs/tskfrce">GitHub</a></li>
+            <li><a href="https://github.com/JMO-Labs/tskfrce/blob/main/LICENSE">GPL-3.0</a></li>
           </ul>
         </div>
         <div>
@@ -110,7 +110,7 @@ def chapter_page(title, summary_text, chapter_links, breadcrumb, toc_html, conte
 
           <!-- Edit on GitHub -->
           <div class="guide-edit-link">
-            <a href="https://github.com/sgtslaughta/tskfrce/blob/main/docs/guide/{source}" target="_blank" rel="noopener">
+            <a href="https://github.com/JMO-Labs/tskfrce/blob/main/docs/guide/{source}" target="_blank" rel="noopener">
               Edit this page on GitHub →
             </a>
           </div>
@@ -167,7 +167,7 @@ def standalone_page(title, chapter_links, breadcrumb, toc_html, content_html):
 
           <!-- Edit on GitHub -->
           <div class="guide-edit-link">
-            <a href="https://github.com/sgtslaughta/tskfrce/blob/main/docs/remote-access.md" target="_blank" rel="noopener">
+            <a href="https://github.com/JMO-Labs/tskfrce/blob/main/docs/remote-access.md" target="_blank" rel="noopener">
               Edit this page on GitHub →
             </a>
           </div>

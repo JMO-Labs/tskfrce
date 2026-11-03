@@ -11,9 +11,9 @@
 
 Chores first, then screens. t@sk4ce is a free family app where kids do their chores, parents approve them, and the home internet only switches on once the chores are done. It runs on a small computer in your home, so your family's data stays in your house.
 
-**Website and setup help: https://sgtslaughta.github.io/tskfrce/**
+**Website and setup help: https://jmo-labs.github.io/tskfrce/**
 
-**📖 [Full beginner's guide online](https://sgtslaughta.github.io/tskfrce/guide/) — step-by-step for parents, no technical knowledge needed.**
+**📖 [Full beginner's guide online](https://jmo-labs.github.io/tskfrce/guide/) — step-by-step for parents, no technical knowledge needed.**
 
 ## How it works
 
@@ -62,22 +62,22 @@ It is honest about its limits: a determined kid can get around it (a phone hotsp
 
 ## Get started (about 20 minutes)
 
-**👉 [Go to the full guide →](https://sgtslaughta.github.io/tskfrce/guide/)**
+**👉 [Go to the full guide →](https://jmo-labs.github.io/tskfrce/guide/)**
 
 Or here's the short version:
 
-1. [See what you need](https://sgtslaughta.github.io/tskfrce/guide/01-what-you-need.html): a small always-on computer and an ordinary home router.
-2. [Install t@sk4ce](https://sgtslaughta.github.io/tskfrce/guide/02-install.html): copy and paste one line.
+1. [See what you need](https://jmo-labs.github.io/tskfrce/guide/01-what-you-need.html): a small always-on computer and an ordinary home router.
+2. [Install t@sk4ce](https://jmo-labs.github.io/tskfrce/guide/02-install.html): copy and paste one line.
 
    ```bash
-   curl -fsSL https://sgtslaughta.github.io/tskfrce/install.sh | sh
+   curl -fsSL https://jmo-labs.github.io/tskfrce/install.sh | sh
    ```
 
-3. [Do the first-time setup](https://sgtslaughta.github.io/tskfrce/guide/03-first-setup.html): seven short steps for your family, kids, chores, devices and hours.
-4. [Learn the everyday routine](https://sgtslaughta.github.io/tskfrce/guide/04-everyday-use.html): approve chores, answer requests, give rewards.
-5. [Show your kids](https://sgtslaughta.github.io/tskfrce/guide/05-for-kids.html): a one-page guide you can hand over.
+3. [Do the first-time setup](https://jmo-labs.github.io/tskfrce/guide/03-first-setup.html): seven short steps for your family, kids, chores, devices and hours.
+4. [Learn the everyday routine](https://jmo-labs.github.io/tskfrce/guide/04-everyday-use.html): approve chores, answer requests, give rewards.
+5. [Show your kids](https://jmo-labs.github.io/tskfrce/guide/05-for-kids.html): a one-page guide you can hand over.
 
-Something wrong? See [Troubleshooting](https://sgtslaughta.github.io/tskfrce/guide/06-troubleshooting.html) and the [FAQ](https://sgtslaughta.github.io/tskfrce/guide/07-faq.html).
+Something wrong? See [Troubleshooting](https://jmo-labs.github.io/tskfrce/guide/06-troubleshooting.html) and the [FAQ](https://jmo-labs.github.io/tskfrce/guide/07-faq.html).
 
 ## For developers
 

@@ -4,7 +4,7 @@
 
 services:
   backend:
-    image: ghcr.io/sgtslaughta/tskfrce/backend:${TASK4CE_TAG:-latest}
+    image: ghcr.io/jmo-labs/tskfrce/backend:${TASK4CE_TAG:-latest}
     build:
       context: ./backend
     ports:
@@ -38,7 +38,7 @@ services:
       start_period: 30s
 
   frontend:
-    image: ghcr.io/sgtslaughta/tskfrce/frontend:${TASK4CE_TAG:-latest}
+    image: ghcr.io/jmo-labs/tskfrce/frontend:${TASK4CE_TAG:-latest}
     build:
       context: ./frontend
     ports:
@@ -100,7 +100,7 @@ services:
 
   # Pauses chosen devices' internet (docs/blocker.md). Host network, two capabilities, never privileged.
   blocker:
-    image: ghcr.io/sgtslaughta/tskfrce/blocker:${TASK4CE_TAG:-latest}
+    image: ghcr.io/jmo-labs/tskfrce/blocker:${TASK4CE_TAG:-latest}
     build:
       context: ./blocker
     profiles: ["blocker"]  # .env sets COMPOSE_PROFILES=blocker; install.sh can skip it
