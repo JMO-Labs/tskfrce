@@ -1,21 +1,9 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
-import { loginUi, parentApi } from './seed'
+import { expect, test, type APIRequestContext } from '@playwright/test'
+import { cheer, loginUi, parentApi } from './seed'
 
 const BASE = process.env.E2E_BASE_URL ?? 'http://10.99.0.5:3000'
 
 test.use({ actionTimeout: 15_000 })
-
-// first-visit intro and badge celebrations (a parent approving a chore earns one) cover the page
-async function cheer(kp: Page) {
-  const gates = [kp.getByRole('button', { name: 'Nice!' }), kp.getByRole('button', { name: 'Skip', exact: true })]
-  await kp.waitForTimeout(1500)
-  for (let i = 0; i < 8; i++) {
-    const open = (await Promise.all(gates.map((g) => g.isVisible()))).indexOf(true)
-    if (open < 0) return
-    await gates[open].click()
-    await kp.waitForTimeout(600)
-  }
-}
 
 /** "HH:MM" in the family's timezone, `min` minutes from now, cut to the whole minute. */
 async function hhmmIn(api: APIRequestContext, min: number) {
@@ -27,14 +15,17 @@ async function hhmmIn(api: APIRequestContext, min: number) {
 /**
  * Kid "Ivy" (teen) with a chained 2-step chore due in 20 min and a second chore.
  * The due time is a whole minute, so start early in a minute: "Due in 20 min" holds for ~50 s.
- * Within 20 min before the family's reset time the due time lands after the reset while the chore day
- * has not rolled yet (the deadline would be in the past), so the reset time is moved 3 h behind now.
+ * Before today's reset (chore day not rolled yet) a due time after the reset would land on the past
+ * chore day, so the reset is moved 3 h ahead. Moving it behind now would roll the chore day mid-run
+ * and wipe every seeded chore. After today's reset the due time already lands today: leave it.
  */
 async function seedIvy(api: APIRequestContext, tag: string) {
   const sec = new Date().getSeconds()
   if (sec > 3) await new Promise((r) => setTimeout(r, (60 - sec) * 1000))
   const { reset_time } = await (await api.get('/api/proxy/family')).json()
-  await api.patch('/api/proxy/family', { data: { reset_time: await hhmmIn(api, -180) } })
+  if ((await hhmmIn(api, 0)) < reset_time) {
+    await api.patch('/api/proxy/family', { data: { reset_time: await hhmmIn(api, 180) } })
+  }
   const kid = await (await api.post('/api/proxy/kids', { data: { full_name: 'Ivy', pin: '1234', age_group: 'teen' } })).json()
   const titles = { due: `E2E chain ${tag}`, other: `E2E feed fish ${tag}` }
   const due = await (

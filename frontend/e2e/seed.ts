@@ -1,4 +1,4 @@
-import { request, type APIRequestContext, type Page } from '@playwright/test'
+import { request, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 
 export const PARENT = {
   username: process.env.E2E_PARENT_USER ?? 'labparent',
@@ -52,4 +52,20 @@ export async function makeKid(api: APIRequestContext, name: string) {
   const res = await api.post('/api/proxy/kids', { data: { full_name: name } })
   const kid = await res.json()
   return { kid, undo: () => api.delete(`/api/proxy/kids/${kid.id}`) }
+}
+
+/**
+ * Kid overlays (first-visit intro, badge celebrations) show up on their own schedule, later on
+ * slow CI VMs. Dismiss one whenever it covers the page Playwright is about to act on.
+ */
+const cheered = new WeakSet<Page>()
+// celebrations queue: Nice! swaps in the next card, so don't wait for the overlay to go; re-run on retry
+const again = { noWaitAfter: true }
+// the card may close or swap mid-click; the next retry re-runs the handler anyway
+const tap = (b: Locator) => b.click({ timeout: 2000 }).catch(() => {})
+export async function cheer(kp: Page) {
+  if (cheered.has(kp)) return
+  cheered.add(kp)
+  await kp.addLocatorHandler(kp.locator('.award-back'), (o) => tap(o.getByRole('button', { name: 'Nice!' })), again)
+  await kp.addLocatorHandler(kp.locator('.k-intro-back'), (o) => tap(o.getByRole('button', { name: 'Skip', exact: true })), again)
 }

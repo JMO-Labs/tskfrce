@@ -59,9 +59,22 @@ _wait_http() { # url
   echo "timeout waiting for $1" >&2; return 1
 }
 
+# Hosts with br_netfilter loaded (k8s/dind CI runners) push bridged frames through iptables,
+# where Docker's internal-network rules drop routed lab traffic (kid -> router -> wan).
+# Plain hosts never filter bridged frames; restore that for the two lab bridges only.
+# Runs in the router image (has iptables) on the daemon's host netns. Idempotent.
+_bridges() { # -I | -D
+  docker run --rm --privileged --network host --entrypoint sh task4ce-lab-router -c '
+    for t in iptables ip6tables; do for b in tsk-lab tsk-wan; do
+      if [ "$0" = -I ]; then $t -C DOCKER-USER -i $b -o $b -j ACCEPT 2>/dev/null && continue; fi
+      $t "$0" DOCKER-USER -i $b -o $b -j ACCEPT 2>/dev/null || true
+    done; done' "$1"
+}
+
 _up() {
   rm -f "$TOKEN_FILE"
   $COMPOSE up -d --build
+  _bridges -I
   _wait_http "$API/health"
   _wait_http "$BLK/health"
   _curl_parent -o /dev/null -X POST "$API/api/v1/setup" -H 'Content-Type: application/json' \
@@ -102,7 +115,7 @@ _e2e() {
 cmd=${1:-}; shift || true
 case "$cmd" in
   up) _up ;;
-  down) rm -f "$TOKEN_FILE"; $COMPOSE down -v ;;
+  down) rm -f "$TOKEN_FILE"; _bridges -D 2>/dev/null || true; $COMPOSE down -v ;;
   e2e) _e2e ;;
   token) _token ;;
   device-id) _need_id "$1" ;;

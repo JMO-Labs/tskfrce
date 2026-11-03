@@ -127,12 +127,14 @@ services:
 networks:
   lab:
     driver: bridge
+    driver_opts: {com.docker.network.bridge.name: tsk-lab}  # fixed: scripts/lab.sh _bridges
     internal: true
     enable_ipv6: true
     ipam:
       config: [{subnet: 10.99.0.0/24}, {subnet: "fd00:99::/64"}]
   wan:
     driver: bridge
+    driver_opts: {com.docker.network.bridge.name: tsk-wan}  # fixed: scripts/lab.sh _bridges
     internal: true
     enable_ipv6: true
     ipam:
