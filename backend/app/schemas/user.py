@@ -9,6 +9,7 @@ from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
 
 from app.models.user import UserRole
+from app.schemas.password import Password
 
 
 class UserBase(BaseModel):
@@ -23,7 +24,7 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     """Schema for creating a new user."""
 
-    password: str = Field(..., min_length=8, description="User password")
+    password: Password = Field(..., description="User password")
     role: UserRole | None = Field(default=UserRole.USER, description="User role")
 
 
@@ -80,7 +81,7 @@ class UserPasswordChange(BaseModel):
     """Schema for password change."""
 
     current_password: str = Field(..., description="Current password")
-    new_password: str = Field(..., min_length=8, description="New password")
+    new_password: Password = Field(..., description="New password")
 
 
 USERNAME = r"^[a-zA-Z0-9_.-]+$"
@@ -96,5 +97,5 @@ class RegisterIn(BaseModel):
     """Redeem an invite token: the invitee sets their own password."""
 
     token: str | None = None
-    password: str = Field(..., min_length=8)
+    password: Password
     full_name: str | None = Field(None, max_length=100)

@@ -16,6 +16,7 @@ from app.core.config import settings
 from app.core.ratelimit import limit
 from app.models.family import FamilySettings, get_family
 from app.models.user import User, UserRole
+from app.schemas.password import Password
 from app.services.chore_types import seed as seed_chore_types
 
 router = APIRouter(prefix="/api/v1/setup", tags=["setup"])
@@ -27,7 +28,7 @@ LAST_STEP = 7
 
 class ParentIn(BaseModel):
     username: str = Field(min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_.-]+$")
-    password: str = Field(min_length=8)
+    password: Password
     full_name: str = Field(max_length=100)
 
 
