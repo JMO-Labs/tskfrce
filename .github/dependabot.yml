@@ -10,6 +10,11 @@ updates:
     open-pull-requests-limit: 5
     groups:
       minor-patch: { update-types: [minor, patch] }
+    ignore:
+      # eslint-config-next 15.x peers eslint <=9 (v16 needs Next 16); eslint-plugin-react
+      # (peer ^9.7), -import and -jsx-a11y also lack eslint 10. Revisit after Next 16 + plugins.
+      - dependency-name: eslint
+        versions: ["10.x"]
 
   - package-ecosystem: pip
     directories: [/backend, /blocker]
