@@ -174,7 +174,7 @@ function AppContent({ Component, pageProps }: { Component: any; pageProps: any }
       >
         <Head><title>t@sk4ce</title></Head>
         <FaviconManager />
-        <Notifications position="bottom-center" />
+        <Notifications position="bottom-center" pauseResetOnHover="notification" />
         <UnifiedAuthProvider>
           <ErrorBoundary resetKey={asPath}>
             <Component {...pageProps} />
