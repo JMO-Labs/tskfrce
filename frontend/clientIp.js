@@ -1,11 +1,11 @@
 // Real client IP: socket peer, unless the edge proxy vouches for x-real-ip with
-// x-edge-token === INTERNAL_TOKEN and x-real-ip is a single valid IP.
+// x-edge-token === EDGE_TOKEN and x-real-ip is a single valid IP.
 const { isIP } = require('net')
 const { timingSafeEqual } = require('crypto')
 
 function clientIp(headers, remoteAddress) {
   const peer = (remoteAddress || '').replace(/^::ffff:/, '')
-  const secret = process.env.INTERNAL_TOKEN || ''
+  const secret = process.env.EDGE_TOKEN || ''
   const token = headers['x-edge-token']
   const real = headers['x-real-ip']
   if (!secret || typeof token !== 'string' || typeof real !== 'string') return peer

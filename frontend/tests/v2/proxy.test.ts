@@ -102,9 +102,9 @@ describe('X-Real-IP trust', () => {
     (global as any).fetch = fetch;
     const req = mockReq('GET', '/api/proxy/x', '', hdrs);
     req.socket.remoteAddress = peer;
-    process.env.INTERNAL_TOKEN = 'tok-123';
+    process.env.EDGE_TOKEN = 'tok-123';
     await handler(req, mockRes());
-    delete process.env.INTERNAL_TOKEN;
+    delete process.env.EDGE_TOKEN;
     return (fetch.mock.calls[0] as any)[1].headers;
   }
   test('correct token + valid ip: header ip used', async () => {

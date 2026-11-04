@@ -12,6 +12,7 @@ LEGO_SERVER=${LEGO_SERVER:-https://acme-v02.api.letsencrypt.org/directory}
 CHECK_SECS=${CHECK_SECS:-300}
 RENEW_SECS=${RENEW_SECS:-43200}
 DATA_DIR=${DATA_DIR:-/data}
+[ -n "${EDGE_TOKEN:-}" ] || echo "EDGE_TOKEN not set: kids' devices will not be told apart behind HTTPS" >&2
 export BOX_ID BASE_DOMAIN
 FQDN=$BOX_ID.$BASE_DOMAIN
 CRT=$DATA_DIR/lego/certificates/$FQDN.crt

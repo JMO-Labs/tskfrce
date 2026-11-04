@@ -67,8 +67,9 @@ def test_prod_edge_is_opt_in_host_net():
         assert ":?" not in str(v)
 
 
-def test_prod_frontend_and_edge_receive_internal_token():
+def test_prod_frontend_and_edge_receive_edge_token_only():
     svcs = yaml.safe_load(PROD.read_text())["services"]
-    assert "INTERNAL_TOKEN" in svcs["frontend"]["environment"]
-    assert "INTERNAL_TOKEN" in svcs["edge"]["environment"]
-    assert "TRUSTED_EDGE_IPS" not in svcs["frontend"]["environment"]
+    for name in ("frontend", "edge"):
+        env = svcs[name]["environment"]
+        assert "EDGE_TOKEN" in env
+        assert "INTERNAL_TOKEN" not in env

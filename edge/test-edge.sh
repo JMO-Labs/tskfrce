@@ -12,7 +12,7 @@ done
 setip() { printf '#!/bin/sh\necho "1.1.1.1 via 192.168.1.1 dev eth0 src 192.168.1.%s uid 0"\n' "$1" > "$T/bin/ip"; }
 chmod +x "$T/bin/"* 2>/dev/null
 setip 40; chmod +x "$T/bin/ip"
-export PATH="$T/bin:$PATH" DATA_DIR="$T/data" BOX_ID=abc123 BOX_SECRET=s3cret EDGE_ONCE=1
+export PATH="$T/bin:$PATH" DATA_DIR="$T/data" BOX_ID=abc123 BOX_SECRET=s3cret EDGE_TOKEN=t EDGE_ONCE=1
 fail=0
 run() { sh "$HERE/edge.sh" "$@"; }
 ok() { if [ "$2" = 0 ]; then echo "ok   $1"; else echo "FAIL $1"; fail=1; fi; }
@@ -58,4 +58,8 @@ r=0; run issue_or_renew && r=1; ok "unchanged cert returns non-zero" $r
 
 out=$(BOX_ID='' sh "$HERE/edge.sh" 2>&1); rc=$?
 r=0; [ $rc -ne 0 ] && echo "$out" | grep -q "BOX_ID and BOX_SECRET are required" || r=1; ok "missing BOX_ID fails" $r
+out=$(EDGE_TOKEN='' run next_backoff 30 2>&1)
+r=0; echo "$out" | grep -q "EDGE_TOKEN not set" || r=1; ok "warns without EDGE_TOKEN" $r
+out=$(EDGE_TOKEN=x run next_backoff 30 2>&1)
+r=0; echo "$out" | grep -q "EDGE_TOKEN" && r=1; ok "no warning with EDGE_TOKEN" $r
 exit $fail

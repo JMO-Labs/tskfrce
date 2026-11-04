@@ -47,7 +47,7 @@ services:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: /api/proxy
       BACKEND_INTERNAL_URL: http://backend:8000
-      INTERNAL_TOKEN: ${INTERNAL_TOKEN:?run install.sh or set INTERNAL_TOKEN in .env}
+      EDGE_TOKEN: ${EDGE_TOKEN:-}
     depends_on:
       backend:
         condition: service_healthy
@@ -127,7 +127,7 @@ services:
     environment:
       BOX_ID: ${BOX_ID:-}
       BOX_SECRET: ${BOX_SECRET:-}
-      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-}
+      EDGE_TOKEN: ${EDGE_TOKEN:-}
     volumes:
       - edge_data:/data
     restart: unless-stopped

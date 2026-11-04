@@ -19,16 +19,23 @@ case ",$PROFILES," in
   *) PROFILES="${PROFILES:+$PROFILES,}edge" ;;
 esac
 
+# keep an existing non-empty EDGE_TOKEN, else generate one (never printed)
+EDGE_TOKEN="$(sed -n 's/^EDGE_TOKEN=//p' "$ENVF" | tail -n 1)"
+if [ -z "$EDGE_TOKEN" ]; then
+  EDGE_TOKEN="$(openssl rand -hex 32 2>/dev/null || od -An -tx1 -N32 /dev/urandom | tr -d ' \n')"
+fi
+
 TMP="$(mktemp "$ENVF.XXXXXX")"
 trap 'rm -f "$TMP"' EXIT
 chmod 600 "$TMP"
-grep -Ev '^(BOX_ID|BOX_SECRET|BOX_URL|NTFY_PUBLIC_URL|COMPOSE_PROFILES)=' "$ENVF" >"$TMP" || true
+grep -Ev '^(BOX_ID|BOX_SECRET|BOX_URL|NTFY_PUBLIC_URL|COMPOSE_PROFILES|EDGE_TOKEN)=' "$ENVF" >"$TMP" || true
 {
   echo "BOX_ID=$ID"
   echo "BOX_SECRET=$SECRET"
   echo "BOX_URL=https://$HOST"
   echo "NTFY_PUBLIC_URL=https://$HOST:2443"
   echo "COMPOSE_PROFILES=$PROFILES"
+  echo "EDGE_TOKEN=$EDGE_TOKEN"
 } >>"$TMP"
 mv "$TMP" "$ENVF"
 trap - EXIT
