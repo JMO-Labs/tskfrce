@@ -3,9 +3,6 @@
 import pytest
 
 from .journey import (
-    HTTPError,
-    kid,
-    kid_login,
     lab,
     make_kid,
     parent,
@@ -52,24 +49,20 @@ def test_homework_mode_journey():
             )
             # lab dig should return the IP - if it fails or returns box IP, it's not working
             return "203.0.113.1" in result.stdout
-        except Exception:
+        except Exception:  # noqa: BLE001 - lab probe: any failure means not yet
             return False
 
-    assert wait_for(
-        check_allowed_dns, timeout=60
-    ), "allowed.test DNS resolution failed"
+    assert wait_for(check_allowed_dns, timeout=60), "allowed.test DNS resolution failed"
 
     # Step 5: HTTP fetch to allowed.test should succeed (203.0.113.1)
     def check_allowed_http():
         try:
             result = lab("check", "kid1", check=False)
             return result.returncode == 0  # HTTP 200 means connection works
-        except Exception:
+        except Exception:  # noqa: BLE001 - lab probe: any failure means not yet
             return False
 
-    assert wait_for(
-        check_allowed_http, timeout=60
-    ), "HTTP fetch to 203.0.113.1 failed"
+    assert wait_for(check_allowed_http, timeout=60), "HTTP fetch to 203.0.113.1 failed"
 
     # Step 6: DNS for helper.test within 10s after allowed.test should work (session follow)
     def check_helper_dns():
@@ -80,12 +73,12 @@ def test_homework_mode_journey():
                 "helper.test",
             )
             return "203.0.113.1" in result.stdout
-        except Exception:
+        except Exception:  # noqa: BLE001 - lab probe: any failure means not yet
             return False
 
-    assert wait_for(
-        check_helper_dns, timeout=10
-    ), "helper.test (session follow) DNS resolution failed"
+    assert wait_for(check_helper_dns, timeout=10), (
+        "helper.test (session follow) DNS resolution failed"
+    )
 
     # Step 7: DNS for other.test after 15s should return box IP (portal)
     import time
@@ -101,12 +94,12 @@ def test_homework_mode_journey():
             )
             # Portal returns 10.99.0.4 (the blocker box)
             return "10.99.0.4" in result.stdout
-        except Exception:
+        except Exception:  # noqa: BLE001 - lab probe: any failure means not yet
             return False
 
-    assert wait_for(
-        check_other_dns_portal, timeout=10
-    ), "other.test should resolve to portal (box IP)"
+    assert wait_for(check_other_dns_portal, timeout=10), (
+        "other.test should resolve to portal (box IP)"
+    )
 
     # Step 8: Block helper.test and check DNS returns portal IP
     parent(
@@ -124,12 +117,12 @@ def test_homework_mode_journey():
             )
             # After blocking, should return box IP
             return "10.99.0.4" in result.stdout
-        except Exception:
+        except Exception:  # noqa: BLE001 - lab probe: any failure means not yet
             return False
 
-    assert wait_for(
-        check_blocked_helper_dns, timeout=10
-    ), "blocked helper.test should resolve to portal"
+    assert wait_for(check_blocked_helper_dns, timeout=10), (
+        "blocked helper.test should resolve to portal"
+    )
 
     # Step 9: Delete override and check HTTP fails within 15s
     parent("DELETE", f"/api/v1/devices/{device_id}/override")
@@ -140,12 +133,12 @@ def test_homework_mode_journey():
             result = lab("check", "kid1", check=False)
             # Should fail (timeout or connection refused)
             return result.returncode != 0
-        except Exception:
+        except Exception:  # noqa: BLE001 - any failure counts as blocked
             return True
 
-    assert wait_for(
-        check_http_fails, timeout=15
-    ), "HTTP to 203.0.113.1 should fail after homework ends"
+    assert wait_for(check_http_fails, timeout=15), (
+        "HTTP to 203.0.113.1 should fail after homework ends"
+    )
 
     # Step 10: Activity should list allowed.test and helper.test
     activity = parent("GET", f"/api/v1/homework/activity?device_id={device_id}")

@@ -109,7 +109,9 @@ def test_render_homework_pairs():
     """Homework pairs sets are declared and used in accept rules."""
     hw_out = {("aa:bb:cc:dd:ee:01", "8.8.8.8"), ("aa:bb:cc:dd:ee:02", "1.1.1.1")}
     hw_back = {("8.8.8.8", "192.168.1.10"), ("1.1.1.1", "192.168.1.11")}
-    r = render_ruleset(set(), set(), set(), LAN, "192.168.1.2", 8080, hw_out=hw_out, hw_back=hw_back)
+    r = render_ruleset(
+        set(), set(), set(), LAN, "192.168.1.2", 8080, hw_out=hw_out, hw_back=hw_back
+    )
     assert "set hw_out { type ether_addr . ipv4_addr" in r
     assert "set hw_back { type ipv4_addr . ipv4_addr" in r
     assert "aa:bb:cc:dd:ee:01 . 8.8.8.8" in r
@@ -122,7 +124,9 @@ def test_render_homework_pairs_accept_before_drops():
     """Homework accept rules come before the drop rules."""
     hw_out = {("aa:bb:cc:dd:ee:01", "8.8.8.8")}
     hw_back = {("8.8.8.8", "192.168.1.10")}
-    r = render_ruleset({"192.168.1.50"}, set(), MAC, LAN, "192.168.1.2", 8080, hw_out=hw_out, hw_back=hw_back)
+    r = render_ruleset(
+        {"192.168.1.50"}, set(), MAC, LAN, "192.168.1.2", 8080, hw_out=hw_out, hw_back=hw_back
+    )
     lines = [ln.strip() for ln in r.splitlines()]
     hw_out_idx = lines.index("ether saddr . ip daddr @hw_out accept")
     hw_back_idx = lines.index("ip saddr . ip daddr @hw_back accept")
@@ -175,7 +179,9 @@ def test_add_pairs_drops_malformed_elements():
 def test_render_homework_sets_have_timeouts():
     hw_out = {("aa:bb:cc:dd:ee:01", "8.8.8.8"): 123}
     hw_back = {("8.8.8.8", "192.168.1.10"): 123, ("8.8.8.8", "evil }"): 5}
-    r = render_ruleset(set(), set(), set(), LAN, "192.168.1.2", 8080, hw_out=hw_out, hw_back=hw_back)
+    r = render_ruleset(
+        set(), set(), set(), LAN, "192.168.1.2", 8080, hw_out=hw_out, hw_back=hw_back
+    )
     assert "flags timeout;" in r.split("set hw_out")[1].split("\n")[0]
     assert "aa:bb:cc:dd:ee:01 . 8.8.8.8 timeout 123s" in r
     assert "8.8.8.8 . 192.168.1.10 timeout 123s" in r

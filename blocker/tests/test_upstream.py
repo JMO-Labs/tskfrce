@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from blocker.config import _read_resolv_conf
 from blocker.upstream import forward, handle_homework
 
@@ -14,6 +13,7 @@ def _has_scapy():
     """Check if scapy is available."""
     try:
         import scapy  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -91,14 +91,14 @@ def test_handle_homework_integration():
     )
     reply = bytes(reply_q)
 
-    with patch("blocker.upstream.forward", return_value=reply):
-        with patch("blocker.upstream.a_records", return_value=(["8.8.8.8"], 300)):
-            result = handle_homework(
-                gate, firewall_add, mac_for_ip, "8.8.8.8", "192.168.1.10", query
-            )
-            assert result == reply
-            firewall_add.assert_called_once()
-            call_args = firewall_add.call_args[0]
-            assert ("aa:bb:cc:dd:ee:01", "8.8.8.8") in call_args[0]
-            assert ("8.8.8.8", "192.168.1.10") in call_args[1]
-            assert call_args[0][("aa:bb:cc:dd:ee:01", "8.8.8.8")] == 300
+    with (
+        patch("blocker.upstream.forward", return_value=reply),
+        patch("blocker.upstream.a_records", return_value=(["8.8.8.8"], 300)),
+    ):
+        result = handle_homework(gate, firewall_add, mac_for_ip, "8.8.8.8", "192.168.1.10", query)
+        assert result == reply
+        firewall_add.assert_called_once()
+        call_args = firewall_add.call_args[0]
+        assert ("aa:bb:cc:dd:ee:01", "8.8.8.8") in call_args[0]
+        assert ("8.8.8.8", "192.168.1.10") in call_args[1]
+        assert call_args[0][("aa:bb:cc:dd:ee:01", "8.8.8.8")] == 300

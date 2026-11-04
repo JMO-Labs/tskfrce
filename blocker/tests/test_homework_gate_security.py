@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from blocker.homework import MAX_PAIR_SECS, MIN_PAIR_SECS, HomeworkGate
 
 MAC = "aa:bb:cc:dd:ee:01"

@@ -24,7 +24,7 @@ def norm_names(names) -> set[str]:
 def parse_until(until) -> float | None:
     """ISO timestamp (``Z`` or offset) -> epoch seconds; None if unparseable."""
     try:
-        dt = datetime.fromisoformat(str(until).replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(str(until))
     except (TypeError, ValueError):
         return None
     if dt.tzinfo is None:

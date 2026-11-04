@@ -5,9 +5,8 @@ from __future__ import annotations
 import socket
 import threading
 
-from scapy.layers.dns import DNS, DNSQR, DNSRR
-
 from blocker.upstream import a_records, forward
+from scapy.layers.dns import DNS, DNSQR, DNSRR
 
 
 def _query(name="khan.org.", qtype=1, txid=0x1234) -> bytes:

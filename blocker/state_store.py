@@ -19,7 +19,9 @@ MAX_NAME_LEN = 253  # RFC 1035 name length
 
 def _clean_names(names, field: str) -> list[str]:
     if not isinstance(names, list) or len(names) > MAX_NAMES:
-        raise ValueError(f"homework '{field}' must be a list of at most {MAX_NAMES} names.")
+        raise ValueError(  # the API maps ValueError to a 400
+            f"homework '{field}' must be a list of at most {MAX_NAMES} names."
+        )
     out: set[str] = set()
     for n in names:
         if not isinstance(n, str) or not norm_name(n) or len(norm_name(n)) > MAX_NAME_LEN:
@@ -31,14 +33,14 @@ def _clean_names(names, field: str) -> list[str]:
 def _clean_homework(homework) -> dict[str, dict]:
     """Validate and normalize the homework map once, at the store boundary."""
     if not isinstance(homework, dict):
-        raise ValueError("'homework' must be an object.")
+        raise ValueError("'homework' must be an object.")  # noqa: TRY004 - API -> 400
     out: dict[str, dict] = {}
     for mac, hw in homework.items():
         mac = str(mac).strip().lower()
         if not MAC_RE.match(mac):
             raise ValueError(f"'{mac}' is not a valid MAC address.")
         if not isinstance(hw, dict):
-            raise ValueError("homework must have 'allow' and 'block' lists.")
+            raise ValueError("homework must have 'allow' and 'block' lists.")  # noqa: TRY004
         if parse_until(hw.get("until")) is None:
             raise ValueError("homework 'until' must be an ISO timestamp with a timezone.")
         out[mac] = {

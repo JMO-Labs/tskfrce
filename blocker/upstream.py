@@ -20,7 +20,7 @@ def _question(wire: bytes, qr: int) -> tuple[int, str, int, int] | None:
             return None
         q = msg.qd[0]
         return msg.id, _name(q.qname), int(q.qtype), int(q.qclass)
-    except Exception:
+    except Exception:  # noqa: BLE001 - any malformed packet is just "no match"
         return None
 
 
@@ -124,7 +124,7 @@ def handle_homework(
             return None
         qname = str(q.qd[0].qname).lower().rstrip(".")
         qtype = q.qd[0].qtype
-    except Exception:
+    except Exception:  # noqa: BLE001 - unparsable query falls back to the portal
         return None
 
     # Get MAC from IP
