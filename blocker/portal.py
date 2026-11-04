@@ -35,8 +35,12 @@ def dns_response(query_wire: bytes, answer_ip: str) -> bytes | None:
     return bytes(resp)
 
 
-def run_dns(cfg, box_ip: str, stop) -> None:
-    """Serve dns_response over UDP :53 until stop (threading.Event) is set."""
+def run_dns(cfg, box_ip: str, stop, handle=None) -> None:
+    """Serve dns_response over UDP :53 until stop (threading.Event) is set.
+
+    If handle is provided, it's called first: handle(client_ip, data) -> bytes | None.
+    If handle returns bytes, those are sent. If None, falls back to dns_response.
+    """
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(("0.0.0.0", 53))
     sock.settimeout(0.5)
@@ -49,7 +53,11 @@ def run_dns(cfg, box_ip: str, stop) -> None:
             if addr[1] == 53:
                 continue
             try:
-                out = dns_response(data, box_ip)
+                out = None
+                if handle:
+                    out = handle(addr[0], data)
+                if out is None:
+                    out = dns_response(data, box_ip)
                 if out is not None:
                     sock.sendto(out, addr)
             except Exception:

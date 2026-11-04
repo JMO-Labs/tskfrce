@@ -22,13 +22,17 @@ class Config:
     resist_interval: float = 15
     portal_redirect_url: str = "http://task4ce.local/kid"
     mirror_iface: str = ""  # optional SPAN port: listen-only VLAN/device discovery
+    upstream_dns: str = ""  # Upstream DNS server IP for homework mode; auto-detect if empty
 
     @classmethod
     def from_env(cls, environ: Mapping) -> Config:
+        from blocker.upstream import read_resolv_conf
+
         data_dir = Path(environ.get("DATA_DIR", "/data"))
         token = environ.get("INTERNAL_TOKEN") or _token_from_file(data_dir)
         if not token:
             raise RuntimeError("INTERNAL_TOKEN not set in env or secrets.json")
+        upstream_dns = environ.get("UPSTREAM_DNS", "") or read_resolv_conf() or ""
         return cls(
             backend_url=environ.get("BACKEND_URL", "http://backend:8000"),
             blocker_url_host=environ.get("BLOCKER_URL_HOST", "blocker"),
@@ -42,6 +46,7 @@ class Config:
             resist_interval=float(environ.get("RESIST_INTERVAL", 15)),
             portal_redirect_url=environ.get("PORTAL_REDIRECT_URL", "http://task4ce.local/kid"),
             mirror_iface=environ.get("MIRROR_IFACE", ""),
+            upstream_dns=upstream_dns,
         )
 
 
