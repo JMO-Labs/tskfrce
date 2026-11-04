@@ -43,9 +43,9 @@ describe('HomeworkActivity', () => {
 
     renderWithProviders(<HomeworkActivity deviceId={1} />)
 
-    // Wait for data to load
-    await screen.findByText('youtube.com')
-    expect(screen.getByText('youtube.com')).toBeInTheDocument()
+    // Wait for data to load using a more resilient selector that handles text nodes split by · and min
+    await screen.findByText((content, element) => content.includes('youtube.com') && element?.tagName === 'DIV')
+    expect(screen.getByText((content, element) => content.includes('youtube.com') && element?.tagName === 'DIV')).toBeInTheDocument()
   })
 
   test('follow row shows "pulled in by"', async () => {
@@ -87,8 +87,8 @@ describe('HomeworkActivity', () => {
     // Click to expand
     await user.click(expandButton)
 
-    // After expand, component should still be renderable
-    expect(screen.getByText('youtube.com')).toBeInTheDocument()
+    // After expand, component should still be renderable using a more resilient selector
+    expect(screen.getByText((content, element) => content.includes('youtube.com') && element?.tagName === 'DIV')).toBeInTheDocument()
   })
 
   test('Add button expands and shows "Just for Sam" and "For everyone"', async () => {

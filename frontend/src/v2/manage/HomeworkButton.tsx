@@ -34,34 +34,39 @@ export function HomeworkButton({ target, disabled = false, busy = false, onStart
   }, [opened])
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', display: 'inline-block' }}>
-      <ActionButton
-        icon="menu_book"
-        label="Homework mode"
-        disabled={disabled || busy}
-        busy={busy}
-        onClick={() => setOpened(!opened)}
-      >
-        Homework mode
-      </ActionButton>
-      {opened && (
-        <div role="menu" style={{ position: 'absolute', top: '100%', right: 0, background: 'white', border: '1px solid #ccc', borderRadius: '4px', minWidth: '100px', zIndex: 1000 }}>
-          {DURATIONS.map(({ label, value }) => (
-            <button
-              key={value}
-              role="menuitem"
-              type="button"
-              style={{ display: 'block', width: '100%', padding: '8px 12px', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer' }}
-              onClick={() => {
-                onStart(value)
-                setOpened(false)
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
+    <div style={{ display: 'inline-block' }}>
+      <div ref={containerRef} style={{ position: 'relative', display: 'inline-block' }}>
+        <ActionButton
+          icon="menu_book"
+          label="Homework mode"
+          disabled={disabled || busy}
+          busy={busy}
+          onClick={() => setOpened(!opened)}
+        >
+          Homework mode
+        </ActionButton>
+        {opened && (
+          <div role="menu" style={{ position: 'absolute', top: '100%', right: 0, background: 'white', border: '1px solid #ccc', borderRadius: '4px', minWidth: '100px', zIndex: 1000 }}>
+            {DURATIONS.map(({ label, value }) => (
+              <button
+                key={value}
+                role="menuitem"
+                type="button"
+                style={{ display: 'block', width: '100%', padding: '8px 12px', textAlign: 'left', border: 'none', background: 'none', cursor: 'pointer' }}
+                onClick={() => {
+                  onStart(value)
+                  setOpened(false)
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <p style={{ fontSize: '0.875em', color: '#666', margin: '4px 0 0 0', lineHeight: 1.4 }}>
+        Homework sites stay on. It may take up to a minute to start.
+      </p>
     </div>
   )
 }
