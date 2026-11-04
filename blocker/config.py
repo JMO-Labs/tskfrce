@@ -26,13 +26,11 @@ class Config:
 
     @classmethod
     def from_env(cls, environ: Mapping) -> Config:
-        from blocker.upstream import read_resolv_conf
-
         data_dir = Path(environ.get("DATA_DIR", "/data"))
         token = environ.get("INTERNAL_TOKEN") or _token_from_file(data_dir)
         if not token:
             raise RuntimeError("INTERNAL_TOKEN not set in env or secrets.json")
-        upstream_dns = environ.get("UPSTREAM_DNS", "") or read_resolv_conf() or ""
+        upstream_dns = environ.get("UPSTREAM_DNS", "") or _read_resolv_conf() or ""
         return cls(
             backend_url=environ.get("BACKEND_URL", "http://backend:8000"),
             blocker_url_host=environ.get("BLOCKER_URL_HOST", "blocker"),
@@ -56,3 +54,17 @@ def _token_from_file(data_dir: Path) -> str:
         return ""
     with path.open() as f:
         return str(json.load(f).get("INTERNAL_TOKEN", ""))
+
+
+def _read_resolv_conf(path: str = "/etc/resolv.conf") -> str | None:
+    """Extract the first non-loopback nameserver from resolv.conf."""
+    try:
+        with open(path) as f:
+            for line in f:
+                if line.startswith("nameserver "):
+                    ip = line.split()[1]
+                    if not ip.startswith("127."):
+                        return ip
+    except OSError:
+        pass
+    return None

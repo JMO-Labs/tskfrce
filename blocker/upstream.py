@@ -60,20 +60,6 @@ def servfail(query: bytes) -> bytes | None:
         return None
 
 
-def read_resolv_conf(path: str = "/etc/resolv.conf") -> str | None:
-    """Extract the first non-loopback nameserver from resolv.conf."""
-    try:
-        with open(path) as f:
-            for line in f:
-                if line.startswith("nameserver "):
-                    ip = line.split()[1]
-                    if not ip.startswith("127."):
-                        return ip
-    except OSError:
-        pass
-    return None
-
-
 def handle_homework(gate, firewall_add, mac_for_ip, server: str, client_ip: str, query: bytes) -> bytes | None:
     """DNS handle for homework mode: forward allowed queries, record pairs, pre-install in firewall.
 
