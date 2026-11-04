@@ -16,7 +16,7 @@ export interface HomeworkActivitySession {
   kid_name?: string | null
   session_start: string
   active: boolean
-  until?: string
+  until?: string | null
   items: HomeworkActivityItem[]
 }
 
@@ -49,3 +49,13 @@ export function useHomeworkSite() {
     },
   })
 }
+
+export interface HomeworkSites {
+  starter: string[]
+  allow: string[]
+  block: string[]
+  /** per-kid additions, keyed by kid id */
+  kids: Record<string, string[]>
+}
+
+export const useHomeworkSites = () => useQuery({ queryKey: ['homework-sites'], queryFn: () => api<HomeworkSites>('/homework/sites') })

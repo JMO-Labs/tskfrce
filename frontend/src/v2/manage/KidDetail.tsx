@@ -14,6 +14,7 @@ import { useChoreTypes } from '@/v2/hooks/useChoreTypes'
 import { threadGlyph } from '@/v2/today/choreIcon'
 import type { Kid } from '@/v2/types'
 import { AGE_LABEL } from './ageGroups'
+import { KidHomeworkSites } from './KidHomeworkSites'
 import { KidEditor } from './KidEditor'
 import { PointsForm } from './PointsForm'
 import { initial, nameOf, schedules } from './choreMeta'
@@ -135,6 +136,8 @@ export function KidDetail({ kid, focusPin, onDeleted }: Props) {
             ))}
           </div>
         </section>
+
+        <KidHomeworkSites kidId={kid.id} name={name} />
 
         <PointsHistory kidId={kid.id} />
       </div>

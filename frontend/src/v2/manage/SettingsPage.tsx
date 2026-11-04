@@ -15,6 +15,7 @@ import { SettingsList } from './SettingsList'
 import { SETTINGS_SECTIONS, type S } from './settingsSections'
 import { KidPushPane } from './KidPushPane'
 import { AppearancePane } from './AppearancePane'
+import { HomeworkPane } from './HomeworkPane'
 import { NotificationsPane } from './NotificationsPane'
 import { accentHex } from '@/v2/parent/accent'
 import { toastFail, toastOk } from '@/v2/notify'
@@ -74,6 +75,7 @@ function SettingsBody() {
             <KidPushPane />
           </>
         )}
+        {section === 'homework' && <HomeworkPane />}
         {section === 'parents' && <ParentsPane />}
       </div>
     </ParentShell>
