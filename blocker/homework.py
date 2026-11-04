@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from dataclasses import dataclass, field
@@ -10,6 +11,9 @@ from datetime import datetime
 FOLLOW_SECS = 10.0
 MIN_PAIR_SECS = 300
 MAX_PAIR_SECS = 3600  # a long upstream TTL must not keep a hole open for days
+MAX_NAMES = 5000  # distinct names tracked per session (memory bound against name floods)
+
+log = logging.getLogger(__name__)
 
 
 def norm_name(name: str) -> str:
@@ -55,6 +59,8 @@ class _Session:
     # {ip: names that resolved to it}; persists across activity drains (shared-IP cuts)
     ip_names: dict[str, set[str]] = field(default_factory=dict)
     activity: dict[str, _Activity] = field(default_factory=dict)  # {domain: _Activity}
+    names: set[str] = field(default_factory=set)  # every name tracked, capped at MAX_NAMES
+    capped: bool = False  # cap hit (logged once)
 
 
 @dataclass
@@ -94,6 +100,26 @@ def _prune_follow(sess: _Session) -> None:
     }
     if sess.last_allowed_name and not _listed(sess, sess.last_allowed_name):
         sess.last_allowed_name = None
+
+
+def _admit(sess: _Session, name: str) -> bool:
+    """Track name as known; False if it is new and the session is at MAX_NAMES."""
+    if name in sess.names:
+        return True
+    if len(sess.names) >= MAX_NAMES:
+        if not sess.capped:
+            sess.capped = True
+            log.warning(
+                "homework name cap (%d) hit for %s; not tracking new names", MAX_NAMES, sess.mac
+            )
+        return False
+    sess.names.add(name)
+    return True
+
+
+def _secs_left(sess: _Session, expiry: float, now: float, wall_now: float) -> int:
+    """Firewall timeout for a pair: its clamp, never past the session's ``until``; >= 1 s."""
+    return max(1, int(min(expiry - now, sess.until - wall_now)))
 
 
 class HomeworkGate:
@@ -189,6 +215,8 @@ class HomeworkGate:
             if name in sess.followed_names:
                 return True, "follow", None
             if sess.last_allowed_name and (now - sess.last_allowed_time) < FOLLOW_SECS:
+                if not _admit(sess, name):  # at the cap: no new follows
+                    return False, None, None
                 sess.followed_names[name] = sess.last_allowed_name
                 return True, "follow", sess.last_allowed_name
 
@@ -205,6 +233,14 @@ class HomeworkGate:
                 return set()
 
             now = self._clock()
+            expiry = now + min(max(int(ttl), MIN_PAIR_SECS), MAX_PAIR_SECS)
+            if not _admit(sess, name):
+                # At the cap only listed names get here: install pairs, keyed in ip_names by
+                # the list entry (bounded) so a later de-list still cuts them; no activity.
+                entry = next((a for a in sess.allow if domain_matches(name, a)), None)
+                if entry is None:
+                    return set()
+                return self._add_pairs(sess, entry, ips, expiry, now)
             minute_bucket = int(now) // 60
             act = sess.activity.get(name)
             if act is None:
@@ -225,14 +261,17 @@ class HomeworkGate:
             if via == "follow" and pulled_by:
                 sess.followed_names.setdefault(name, norm_name(pulled_by))
 
-            expiry = now + min(max(int(ttl), MIN_PAIR_SECS), MAX_PAIR_SECS)
-            new_ips = set()
-            for ip in ips:
-                if ip not in sess.pairs or sess.pairs[ip] < now:
-                    new_ips.add(ip)
-                sess.pairs[ip] = max(expiry, sess.pairs.get(ip, 0.0))
-                sess.ip_names.setdefault(ip, set()).add(name)
-            return new_ips
+            return self._add_pairs(sess, name, ips, expiry, now)
+
+    @staticmethod
+    def _add_pairs(sess: _Session, name: str, ips, expiry: float, now: float) -> set[str]:
+        new_ips = set()
+        for ip in ips:
+            if ip not in sess.pairs or sess.pairs[ip] < now:
+                new_ips.add(ip)
+            sess.pairs[ip] = max(expiry, sess.pairs.get(ip, 0.0))
+            sess.ip_names.setdefault(ip, set()).add(name)
+        return new_ips
 
     def remaining(self, mac: str, ips) -> dict[str, int]:
         """Seconds each live pair of mac has left (firewall element timeouts)."""
@@ -240,9 +279,9 @@ class HomeworkGate:
             sess = self._live(mac)
             if sess is None:
                 return {}
-            now = self._clock()
+            now, wall_now = self._clock(), self._wall()
             return {
-                ip: max(1, int(sess.pairs[ip] - now))
+                ip: _secs_left(sess, sess.pairs[ip], now, wall_now)
                 for ip in ips
                 if ip in sess.pairs and sess.pairs[ip] >= now
             }
@@ -250,7 +289,7 @@ class HomeworkGate:
     def pairs_ttl(self) -> dict[tuple[str, str], int]:
         """Unexpired {(mac, ip): seconds_left} for live sessions."""
         with self._lock:
-            now = self._clock()
+            now, wall_now = self._clock(), self._wall()
             out: dict[tuple[str, str], int] = {}
             for mac in list(self._sessions):
                 sess = self._live(mac)
@@ -258,7 +297,7 @@ class HomeworkGate:
                     continue
                 for ip, expiry in sess.pairs.items():
                     if expiry >= now:
-                        out[(mac, ip)] = max(1, int(expiry - now))
+                        out[(mac, ip)] = _secs_left(sess, expiry, now, wall_now)
             return out
 
     def pairs(self) -> set[tuple[str, str]]:
