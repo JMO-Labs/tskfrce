@@ -59,16 +59,10 @@ def device_facts(
     live = [o for o in overrides if o.expires_at is None or o.expires_at > now]
     manual = [o for o in live if o.source == "manual"]
 
-    # Extract homework_until from the newest homework override
-    homework_until = None
-    homework_override = next((o for o in manual if o.action == "homework"), None)
-    if homework_override:
-        homework_until = homework_override.expires_at
-
-    # For block_reason, override is treated as None when action is homework
-    override_for_block = None
-    if manual and manual[0].action != "homework":
-        override_for_block = manual[0].action
+    # Homework rides on top of whatever pauses the device: a lock under it still counts.
+    homework = next((o for o in manual if o.action == "homework"), None)
+    homework_until = homework.expires_at if homework else None
+    override_for_block = next((o.action for o in manual if o.action != "homework"), None)
 
     r = hours.resolve(
         pre.rules if pre else hours.load(db),
@@ -110,7 +104,7 @@ def desired_blocked(db: Session, now_utc: datetime) -> list[str]:
 
 
 def tick(db: Session, now_utc: datetime) -> tuple[list[str], dict]:
-    from app.lock.homework import state_map
+    from app.lock.homework import clamp, state_map
 
     fam = get_family(db)
     now_local = local_now(fam.timezone, _aware_utc(now_utc))
@@ -122,6 +116,7 @@ def tick(db: Session, now_utc: datetime) -> tuple[list[str], dict]:
     devices = db.query(Device).all()
     pre = Prefetch(db, devices)
     rows = [(d, device_facts(db, d, fam, now_utc, pre)) for d in devices]
+    rows = [(d, clamp(f, pre.overrides[d.id], now_local)) for d, f in rows]
     blocked = sorted(d.mac for d, f in rows if not is_online(f, now_local))
     homework = state_map(db, rows, set(blocked))
     activity.record_transitions(db, rows, now, now_local)

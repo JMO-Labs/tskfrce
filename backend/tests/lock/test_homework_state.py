@@ -123,39 +123,27 @@ def test_homework_device_stays_blocked_and_in_map(db, parent):
     assert "until" in result["aa:bb:cc:dd:ee:ff"]
 
 
-def test_expired_homework_not_in_map(db):
-    """Test that expired homework is not in the map."""
+def test_expired_homework_not_in_map(db, parent):
+    """An expired homework timer drops out of the map; the lock under it stays."""
+    from app.lock.state import tick
+
+    now = datetime(2026, 10, 20, 15, 0)
     device = Device(mac="aa:bb:cc:dd:ee:01", name="test", status="assigned")
     db.add(device)
     db.commit()
-    db.refresh(device)
-
-    now_utc = datetime.utcnow()
-    expired_at = now_utc - timedelta(hours=1)
-
-    # Facts with expired homework_until
-    facts_list = [
-        (
-            device,
-            DeviceFacts(
-                status="assigned",
-                owners=tuple(),
-                allowed_sets=tuple(),
-                free=tuple(),
-                override=None,
-                bonus_active=False,
-                new_devices_blocked=False,
-                points_unlock_early=False,
-                homework_until=expired_at,
-            ),
+    db.add(Override(device_id=device.id, action="lock", source="manual"))
+    db.add(
+        Override(
+            device_id=device.id,
+            action="homework",
+            source="manual",
+            expires_at=now - timedelta(minutes=1),
         )
-    ]
-
-    blocked_set = {"aa:bb:cc:dd:ee:01"}
-    result = state_map(db, facts_list, blocked_set)
-
-    # Should not be in map since it's expired
-    assert "aa:bb:cc:dd:ee:01" not in result
+    )
+    db.commit()
+    blocked, homework = tick(db, now)
+    assert blocked == ["aa:bb:cc:dd:ee:01"]
+    assert homework == {}
 
 
 def test_tick_returns_tuple(db):
@@ -200,3 +188,29 @@ def test_push_state_body(db, monkeypatch):
     assert captured_body is not None
     assert captured_body["blocked"] == blocked
     assert captured_body["homework"] == homework
+
+
+def test_tick_clamps_homework_to_new_bedtime(db, kid):
+    from datetime import UTC
+
+    from app.lock.state import tick
+    from tests.factories import make_rule
+
+    now = datetime(2026, 10, 20, 19, 0, tzinfo=UTC)  # family timezone is UTC
+    rule = make_rule(db, kid_ids=[kid.id], times=(("00:00", "22:00"),))
+    d = Device(mac="aa:bb:cc:dd:ee:02", name="Tab", status="assigned")
+    d.owners = [kid]
+    db.add(d)
+    db.commit()
+    db.add(Override(device_id=d.id, action="lock", source="manual"))
+    hw = Override(
+        device_id=d.id, action="homework", source="manual", expires_at=datetime(2026, 10, 20, 21)
+    )
+    db.add(hw)
+    db.commit()
+    rule.times[0].end = "20:00"  # parent moves bedtime earlier
+    db.commit()
+    blocked, homework = tick(db, now)
+    db.refresh(hw)
+    assert hw.expires_at == datetime(2026, 10, 20, 20, 0)
+    assert homework[d.mac]["until"] == "2026-10-20T20:00:00Z"
