@@ -32,7 +32,8 @@ r=0; [ "$(cat "$T/data/last_ip")" = 192.168.1.41 ] || r=1; ok "failed report kee
 printf '#!/bin/sh\necho "curl $*" >> "%s"\n' "$LOG" > "$T/bin/curl"
 
 : > "$LOG"; run issue_or_renew
-has "--dns httpreq" && has "-d abc123.taskfrce.jmolabs.dev" && has " run" \
+has "--path $T/data/lego" && has "--accept-tos" && has "--email boxes@jmolabs.dev" \
+  && has "--server https://acme-v02.api.letsencrypt.org/directory" && has "--dns httpreq" && has "-d abc123.taskfrce.jmolabs.dev" && has " run" \
   && has "ENDPOINT=https://taskfrce.jmolabs.dev/api/acme"; ok "issue runs lego run" $?
 
 mkdir -p "$T/data/lego/certificates"; echo c > "$T/data/lego/certificates/abc123.taskfrce.jmolabs.dev.crt"
@@ -40,6 +41,20 @@ mkdir -p "$T/data/lego/certificates"; echo c > "$T/data/lego/certificates/abc123
 has "renew --days 30"; ok "existing cert renews" $?
 
 r=0; [ "$(run next_backoff 30)" = 60 ] && [ "$(run next_backoff 900)" = 900 ] || r=1; ok "next_backoff" $r
+
+out=$(BOX_SECRET='' sh "$HERE/edge.sh" 2>&1); rc=$?
+r=0; [ $rc -ne 0 ] && echo "$out" | grep -q "BOX_ID and BOX_SECRET are required" || r=1; ok "missing BOX_SECRET fails" $r
+
+# failed report then retry posts again
+printf '#!/bin/sh\nexit 22\n' > "$T/bin/curl"; setip 50; run report_ip 2>/dev/null
+printf '#!/bin/sh\necho "curl $*" >> "%s"\n' "$LOG" > "$T/bin/curl"; : > "$LOG"; run report_ip
+has '"ip":"192.168.1.50"'; r=$?; ok "retry after failed report posts" $r
+
+# lego that writes the cert -> changed (0)
+rm -rf "$T/data/lego"
+printf '#!/bin/sh\nmkdir -p "%s/data/lego/certificates"; echo new > "%s/data/lego/certificates/abc123.taskfrce.jmolabs.dev.crt"\n' "$T" "$T" > "$T/bin/lego"
+run issue_or_renew; r=$?; ok "issue_or_renew returns 0 when cert changed" $r
+r=0; run issue_or_renew && r=1; ok "unchanged cert returns non-zero" $r
 
 out=$(BOX_ID='' sh "$HERE/edge.sh" 2>&1); rc=$?
 r=0; [ $rc -ne 0 ] && echo "$out" | grep -q "BOX_ID and BOX_SECRET are required" || r=1; ok "missing BOX_ID fails" $r

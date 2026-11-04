@@ -24,7 +24,7 @@ report_ip() {
   ip=$(lan_ip)
   [ -n "$ip" ] || return 1
   [ "$ip" = "$(cat "$DATA_DIR/last_ip" 2>/dev/null)" ] && return 0
-  if curl -fsS -X POST -u "$BOX_ID:$BOX_SECRET" -H 'Content-Type: application/json' \
+  if curl -fsS --max-time 30 -X POST -u "$BOX_ID:$BOX_SECRET" -H 'Content-Type: application/json' \
     -d "{\"ip\":\"$ip\"}" "$REGISTRY_URL/api/ip"; then
     mkdir -p "$DATA_DIR" && echo "$ip" > "$DATA_DIR/last_ip"
   else
@@ -36,10 +36,10 @@ report_ip() {
 # Returns 0 if the cert file changed.
 issue_or_renew() {
   before=$(cksum "$CRT" 2>/dev/null)
-  export HTTPREQ_ENDPOINT="$REGISTRY_URL/api/acme" HTTPREQ_USERNAME="$BOX_ID" HTTPREQ_PASSWORD="$BOX_SECRET"
   if [ -f "$CRT" ]; then act="renew --days 30"; else act=run; fi
   # shellcheck disable=SC2086 # act is an intentional word list
-  lego --path "$DATA_DIR/lego" --dns httpreq --accept-tos --email "$ACME_EMAIL" \
+  HTTPREQ_ENDPOINT="$REGISTRY_URL/api/acme" HTTPREQ_USERNAME="$BOX_ID" HTTPREQ_PASSWORD="$BOX_SECRET" \
+    lego --path "$DATA_DIR/lego" --dns httpreq --accept-tos --email "$ACME_EMAIL" \
     --server "$LEGO_SERVER" -d "$FQDN" $act || echo "lego failed" >&2
   [ "$before" != "$(cksum "$CRT" 2>/dev/null)" ]
 }
@@ -51,23 +51,29 @@ next_backoff() {
 }
 
 main() {
+  CADDY_PID=
+  trap 'kill "$CADDY_PID" 2>/dev/null; exit 0' TERM INT
   b=30
   while [ ! -f "$CRT" ]; do
     report_ip
     issue_or_renew
     [ -f "$CRT" ] && break
-    sleep "$b"
+    sleep "$b" & wait $!
     b=$(next_backoff "$b")
   done
   caddy run --config /etc/caddy/Caddyfile &
+  CADDY_PID=$!
+  # a cert may have expired while the box was off
+  issue_or_renew && { caddy reload --config /etc/caddy/Caddyfile --force || exit 1; }
   since=0
   while :; do
-    sleep "$CHECK_SECS"
+    sleep "$CHECK_SECS" & wait $!
+    kill -0 "$CADDY_PID" || { echo "caddy exited" >&2; exit 1; }
     report_ip
     since=$((since + CHECK_SECS))
     if [ "$since" -ge "$RENEW_SECS" ]; then
       since=0
-      issue_or_renew && caddy reload --config /etc/caddy/Caddyfile --force
+      if issue_or_renew; then caddy reload --config /etc/caddy/Caddyfile --force || exit 1; fi
     fi
   done
 }
