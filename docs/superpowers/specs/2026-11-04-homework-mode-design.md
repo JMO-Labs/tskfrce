@@ -18,7 +18,10 @@ kids on track by **watching activity**, not by strict filtering.
   - The parent turns homework mode on from the app.
   - A kid can also **ask** for it from their page, and the parent approves.
 - **Allowed sites:** a built-in **starter list**, plus **sites each family
-  adds** (for example the school portal).
+  adds** (for example the school portal), plus **per-kid additions**. Some kids
+  need specialised access (a tutoring site, a therapy or learning-support app)
+  that siblings should not get. Per-kid lists only **add** to the shared lists;
+  they never take away.
 - **"Allow everything in a session":** pages load fonts, sign-in pages, file
   hosts and embedded videos from other sites. These must work without parents
   listing them.
@@ -170,8 +173,9 @@ itself. Instead it **decides per name**:
   - For a kid or group, it applies to that target's currently paused devices.
 - If the schedule changes while homework mode is on, recompute `expires_at`.
 - **State payload:** both the push body and `/internal/state` gain a field
-  `homework`. It maps a MAC to `{allow: [names], block: [names], until: ts}`.
-  Alternatively it is a family-level list plus MACs; the builder may choose.
+  `homework`. It maps a MAC to `{allow: [names], block: [names], until: ts}`,
+  where `allow` is that device's effective list (starter + family + its kid's
+  additions). The builder may de-duplicate shared lists in the payload.
   The blocker's `StateStore` grows accordingly.
 
 ### 3. Lists
@@ -190,6 +194,12 @@ itself. Instead it **decides per name**:
   page, through session follow, and a family can add it.
 - **Family allow list:** the parent adds and removes domains in settings. The
   parent can also add a domain from the activity list.
+- **Per-kid allow list (additive):** the parent adds and removes domains for one
+  kid, in that kid's settings.
+  - A kid's effective allow list = starter + family + that kid's list.
+  - The activity list's **Add to allowed** asks "Just for <kid>" or "For
+    everyone".
+  - A device with no kid assigned gets starter + family only.
 - **Family block list ("never during homework"):** filled from the activity
   list's **Block** button, and editable in settings.
 - **My call, on what blocking does:**
@@ -197,13 +207,16 @@ itself. Instead it **decides per name**:
   - It removes from the device's allowed set only the addresses that no
     still-allowed name has resolved to. Shared addresses stay.
   - It deletes conntrack entries for the removed addresses.
+  - The block list stays **family-wide** and always wins, including over
+    per-kid additions. To give one kid a site that is blocked for everyone, the
+    parent removes it from the block list and adds it to that kid's list.
   - Why: removing every address of a blocked name would also cut allowed sites
     on the same shared servers. Blocking `youtube.com` could break Google
     Classroom, which would break the top rule.
   - Known limit: a blocked site served from the same addresses as an allowed
     site may keep working. The UI says so in one line under the Block button.
-- **My call, on who manages the lists:** both lists are **family-wide** (not
-  per kid or device), and **only parents** can edit them.
+- **My call, on who manages the lists:** **only parents** can edit any list:
+  the family allow list, the family block list and the per-kid allow lists.
 
 ### 4. Monitoring (activity list)
 
