@@ -1,6 +1,6 @@
 """Homework mode: kid-side helpers shared by the kid and parent APIs."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -25,6 +25,16 @@ def paused(db: Session, kid: User, now_utc: datetime) -> bool:
 
 def pending(db: Session, kid_id: int) -> HomeworkRequest | None:
     return db.query(HomeworkRequest).filter_by(kid_id=kid_id, status="pending").first()
+
+
+DENY_COOLDOWN = timedelta(minutes=5)
+
+
+def recently_denied(db: Session, kid_id: int, now_utc: datetime) -> bool:
+    """True when a parent said no to this kid within DENY_COOLDOWN."""
+    since = now_utc.astimezone(UTC).replace(tzinfo=None) - DENY_COOLDOWN
+    q = db.query(HomeworkRequest).filter_by(kid_id=kid_id, status="denied")
+    return q.filter(HomeworkRequest.decided_at >= since).first() is not None
 
 
 def kid_state(db: Session, kid: User, now_utc: datetime) -> dict:

@@ -135,3 +135,18 @@ def test_kid_today_pending_then_until(client, db, kid, parent, kid_headers, pare
     t = client.get("/api/v1/kid/today", headers=kid_headers).json()
     assert t["homework_pending"] is False
     assert t["homework"]["until"].endswith("Z")
+
+
+def test_ask_again_soon_after_deny_is_429(client, db, kid, parent, kid_headers, parent_headers):
+    from datetime import timedelta
+
+    mk(db, kid)
+    rid = ask(client, kid_headers).json()["id"]
+    decide(client, parent_headers, rid, "deny")
+    r = ask(client, kid_headers)
+    assert r.status_code == 429
+    assert "few minutes" in r.json()["detail"]
+    req = db.get(HomeworkRequest, rid)
+    req.decided_at -= timedelta(minutes=6)
+    db.commit()
+    assert ask(client, kid_headers).status_code == 200

@@ -189,6 +189,8 @@ def ask_homework(db: Session = Depends(get_db), kid: User = Depends(require_kid)
         raise HTTPException(409, "Your internet is already on.")
     if homework.pending(db, kid.id):
         raise HTTPException(409, "You already asked. A parent will answer soon.")
+    if homework.recently_denied(db, kid.id, datetime.now(UTC)):
+        raise HTTPException(429, "A parent just said no. Try again in a few minutes.")
     req = HomeworkRequest(kid_id=kid.id, status="pending")
     db.add(req)
     db.flush()
