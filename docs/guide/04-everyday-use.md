@@ -141,6 +141,10 @@ Homework mode opens only the school sites on a device that is paused, for a set 
 
 The **Homework activity** panel shows what was used, so you can block a site or add one.
 
+If you say no to a request, your kid can ask again after 5 minutes.
+
+**Limits.** Big school sites share their servers with other sites (Google, Microsoft, Cloudflare). A determined kid can sometimes reach another site that sits on the same servers. The **Homework activity** panel is how you spot that: look for names you don't recognise, then block them or end homework early.
+
 ## Hours
 
 **Settings → Hours** sets when devices may be online. Outside these hours, they lock. Each rule has a kind:
