@@ -21,6 +21,7 @@ const KIND: Record<NeedsItem['type'], { label: string; icon: string; tone: 'lav'
   screen_time: { label: 'Screen time', icon: 'timer', tone: 'amb' },
   reward: { label: 'Reward', icon: 'redeem', tone: 'amb' },
   note: { label: 'Note', icon: 'flag', tone: 'amb' },
+  homework: { label: 'Homework time', icon: 'menu_book', tone: 'amb' },
 }
 const isChore = (i: NeedsItem) => i.type === 'chore' || i.type === 'redo'
 const ordinal = (n: number) => (n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`)

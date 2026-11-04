@@ -15,6 +15,8 @@ import { ConfirmDelete } from './ConfirmDelete'
 import { DeviceActivity } from './DeviceActivity'
 import { DeviceNetwork } from './DeviceNetwork'
 import { DeviceRightNow } from './DeviceRightNow'
+import { HomeworkActivity } from './HomeworkActivity'
+import { HomeworkButton } from './HomeworkButton'
 import { OnlineWeek } from './OnlineWeek'
 import { ago, DEVICE_TYPE_ICON, getDeviceType } from './deviceMeta'
 import { KidPills } from './KidPills'
@@ -28,7 +30,7 @@ interface Props {
   groups?: Group[]
   /** Called after the device is deleted. */
   onDeleted?: () => void
-  onRequestOverride: (req: { kind: string; id: number; action: string }) => void
+  onRequestOverride: (req: { kind: string; id: number; action: string; minutes?: number }) => void
   /** Override action in flight (lock / unlock / clear), if any. */
   pendingAction?: string | null
 }
@@ -196,6 +198,7 @@ export function DeviceDetail({ device, kids, groups = [], onDeleted, onRequestOv
           <ActionButton icon="lock_open" busy={pendingAction === 'unlock'} disabled={!!pendingAction} onClick={() => onRequestOverride({ kind: 'device', id: device.id, action: 'unlock' })}>
             Unlock 30 min
           </ActionButton>
+          <HomeworkButton target={{ kind: 'device', id: device.id }} disabled={device.online} busy={pendingAction === 'homework'} onStart={(minutes) => onRequestOverride({ kind: 'device', id: device.id, action: 'homework', minutes })} />
           {ovLive && (
             <ActionButton icon="event_repeat" busy={pendingAction === 'clear'} disabled={!!pendingAction} onClick={() => onRequestOverride({ kind: 'device', id: device.id, action: 'schedule' })}>
               Back to schedule
@@ -240,6 +243,7 @@ export function DeviceDetail({ device, kids, groups = [], onDeleted, onRequestOv
           <div className="pk-col">
             {unknown ? detailsPanel : ownersPanel}
             <DeviceRightNow device={device} timeZone={family?.timezone} />
+            {device.override?.action === 'homework' && <HomeworkActivity deviceId={device.id} />}
           </div>
           {!guest && <OnlineWeek device={device} />}
         </div>
