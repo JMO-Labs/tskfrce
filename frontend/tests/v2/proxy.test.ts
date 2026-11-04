@@ -95,3 +95,31 @@ test('forwards bearer auth but never browser cookies', async () => {
   expect(sent.authorization).toBe('Bearer t');
   expect(sent.cookie).toBeUndefined();
 });
+
+describe('X-Real-IP trust', () => {
+  async function run(peer: string, hdrs: Record<string, string>) {
+    const fetch = jest.fn(async () => fakeResp(200, '', null));
+    (global as any).fetch = fetch;
+    const req = mockReq('GET', '/api/proxy/x', '', hdrs);
+    req.socket.remoteAddress = peer;
+    process.env.EDGE_TOKEN = 'tok-123';
+    await handler(req, mockRes());
+    delete process.env.EDGE_TOKEN;
+    return (fetch.mock.calls[0] as any)[1].headers;
+  }
+  test('correct token + valid ip: header ip used', async () => {
+    const h = await run('172.29.50.1', { 'x-real-ip': '192.168.1.40', 'x-edge-token': 'tok-123' });
+    expect(h['X-Real-IP']).toBe('192.168.1.40');
+    expect(JSON.stringify(h).toLowerCase()).not.toContain('x-edge-token');
+    expect(JSON.stringify(h)).not.toContain('tok-123');
+  });
+  test('missing token: peer', async () => {
+    expect((await run('192.168.1.9', { 'x-real-ip': '10.0.0.1' }))['X-Real-IP']).toBe('192.168.1.9');
+  });
+  test('wrong token: peer', async () => {
+    expect((await run('192.168.1.9', { 'x-real-ip': '10.0.0.1', 'x-edge-token': 'nope' }))['X-Real-IP']).toBe('192.168.1.9');
+  });
+  test('correct token + garbage ip: peer', async () => {
+    expect((await run('192.168.1.9', { 'x-real-ip': '1.2.3.4, 5.6.7.8', 'x-edge-token': 'tok-123' }))['X-Real-IP']).toBe('192.168.1.9');
+  });
+});

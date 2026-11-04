@@ -4,6 +4,7 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next'
+import { clientIp } from '../../../clientIp'
 
 // x-view-as: parent previewing a kid; backend only honours it for a parent token on kid GETs
 // no 'cookie': backend auth is Bearer-only, browser cookies (settings/login UX) stay on the edge
@@ -46,10 +47,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const v = req.headers[h]
     if (typeof v === 'string') headers[h] = v
   }
-  // Real client IP for the backend (kid device lookup, rate limits). Built from the
-  // socket only; client-sent x-real-ip / x-forwarded-for / forwarded are never copied.
-  const peer = (req.socket.remoteAddress || '').replace(/^::ffff:/, '')
-  if (peer) headers['X-Real-IP'] = peer
+  // Real client IP for the backend (kid device lookup, rate limits): the socket peer, or
+  // x-real-ip when the edge proxy proves itself with x-edge-token. x-edge-token is never
+  // forwarded; x-forwarded-for / forwarded are never copied.
+  const ip = clientIp(req.headers, req.socket.remoteAddress)
+  if (ip) headers['X-Real-IP'] = ip
 
   try {
     const body = req.method === 'GET' || req.method === 'HEAD' ? undefined : await rawBody(req)

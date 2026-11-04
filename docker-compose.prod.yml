@@ -47,6 +47,9 @@ services:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: /api/proxy
       BACKEND_INTERNAL_URL: http://backend:8000
+      EDGE_TOKEN: ${EDGE_TOKEN:-}
+      FRONTEND_UPSTREAM: ${FRONTEND_UPSTREAM:-127.0.0.1:3000}
+      NTFY_UPSTREAM: ${NTFY_UPSTREAM:-127.0.0.1:2586}
     depends_on:
       backend:
         condition: service_healthy
@@ -115,8 +118,27 @@ services:
       PORTAL_REDIRECT_URL: ${BOX_URL:-http://task4ce.local:3000}/kid
     restart: unless-stopped
 
+  # HTTPS front on <id>.taskfrce.jmolabs.dev (scripts/enable-hostname.sh). Opt-in via COMPOSE_PROFILES=edge.
+  # Empty-default env on purpose: `:?` is interpolated even with the profile off; edge.sh checks them.
+  edge:
+    image: ghcr.io/jmo-labs/tskfrce/edge:${TASK4CE_TAG:-latest}
+    build:
+      context: ./edge
+    profiles: ["edge"]
+    network_mode: host
+    environment:
+      BOX_ID: ${BOX_ID:-}
+      BOX_SECRET: ${BOX_SECRET:-}
+      EDGE_TOKEN: ${EDGE_TOKEN:-}
+      FRONTEND_UPSTREAM: ${FRONTEND_UPSTREAM:-127.0.0.1:3000}
+      NTFY_UPSTREAM: ${NTFY_UPSTREAM:-127.0.0.1:2586}
+    volumes:
+      - edge_data:/data
+    restart: unless-stopped
+
 volumes:
   task4ce_data:
+  edge_data:
   ntfy_cache:
   ntfy_conf:
 

@@ -7,6 +7,7 @@
 const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
+const { clientIp } = require('./clientIp');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const dev = process.env.NODE_ENV !== 'production';
@@ -109,10 +110,12 @@ app.prepare()
           const backendUrlObj = new URL(backendUrl);
           // Never pass client-supplied IP headers; X-Real-IP comes from the socket.
           const headers = { ...req.headers };
+          const ip = clientIp(headers, req.socket.remoteAddress);
           delete headers['x-real-ip'];
+          delete headers['x-edge-token'];
           delete headers['x-forwarded-for'];
           delete headers['forwarded'];
-          headers['x-real-ip'] = (req.socket.remoteAddress || '').replace(/^::ffff:/, '');
+          headers['x-real-ip'] = ip;
           const proxyReq = http.request({
             hostname: backendUrlObj.hostname,
             port: backendUrlObj.port,
