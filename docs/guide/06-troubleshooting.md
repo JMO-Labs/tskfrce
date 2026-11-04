@@ -86,6 +86,12 @@ If the link says it has expired, make a new one. Each new link cancels the old o
 1. Make sure the device is assigned to that kid on the **Devices** page. Kids can only sign in from their own devices.
 2. After too many wrong PINs the app says "Too many tries. Wait a minute and try again." Wait a minute.
 
+## Homework sites won't load
+
+1. Check the site is in **Settings → Homework** (or the kid's extra list) and not in "Never during homework".
+2. Some sites need other addresses to work. Open **Homework activity** and add what the page pulled in.
+3. Turn off Private DNS (Android) or secure DNS in the browser on the kid's device. It can skip the box's answers.
+
 ## Backups
 
 Your family's information lives in one data store on the box. Before any upgrade that changes the database, the app saves a copy in `backups`, named `pre-upgrade-<time>.db`, inside that data store.

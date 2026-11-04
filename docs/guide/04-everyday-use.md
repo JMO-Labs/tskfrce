@@ -131,6 +131,16 @@ The **Groups** tab puts several devices together, like "Game consoles", so you c
 
 If the home box stops checking in, a red **Home box offline** message appears at the top. See [Troubleshooting](06-troubleshooting.md).
 
+## Homework mode
+
+Homework mode opens only the school sites on a device that is paused, for a set time.
+
+1. Open the device, kid or group and choose **Homework**, then pick 30, 60, 90 or 120 minutes. Or wait for a kid to tap **Ask for homework time** and answer in **Needs you**.
+2. Add sites in **Settings → Homework**. "Allowed for everyone" adds to the built-in list. "Never during homework" always wins.
+3. For one kid only, open **Kids & chores**, pick the kid and use **Extra homework sites**.
+
+The **Homework activity** panel shows what was used, so you can block a site or add one.
+
 ## Hours
 
 **Settings → Hours** sets when devices may be online. Outside these hours, they lock. Each rule has a kind:
