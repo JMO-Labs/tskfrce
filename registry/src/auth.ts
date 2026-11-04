@@ -17,7 +17,7 @@ function safeEq(a: string, b: string): boolean {
 /** Returns the authenticated box ID, or null. */
 export async function authBox(req: Request, env: Env): Promise<string | null> {
   const h = req.headers.get('Authorization') ?? ''
-  if (!h.startsWith('Basic ')) return null
+  if (h.slice(0, 6).toLowerCase() !== 'basic ') return null
   let creds: string
   try { creds = atob(h.slice(6)) } catch { return null }
   const i = creds.indexOf(':')

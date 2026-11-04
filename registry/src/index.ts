@@ -30,7 +30,12 @@ export async function handle(req: Request, env: Env, cfFetch: typeof fetch): Pro
   if (!methods) return json({ error: 'not found' }, 404)
   const route = methods[req.method]
   if (!route) return json({ error: 'method not allowed' }, 405)
-  return route({ req, env, cf: cfFetch })
+  try {
+    return await route({ req, env, cf: cfFetch })
+  } catch (e) {
+    console.error(e)
+    return json({ error: 'upstream' }, 502)
+  }
 }
 
 export default { fetch: (req: Request, env: Env) => handle(req, env, fetch) }
