@@ -1,6 +1,6 @@
 # Easy onboarding (Ring-style setup) — design
 
-Date: 2026-11-04 · Status: draft for owner review
+Date: 2026-11-04 · Status: approved by owner 2026-11-04
 
 ## Intent
 
@@ -21,8 +21,8 @@ for the target parent.
 - **No native mobile app at launch.** Everything is web-based. A cross-platform
   mobile app is a separate, later project.
 - The owner runs the domain **`taskfrce.jmolabs.dev`**. Boxes are
-  `<box-id>.taskfrce.jmolabs.dev`. The DNS provider is not chosen yet; confirm
-  it at plan time, because the domain service talks to its API.
+  `<box-id>.taskfrce.jmolabs.dev`. DNS is hosted on **Cloudflare**; the domain
+  service uses the Cloudflare API, with a token scoped to that zone.
 - Beta fleet: **fewer than 20 boxes**.
 - The six-screen flow in the approved mockup is right for initial launch:
   1. Plug in the box.
