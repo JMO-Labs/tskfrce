@@ -59,15 +59,15 @@ def test_unlock_timer_expires(client, db, parent, kid, parent_headers, monkeypat
     d = mkdev(db)
     assign(client, parent_headers, d, kid)
     mkchore(db, parent, kid)  # pending chore -> offline
-    assert d.mac in tick(db, now)
+    assert d.mac in tick(db, now)[0]
     r = client.post(
         f"/api/v1/devices/{d.id}/override",
         json={"action": "unlock", "minutes": 1},
         headers=parent_headers,
     )
     assert r.status_code == 200
-    assert d.mac not in tick(db, now)
-    assert d.mac in tick(db, now + timedelta(minutes=2))
+    assert d.mac not in tick(db, now)[0]
+    assert d.mac in tick(db, now + timedelta(minutes=2))[0]
 
 
 def test_group_override_applies_to_members(client, db, parent_headers):

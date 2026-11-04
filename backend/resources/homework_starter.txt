@@ -1,14 +1,41 @@
-# Starter list of homework-related domains
-# Each line is a domain that students can access during homework mode
-# Comments start with #
+# Built-in homework sites. One domain per line; each also covers its subdomains.
+# YouTube is deliberately absent: session follow covers embeds, families can add it.
 
-google.com
-youtube.com
+# Google Classroom, Docs, Drive, Forms, sign-in and static hosts
+accounts.google.com
+classroom.google.com
+docs.google.com
+drive.google.com
+forms.gle
+apis.google.com
+gstatic.com
+googleapis.com
+googleusercontent.com
+
+# Microsoft 365, Teams for Education and sign-in
+login.microsoftonline.com
+login.live.com
+office.com
+microsoft365.com
+teams.microsoft.com
+onedrive.live.com
+sharepoint.com
+
+# Learning platforms
+instructure.com
+schoology.com
+clever.com
+powerschool.com
+seesaw.me
+
+# Learning sites
+khanacademy.org
+kastatic.org
+quizlet.com
+ixl.com
+desmos.com
+
+# Reference
 wikipedia.org
-khan-academy.org
-coursera.org
-edx.org
-codecademy.com
-github.com
-stackoverflow.com
-amazon.com
+wikimedia.org
+britannica.com

@@ -1,37 +1,29 @@
-"""Shared pytest fixtures: basic database setup."""
+"""Shared pytest fixtures: in-memory SQLite and an in-process API client."""
 
 import os
-import sys
 import tempfile
-from unittest.mock import MagicMock
 
-# Mock external dependencies to avoid import chain
-sys.modules["apprise"] = MagicMock()
-sys.modules["PIL"] = MagicMock()
-sys.modules["PIL.Image"] = MagicMock()
-sys.modules["PIL.ImageOps"] = MagicMock()
-sys.modules["PIL.ImageSequence"] = MagicMock()
-sys.modules["segno"] = MagicMock()
-sys.modules["prometheus_client"] = MagicMock()
-
+# Keep generated secrets/db out of the real ./data (must precede app imports)
 os.environ.setdefault("DATA_DIR", tempfile.mkdtemp(prefix="task4ce-test-"))
+
 os.environ.setdefault("LOCK_LOOP_ENABLED", "false")
 
-import pytest
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
-from app.core.database import Base, _import_all_models
+import pytest  # noqa: E402
+from app.api.deps import get_db  # noqa: E402
+from app.core.database import Base, _import_all_models, get_db_session  # noqa: E402
+from app.main import app, fastapi_app  # noqa: E402
+from app.services.chore_types import seed as seed_chore_types  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import create_engine, event  # noqa: E402
+from sqlalchemy.orm import sessionmaker  # noqa: E402
+from sqlalchemy.pool import StaticPool  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
 def _reset_rate_limits():
-    try:
-        from app.core.ratelimit import reset
+    from app.core.ratelimit import reset
 
-        reset()
-    except (ImportError, AttributeError):
-        pass
+    reset()
 
 
 @pytest.fixture
@@ -44,18 +36,28 @@ def db():
     event.listen(engine, "connect", lambda c, r: c.execute("PRAGMA foreign_keys=ON"))
     Base.metadata.create_all(engine)
     session = sessionmaker(bind=engine, autoflush=False)()
-    try:
-        from app.services.chore_types import seed as seed_chore_types
-
-        seed_chore_types(session)
-        session.commit()
-    except ImportError:
-        pass
+    seed_chore_types(session)
+    session.commit()
     try:
         yield session
     finally:
         session.close()
         engine.dispose()
+
+
+@pytest.fixture
+def client(db):
+    """TestClient whose DB dependencies yield the test session."""
+
+    def override():
+        yield db
+
+    fastapi_app.dependency_overrides[get_db] = override
+    fastapi_app.dependency_overrides[get_db_session] = override
+    try:
+        yield TestClient(app, base_url="http://localhost")
+    finally:
+        fastapi_app.dependency_overrides.clear()
 
 
 def _make_user(db, username, role):
@@ -104,3 +106,18 @@ def parent_headers(db, parent):
 @pytest.fixture
 def kid_headers(db, kid):
     return _headers(db, kid)
+
+
+@pytest.fixture
+def pings(monkeypatch):
+    """Run notify sends inline and record them instead of calling Apprise."""
+    from app.services import notify
+
+    sent = []
+    monkeypatch.setattr(notify, "_submit", lambda fn, *a: fn(*a))
+    monkeypatch.setattr(
+        notify,
+        "deliver",
+        lambda urls, title, body, lt=None: (sent.append((urls, title, body)), (True, None))[1],
+    )
+    return sent

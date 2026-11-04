@@ -19,12 +19,13 @@ from app.lock.state import Prefetch, device_facts
 from app.models.badge import BadgeAward
 from app.models.chores import ChoreRun, ChoreSeen
 from app.models.family import get_family
+from app.models.homework import HomeworkRequest
 from app.models.lock import Device, DeviceIPv6
 from app.models.points import Points
 from app.models.reward import Redemption
 from app.models.user import User, UserRole
 from app.schemas.lock import utc_z
-from app.services import badges, chat, economy, inbox, kid_view, progression
+from app.services import badges, chat, economy, homework, inbox, kid_view, progression
 from app.services import chores as svc
 from app.services.chore_types import notes_for
 from app.services.photos import save_photo
@@ -178,7 +179,25 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
         "points_held": economy.pending_cost(db, kid.id),
         "progress": prog,
         "timezone": fam.timezone,
+        **homework.kid_state(db, kid, now),
     }
+
+
+@router.post("/homework")
+def ask_homework(db: Session = Depends(get_db), kid: User = Depends(require_kid)) -> dict:
+    if not homework.paused(db, kid, datetime.now(UTC)):
+        raise HTTPException(409, "Your internet is already on.")
+    if homework.pending(db, kid.id):
+        raise HTTPException(409, "You already asked. A parent will answer soon.")
+    req = HomeworkRequest(kid_id=kid.id, status="pending")
+    db.add(req)
+    db.flush()
+    name = kid.full_name or kid.username
+    inbox.notify_parents(
+        db, "homework_request", "Homework time", f"{name} is asking for homework time"
+    )
+    db.commit()
+    return {"ok": True, "id": req.id}
 
 
 def _open_run(db: Session, kid: User, run_id: int) -> ChoreRun:

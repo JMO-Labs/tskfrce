@@ -60,7 +60,7 @@ def test_put_rule_updates_every_target(client, db, parent, kid, parent_headers):
     db.commit()
     r = make_rule(db, kid_ids=[kid.id, b2.id])
     now = datetime(2026, 10, 20, 12, 0, tzinfo=UTC)
-    assert not set(macs) & set(tick(db, now))
+    assert not set(macs) & set(tick(db, now)[0])
     hh = 2
     t = {"start": f"{hh:02d}:00", "end": f"{hh:02d}:30"}
     put = client.put(
@@ -69,7 +69,7 @@ def test_put_rule_updates_every_target(client, db, parent, kid, parent_headers):
         headers=parent_headers,
     )
     assert put.status_code == 200, put.text
-    assert set(macs) <= set(tick(db, now))
+    assert set(macs) <= set(tick(db, now)[0])
 
 
 DATES = {"start_date": "2026-12-20", "end_date": "2027-01-03"}

@@ -20,8 +20,8 @@ from tests.factories import DAY, api_chore
 
 LIMIT = 16  # +1 batched deductions
 LIMITS = {
-    "/api/v1/today": 22,  # per-device lock facts and per-kid progress are batched; +1 reward prices, +1 deductions, +3 photo/message counts and earned
-    "/api/v1/kid/today": 19,  # +1 seen set, +1 own allowed windows (locks_at), +1 held points
+    "/api/v1/today": 23,  # per-device lock facts and per-kid progress are batched; +1 reward prices, +1 deductions, +3 photo/message counts and earned, +1 homework requests
+    "/api/v1/kid/today": 21,  # +1 seen set, +1 own allowed windows (locks_at), +1 held points, +2 homework timer and request
 }
 
 

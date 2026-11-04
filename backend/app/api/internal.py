@@ -22,7 +22,9 @@ from app.lock.schedule import local_now
 from app.lock.state import Prefetch, desired_blocked, device_facts
 from app.models.device_activity import DeviceEvent
 from app.models.family import get_family
+from app.models.homework import HomeworkActivity
 from app.models.lock import Device, Vlan
+from app.schemas.homework import ActivityReport
 from app.services import inbox
 
 MAC_RE = re.compile(r"^([0-9a-f]{2}:){5}[0-9a-f]{2}$")
@@ -310,3 +312,26 @@ def devices_hits(body: HitsReport, db: Session = Depends(get_db)) -> dict:
         logged += 1
     db.commit()
     return {"logged": logged}
+
+
+@router.post("/homework/activity", dependencies=[Depends(require_token)])
+def homework_activity(body: ActivityReport, db: Session = Depends(get_db)) -> dict:
+    """Upsert per-name homework totals; the blocker sends running totals, so they replace."""
+    macs = {i.mac for i in body.items}
+    ids = dict(db.query(Device.mac, Device.id).filter(Device.mac.in_(macs))) if macs else {}
+    stored = 0
+    for i in body.items:
+        if i.mac not in ids:
+            continue
+        key = {"device_id": ids[i.mac], "session_start": i.session_start, "domain": i.domain}
+        row = db.query(HomeworkActivity).filter_by(**key).first()
+        if row is None:
+            row = HomeworkActivity(**key, first_seen=i.first_seen, last_seen=i.last_seen)
+            db.add(row)
+        row.via, row.pulled_by = i.via, i.pulled_by
+        row.last_seen = max(row.last_seen, i.last_seen)
+        row.lookups, row.active_minutes = i.lookups, i.active_minutes
+        db.flush()
+        stored += 1
+    db.commit()
+    return {"ok": True, "stored": stored}

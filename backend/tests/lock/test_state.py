@@ -1,6 +1,6 @@
 from datetime import UTC, date, datetime, timedelta
 
-from app.lock.blocker_client import push_blocked
+from app.lock.blocker_client import push_state
 from app.lock.state import desired_blocked, tick
 from app.models.chores import ChoreRun
 from app.models.family import get_family
@@ -103,11 +103,11 @@ def test_tick_deletes_expired_overrides_and_resets(db):
     assert get_family(db).last_reset_date == DAY
 
 
-def test_push_blocked_returns_false_when_blocker_down(monkeypatch):
+def test_push_state_returns_false_when_blocker_down(monkeypatch):
     from app.core.config import settings
 
     monkeypatch.setattr(settings, "BLOCKER_URL", "http://127.0.0.1:1")
-    assert push_blocked(["aa:bb:cc:dd:ee:01"]) is False
+    assert push_state(["aa:bb:cc:dd:ee:01"], {}) is False
 
 
 def test_manual_lock_beats_newer_bonus_unlock(db, parent, kid):

@@ -1,13 +1,36 @@
 """Homework mode lock logic."""
 
-from datetime import datetime
+from dataclasses import replace
+from datetime import UTC, datetime
 
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
+from app.lock import hours
 from app.lock.rules import DeviceFacts
-from app.models import Device, HomeworkSite
+from app.models import Device, HomeworkSite, Override
 from app.services.homework_domains import STARTER
+
+
+def homework_cap(facts: DeviceFacts, now_local: datetime, until: datetime) -> datetime:
+    """`until` (naive UTC) pulled back to the device's next schedule change, if sooner."""
+    nxt = hours.next_transition(facts.allowed_sets, facts.off, now_local)
+    if nxt is None:
+        return until
+    return min(until, nxt.astimezone(UTC).replace(tzinfo=None))
+
+
+def clamp(facts: DeviceFacts, overrides: list[Override], now_local: datetime) -> DeviceFacts:
+    """Pull a live homework timer back when the schedule now changes sooner. Caller commits."""
+    if facts.homework_until is None:
+        return facts
+    until = homework_cap(facts, now_local, facts.homework_until)
+    if until == facts.homework_until:
+        return facts
+    for o in overrides:
+        if o.source == "manual" and o.action == "homework":
+            o.expires_at = until
+    return replace(facts, homework_until=until)
 
 
 def effective_allow(db: Session, kid_id: int | None) -> list[str]:
@@ -70,11 +93,8 @@ def state_map(
     result = {}
 
     for device, facts in rows:
-        # Only include if homework_until is set and not expired
-        if not facts.homework_until:
-            continue
-
-        if facts.homework_until <= datetime.utcnow():
+        # device_facts only sets homework_until while the override is live
+        if not facts.homework_until or device.mac not in blocked:
             continue
 
         # Get kid_id from device (if assigned to a kid)

@@ -8,7 +8,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_parent
-from app.api.devices import _device, device_out, purge_device
+from app.api.devices import _device, _none_paused, device_out, homework, purge_device
 from app.lock import activity
 from app.lock.loop import trigger
 from app.lock.overrides import set_override
@@ -159,6 +159,8 @@ def kid_override(
     ids = [d.id for d in kid.devices]
     if not ids:
         raise HTTPException(409, f"{_name(kid)} has no devices yet.")
+    if body.action == "homework":
+        return homework(db, kid.devices, body.minutes, parent, _none_paused(_name(kid)))
     set_override(db, ids, body.action, body.minutes, parent.id)
     db.commit()
     trigger()

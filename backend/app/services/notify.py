@@ -55,7 +55,8 @@ KIND_EVENT = {
     "chore_submitted": "chore_ok",
     "chore_note": "kid_note",
     "redemption_request": "reward_request",
-    "redemption_decided": "reward_request",  # parents only see this for auto approvals
+    "redemption_decided": "reward_request",
+    "homework_request": "reward_request",  # parents only see this for auto approvals
     "new_device": "new_device",
     "device_resisting": "resisting",
     "device_bypass": "resisting",
