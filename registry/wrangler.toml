@@ -1,0 +1,12 @@
+name = "taskfrce-registry"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+routes = [{ pattern = "taskfrce.jmolabs.dev/*", zone_name = "jmolabs.dev" }]
+
+[[kv_namespaces]]
+binding = "BOXES"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[vars]
+BASE_DOMAIN = "taskfrce.jmolabs.dev"
+CF_ZONE_ID = ""
