@@ -1,16 +1,17 @@
 """Tests for homework mode lock state."""
 
-import pytest
 from datetime import datetime, timedelta
-from app.lock.homework import effective_allow, block_list, state_map
-from app.models import Device, User, Override
+
+from app.lock.homework import block_list, effective_allow, state_map
 from app.lock.rules import DeviceFacts
+from app.models import Device, Override, User
 from app.services.homework_domains import STARTER
 
 
 def _make_user(db, username, role):
     """Helper to create a user with a hashed password."""
     from app.core.auth import AuthService
+
     u = User(
         username=username,
         email=f"{username}@test",
@@ -62,9 +63,9 @@ def test_block_list_in_map(db):
 
 def test_homework_device_stays_blocked_and_in_map(db, parent):
     """Test device with homework override stays in blocked set and appears in homework map."""
-    from app.models import Device, Override
-    from app.lock.rules import block_reason
     from datetime import datetime, timedelta
+
+    from app.models import Device
 
     device = Device(mac="aa:bb:cc:dd:ee:ff", name="test", status="assigned")
     db.add(device)
@@ -77,12 +78,18 @@ def test_homework_device_stays_blocked_and_in_map(db, parent):
     # Add an override for chores (to put device in blocked set)
     # and a homework override
     chore_override = Override(
-        device_id=device.id, action="lock", source="manual",
-        expires_at=None, created_by_id=parent.id
+        device_id=device.id,
+        action="lock",
+        source="manual",
+        expires_at=None,
+        created_by_id=parent.id,
     )
     homework_override = Override(
-        device_id=device.id, action="homework", source="manual",
-        expires_at=expires_at, created_by_id=parent.id
+        device_id=device.id,
+        action="homework",
+        source="manual",
+        expires_at=expires_at,
+        created_by_id=parent.id,
     )
     db.add(chore_override)
     db.add(homework_override)
@@ -90,17 +97,20 @@ def test_homework_device_stays_blocked_and_in_map(db, parent):
 
     # Create DeviceFacts with all required fields and homework_until set
     facts_list = [
-        (device, DeviceFacts(
-            status="assigned",
-            owners=tuple(),
-            allowed_sets=tuple(),
-            free=tuple(),
-            override=None,
-            bonus_active=False,
-            new_devices_blocked=False,
-            points_unlock_early=False,
-            homework_until=expires_at
-        ))
+        (
+            device,
+            DeviceFacts(
+                status="assigned",
+                owners=tuple(),
+                allowed_sets=tuple(),
+                free=tuple(),
+                override=None,
+                bonus_active=False,
+                new_devices_blocked=False,
+                points_unlock_early=False,
+                homework_until=expires_at,
+            ),
+        )
     ]
 
     # Generate homework map
@@ -125,17 +135,20 @@ def test_expired_homework_not_in_map(db):
 
     # Facts with expired homework_until
     facts_list = [
-        (device, DeviceFacts(
-            status="assigned",
-            owners=tuple(),
-            allowed_sets=tuple(),
-            free=tuple(),
-            override=None,
-            bonus_active=False,
-            new_devices_blocked=False,
-            points_unlock_early=False,
-            homework_until=expired_at
-        ))
+        (
+            device,
+            DeviceFacts(
+                status="assigned",
+                owners=tuple(),
+                allowed_sets=tuple(),
+                free=tuple(),
+                override=None,
+                bonus_active=False,
+                new_devices_blocked=False,
+                points_unlock_early=False,
+                homework_until=expired_at,
+            ),
+        )
     ]
 
     blocked_set = {"aa:bb:cc:dd:ee:01"}

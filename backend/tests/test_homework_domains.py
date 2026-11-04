@@ -1,5 +1,5 @@
 import pytest
-from app.services.homework_domains import normalize_domain, domain_matches, STARTER
+from app.services.homework_domains import STARTER, domain_matches, normalize_domain
 
 
 @pytest.mark.parametrize(
@@ -30,6 +30,4 @@ def test_matches_subdomain():
 
 def test_starter_is_normalized_and_has_no_youtube():
     assert STARTER and all(normalize_domain(d) == d for d in STARTER)
-    assert not any(
-        domain_matches("youtube.com", d) or d.endswith("youtube.com") for d in STARTER
-    )
+    assert not any(domain_matches("youtube.com", d) or d.endswith("youtube.com") for d in STARTER)
