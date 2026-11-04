@@ -34,7 +34,7 @@
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "simple-icons": "^16.36.0",
-    "typescript": "^5.9.2"
+    "typescript": "^6.0.3"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
