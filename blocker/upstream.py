@@ -122,7 +122,7 @@ def handle_homework(
         q = DNS(query)
         if q.qr != 0 or q.opcode != 0 or q.qdcount != 1:
             return None
-        qname = str(q.qd[0].qname).lower().rstrip(".")
+        qname = _name(q.qd[0].qname)
         qtype = q.qd[0].qtype
     except Exception:  # noqa: BLE001 - unparsable query falls back to the portal
         return None
