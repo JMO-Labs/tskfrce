@@ -15,6 +15,7 @@ import { ConfirmDelete } from './ConfirmDelete'
 import { DeviceActivity } from './DeviceActivity'
 import { DeviceNetwork } from './DeviceNetwork'
 import { DeviceRightNow } from './DeviceRightNow'
+import { HomeworkActivity } from './HomeworkActivity'
 import { HomeworkButton } from './HomeworkButton'
 import { OnlineWeek } from './OnlineWeek'
 import { ago, DEVICE_TYPE_ICON, getDeviceType } from './deviceMeta'
@@ -242,6 +243,7 @@ export function DeviceDetail({ device, kids, groups = [], onDeleted, onRequestOv
           <div className="pk-col">
             {unknown ? detailsPanel : ownersPanel}
             <DeviceRightNow device={device} timeZone={family?.timezone} />
+            {device.override?.action === 'homework' && <HomeworkActivity deviceId={device.id} />}
           </div>
           {!guest && <OnlineWeek device={device} />}
         </div>
