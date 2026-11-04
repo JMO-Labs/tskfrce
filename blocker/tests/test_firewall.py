@@ -134,6 +134,14 @@ def test_render_homework_pairs_accept_before_drops():
     assert hw_out_idx < mac_drop_idx and hw_back_idx < mac_drop_idx
 
 
+def test_render_homework_http_to_allowed_ip_skips_portal():
+    """HTTP to an allowed homework IP must not be hijacked by the port-80 portal DNAT."""
+    r = render_ruleset({"192.168.1.50"}, set(), MAC, LAN, "192.168.1.2", 8080)
+    lines = [ln.strip() for ln in r.splitlines()]
+    skip = lines.index("ether saddr . ip daddr @hw_out tcp dport 80 return")
+    assert skip < next(i for i, ln in enumerate(lines) if "tcp dport 80 dnat" in ln)
+
+
 def test_render_empty_homework_pairs():
     """Empty homework pairs sets are declared but with no elements."""
     r = render_ruleset(set(), set(), set(), LAN, "192.168.1.2", 8080, hw_out=set(), hw_back=set())

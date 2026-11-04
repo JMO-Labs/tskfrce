@@ -99,6 +99,8 @@ def render_ruleset(
     if portal_ip:
         lines.append(f"    ip saddr @blocked_v4 udp dport 53 dnat ip to {portal_ip}:{DNS_PORT}")
         lines.append(f"    ip saddr @blocked_v4 tcp dport 53 dnat ip to {portal_ip}:{DNS_PORT}")
+        # Homework: HTTP to an allowed IP goes through (DNS stays on the portal resolver)
+        lines.append("    ether saddr . ip daddr @hw_out tcp dport 80 return")
         lines.append(f"    ip saddr @blocked_v4 tcp dport 80 dnat ip to {portal_ip}:{portal_port}")
     lines.append("  }")
     lines.append("  chain forward {")
