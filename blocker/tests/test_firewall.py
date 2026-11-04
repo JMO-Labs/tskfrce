@@ -77,7 +77,7 @@ def test_render_omits_dnat_when_no_portal_ip():
 def test_render_empty_set_is_noop_safe():
     r = render_ruleset(set(), set(), set(), LAN, "192.168.1.2", 8080)
     assert "elements" not in r  # no elements emitted when empty
-    assert r.startswith("add table inet task4ce\nflush table inet task4ce\ntable inet task4ce {")
+    assert r.startswith("add table inet task4ce\ndelete table inet task4ce\ntable inet task4ce {")
     assert r.rstrip().endswith("}")
 
 
@@ -147,28 +147,65 @@ def test_add_pairs_empty_does_nothing():
         mock_run.assert_not_called()
 
 
-def test_add_pairs_command():
-    """add_pairs builds the correct nft command."""
-    hw_out = {("aa:bb:cc:dd:ee:01", "8.8.8.8"), ("aa:bb:cc:dd:ee:02", "1.1.1.1")}
-    hw_back = {("8.8.8.8", "192.168.1.10"), ("1.1.1.1", "192.168.1.11")}
+def test_add_pairs_refreshes_with_timeouts_in_one_batch():
+    """add_pairs replaces each element (add; delete; add timeout) in a single nft batch."""
     with patch("blocker.firewall.subprocess.run") as mock_run:
-        add_pairs(hw_out, hw_back)
-        assert mock_run.call_count == 2
-        calls = [c[0][0] for c in mock_run.call_args_list]
-        # Check that both nft add element commands are called
-        assert any("nft" in str(c) and "hw_out" in str(c) for c in calls)
-        assert any("nft" in str(c) and "hw_back" in str(c) for c in calls)
+        add_pairs({("aa:bb:cc:dd:ee:01", "8.8.8.8"): 900}, {("8.8.8.8", "192.168.1.10"): 900})
+    assert mock_run.call_count == 1
+    assert mock_run.call_args[0][0] == ["nft", "-f", "-"]
+    batch = mock_run.call_args[1]["input"].decode().splitlines()
+    assert batch == [
+        "add element inet task4ce hw_out { aa:bb:cc:dd:ee:01 . 8.8.8.8 }",
+        "delete element inet task4ce hw_out { aa:bb:cc:dd:ee:01 . 8.8.8.8 }",
+        "add element inet task4ce hw_out { aa:bb:cc:dd:ee:01 . 8.8.8.8 timeout 900s }",
+        "add element inet task4ce hw_back { 8.8.8.8 . 192.168.1.10 }",
+        "delete element inet task4ce hw_back { 8.8.8.8 . 192.168.1.10 }",
+        "add element inet task4ce hw_back { 8.8.8.8 . 192.168.1.10 timeout 900s }",
+    ]
 
 
-def test_kill_conntrack_command():
-    """kill_conntrack builds the correct conntrack command."""
+def test_add_pairs_drops_malformed_elements():
+    """Nothing that isn't a MAC / dotted IPv4 ever reaches the nft batch text."""
+    evil = {("aa:bb:cc:dd:ee:01", "1.2.3.4 } ; flush ruleset ; {"): 60, ("x", "1.1.1.1"): 60}
     with patch("blocker.firewall.subprocess.run") as mock_run:
-        kill_conntrack({"8.8.8.8", "1.1.1.1"}, "192.168.1.10")
-        # Should call conntrack for the device IP and each remote IP
-        assert mock_run.call_count >= 2
-        calls = [c[0][0] for c in mock_run.call_args_list]
-        assert any("conntrack" in str(c) and "192.168.1.10" in str(c) for c in calls)
-        assert any("conntrack" in str(c) and "8.8.8.8" in str(c) for c in calls)
+        add_pairs(evil, {("1.1.1.1", "not-an-ip"): 60})
+    mock_run.assert_not_called()
+
+
+def test_render_homework_sets_have_timeouts():
+    hw_out = {("aa:bb:cc:dd:ee:01", "8.8.8.8"): 123}
+    hw_back = {("8.8.8.8", "192.168.1.10"): 123, ("8.8.8.8", "evil }"): 5}
+    r = render_ruleset(set(), set(), set(), LAN, "192.168.1.2", 8080, hw_out=hw_out, hw_back=hw_back)
+    assert "flags timeout;" in r.split("set hw_out")[1].split("\n")[0]
+    assert "aa:bb:cc:dd:ee:01 . 8.8.8.8 timeout 123s" in r
+    assert "8.8.8.8 . 192.168.1.10 timeout 123s" in r
+    assert "evil" not in r
+
+
+def test_kill_conntrack_scoped_to_device():
+    """Remote-IP deletions are always paired with the device IP (both directions)."""
+    with patch("blocker.firewall.subprocess.run") as mock_run:
+        kill_conntrack({"8.8.8.8"}, "192.168.1.10")
+    calls = [c[0][0] for c in mock_run.call_args_list]
+    assert calls == [
+        ["conntrack", "-D", "-s", "192.168.1.10", "-d", "8.8.8.8"],
+        ["conntrack", "-D", "-s", "8.8.8.8", "-d", "192.168.1.10"],
+    ]
+
+
+def test_kill_conntrack_whole_device_when_no_ips():
+    with patch("blocker.firewall.subprocess.run") as mock_run:
+        kill_conntrack(set(), "192.168.1.10")
+    assert [c[0][0] for c in mock_run.call_args_list] == [["conntrack", "-D", "-s", "192.168.1.10"]]
+
+
+def test_kill_conntrack_skips_without_valid_device_ip():
+    """Unknown device -> never a bare `-d <remote>` that would cut other LAN hosts."""
+    with patch("blocker.firewall.subprocess.run") as mock_run:
+        kill_conntrack({"8.8.8.8"}, None)
+        kill_conntrack({"8.8.8.8"}, "-F")
+        kill_conntrack({"-F", "8.8.8.8 -x"}, "192.168.1.10")
+    mock_run.assert_not_called()
 
 
 def test_kill_conntrack_tolerates_status_1():
