@@ -31,3 +31,27 @@ def test_matches_subdomain():
 def test_starter_is_normalized_and_has_no_youtube():
     assert STARTER and all(normalize_domain(d) == d for d in STARTER)
     assert not any(domain_matches("youtube.com", d) or d.endswith("youtube.com") for d in STARTER)
+
+
+@pytest.mark.parametrize(
+    "zone",
+    [
+        "storage.googleapis.com",
+        "firebasestorage.googleapis.com",
+        "evil-site.googleusercontent.com",
+        "anyone.sharepoint.com",
+        "sites.google.com",
+        "blogspot.com",
+        "github.io",
+        "web.app",
+        "pages.dev",
+    ],
+)
+def test_starter_has_no_user_content_zones(zone):
+    """Hosts anyone can publish to must not be covered by the starter list."""
+    assert not any(domain_matches(zone, d) for d in STARTER)
+
+
+def test_starter_keeps_specific_google_hosts():
+    assert any(domain_matches("lh3.googleusercontent.com", d) for d in STARTER)
+    assert any(domain_matches("fonts.googleapis.com", d) for d in STARTER)
