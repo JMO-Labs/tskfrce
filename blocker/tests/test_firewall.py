@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import subprocess
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from blocker.firewall import add_pairs, kill_conntrack, render_ruleset
 from blocker.service import DEFAULT_LAN_CIDRS

@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import time
-
 import pytest
 
-from blocker.homework import FOLLOW_SECS, MIN_PAIR_SECS, HomeworkGate
+from blocker.homework import HomeworkGate
 
 
 @pytest.fixture
@@ -110,7 +108,7 @@ def test_pairs_expire_at_max_ttl_300s(gate, clock):
     """Pairs expire at max(TTL, 300s)."""
     gate.update({"aa:bb:cc:dd:ee:01": {"allow": ["google.com"], "block": [], "until": "2099-01-01T00:00:00Z"}})
     gate.decide("aa:bb:cc:dd:ee:01", "classroom.google.com")
-    new = gate.record("aa:bb:cc:dd:ee:01", "classroom.google.com", ["8.8.8.8"], ttl=60, via="list", pulled_by=None)
+    gate.record("aa:bb:cc:dd:ee:01", "classroom.google.com", ["8.8.8.8"], ttl=60, via="list", pulled_by=None)
     assert ("aa:bb:cc:dd:ee:01", "8.8.8.8") in gate.pairs()
     clock.advance(300)
     assert ("aa:bb:cc:dd:ee:01", "8.8.8.8") in gate.pairs()
@@ -122,7 +120,7 @@ def test_pairs_with_high_ttl(gate, clock):
     """Pairs with high TTL use the TTL, not MIN_PAIR_SECS."""
     gate.update({"aa:bb:cc:dd:ee:01": {"allow": ["google.com"], "block": [], "until": "2099-01-01T00:00:00Z"}})
     gate.decide("aa:bb:cc:dd:ee:01", "classroom.google.com")
-    new = gate.record("aa:bb:cc:dd:ee:01", "classroom.google.com", ["8.8.8.8"], ttl=600, via="list", pulled_by=None)
+    gate.record("aa:bb:cc:dd:ee:01", "classroom.google.com", ["8.8.8.8"], ttl=600, via="list", pulled_by=None)
     clock.advance(600)
     assert ("aa:bb:cc:dd:ee:01", "8.8.8.8") in gate.pairs()
     clock.advance(1)
