@@ -26,7 +26,7 @@ const acme = (act: typeof createRecord): Route => async ({ req, env, cf }) => {
   if (!id) return json({ error: 'unauthorized' }, 401)
   const b = (await req.json().catch(() => null)) as { fqdn?: unknown; value?: unknown } | null
   if (typeof b?.fqdn !== 'string' || typeof b.value !== 'string' || !b.value) return json({ error: 'fqdn and value required' }, 400)
-  const name = b.fqdn.replace(/\.$/, '')
+  const name = b.fqdn.trim().toLowerCase().replace(/\.$/, '')
   if (name !== `_acme-challenge.${id}.${env.BASE_DOMAIN}`) return json({ error: 'forbidden' }, 403)
   await act(env, cf, 'TXT', name, b.value)
   return json({})

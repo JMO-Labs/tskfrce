@@ -18,8 +18,7 @@ export function fakeCf(records: { id: string; content: string }[] = []) {
   const calls: Call[] = []
   const fn = (async (url: string, init?: RequestInit) => {
     calls.push({ url: String(url), method: init?.method ?? 'GET', body: init?.body ? JSON.parse(String(init.body)) : undefined })
-    const want = new URL(String(url)).searchParams.get('content')
-    const result = (init?.method ?? 'GET') === 'GET' ? records.filter((r) => want === null || r.content === want) : []
+    const result = (init?.method ?? 'GET') === 'GET' ? records : []
     return new Response(JSON.stringify({ success: true, result }), { status: 200 })
   }) as unknown as typeof fetch
   return Object.assign(fn, { calls })

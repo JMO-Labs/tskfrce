@@ -28,6 +28,10 @@ describe('acme present', () => {
     expect(res.status).toBe(403)
     expect(cf.calls).toHaveLength(0)
   })
+  test('uppercase own fqdn -> 200', async () => {
+    const res = await handle(req('/api/acme/present', OWN.toUpperCase(), 't'), await makeEnv(), fakeCf())
+    expect(res.status).toBe(200)
+  })
   test('bad auth -> 401', async () => {
     const cf = fakeCf()
     const res = await handle(req('/api/acme/present', OWN, 't', basic('abc123', 'nope')), await makeEnv(), cf)
@@ -47,6 +51,18 @@ describe('acme cleanup', () => {
     expect(res.status).toBe(200)
     const dels = cf.calls.filter((c) => c.method === 'DELETE')
     expect(dels.map((d) => d.url.split('/').pop())).toEqual(['r2'])
+  })
+  test('matches quoted content, deletes only that record', async () => {
+    const cf = fakeCf([{ id: 'r1', content: '"tok1"' }, { id: 'r2', content: 'tok2' }])
+    const res = await handle(req('/api/acme/cleanup', OWN, 'tok1'), await makeEnv(), cf)
+    expect(res.status).toBe(200)
+    expect(cf.calls.filter((c) => c.method === 'DELETE').map((d) => d.url.split('/').pop())).toEqual(['r1'])
+  })
+  test('no match -> no DELETE, 200', async () => {
+    const cf = fakeCf([{ id: 'r1', content: 'a' }])
+    const res = await handle(req('/api/acme/cleanup', OWN, 'zzz'), await makeEnv(), cf)
+    expect(res.status).toBe(200)
+    expect(cf.calls.some((c) => c.method === 'DELETE')).toBe(false)
   })
   test('other box -> 403, no CF call', async () => {
     const cf = fakeCf()

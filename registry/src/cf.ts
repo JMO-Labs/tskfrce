@@ -35,9 +35,10 @@ export async function createRecord(env: Env, cfFetch: typeof fetch, type: 'TXT',
 
 export async function deleteRecord(env: Env, cfFetch: typeof fetch, type: 'TXT', name: string, content: string): Promise<void> {
   guard(env, name)
-  const q = `${api(env)}?type=${type}&name=${encodeURIComponent(name)}&content=${encodeURIComponent(content)}`
+  const q = `${api(env)}?type=${type}&name=${encodeURIComponent(name)}`
   const list = await call(env, cfFetch, q, 'GET')
-  for (const r of list.result ?? []) await call(env, cfFetch, `${api(env)}/${r.id}`, 'DELETE')
+  const unq = (v: unknown) => String(v).replace(/^"(.*)"$/, '$1')
+  for (const r of list.result ?? []) if (unq(r.content) === content) await call(env, cfFetch, `${api(env)}/${r.id}`, 'DELETE')
 }
 
 export function isPrivateV4(ip: string): boolean {
