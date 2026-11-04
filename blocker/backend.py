@@ -72,11 +72,12 @@ def fetch_blocked(cfg: Config) -> list[str] | None:
 
 
 def fetch_state(cfg: Config) -> dict | None:
-    """{"blocked": [...], "listen_only": bool, "covered_vlans": [int]}; None if unreachable."""
+    """{"blocked": [...], "homework": {...}, "listen_only": bool, "covered_vlans": [int]}; None if unreachable."""
     try:
         raw = _request(cfg, "/state")
         return {
             "blocked": [str(m) for m in raw["blocked"]],
+            "homework": raw.get("homework", {}),
             "listen_only": bool(raw.get("listen_only", False)),
             "covered_vlans": [int(v) for v in raw.get("covered_vlans", [])],
         }
@@ -109,4 +110,18 @@ def report_hits(cfg: Config, hits: dict[str, int]) -> bool:
         return True
     except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
         log.warning("report_hits failed: %s", e)
+        return False
+
+
+def report_homework_activity(cfg: Config, items: list[dict]) -> bool:
+    """Report homework activity batches (in chunks of <= 500)."""
+    if not items:
+        return True
+    try:
+        for i in range(0, len(items), 500):
+            chunk = items[i : i + 500]
+            _request(cfg, "/homework/activity", {"items": chunk})
+        return True
+    except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
+        log.warning("report_homework_activity failed: %s", e)
         return False

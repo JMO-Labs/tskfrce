@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from blocker.firewall import render_ruleset
+import subprocess
+from unittest.mock import patch
+
+from blocker.firewall import add_pairs, kill_conntrack, render_ruleset
 from blocker.service import DEFAULT_LAN_CIDRS
 
 LAN = ["192.168.1.0/24", "fe80::/10"]
@@ -100,3 +103,77 @@ def test_locked_device_reaches_box_services():
     assert accept < lines.index("ether saddr @blocked_mac drop")
     pre = r.split("chain prerouting")[1].split("chain forward")[0]
     assert "2586" not in pre
+
+
+def test_render_homework_pairs():
+    """Homework pairs sets are declared and used in accept rules."""
+    hw_out = {("aa:bb:cc:dd:ee:01", "8.8.8.8"), ("aa:bb:cc:dd:ee:02", "1.1.1.1")}
+    hw_back = {("8.8.8.8", "192.168.1.10"), ("1.1.1.1", "192.168.1.11")}
+    r = render_ruleset(set(), set(), set(), LAN, "192.168.1.2", 8080, hw_out=hw_out, hw_back=hw_back)
+    assert "set hw_out { type ether_addr . ipv4_addr" in r
+    assert "set hw_back { type ipv4_addr . ipv4_addr" in r
+    assert "aa:bb:cc:dd:ee:01 . 8.8.8.8" in r
+    assert "8.8.8.8 . 192.168.1.10" in r
+    assert "ether saddr . ip daddr @hw_out accept" in r
+    assert "ip saddr . ip daddr @hw_back accept" in r
+
+
+def test_render_homework_pairs_accept_before_drops():
+    """Homework accept rules come before the drop rules."""
+    hw_out = {("aa:bb:cc:dd:ee:01", "8.8.8.8")}
+    hw_back = {("8.8.8.8", "192.168.1.10")}
+    r = render_ruleset({"192.168.1.50"}, set(), MAC, LAN, "192.168.1.2", 8080, hw_out=hw_out, hw_back=hw_back)
+    lines = [ln.strip() for ln in r.splitlines()]
+    hw_out_idx = lines.index("ether saddr . ip daddr @hw_out accept")
+    hw_back_idx = lines.index("ip saddr . ip daddr @hw_back accept")
+    mac_drop_idx = lines.index("ether saddr @blocked_mac drop")
+    assert hw_out_idx < mac_drop_idx and hw_back_idx < mac_drop_idx
+
+
+def test_render_empty_homework_pairs():
+    """Empty homework pairs sets are declared but with no elements."""
+    r = render_ruleset(set(), set(), set(), LAN, "192.168.1.2", 8080, hw_out=set(), hw_back=set())
+    assert "set hw_out { type ether_addr . ipv4_addr;" in r
+    assert "set hw_back { type ipv4_addr . ipv4_addr;" in r
+    # Sets should be declared but rules still present
+    assert "ether saddr . ip daddr @hw_out accept" in r
+    assert "ip saddr . ip daddr @hw_back accept" in r
+
+
+def test_add_pairs_empty_does_nothing():
+    """add_pairs with empty sets does nothing."""
+    with patch("blocker.firewall.subprocess.run") as mock_run:
+        add_pairs(set(), set())
+        mock_run.assert_not_called()
+
+
+def test_add_pairs_command():
+    """add_pairs builds the correct nft command."""
+    hw_out = {("aa:bb:cc:dd:ee:01", "8.8.8.8"), ("aa:bb:cc:dd:ee:02", "1.1.1.1")}
+    hw_back = {("8.8.8.8", "192.168.1.10"), ("1.1.1.1", "192.168.1.11")}
+    with patch("blocker.firewall.subprocess.run") as mock_run:
+        add_pairs(hw_out, hw_back)
+        assert mock_run.call_count == 2
+        calls = [c[0][0] for c in mock_run.call_args_list]
+        # Check that both nft add element commands are called
+        assert any("nft" in str(c) and "hw_out" in str(c) for c in calls)
+        assert any("nft" in str(c) and "hw_back" in str(c) for c in calls)
+
+
+def test_kill_conntrack_command():
+    """kill_conntrack builds the correct conntrack command."""
+    with patch("blocker.firewall.subprocess.run") as mock_run:
+        kill_conntrack({"8.8.8.8", "1.1.1.1"}, "192.168.1.10")
+        # Should call conntrack for the device IP and each remote IP
+        assert mock_run.call_count >= 2
+        calls = [c[0][0] for c in mock_run.call_args_list]
+        assert any("conntrack" in str(c) and "192.168.1.10" in str(c) for c in calls)
+        assert any("conntrack" in str(c) and "8.8.8.8" in str(c) for c in calls)
+
+
+def test_kill_conntrack_tolerates_status_1():
+    """kill_conntrack ignores exit status 1 from conntrack."""
+    with patch("blocker.firewall.subprocess.run") as mock_run:
+        mock_run.side_effect = subprocess.CalledProcessError(1, "conntrack")
+        # Should not raise
+        kill_conntrack({"8.8.8.8"}, "192.168.1.10")

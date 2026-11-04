@@ -16,10 +16,12 @@ from dataclasses import replace
 from blocker import firewall as fw
 from blocker.api import make_api
 from blocker.arp import RedirectionManager, TargetAddrs
-from blocker.backend import Seen, fetch_state, report_hits, report_resisting
+from blocker.backend import Seen, fetch_state, report_homework_activity, report_hits, report_resisting
 from blocker.config import Config
 from blocker.discovery import run_discovery
+from blocker.homework import HomeworkGate
 from blocker.hits import HitCounter
+from blocker.hw_wiring import HomeworkWiring
 from blocker.portal import run_dns, run_http
 from blocker.resist import ResistanceCounter, ResistanceWatch, Tally
 from blocker.signals import Signals
@@ -112,7 +114,11 @@ class Service:
         self._api = None
         self.signals = Signals(cfg)
         self._vlan = VlanDetector(cfg)
+        # Homework mode: gate and wiring
+        self._gate = HomeworkGate()
+        self._wiring = HomeworkWiring(self._gate, firewall, self._mac_for_ip, self._ip_for_mac, cfg)
         self.store.on_change(self._apply)
+        self.store.on_change(lambda _: self._wiring.on_state(self.store.homework()))
 
     # --- policy application -------------------------------------------------
 
@@ -145,8 +151,9 @@ class Service:
             v4 = {t.ip for t in devs.values() if t.ip}
             v6 = {ip for t in devs.values() for ip in t.ip6}
             macs = set(blocked)  # authoritative block key
+            hw_out, hw_back = self._wiring.pairs_for_render()
             ruleset = fw.render_ruleset(
-                v4, v6, macs, self._lan_cidrs, self._portal_ip or "", PORTAL_PORT
+                v4, v6, macs, self._lan_cidrs, self._portal_ip or "", PORTAL_PORT, hw_out, hw_back
             )
             try:
                 self._fw.apply(ruleset)
@@ -182,6 +189,12 @@ class Service:
 
     def _mac_for_ip(self, ip: str) -> str | None:
         return self._ip_mac.get(ip)
+
+    def _ip_for_mac(self, mac: str) -> str | None:
+        """Return the IP of a device by its MAC (from current _devices)."""
+        with self._lock:
+            dev = self._devices.get(mac)
+        return dev.ip if dev else None
 
     def _lan(self):
         try:
@@ -276,6 +289,7 @@ class Service:
         h = self.hits.drain()
         if h:
             self._report_hits(self.cfg, h)
+        self._wiring.flush_activity(lambda items: report_homework_activity(self.cfg, items))
 
     def _resist_loop(self) -> None:
         while not self._stop.wait(self.cfg.resist_interval):
@@ -353,7 +367,7 @@ class Service:
             self._spawn(lambda: self._vlan.run(self._stop))
         self._spawn(lambda: self.signals.run_dhcp(self._stop))
         self._spawn(lambda: self.signals.run_mdns(self._stop))
-        self._spawn(lambda: run_dns(self.cfg, self._portal_ip or "", self._stop))
+        self._spawn(lambda: run_dns(self.cfg, self._portal_ip or "", self._stop, handle=self._wiring.dns_handle))
         self._spawn(lambda: run_http(self.cfg, self._stop, on_hit=self.hits.add))
         self._api = make_api(
             self.store,

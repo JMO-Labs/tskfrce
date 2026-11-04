@@ -32,6 +32,8 @@ def render_ruleset(
     lan_cidrs: list[str],
     portal_ip: str,
     portal_port: int,
+    hw_out: set[tuple[str, str]] = frozenset(),
+    hw_back: set[tuple[str, str]] = frozenset(),
 ) -> str:
     """Build the `table inet task4ce` text. Empty sets => matches nothing (noop-safe).
 
@@ -45,6 +47,11 @@ def render_ruleset(
     lines.append(_set_decl("blocked_v4", "ipv4_addr", blocked_v4))
     lines.append(_set_decl("blocked_v6", "ipv6_addr", blocked_v6))
     lines.append(_set_decl("blocked_mac", "ether_addr", blocked_mac))
+    # Homework mode pairs: (MAC, remote IP) and (remote IP, device IP)
+    hw_out_elems = {f"{mac} . {ip}" for mac, ip in hw_out}
+    hw_back_elems = {f"{ip} . {dev_ip}" for ip, dev_ip in hw_back}
+    lines.append(_set_decl("hw_out", "ether_addr . ipv4_addr", hw_out_elems))
+    lines.append(_set_decl("hw_back", "ipv4_addr . ipv4_addr", hw_back_elems))
     # Redirect blocked HTTP/DNS to the captive portal; HTTPS can't be portal-ed, so drop it.
     # Portal redirect needs a valid box IP. Without one, omit the dnat rules
     # entirely (an invalid target would make `nft -f` reject the WHOLE ruleset,
@@ -59,6 +66,9 @@ def render_ruleset(
     lines.append("  }")
     lines.append("  chain forward {")
     lines.append("    type filter hook forward priority 0; policy accept;")
+    # Homework mode accepts: these must come BEFORE the drop rules
+    lines.append("    ether saddr . ip daddr @hw_out accept")
+    lines.append("    ip saddr . ip daddr @hw_back accept")
     if v4_lan:
         lines.append(f"    ether saddr @blocked_mac ip daddr {{ {', '.join(v4_lan)} }} accept")
         lines.append(f"    ip saddr @blocked_v4 ip daddr {{ {', '.join(v4_lan)} }} accept")
@@ -108,3 +118,54 @@ def enable_forwarding() -> None:
                 f.write("1\n")
         except OSError as e:
             log.warning("could not enable forwarding at %s: %s", path, e)
+
+
+def add_pairs(out: set[tuple[str, str]], back: set[tuple[str, str]]) -> None:
+    """Add (MAC, IP) and (IP, device_IP) pairs to nftables sets.
+
+    Raises CalledProcessError on nft failure.
+    """
+    if not out and not back:
+        return
+    if out:
+        out_elems = "{" + ", ".join(f"{mac} . {ip}" for mac, ip in out) + "}"
+        subprocess.run(
+            ["nft", "add", "element", "inet", TABLE, "hw_out", out_elems],
+            check=True,
+        )
+    if back:
+        back_elems = "{" + ", ".join(f"{ip} . {dev_ip}" for ip, dev_ip in back) + "}"
+        subprocess.run(
+            ["nft", "add", "element", "inet", TABLE, "hw_back", back_elems],
+            check=True,
+        )
+
+
+def kill_conntrack(ips: set[str], device_ip: str | None = None) -> None:
+    """Delete conntrack entries for a device to drop active connections.
+
+    Runs conntrack -D for the device IP and each remote IP. Ignores exit status 1.
+    """
+    try:
+        if device_ip:
+            try:
+                subprocess.run(
+                    ["conntrack", "-D", "-s", device_ip],
+                    check=True,
+                )
+            except subprocess.CalledProcessError as e:
+                if e.returncode != 1:
+                    raise
+                log.debug("conntrack -D -s %s returned 1 (expected when no flows)", device_ip)
+        for ip in ips:
+            try:
+                subprocess.run(
+                    ["conntrack", "-D", "-d", ip],
+                    check=True,
+                )
+            except subprocess.CalledProcessError as e:
+                if e.returncode != 1:
+                    raise
+                log.debug("conntrack -D -d %s returned 1 (expected when no flows)", ip)
+    except FileNotFoundError:
+        log.warning("conntrack binary not found")

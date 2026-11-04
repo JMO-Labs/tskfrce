@@ -1,8 +1,8 @@
 FROM python:3.15-slim
 
-# nftables: firewall rules. busybox: udhcpc for VLAN sites. libpcap: packet capture/injection for scapy.
+# nftables: firewall rules. busybox: udhcpc for VLAN sites. libpcap: packet capture/injection for scapy. conntrack: cut connections.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends nftables iproute2 busybox libpcap0.8 libpcap-dev \
+    && apt-get install -y --no-install-recommends nftables iproute2 busybox libpcap0.8 libpcap-dev conntrack \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt
