@@ -97,23 +97,29 @@ test('forwards bearer auth but never browser cookies', async () => {
 });
 
 describe('X-Real-IP trust', () => {
-  async function ipFor(peer: string, realIp: string) {
+  async function run(peer: string, hdrs: Record<string, string>) {
     const fetch = jest.fn(async () => fakeResp(200, '', null));
     (global as any).fetch = fetch;
-    const req = mockReq('GET', '/api/proxy/x', '', { 'x-real-ip': realIp });
+    const req = mockReq('GET', '/api/proxy/x', '', hdrs);
     req.socket.remoteAddress = peer;
-    process.env.TRUSTED_EDGE_IPS = '172.29.50.1,127.0.0.1';
+    process.env.INTERNAL_TOKEN = 'tok-123';
     await handler(req, mockRes());
-    delete process.env.TRUSTED_EDGE_IPS;
-    return (fetch.mock.calls[0] as any)[1].headers['X-Real-IP'];
+    delete process.env.INTERNAL_TOKEN;
+    return (fetch.mock.calls[0] as any)[1].headers;
   }
-  test('trusted peer: x-real-ip used', async () => {
-    expect(await ipFor('::ffff:172.29.50.1', '192.168.1.40')).toBe('192.168.1.40');
+  test('correct token + valid ip: header ip used', async () => {
+    const h = await run('172.29.50.1', { 'x-real-ip': '192.168.1.40', 'x-edge-token': 'tok-123' });
+    expect(h['X-Real-IP']).toBe('192.168.1.40');
+    expect(JSON.stringify(h).toLowerCase()).not.toContain('x-edge-token');
+    expect(JSON.stringify(h)).not.toContain('tok-123');
   });
-  test('untrusted peer: spoofed x-real-ip ignored', async () => {
-    expect(await ipFor('192.168.1.9', '10.0.0.1')).toBe('192.168.1.9');
+  test('missing token: peer', async () => {
+    expect((await run('192.168.1.9', { 'x-real-ip': '10.0.0.1' }))['X-Real-IP']).toBe('192.168.1.9');
   });
-  test('trusted peer: garbage x-real-ip ignored', async () => {
-    expect(await ipFor('172.29.50.1', 'not-an-ip, 1.2.3.4')).toBe('172.29.50.1');
+  test('wrong token: peer', async () => {
+    expect((await run('192.168.1.9', { 'x-real-ip': '10.0.0.1', 'x-edge-token': 'nope' }))['X-Real-IP']).toBe('192.168.1.9');
+  });
+  test('correct token + garbage ip: peer', async () => {
+    expect((await run('192.168.1.9', { 'x-real-ip': '1.2.3.4, 5.6.7.8', 'x-edge-token': 'tok-123' }))['X-Real-IP']).toBe('192.168.1.9');
   });
 });

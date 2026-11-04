@@ -1,10 +1,10 @@
-import { isIP } from 'net'
 /**
  * Proxies /api/proxy/* to the backend's /api/v1/*, passing bodies (JSON or
  * multipart) and responses (JSON or binary images) through byte for byte.
  */
 
 import { NextApiRequest, NextApiResponse } from 'next'
+import { clientIp } from '../../../clientIp'
 
 // x-view-as: parent previewing a kid; backend only honours it for a parent token on kid GETs
 // no 'cookie': backend auth is Bearer-only, browser cookies (settings/login UX) stay on the edge
@@ -47,14 +47,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const v = req.headers[h]
     if (typeof v === 'string') headers[h] = v
   }
-  // Real client IP for the backend (kid device lookup, rate limits). Taken from the
-  // socket; x-real-ip is honoured only when the socket peer is a trusted edge proxy
-  // (TRUSTED_EDGE_IPS) and it holds a single valid IP. x-forwarded-for / forwarded are never copied.
-  const peer = (req.socket.remoteAddress || '').replace(/^::ffff:/, '')
-  const trusted = (process.env.TRUSTED_EDGE_IPS || '127.0.0.1,::1').split(',').map((s) => s.trim())
-  const claimed = req.headers['x-real-ip']
-  const real = typeof claimed === 'string' && isIP(claimed.trim()) ? claimed.trim() : ''
-  const ip = peer && trusted.includes(peer) && real ? real : peer
+  // Real client IP for the backend (kid device lookup, rate limits): the socket peer, or
+  // x-real-ip when the edge proxy proves itself with x-edge-token. x-edge-token is never
+  // forwarded; x-forwarded-for / forwarded are never copied.
+  const ip = clientIp(req.headers, req.socket.remoteAddress)
   if (ip) headers['X-Real-IP'] = ip
 
   try {

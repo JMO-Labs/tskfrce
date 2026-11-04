@@ -65,3 +65,10 @@ def test_prod_edge_is_opt_in_host_net():
     # `:?` would break every box without BOX_ID, even with the profile off
     for v in edge["environment"].values():
         assert ":?" not in str(v)
+
+
+def test_prod_frontend_and_edge_receive_internal_token():
+    svcs = yaml.safe_load(PROD.read_text())["services"]
+    assert "INTERNAL_TOKEN" in svcs["frontend"]["environment"]
+    assert "INTERNAL_TOKEN" in svcs["edge"]["environment"]
+    assert "TRUSTED_EDGE_IPS" not in svcs["frontend"]["environment"]
