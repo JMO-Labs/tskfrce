@@ -24,6 +24,22 @@ def push_blocked(macs: list[str]) -> bool:
         return False
 
 
+def push_state(blocked: list[str], homework: dict) -> bool:
+    """Push blocked MACs and homework state to the blocker. Never raises; False means update failed."""
+    try:
+        r = httpx.post(
+            f"{settings.BLOCKER_URL}/state",
+            json={"blocked": blocked, "homework": homework},
+            headers={"X-Internal-Token": settings.INTERNAL_TOKEN or ""},
+            timeout=5,
+        )
+        r.raise_for_status()
+        return True
+    except Exception as exc:
+        logger.warning("Blocker push_state failed", error=str(exc))
+        return False
+
+
 def test_block(mac: str) -> dict | None:
     """Ask the blocker to diagnose one device. None if the blocker did not answer."""
     try:
