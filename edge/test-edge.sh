@@ -12,7 +12,7 @@ done
 setip() { printf '#!/bin/sh\necho "1.1.1.1 via 192.168.1.1 dev eth0 src 192.168.1.%s uid 0"\n' "$1" > "$T/bin/ip"; }
 chmod +x "$T/bin/"* 2>/dev/null
 setip 40; chmod +x "$T/bin/ip"
-export PATH="$T/bin:$PATH" DATA_DIR="$T/data" BOX_ID=abc123 BOX_SECRET=s3cret EDGE_TOKEN=t EDGE_ONCE=1
+export PATH="$T/bin:$PATH" DATA_DIR="$T/data" LAST_IP_FILE="$T/last_ip" BOX_ID=abc123 BOX_SECRET=s3cret EDGE_TOKEN=t EDGE_ONCE=1
 fail=0
 run() { sh "$HERE/edge.sh" "$@"; }
 ok() { if [ "$2" = 0 ]; then echo "ok   $1"; else echo "FAIL $1"; fail=1; fi; }
@@ -20,15 +20,25 @@ has() { grep -qF -- "$1" "$LOG"; }
 
 : > "$LOG"; run report_ip
 has "/api/ip" && has "-u abc123:s3cret" && has '"ip":"192.168.1.40"'; ok "report_ip posts" $?
+has " -4 " && has " -6 "; ok "report_ip makes -4 and -6 calls" $?
 
 : > "$LOG"; run report_ip
 r=0; [ ! -s "$LOG" ] || r=1; ok "same ip skips curl" $r
+
+: > "$LOG"; run report_ip force
+has '"ip":"192.168.1.40"'; ok "force reports despite same ip" $?
 
 setip 41; : > "$LOG"; run report_ip
 has '"ip":"192.168.1.41"'; ok "changed ip posts" $?
 
 printf '#!/bin/sh\nexit 22\n' > "$T/bin/curl"; setip 42; : > "$LOG"; run report_ip
-r=0; [ "$(cat "$T/data/last_ip")" = 192.168.1.41 ] || r=1; ok "failed report keeps last_ip" $r
+r=0; [ "$(cat "$T/last_ip")" = 192.168.1.41 ] || r=1; ok "failed report keeps last_ip" $r
+printf '#!/bin/sh\necho "curl $*" >> "%s"\n' "$LOG" > "$T/bin/curl"
+
+# -6 failing is ignored; -4 failing is not
+printf '#!/bin/sh\ncase " $* " in *" -6 "*) exit 7;; esac\necho "curl $*" >> "%s"\n' "$LOG" > "$T/bin/curl"
+setip 43; : > "$LOG"; run report_ip; r=$?
+[ "$(cat "$T/last_ip")" = 192.168.1.43 ] || r=1; ok "failing -6 ignored, last_ip written" $r
 printf '#!/bin/sh\necho "curl $*" >> "%s"\n' "$LOG" > "$T/bin/curl"
 
 : > "$LOG"; run issue_or_renew

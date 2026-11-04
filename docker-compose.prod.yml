@@ -48,6 +48,8 @@ services:
       NEXT_PUBLIC_API_URL: /api/proxy
       BACKEND_INTERNAL_URL: http://backend:8000
       EDGE_TOKEN: ${EDGE_TOKEN:-}
+      FRONTEND_UPSTREAM: ${FRONTEND_UPSTREAM:-127.0.0.1:3000}
+      NTFY_UPSTREAM: ${NTFY_UPSTREAM:-127.0.0.1:2586}
     depends_on:
       backend:
         condition: service_healthy
@@ -128,6 +130,8 @@ services:
       BOX_ID: ${BOX_ID:-}
       BOX_SECRET: ${BOX_SECRET:-}
       EDGE_TOKEN: ${EDGE_TOKEN:-}
+      FRONTEND_UPSTREAM: ${FRONTEND_UPSTREAM:-127.0.0.1:3000}
+      NTFY_UPSTREAM: ${NTFY_UPSTREAM:-127.0.0.1:2586}
     volumes:
       - edge_data:/data
     restart: unless-stopped

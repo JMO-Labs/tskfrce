@@ -5,7 +5,7 @@
 
 https://{$BOX_ID}.{$BASE_DOMAIN}:443 {
 	tls /data/lego/certificates/{$BOX_ID}.{$BASE_DOMAIN}.crt /data/lego/certificates/{$BOX_ID}.{$BASE_DOMAIN}.key
-	reverse_proxy 127.0.0.1:3000 {
+	reverse_proxy {$FRONTEND_UPSTREAM:127.0.0.1:3000} {
 		header_up X-Real-IP {remote_host}
 		header_up X-Edge-Token {$EDGE_TOKEN}
 	}
@@ -13,5 +13,6 @@ https://{$BOX_ID}.{$BASE_DOMAIN}:443 {
 
 https://{$BOX_ID}.{$BASE_DOMAIN}:2443 {
 	tls /data/lego/certificates/{$BOX_ID}.{$BASE_DOMAIN}.crt /data/lego/certificates/{$BOX_ID}.{$BASE_DOMAIN}.key
-	reverse_proxy 127.0.0.1:2586
+	# Note: ntfy sees Caddy's address for every client, so they share one rate-limit bucket.
+	reverse_proxy {$NTFY_UPSTREAM:127.0.0.1:2586}
 }
