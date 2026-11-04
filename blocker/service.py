@@ -394,6 +394,7 @@ class Service:
                 self._stop,
                 handle=self._wiring.dns_handle,
                 claims=self._wiring.claims,
+                client_key=self._mac_for_ip,
             )
         )
         self._spawn(lambda: run_http(self.cfg, self._stop, on_hit=self.hits.add))

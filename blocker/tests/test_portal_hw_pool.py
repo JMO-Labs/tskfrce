@@ -76,3 +76,43 @@ def test_unclaimed_client_never_waits_on_upstream():
     t.join(2)
     assert reply.id == 7 and str(reply.an[0].rdata) == "10.0.0.2"
     assert handle_called == []
+
+
+def test_per_client_cap_keyed_by_mac_across_ips():
+    """A device hopping source IPs (same MAC) shares one in-flight budget."""
+    port = _free_port()
+    stop = threading.Event()
+    release = threading.Event()
+    calls = []
+
+    def handle(ip, data):
+        calls.append(ip)
+        release.wait(5)
+
+    t = threading.Thread(
+        target=run_dns,
+        args=(None, "10.0.0.2", stop),
+        kwargs={
+            "handle": handle,
+            "claims": lambda ip: True,
+            "client_key": lambda ip: "aa:bb:cc:dd:ee:ff",
+            "bind": ("127.0.0.1", port),
+        },
+        daemon=True,
+    )
+    t.start()
+    time.sleep(0.2)
+    socks = []
+    for src in ("127.0.0.2", "127.0.0.3"):
+        c = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        c.bind((src, 0))
+        socks.append(c)
+        for i in range(HW_PER_CLIENT):
+            c.sendto(_q(i), ("127.0.0.1", port))
+    time.sleep(0.5)
+    assert len(calls) == HW_PER_CLIENT  # one budget for the MAC, not one per IP
+    release.set()
+    stop.set()
+    t.join(2)
+    for c in socks:
+        c.close()

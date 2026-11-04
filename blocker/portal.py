@@ -40,13 +40,17 @@ HW_WORKERS = 8  # homework lookups waiting on upstream at once
 HW_PER_CLIENT = 4  # in-flight homework lookups per client before we drop
 
 
-def run_dns(cfg, box_ip: str, stop, handle=None, claims=None, bind=("0.0.0.0", 53)) -> None:
+def run_dns(
+    cfg, box_ip: str, stop, handle=None, claims=None, bind=("0.0.0.0", 53), client_key=None
+) -> None:
     """Serve dns_response over UDP :53 until stop (threading.Event) is set.
 
     handle(client_ip, data) -> bytes | None may forward upstream (slow). Clients for which
     claims(client_ip) is true are served by a bounded worker pool (per-client cap; excess
     is dropped and the client retries); everyone else gets the portal answer inline and
     never waits on upstream. Without claims, handle runs inline (legacy/tests).
+    client_key(client_ip) -> MAC | None keys the per-client cap (falls back to the IP), so a
+    device can't multiply its budget by changing source IPs.
     """
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(bind)
@@ -65,14 +69,21 @@ def run_dns(cfg, box_ip: str, stop, handle=None, claims=None, bind=("0.0.0.0", 5
         except Exception:
             log.debug("DNS handling failed", exc_info=True)
 
-    def work(addr, data) -> None:
+    def key_for(ip: str) -> str:
+        try:
+            return (client_key(ip) if client_key else None) or ip
+        except Exception:
+            log.debug("client_key failed", exc_info=True)
+            return ip
+
+    def work(key, addr, data) -> None:
         try:
             answer(addr, data)
         finally:
             with guard:
-                inflight[addr[0]] -= 1
-                if not inflight[addr[0]]:
-                    del inflight[addr[0]]
+                inflight[key] -= 1
+                if not inflight[key]:
+                    del inflight[key]
 
     try:
         while not stop.is_set():
@@ -95,11 +106,12 @@ def run_dns(cfg, box_ip: str, stop, handle=None, claims=None, bind=("0.0.0.0", 5
                 else:
                     answer(addr, data)
                 continue
+            key = key_for(addr[0])
             with guard:
-                if inflight.get(addr[0], 0) >= HW_PER_CLIENT:
+                if inflight.get(key, 0) >= HW_PER_CLIENT:
                     continue  # client floods: drop, it will retry
-                inflight[addr[0]] = inflight.get(addr[0], 0) + 1
-            pool.submit(work, addr, data)
+                inflight[key] = inflight.get(key, 0) + 1
+            pool.submit(work, key, addr, data)
     finally:
         pool.shutdown(wait=False, cancel_futures=True)
         sock.close()
