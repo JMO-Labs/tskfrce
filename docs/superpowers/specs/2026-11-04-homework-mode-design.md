@@ -1,6 +1,6 @@
 # Homework mode — design
 
-Date: 2026-11-04 · Status: draft for owner review
+Date: 2026-11-04 · Status: approved by owner 2026-11-04
 
 ## Intent
 
