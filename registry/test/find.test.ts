@@ -1,8 +1,11 @@
-import { describe, expect, test } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { handle } from '../src/index'
 import { fakeCf, makeEnv } from './helpers'
 
-const get = async (qs: string, ip: string | null = '203.0.113.9', seen: string = JSON.stringify({ lanIp: '192.168.1.40', publicIp: '203.0.113.9', seenAt: 1 })) => {
+const NOW = 1_800_000_000_000, H2 = 2 * 60 * 60 * 1000
+beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(NOW) })
+
+const get = async (qs: string, ip: string | null = '203.0.113.9', seen: string = JSON.stringify({ lanIp: '192.168.1.40', publicIp4: '203.0.113.9', seenAt4: NOW - 1000, seenAt: NOW - 1000 })) => {
   const env = await makeEnv()
   await env.BOXES.put('seen:abc123', seen)
   const orig = env.BOXES.get.bind(env.BOXES)
@@ -13,7 +16,29 @@ const get = async (qs: string, ip: string | null = '203.0.113.9', seen: string =
   return { res, body: await res.text(), cf, gets }
 }
 
-const seen6 = JSON.stringify({ lanIp: '192.168.1.40', publicIp4: '203.0.113.9', publicIp6: '2001:db8:1:2::5', seenAt: 1 })
+const seen6 = JSON.stringify({ lanIp: '192.168.1.40', publicIp4: '203.0.113.9', seenAt4: NOW - 1000, publicIp6: '2001:db8:1:2::5', seenAt6: NOW - 1000, seenAt: NOW - 1000 })
+
+const mk = (o: object) => JSON.stringify({ lanIp: '192.168.1.40', ...o })
+const V6 = '2001:db8:1:2::9'
+
+describe('GET /find expiry', () => {
+  const e6 = (t: number) => mk({ publicIp6: '2001:db8:1:2::5', seenAt6: t })
+  test('v6 within 2h matches', async () => {
+    expect((await get('?id=abc123', V6, e6(NOW - H2))).body).toContain('192.168.1.40')
+  })
+  test('v6 at 2h+1ms does not', async () => {
+    expect((await get('?id=abc123', V6, e6(NOW - H2 - 1))).body).not.toContain('192.168.1.40')
+  })
+  test('fresh v4 + stale v6: v4 matches, v6 does not', async () => {
+    const s = mk({ publicIp4: '203.0.113.9', seenAt4: NOW, publicIp6: '2001:db8:1:2::5', seenAt6: NOW - H2 - 1 })
+    expect((await get('?id=abc123', '203.0.113.9', s)).body).toContain('192.168.1.40')
+    expect((await get('?id=abc123', V6, s)).body).not.toContain('192.168.1.40')
+  })
+  test('legacy entry without timestamps -> no match', async () => {
+    expect((await get('?id=abc123', '203.0.113.9', mk({ publicIp: '203.0.113.9' }))).body).not.toContain('192.168.1.40')
+    expect((await get('?id=abc123', '203.0.113.9', mk({ publicIp: '203.0.113.9', seenAt: NOW - H2 - 1 }))).body).not.toContain('192.168.1.40')
+  })
+})
 
 describe('GET /find ipv6', () => {
   test('v6 visitor same /64, other host -> match', async () => {
@@ -24,14 +49,14 @@ describe('GET /find ipv6', () => {
   })
   test('compressed vs expanded forms match', async () => {
     expect((await get('?id=abc123', '2001:0db8:0001:0002:0000:0000:0000:0009', seen6)).body).toContain('192.168.1.40')
-    expect((await get('?id=abc123', '2001:db8:1:2::9', JSON.stringify({ lanIp: '192.168.1.40', publicIp6: '2001:0db8:0001:0002:0:0:0:5' }))).body).toContain('192.168.1.40')
+    expect((await get('?id=abc123', '2001:db8:1:2::9', JSON.stringify({ lanIp: '192.168.1.40', publicIp6: '2001:0db8:0001:0002:0:0:0:5', seenAt6: NOW }))).body).toContain('192.168.1.40')
   })
   test('v4 visitor still exact on publicIp4', async () => {
     expect((await get('?id=abc123', '203.0.113.9', seen6)).body).toContain('192.168.1.40')
     expect((await get('?id=abc123', '203.0.113.10', seen6)).body).not.toContain('192.168.1.40')
   })
   test('legacy publicIp v6 read by shape', async () => {
-    expect((await get('?id=abc123', '2001:db8:1:2::7', JSON.stringify({ lanIp: '192.168.1.40', publicIp: '2001:db8:1:2::5' }))).body).toContain('192.168.1.40')
+    expect((await get('?id=abc123', '2001:db8:1:2::7', JSON.stringify({ lanIp: '192.168.1.40', publicIp: '2001:db8:1:2::5', seenAt: NOW }))).body).toContain('192.168.1.40')
   })
   test('garbage visitor v6 -> no match', async () => {
     expect((await get('?id=abc123', '2001:db8::1::2', seen6)).body).not.toContain('192.168.1.40')

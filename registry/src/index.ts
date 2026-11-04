@@ -19,7 +19,9 @@ const postIp: Route = async ({ req, env, cf }) => {
   let prev: Record<string, unknown> = {}
   try { prev = JSON.parse((await env.BOXES.get(`seen:${id}`)) ?? '{}') } catch { /* corrupt -> reset */ }
   const pub = req.headers.get('CF-Connecting-IP') ?? ''
-  const seen = { publicIp4: prev.publicIp4, publicIp6: prev.publicIp6, lanIp: ip, seenAt: Date.now(), [pub.includes(':') ? 'publicIp6' : 'publicIp4']: pub }
+  const now = Date.now()
+  const f = pub.includes(':') ? '6' : '4'
+  const seen = { ...prev, lanIp: ip, seenAt: now, [`publicIp${f}`]: pub, [`seenAt${f}`]: now }
   await env.BOXES.put(`seen:${id}`, JSON.stringify(seen))
   return new Response(null, { status: 204 })
 }

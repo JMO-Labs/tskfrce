@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { handle } from '../src/index'
 import { upsertRecord } from '../src/cf'
 import { basic, fakeCf, makeEnv } from './helpers'
@@ -104,4 +104,17 @@ test('v6 report stores publicIp6 and keeps publicIp4', async () => {
   await handle(post('/api/ip', { ip: '192.168.1.40' }, basic('abc123', 's3cret'), '203.0.113.9'), env, cf)
   await handle(post('/api/ip', { ip: '192.168.1.40' }, basic('abc123', 's3cret'), '2001:db8:1:2::5'), env, cf)
   expect(JSON.parse((await env.BOXES.get('seen:abc123'))!)).toMatchObject({ lanIp: '192.168.1.40', publicIp4: '203.0.113.9', publicIp6: '2001:db8:1:2::5' })
+})
+
+test('v6 report updates seenAt6 only, leaves v4 fields intact', async () => {
+  vi.useFakeTimers()
+  const env = await makeEnv(), cf = fakeCf()
+  vi.setSystemTime(1000)
+  await handle(post('/api/ip', { ip: '192.168.1.40' }, basic('abc123', 's3cret'), '203.0.113.9'), env, cf)
+  vi.setSystemTime(5000)
+  await handle(post('/api/ip', { ip: '192.168.1.40' }, basic('abc123', 's3cret'), '2001:db8:1:2::5'), env, cf)
+  vi.useRealTimers()
+  expect(JSON.parse((await env.BOXES.get('seen:abc123'))!)).toMatchObject({
+    publicIp4: '203.0.113.9', seenAt4: 1000, publicIp6: '2001:db8:1:2::5', seenAt6: 5000, seenAt: 5000,
+  })
 })
