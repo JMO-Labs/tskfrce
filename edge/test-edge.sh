@@ -1,0 +1,46 @@
+#!/bin/bash
+# Tests edge.sh functions with stubbed curl/lego/caddy/ip.
+set -u
+HERE=$(cd "$(dirname "$0")" && pwd)
+T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
+mkdir -p "$T/bin" "$T/data"
+LOG=$T/log
+for c in curl lego caddy; do
+  # shellcheck disable=SC2016
+  printf '#!/bin/sh\necho "%s $*" >> "%s"\necho "ENDPOINT=$HTTPREQ_ENDPOINT" >> "%s"\n' "$c" "$LOG" "$LOG" > "$T/bin/$c"
+done
+setip() { printf '#!/bin/sh\necho "1.1.1.1 via 192.168.1.1 dev eth0 src 192.168.1.%s uid 0"\n' "$1" > "$T/bin/ip"; }
+chmod +x "$T/bin/"* 2>/dev/null
+setip 40; chmod +x "$T/bin/ip"
+export PATH="$T/bin:$PATH" DATA_DIR="$T/data" BOX_ID=abc123 BOX_SECRET=s3cret EDGE_ONCE=1
+fail=0
+run() { sh "$HERE/edge.sh" "$@"; }
+ok() { if [ "$2" = 0 ]; then echo "ok   $1"; else echo "FAIL $1"; fail=1; fi; }
+has() { grep -qF -- "$1" "$LOG"; }
+
+: > "$LOG"; run report_ip
+has "/api/ip" && has "-u abc123:s3cret" && has '"ip":"192.168.1.40"'; ok "report_ip posts" $?
+
+: > "$LOG"; run report_ip
+r=0; [ ! -s "$LOG" ] || r=1; ok "same ip skips curl" $r
+
+setip 41; : > "$LOG"; run report_ip
+has '"ip":"192.168.1.41"'; ok "changed ip posts" $?
+
+printf '#!/bin/sh\nexit 22\n' > "$T/bin/curl"; setip 42; : > "$LOG"; run report_ip
+r=0; [ "$(cat "$T/data/last_ip")" = 192.168.1.41 ] || r=1; ok "failed report keeps last_ip" $r
+printf '#!/bin/sh\necho "curl $*" >> "%s"\n' "$LOG" > "$T/bin/curl"
+
+: > "$LOG"; run issue_or_renew
+has "--dns httpreq" && has "-d abc123.taskfrce.jmolabs.dev" && has " run" \
+  && has "ENDPOINT=https://taskfrce.jmolabs.dev/api/acme"; ok "issue runs lego run" $?
+
+mkdir -p "$T/data/lego/certificates"; echo c > "$T/data/lego/certificates/abc123.taskfrce.jmolabs.dev.crt"
+: > "$LOG"; run issue_or_renew
+has "renew --days 30"; ok "existing cert renews" $?
+
+r=0; [ "$(run next_backoff 30)" = 60 ] && [ "$(run next_backoff 900)" = 900 ] || r=1; ok "next_backoff" $r
+
+out=$(BOX_ID='' sh "$HERE/edge.sh" 2>&1); rc=$?
+r=0; [ $rc -ne 0 ] && echo "$out" | grep -q "BOX_ID and BOX_SECRET are required" || r=1; ok "missing BOX_ID fails" $r
+exit $fail

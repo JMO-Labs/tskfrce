@@ -1,0 +1,14 @@
+{
+	auto_https off
+	admin localhost:2019
+}
+
+https://{$BOX_ID}.{$BASE_DOMAIN}:443 {
+	tls /data/lego/certificates/{$BOX_ID}.{$BASE_DOMAIN}.crt /data/lego/certificates/{$BOX_ID}.{$BASE_DOMAIN}.key
+	reverse_proxy 127.0.0.1:3000
+}
+
+https://{$BOX_ID}.{$BASE_DOMAIN}:2443 {
+	tls /data/lego/certificates/{$BOX_ID}.{$BASE_DOMAIN}.crt /data/lego/certificates/{$BOX_ID}.{$BASE_DOMAIN}.key
+	reverse_proxy 127.0.0.1:2586
+}

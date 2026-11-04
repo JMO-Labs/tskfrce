@@ -63,9 +63,11 @@ jobs:
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
     - name: Shellcheck
-      run: shellcheck install.sh scripts/test-install.sh scripts/start.sh scripts/prep-box.sh
+      run: shellcheck install.sh scripts/test-install.sh scripts/start.sh scripts/prep-box.sh edge/edge.sh edge/test-edge.sh
     - name: Installer smoke test
       run: bash scripts/test-install.sh
+    - name: Edge tests
+      run: bash edge/test-edge.sh
 
   lab:
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
