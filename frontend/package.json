@@ -51,6 +51,7 @@
     "glob": "^10.3.10",
     "next": {
       "postcss": "$postcss"
-    }
+    },
+    "minimatch": "^11.0.4"
   }
 }
