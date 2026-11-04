@@ -1,5 +1,5 @@
 import { authBox } from './auth'
-import { isPrivateV4, upsertRecord } from './cf'
+import { createRecord, deleteRecord, isPrivateV4, upsertRecord } from './cf'
 
 export type Env = { BOXES: KVNamespace; CF_API_TOKEN: string; CF_ZONE_ID: string; BASE_DOMAIN: string }
 type Ctx = { req: Request; env: Env; cf: typeof fetch }
@@ -20,9 +20,23 @@ const postIp: Route = async ({ req, env, cf }) => {
   return new Response(null, { status: 204 })
 }
 
+// lego httpreq: body {fqdn, value}; only the caller's own _acme-challenge name is allowed.
+const acme = (act: typeof createRecord): Route => async ({ req, env, cf }) => {
+  const id = await authBox(req, env)
+  if (!id) return json({ error: 'unauthorized' }, 401)
+  const b = (await req.json().catch(() => null)) as { fqdn?: unknown; value?: unknown } | null
+  if (typeof b?.fqdn !== 'string' || typeof b.value !== 'string' || !b.value) return json({ error: 'fqdn and value required' }, 400)
+  const name = b.fqdn.replace(/\.$/, '')
+  if (name !== `_acme-challenge.${id}.${env.BASE_DOMAIN}`) return json({ error: 'forbidden' }, 403)
+  await act(env, cf, 'TXT', name, b.value)
+  return json({})
+}
+
 // path -> { METHOD: handler }. Add new routes here.
 const routes: Record<string, Record<string, Route>> = {
   '/api/ip': { POST: postIp },
+  '/api/acme/present': { POST: acme(createRecord) },
+  '/api/acme/cleanup': { POST: acme(deleteRecord) },
 }
 
 export async function handle(req: Request, env: Env, cfFetch: typeof fetch): Promise<Response> {

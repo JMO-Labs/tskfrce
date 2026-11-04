@@ -28,6 +28,11 @@ export async function upsertRecord(env: Env, cfFetch: typeof fetch, type: 'A' | 
   else await call(env, cfFetch, api(env), 'POST', rec)
 }
 
+export async function createRecord(env: Env, cfFetch: typeof fetch, type: 'TXT', name: string, content: string): Promise<void> {
+  guard(env, name)
+  await call(env, cfFetch, api(env), 'POST', { type, name, content, ttl: 60, proxied: false })
+}
+
 export async function deleteRecord(env: Env, cfFetch: typeof fetch, type: 'TXT', name: string, content: string): Promise<void> {
   guard(env, name)
   const q = `${api(env)}?type=${type}&name=${encodeURIComponent(name)}&content=${encodeURIComponent(content)}`
