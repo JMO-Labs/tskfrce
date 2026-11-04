@@ -2,11 +2,34 @@
 
 from __future__ import annotations
 
+import threading
 import time
 from dataclasses import dataclass, field
+from datetime import datetime
 
 FOLLOW_SECS = 10.0
 MIN_PAIR_SECS = 300
+MAX_PAIR_SECS = 3600  # a long upstream TTL must not keep a hole open for days
+
+
+def norm_name(name: str) -> str:
+    """Canonical DNS name form shared by lists and lookups."""
+    return str(name).strip().lower().rstrip(".")
+
+
+def norm_names(names) -> set[str]:
+    return {n for n in (norm_name(x) for x in names) if n}
+
+
+def parse_until(until) -> float | None:
+    """ISO timestamp (``Z`` or offset) -> epoch seconds; None if unparseable."""
+    try:
+        dt = datetime.fromisoformat(str(until))
+    except (TypeError, ValueError):
+        return None
+    if dt.tzinfo is None:
+        return None
+    return dt.timestamp()
 
 
 def domain_matches(name: str, entry: str) -> bool:
@@ -23,11 +46,14 @@ class _Session:
     mac: str
     allow: set[str]
     block: set[str]
-    until: str
+    until: float
     last_allowed_time: float
+    started_wall: float = 0.0
     last_allowed_name: str | None = None
-    followed_names: set[str] = field(default_factory=set)
+    followed_names: dict[str, str] = field(default_factory=dict)  # {name: list name it followed}
     pairs: dict[str, float] = field(default_factory=dict)  # {ip: expiry_time}
+    # {ip: names that resolved to it}; persists across activity drains (shared-IP cuts)
+    ip_names: dict[str, set[str]] = field(default_factory=dict)
     activity: dict[str, _Activity] = field(default_factory=dict)  # {domain: _Activity}
 
 
@@ -44,38 +70,97 @@ class _Activity:
     active_minutes: set[int]  # Set of minute offsets from session start
 
 
-class HomeworkGate:
-    """Decides per DNS name: allow, follow, or block. Tracks pairs and activity."""
+def _listed(sess: _Session, name: str) -> bool:
+    return not any(domain_matches(name, b) for b in sess.block) and any(
+        domain_matches(name, a) for a in sess.allow
+    )
 
-    def __init__(self, clock=time.monotonic):
+
+def _still_allowed(sess: _Session, name: str) -> bool:
+    """Would this name still be allowed under the current lists (follow window aside)?"""
+    if any(domain_matches(name, b) for b in sess.block):
+        return False
+    if any(domain_matches(name, a) for a in sess.allow):
+        return True
+    return name in sess.followed_names  # pruned to live parents by _prune_follow
+
+
+def _prune_follow(sess: _Session) -> None:
+    """Forget follows whose parent left the list (or got blocked) and blocked follows."""
+    sess.followed_names = {
+        n: parent
+        for n, parent in sess.followed_names.items()
+        if _listed(sess, parent) and not any(domain_matches(n, b) for b in sess.block)
+    }
+    if sess.last_allowed_name and not _listed(sess, sess.last_allowed_name):
+        sess.last_allowed_name = None
+
+
+class HomeworkGate:
+    """Decides per DNS name: allow, follow, or block. Tracks pairs and activity.
+
+    Thread-safe: the DNS worker pool, the API push and the render path all touch it.
+    ``clock`` (monotonic) drives pairs and follow; ``wall`` (epoch) drives ``until``.
+    """
+
+    def __init__(self, clock=time.monotonic, wall=time.time):
         self._clock = clock
+        self._wall = wall
+        self._lock = threading.RLock()
         self._sessions: dict[str, _Session] = {}
+
+    def _live(self, mac: str | None) -> _Session | None:
+        """Session for mac unless missing or past its ``until`` (enforced locally)."""
+        sess = self._sessions.get(mac) if mac else None
+        if sess is None or self._wall() >= sess.until:
+            return None
+        return sess
 
     def update(self, state: dict[str, dict]) -> set[str]:
         """Update the homework state; return MACs whose sessions ended.
 
-        state: dict mapping MAC to {allow: [names], block: [names], until: ts}
+        state: dict mapping MAC to {allow: [names], block: [names], until: ts}.
+        A session whose ``until`` is past or unparseable is treated as absent.
         """
-        ended = set()
-        for mac in list(self._sessions.keys()):
-            if mac not in state:
-                ended.add(mac)
-                del self._sessions[mac]
-        for mac, hw in state.items():
-            if mac not in self._sessions:
-                now = self._clock()
-                self._sessions[mac] = _Session(
-                    mac=mac,
-                    allow=set(hw["allow"]),
-                    block=set(hw["block"]),
-                    until=hw["until"],
-                    last_allowed_time=now,
+        with self._lock:
+            now_wall = self._wall()
+            wanted: dict[str, tuple[set[str], set[str], float]] = {}
+            for mac, hw in state.items():
+                until = parse_until(hw.get("until"))
+                if until is None or until <= now_wall:
+                    continue
+                wanted[mac] = (
+                    norm_names(hw.get("allow", [])),
+                    norm_names(hw.get("block", [])),
+                    until,
                 )
-            else:
-                self._sessions[mac].allow = set(hw["allow"])
-                self._sessions[mac].block = set(hw["block"])
-                self._sessions[mac].until = hw["until"]
-        return ended
+            ended = {mac for mac in self._sessions if mac not in wanted}
+            for mac in ended:
+                del self._sessions[mac]
+            for mac, (allow, block, until) in wanted.items():
+                sess = self._sessions.get(mac)
+                if sess is None:
+                    self._sessions[mac] = _Session(
+                        mac=mac,
+                        allow=allow,
+                        block=block,
+                        until=until,
+                        last_allowed_time=self._clock(),
+                        started_wall=now_wall,
+                    )
+                else:
+                    sess.allow, sess.block, sess.until = allow, block, until
+                    _prune_follow(sess)
+            return ended
+
+    def expire(self) -> set[str]:
+        """End sessions past ``until`` (works with the backend down); return their MACs."""
+        with self._lock:
+            now_wall = self._wall()
+            ended = {mac for mac, s in self._sessions.items() if now_wall >= s.until}
+            for mac in ended:
+                del self._sessions[mac]
+            return ended
 
     def decide(self, mac: str, name: str) -> tuple[bool, str | None, str | None]:
         """Decide if a name is allowed for this MAC.
@@ -84,142 +169,153 @@ class HomeworkGate:
         - via: "list" (in allow list), "follow" (from session follow), or None (denied)
         - pulled_by: name that this was followed from, or None
         """
-        name = name.lower().rstrip(".")
-        sess = self._sessions.get(mac)
-        if sess is None:
-            return False, None, None
-
-        # Block list always wins
-        for block_entry in sess.block:
-            if domain_matches(name, block_entry):
+        name = norm_name(name)
+        with self._lock:
+            sess = self._live(mac)
+            if sess is None or not name:
                 return False, None, None
 
-        # Check allow list
-        for allow_entry in sess.allow:
-            if domain_matches(name, allow_entry):
-                sess.last_allowed_time = self._clock()
+            # Block list always wins
+            if any(domain_matches(name, b) for b in sess.block):
+                return False, None, None
+
+            now = self._clock()
+            if any(domain_matches(name, a) for a in sess.allow):
+                sess.last_allowed_time = now
                 sess.last_allowed_name = name
                 return True, "list", None
 
-        # Check session follow: name is allowed if it was already followed, or within follow window of last allowed lookup
-        now = self._clock()
-        if name in sess.followed_names:
-            # Already followed in this session, stays allowed
-            return True, "follow", None
-        if sess.last_allowed_name and (now - sess.last_allowed_time) < FOLLOW_SECS:
-            # Within follow window, mark this name as followed
-            sess.followed_names.add(name)
-            return True, "follow", sess.last_allowed_name
+            # Session follow: already followed, or within the window of the last allowed lookup
+            if name in sess.followed_names:
+                return True, "follow", None
+            if sess.last_allowed_name and (now - sess.last_allowed_time) < FOLLOW_SECS:
+                sess.followed_names[name] = sess.last_allowed_name
+                return True, "follow", sess.last_allowed_name
 
-        return False, None, None
+            return False, None, None
 
-    def record(self, mac: str, name: str, ips: list[str], ttl: int, via: str, pulled_by: str | None) -> set[str]:
+    def record(
+        self, mac: str, name: str, ips: list[str], ttl: int, via: str, pulled_by: str | None
+    ) -> set[str]:
         """Record a lookup and add/refresh pairs; return newly added IPs."""
-        name = name.lower().rstrip(".")
-        sess = self._sessions.get(mac)
-        if sess is None:
-            return set()
+        name = norm_name(name)
+        with self._lock:
+            sess = self._live(mac)
+            if sess is None:
+                return set()
 
-        # Record activity
-        now = self._clock()
-        minute_bucket = int(now) // 60
-        if name not in sess.activity:
-            sess.activity[name] = _Activity(
-                domain=name,
-                via=via,
-                pulled_by=pulled_by,
-                first_seen=now,
-                last_seen=now,
-                lookups=1,
-                active_minutes={minute_bucket},
-            )
-        else:
-            act = sess.activity[name]
-            act.last_seen = now
-            act.lookups += 1
-            act.active_minutes.add(minute_bucket)
+            now = self._clock()
+            minute_bucket = int(now) // 60
+            act = sess.activity.get(name)
+            if act is None:
+                sess.activity[name] = _Activity(
+                    domain=name,
+                    via=via,
+                    pulled_by=pulled_by,
+                    first_seen=now,
+                    last_seen=now,
+                    lookups=1,
+                    active_minutes={minute_bucket},
+                )
+            else:
+                act.last_seen = now
+                act.lookups += 1
+                act.active_minutes.add(minute_bucket)
 
-        # Track followed names
-        if via == "follow":
-            sess.followed_names.add(name)
+            if via == "follow" and pulled_by:
+                sess.followed_names.setdefault(name, norm_name(pulled_by))
 
-        # Add/refresh pairs
-        expiry = now + max(ttl, MIN_PAIR_SECS)
-        new_ips = set()
-        for ip in ips:
-            if ip not in sess.pairs:
-                new_ips.add(ip)
-            sess.pairs[ip] = expiry
+            expiry = now + min(max(int(ttl), MIN_PAIR_SECS), MAX_PAIR_SECS)
+            new_ips = set()
+            for ip in ips:
+                if ip not in sess.pairs or sess.pairs[ip] < now:
+                    new_ips.add(ip)
+                sess.pairs[ip] = max(expiry, sess.pairs.get(ip, 0.0))
+                sess.ip_names.setdefault(ip, set()).add(name)
+            return new_ips
 
-        return new_ips
+    def remaining(self, mac: str, ips) -> dict[str, int]:
+        """Seconds each live pair of mac has left (firewall element timeouts)."""
+        with self._lock:
+            sess = self._live(mac)
+            if sess is None:
+                return {}
+            now = self._clock()
+            return {
+                ip: max(1, int(sess.pairs[ip] - now))
+                for ip in ips
+                if ip in sess.pairs and sess.pairs[ip] >= now
+            }
+
+    def pairs_ttl(self) -> dict[tuple[str, str], int]:
+        """Unexpired {(mac, ip): seconds_left} for live sessions."""
+        with self._lock:
+            now = self._clock()
+            out: dict[tuple[str, str], int] = {}
+            for mac in list(self._sessions):
+                sess = self._live(mac)
+                if sess is None:
+                    continue
+                for ip, expiry in sess.pairs.items():
+                    if expiry >= now:
+                        out[(mac, ip)] = max(1, int(expiry - now))
+            return out
 
     def pairs(self) -> set[tuple[str, str]]:
         """Return unexpired (mac, ip) pairs."""
-        now = self._clock()
-        result = set()
-        for mac, sess in self._sessions.items():
-            for ip, expiry in sess.pairs.items():
-                if expiry >= now:
-                    result.add((mac, ip))
-        return result
+        return set(self.pairs_ttl())
 
     def blocked_cut(self, mac: str) -> set[str]:
-        """IPs to remove after the block list changed (only IPs resolved by now-blocked names)."""
-        sess = self._sessions.get(mac)
-        if sess is None:
-            return set()
+        """Drop and return IPs no still-allowed name resolved to (after a list change).
 
-        now = self._clock()
-        # Find all names that match the block list
-        blocked_names = set()
-        for activity in sess.activity.values():
-            for block_entry in sess.block:
-                if domain_matches(activity.domain, block_entry):
-                    blocked_names.add(activity.domain)
-                    break
-
-        # Find IPs that ONLY resolve to blocked names
-        ips_to_cut = set()
-        for ip in list(sess.pairs.keys()):
-            if sess.pairs[ip] <= now:
-                continue  # Already expired
-            # Check if any non-blocked allowed name resolves to this IP
-            ip_is_shared = False
-            for activity in sess.activity.values():
-                if activity.domain not in blocked_names:
-                    # This activity is still allowed
-                    ip_is_shared = True
-                    break
-            if not ip_is_shared:
-                ips_to_cut.add(ip)
-
-        return ips_to_cut
+        Uses the persistent ip->names map (not drained activity): an IP stays while any
+        name that resolved to it is still allowed (list match, or a follow whose parent
+        is still on the list); blocked, de-listed and orphaned-follow names don't count.
+        """
+        with self._lock:
+            sess = self._sessions.get(mac)
+            if sess is None:
+                return set()
+            _prune_follow(sess)
+            cut = {
+                ip
+                for ip, names in sess.ip_names.items()
+                if not any(_still_allowed(sess, n) for n in names)
+            }
+            for ip in cut:
+                sess.pairs.pop(ip, None)
+                del sess.ip_names[ip]
+            return cut
 
     def drain_activity(self) -> list[dict]:
         """Return activity rows and clear them."""
-        now = self._clock()
-        result = []
-        for mac, sess in self._sessions.items():
-            for activity in sess.activity.values():
-                session_start = min(a.first_seen for a in sess.activity.values()) if sess.activity else now
-                result.append(
-                    {
-                        "mac": mac,
-                        "session_start": time.gmtime(session_start)[:6],  # Will be formatted by caller
-                        "domain": activity.domain,
-                        "via": activity.via,
-                        "pulled_by": activity.pulled_by,
-                        "first_seen": activity.first_seen,
-                        "last_seen": activity.last_seen,
-                        "lookups": activity.lookups,
-                        "active_minutes": len(activity.active_minutes),
-                    }
-                )
-        # Clear activity
-        for sess in self._sessions.values():
-            sess.activity.clear()
-        return result
+        with self._lock:
+            result = []
+            for mac, sess in self._sessions.items():
+                for activity in sess.activity.values():
+                    result.append(
+                        {
+                            "mac": mac,
+                            # stable per session so the backend upserts one row per domain
+                            "session_start": time.gmtime(sess.started_wall)[:6],
+                            "domain": activity.domain,
+                            "via": activity.via,
+                            "pulled_by": activity.pulled_by,
+                            "first_seen": activity.first_seen,
+                            "last_seen": activity.last_seen,
+                            "lookups": activity.lookups,
+                            "active_minutes": len(activity.active_minutes),
+                        }
+                    )
+                sess.activity.clear()
+            return result
 
-    def active(self, mac: str) -> bool:
-        """Return True if MAC is in an active homework session."""
-        return mac in self._sessions
+    def macs(self) -> list[str]:
+        """MACs with a live session."""
+        with self._lock:
+            return [m for m in self._sessions if self._live(m) is not None]
+
+    def active(self, mac: str | None) -> bool:
+        """Return True if MAC is in an active (not past ``until``) homework session."""
+        with self._lock:
+            return self._live(mac) is not None

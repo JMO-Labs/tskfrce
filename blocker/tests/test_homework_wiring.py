@@ -11,7 +11,15 @@ from blocker.hw_wiring import HomeworkWiring
 def test_wiring_on_state_kills_conntrack_for_ended_mac():
     """on_state calls kill_conntrack for MACs that ended."""
     gate = HomeworkGate()
-    gate.update({"aa:bb:cc:dd:ee:01": {"allow": ["google.com"], "block": [], "until": "2099-01-01T00:00:00Z"}})
+    gate.update(
+        {
+            "aa:bb:cc:dd:ee:01": {
+                "allow": ["google.com"],
+                "block": [],
+                "until": "2099-01-01T00:00:00Z",
+            }
+        }
+    )
 
     fw_mock = MagicMock()
     mac_for_ip = MagicMock()
@@ -32,15 +40,30 @@ def test_wiring_on_state_kills_conntrack_for_ended_mac():
 def test_wiring_pairs_for_render():
     """pairs_for_render returns hw_out and hw_back sets."""
     gate = HomeworkGate()
-    gate.update({"aa:bb:cc:dd:ee:01": {"allow": ["google.com"], "block": [], "until": "2099-01-01T00:00:00Z"}})
+    gate.update(
+        {
+            "aa:bb:cc:dd:ee:01": {
+                "allow": ["google.com"],
+                "block": [],
+                "until": "2099-01-01T00:00:00Z",
+            }
+        }
+    )
     gate.decide("aa:bb:cc:dd:ee:01", "classroom.google.com")
-    gate.record("aa:bb:cc:dd:ee:01", "classroom.google.com", ["8.8.8.8"], ttl=300, via="list", pulled_by=None)
+    gate.record(
+        "aa:bb:cc:dd:ee:01",
+        "classroom.google.com",
+        ["8.8.8.8"],
+        ttl=300,
+        via="list",
+        pulled_by=None,
+    )
 
-    ip_for_mac = MagicMock(return_value="192.168.1.10")
+    ip_for_mac = MagicMock(side_effect=AssertionError("must not call back into the service"))
     cfg = MagicMock()
     wiring = HomeworkWiring(gate, MagicMock(), MagicMock(), ip_for_mac, cfg)
 
-    hw_out, hw_back = wiring.pairs_for_render()
+    hw_out, hw_back = wiring.pairs_for_render({"aa:bb:cc:dd:ee:01": "192.168.1.10"})
 
     assert ("aa:bb:cc:dd:ee:01", "8.8.8.8") in hw_out
     assert ("8.8.8.8", "192.168.1.10") in hw_back
@@ -67,9 +90,24 @@ def test_wiring_dns_handle_calls_upstream_handle():
 def test_wiring_flush_activity_reports():
     """flush_activity drains and reports activity."""
     gate = HomeworkGate()
-    gate.update({"aa:bb:cc:dd:ee:01": {"allow": ["google.com"], "block": [], "until": "2099-01-01T00:00:00Z"}})
+    gate.update(
+        {
+            "aa:bb:cc:dd:ee:01": {
+                "allow": ["google.com"],
+                "block": [],
+                "until": "2099-01-01T00:00:00Z",
+            }
+        }
+    )
     gate.decide("aa:bb:cc:dd:ee:01", "classroom.google.com")
-    gate.record("aa:bb:cc:dd:ee:01", "classroom.google.com", ["8.8.8.8"], ttl=300, via="list", pulled_by=None)
+    gate.record(
+        "aa:bb:cc:dd:ee:01",
+        "classroom.google.com",
+        ["8.8.8.8"],
+        ttl=300,
+        via="list",
+        pulled_by=None,
+    )
 
     cfg = MagicMock()
     wiring = HomeworkWiring(gate, MagicMock(), MagicMock(), MagicMock(), cfg)

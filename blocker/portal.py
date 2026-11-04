@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import socket
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 log = logging.getLogger(__name__)
@@ -35,15 +36,44 @@ def dns_response(query_wire: bytes, answer_ip: str) -> bytes | None:
     return bytes(resp)
 
 
-def run_dns(cfg, box_ip: str, stop, handle=None) -> None:
+HW_WORKERS = 8  # homework lookups waiting on upstream at once
+HW_PER_CLIENT = 4  # in-flight homework lookups per client before we drop
+
+
+def run_dns(cfg, box_ip: str, stop, handle=None, claims=None, bind=("0.0.0.0", 53)) -> None:
     """Serve dns_response over UDP :53 until stop (threading.Event) is set.
 
-    If handle is provided, it's called first: handle(client_ip, data) -> bytes | None.
-    If handle returns bytes, those are sent. If None, falls back to dns_response.
+    handle(client_ip, data) -> bytes | None may forward upstream (slow). Clients for which
+    claims(client_ip) is true are served by a bounded worker pool (per-client cap; excess
+    is dropped and the client retries); everyone else gets the portal answer inline and
+    never waits on upstream. Without claims, handle runs inline (legacy/tests).
     """
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(("0.0.0.0", 53))
+    sock.bind(bind)
     sock.settimeout(0.5)
+    pool = ThreadPoolExecutor(max_workers=HW_WORKERS, thread_name_prefix="hw-dns")
+    inflight: dict[str, int] = {}
+    guard = threading.Lock()
+
+    def answer(addr, data) -> None:
+        try:
+            out = handle(addr[0], data) if handle else None
+            if out is None:
+                out = dns_response(data, box_ip)
+            if out is not None:
+                sock.sendto(out, addr)
+        except Exception:
+            log.debug("DNS handling failed", exc_info=True)
+
+    def work(addr, data) -> None:
+        try:
+            answer(addr, data)
+        finally:
+            with guard:
+                inflight[addr[0]] -= 1
+                if not inflight[addr[0]]:
+                    del inflight[addr[0]]
+
     try:
         while not stop.is_set():
             try:
@@ -53,16 +83,25 @@ def run_dns(cfg, box_ip: str, stop, handle=None) -> None:
             if addr[1] == 53:
                 continue
             try:
-                out = None
-                if handle:
-                    out = handle(addr[0], data)
-                if out is None:
-                    out = dns_response(data, box_ip)
-                if out is not None:
-                    sock.sendto(out, addr)
+                slow = handle is not None and claims is not None and claims(addr[0])
             except Exception:
-                log.debug("DNS handling failed", exc_info=True)
+                log.debug("claims failed", exc_info=True)
+                continue
+            if not slow:
+                if claims is not None:  # pool mode: unclaimed clients never touch upstream
+                    out = dns_response(data, box_ip)
+                    if out is not None:
+                        sock.sendto(out, addr)
+                else:
+                    answer(addr, data)
+                continue
+            with guard:
+                if inflight.get(addr[0], 0) >= HW_PER_CLIENT:
+                    continue  # client floods: drop, it will retry
+                inflight[addr[0]] = inflight.get(addr[0], 0) + 1
+            pool.submit(work, addr, data)
     finally:
+        pool.shutdown(wait=False, cancel_futures=True)
         sock.close()
 
 
