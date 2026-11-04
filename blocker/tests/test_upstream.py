@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import socket
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from blocker.upstream import forward, handle_homework, read_resolv_conf
+from blocker.config import _read_resolv_conf
+from blocker.upstream import forward, handle_homework
 
 
 def _has_scapy():
@@ -52,18 +52,18 @@ def test_forward_with_local_socket():
 
 
 def test_read_resolv_conf_returns_first_non_loopback(tmp_path):
-    """read_resolv_conf extracts the first non-loopback nameserver."""
+    """_read_resolv_conf extracts the first non-loopback nameserver."""
     conf_file = tmp_path / "resolv.conf"
     conf_file.write_text("nameserver 127.0.0.1\nnameserver 8.8.8.8\nnameserver 1.1.1.1\n")
-    result = read_resolv_conf(str(conf_file))
+    result = _read_resolv_conf(str(conf_file))
     assert result == "8.8.8.8"
 
 
 def test_read_resolv_conf_returns_none_if_only_loopback(tmp_path):
-    """read_resolv_conf returns None if only loopback nameservers."""
+    """_read_resolv_conf returns None if only loopback nameservers."""
     conf_file = tmp_path / "resolv.conf"
     conf_file.write_text("nameserver 127.0.0.1\n")
-    result = read_resolv_conf(str(conf_file))
+    result = _read_resolv_conf(str(conf_file))
     assert result is None
 
 
