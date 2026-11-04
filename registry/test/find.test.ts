@@ -22,7 +22,7 @@ describe('GET /find', () => {
   test('different public IP reveals nothing', async () => {
     const { body } = await get('?id=abc123', '198.51.100.7')
     expect(body).not.toContain('192.168.1.40')
-    expect(body).toContain('not found on this network')
+    expect(body).toContain('was found on this network')
   })
   test('no id -> asks for the code on the sticker', async () => {
     const { res, body } = await get('')
@@ -32,7 +32,7 @@ describe('GET /find', () => {
   })
   test('unknown id -> not found text', async () => {
     const { body } = await get('?id=zzzzzz')
-    expect(body).toContain('not found on this network')
+    expect(body).toContain('was found on this network')
   })
   test('id is HTML-escaped / regex-checked', async () => {
     const { body } = await get('?id=%3Cscript%3E')
