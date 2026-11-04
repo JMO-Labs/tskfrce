@@ -34,6 +34,7 @@ KINDS = (
     "lock_warning",
     "device_bypass",
     "box_offline",
+    "homework_request",
 )
 
 

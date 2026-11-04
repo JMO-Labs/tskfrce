@@ -12,6 +12,7 @@ from .chores import Chore, ChoreAssignment, ChoreRun, ChoreSeen, ChoreStep, RunS
 from .device_activity import DeviceEvent, DevicePresence
 from .family import FamilySettings, get_family
 from .flair import KidFlair
+from .homework import HomeworkActivity, HomeworkRequest, HomeworkSite
 from .hours import HourRule, HourRuleTarget, HourRuleTime
 from .inbox import Notification
 from .lock import Device, DeviceGroup, DeviceHintRejection, Override, Vlan
@@ -41,6 +42,9 @@ __all__ = [
     "ChoreRun",
     "RunStepTick",
     "ChoreSeen",
+    "HomeworkActivity",
+    "HomeworkRequest",
+    "HomeworkSite",
     "PendingInvite",
     "UsedInvite",
     "User",
