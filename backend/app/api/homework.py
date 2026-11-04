@@ -1,13 +1,18 @@
 """Parent API: homework site lists, activity and kid requests."""
 
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Response
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_parent
 from app.lock.loop import trigger
-from app.models.homework import HomeworkSite
+from app.models.homework import HomeworkActivity, HomeworkSite
+from app.models.lock import Device, Override
 from app.models.user import User, UserRole
 from app.schemas.homework import SiteIn
+from app.schemas.lock import utc_z
 from app.services.homework_domains import STARTER, normalize_domain
 
 router = APIRouter(
@@ -73,3 +78,60 @@ def remove_site(body: SiteIn, db: Session = Depends(get_db)) -> Response:
     db.commit()
     trigger()
     return Response(status_code=204)
+
+
+def _session(db: Session, d: Device, now: datetime) -> dict | None:
+    """The device's current or most recent homework session, busiest names first."""
+    start = db.query(func.max(HomeworkActivity.session_start)).filter_by(device_id=d.id).scalar()
+    if start is None:
+        return None
+    rows = (
+        db.query(HomeworkActivity)
+        .filter_by(device_id=d.id, session_start=start)
+        .order_by(HomeworkActivity.active_minutes.desc(), HomeworkActivity.domain)
+    )
+    live = (
+        db.query(Override)
+        .filter_by(device_id=d.id, source="manual", action="homework")
+        .filter(Override.expires_at > now)
+        .first()
+    )
+    kid = next((o for o in d.owners if o.role == UserRole.KID), None)
+    return {
+        "device_id": d.id,
+        "device_name": d.name,
+        "kid_id": kid.id if kid else None,
+        "kid_name": (kid.full_name or kid.username) if kid else None,
+        "session_start": utc_z(start),
+        "active": live is not None,
+        "until": utc_z(live.expires_at) if live else None,
+        "items": [
+            {
+                "domain": r.domain,
+                "via": r.via,
+                "pulled_by": r.pulled_by,
+                "active_minutes": r.active_minutes,
+                "last_seen": utc_z(r.last_seen),
+            }
+            for r in rows
+        ],
+    }
+
+
+@router.get("/activity")
+def activity(
+    device_id: int | None = None, kid_id: int | None = None, db: Session = Depends(get_db)
+) -> list[dict]:
+    if device_id is not None:
+        d = db.get(Device, device_id)
+        if d is None:
+            raise HTTPException(404, "That device doesn't exist. Refresh the list and try again.")
+        devices = [d]
+    elif kid_id is not None:
+        devices = list(_kid(db, kid_id).devices)
+    else:
+        ids = db.query(HomeworkActivity.device_id).distinct()
+        devices = db.query(Device).filter(Device.id.in_(ids)).all()
+    now = datetime.now(UTC).replace(tzinfo=None)
+    out = [s for d in sorted(devices, key=lambda d: d.id) if (s := _session(db, d, now))]
+    return sorted(out, key=lambda s: s["session_start"], reverse=True)

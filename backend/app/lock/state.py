@@ -1,6 +1,6 @@
 """Turn rules + DB rows into the list of MACs that must be offline."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -9,8 +9,11 @@ from app.lock.reset import current_chore_day, reset_due
 from app.lock.rules import DeviceFacts, OwnerChores, is_online
 from app.lock.schedule import local_now
 from app.models.family import FamilySettings, get_family
+from app.models.homework import HomeworkActivity
 from app.models.lock import Device, Override
 from app.services import chores
+
+HOMEWORK_ACTIVITY_DAYS = 7  # activity names stay on the box this long
 
 
 def _naive_utc(now: datetime) -> datetime:
@@ -121,5 +124,7 @@ def tick(db: Session, now_utc: datetime) -> tuple[list[str], dict]:
     homework = state_map(db, rows, set(blocked))
     activity.record_transitions(db, rows, now, now_local)
     activity.prune(db, now)
+    cutoff = now - timedelta(days=HOMEWORK_ACTIVITY_DAYS)
+    db.query(HomeworkActivity).filter(HomeworkActivity.last_seen < cutoff).delete()
     db.commit()
     return blocked, homework
