@@ -1,8 +1,8 @@
-# Homework mode — implementation plan, part 2 (frontend)
+# Homework mode — implementation plan, part 3 (frontend)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Continues:** `docs/superpowers/plans/2026-11-04-homework-mode.md`. Part 1 covers tasks 1–11 (backend and blocker). Its Goal, Architecture, **Global Constraints** and **Review Focus** sections apply here unchanged. Read them first.
+**Continues:** `docs/superpowers/plans/2026-11-04-homework-mode.md`. Part 1 covers tasks 1–6 (backend); part 2, `2026-11-04-homework-mode-blocker.md`, covers tasks 7–11 (blocker). Its Goal, Architecture, **Global Constraints** and **Review Focus** sections apply here unchanged. Read them first.
 
 **Spec:** `docs/superpowers/specs/2026-11-04-homework-mode-design.md`
 
