@@ -1,3 +1,4 @@
+import { isIP } from 'net'
 /**
  * Proxies /api/proxy/* to the backend's /api/v1/*, passing bodies (JSON or
  * multipart) and responses (JSON or binary images) through byte for byte.
@@ -46,10 +47,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const v = req.headers[h]
     if (typeof v === 'string') headers[h] = v
   }
-  // Real client IP for the backend (kid device lookup, rate limits). Built from the
-  // socket only; client-sent x-real-ip / x-forwarded-for / forwarded are never copied.
+  // Real client IP for the backend (kid device lookup, rate limits). Taken from the
+  // socket; x-real-ip is honoured only when the socket peer is a trusted edge proxy
+  // (TRUSTED_EDGE_IPS) and it holds a single valid IP. x-forwarded-for / forwarded are never copied.
   const peer = (req.socket.remoteAddress || '').replace(/^::ffff:/, '')
-  if (peer) headers['X-Real-IP'] = peer
+  const trusted = (process.env.TRUSTED_EDGE_IPS || '127.0.0.1,::1').split(',').map((s) => s.trim())
+  const claimed = req.headers['x-real-ip']
+  const real = typeof claimed === 'string' && isIP(claimed.trim()) ? claimed.trim() : ''
+  const ip = peer && trusted.includes(peer) && real ? real : peer
+  if (ip) headers['X-Real-IP'] = ip
 
   try {
     const body = req.method === 'GET' || req.method === 'HEAD' ? undefined : await rawBody(req)

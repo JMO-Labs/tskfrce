@@ -95,3 +95,25 @@ test('forwards bearer auth but never browser cookies', async () => {
   expect(sent.authorization).toBe('Bearer t');
   expect(sent.cookie).toBeUndefined();
 });
+
+describe('X-Real-IP trust', () => {
+  async function ipFor(peer: string, realIp: string) {
+    const fetch = jest.fn(async () => fakeResp(200, '', null));
+    (global as any).fetch = fetch;
+    const req = mockReq('GET', '/api/proxy/x', '', { 'x-real-ip': realIp });
+    req.socket.remoteAddress = peer;
+    process.env.TRUSTED_EDGE_IPS = '172.29.50.1,127.0.0.1';
+    await handler(req, mockRes());
+    delete process.env.TRUSTED_EDGE_IPS;
+    return (fetch.mock.calls[0] as any)[1].headers['X-Real-IP'];
+  }
+  test('trusted peer: x-real-ip used', async () => {
+    expect(await ipFor('::ffff:172.29.50.1', '192.168.1.40')).toBe('192.168.1.40');
+  });
+  test('untrusted peer: spoofed x-real-ip ignored', async () => {
+    expect(await ipFor('192.168.1.9', '10.0.0.1')).toBe('192.168.1.9');
+  });
+  test('trusted peer: garbage x-real-ip ignored', async () => {
+    expect(await ipFor('172.29.50.1', 'not-an-ip, 1.2.3.4')).toBe('172.29.50.1');
+  });
+});

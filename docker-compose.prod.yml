@@ -47,6 +47,7 @@ services:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: /api/proxy
       BACKEND_INTERNAL_URL: http://backend:8000
+      TRUSTED_EDGE_IPS: ${TASK4CE_EDGE_IPS:-172.29.50.1,127.0.0.1,::1}
     depends_on:
       backend:
         condition: service_healthy
