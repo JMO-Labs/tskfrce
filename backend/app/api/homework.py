@@ -8,11 +8,13 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_parent
 from app.lock.loop import trigger
-from app.models.homework import HomeworkActivity, HomeworkSite
+from app.lock.overrides import set_homework
+from app.models.homework import HomeworkActivity, HomeworkRequest, HomeworkSite
 from app.models.lock import Device, Override
 from app.models.user import User, UserRole
-from app.schemas.homework import SiteIn
+from app.schemas.homework import DecideIn, SiteIn
 from app.schemas.lock import utc_z
+from app.services import inbox
 from app.services.homework_domains import STARTER, normalize_domain
 
 router = APIRouter(
@@ -135,3 +137,40 @@ def activity(
     now = datetime.now(UTC).replace(tzinfo=None)
     out = [s for d in sorted(devices, key=lambda d: d.id) if (s := _session(db, d, now))]
     return sorted(out, key=lambda s: s["session_start"], reverse=True)
+
+
+def _decide(db: Session, rid: int, parent: User, status: str) -> HomeworkRequest:
+    req = db.get(HomeworkRequest, rid)
+    if req is None:
+        raise HTTPException(404, "We couldn't find that request.")
+    if req.status != "pending":
+        raise HTTPException(409, "Someone already answered this request.")
+    req.status, req.decided_by_id = status, parent.id
+    req.decided_at = datetime.now(UTC).replace(tzinfo=None)
+    return req
+
+
+@router.post("/requests/{rid}/approve")
+def approve(
+    rid: int,
+    body: DecideIn | None = None,
+    db: Session = Depends(get_db),
+    parent: User = Depends(require_parent),
+) -> dict:
+    req = _decide(db, rid, parent, "approved")
+    req.minutes = (body or DecideIn()).minutes
+    kid = db.get(User, req.kid_id)
+    applied = set_homework(db, list(kid.devices), req.minutes, parent.id, datetime.now(UTC))
+    title = "Homework time is on" if applied else "Homework time approved"
+    inbox.notify(db, [kid.id], "redemption_decided", title)
+    db.commit()
+    trigger()
+    return {"ok": True, "devices": len(applied)}
+
+
+@router.post("/requests/{rid}/deny")
+def deny(rid: int, db: Session = Depends(get_db), parent: User = Depends(require_parent)) -> dict:
+    req = _decide(db, rid, parent, "denied")
+    inbox.notify(db, [req.kid_id], "redemption_decided", "No homework time right now")
+    db.commit()
+    return {"ok": True}

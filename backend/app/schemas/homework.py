@@ -7,6 +7,10 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 
 
+class DecideIn(BaseModel):
+    minutes: int = Field(default=60, ge=15, le=240)
+
+
 class SiteIn(BaseModel):
     domain: str = Field(max_length=2048)
     kind: Literal["allow", "block"]
