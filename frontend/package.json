@@ -33,7 +33,7 @@
     "postcss": "^8.5.32",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "simple-icons": "^13.16.0",
+    "simple-icons": "^16.36.0",
     "typescript": "^6.0.3"
   },
   "devDependencies": {

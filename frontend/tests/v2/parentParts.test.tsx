@@ -71,8 +71,9 @@ describe('MakerLogo', () => {
     expect(makerKey('samsung')).toBe('samsung');
   });
 
-  test('makerKey maps Nintendo Switch', () => {
-    expect(makerKey('Nintendo')).toBe('nintendoswitch');
+  test('makerKey returns null for makers simple-icons dropped', () => {
+    expect(makerKey('Nintendo')).toBeNull();
+    expect(makerKey('Amazon')).toBeNull();
   });
 
   test('makerKey maps unknown to null', () => {
