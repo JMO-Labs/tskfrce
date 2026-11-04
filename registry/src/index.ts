@@ -1,4 +1,5 @@
 import { authBox } from './auth'
+import { findPage } from './find'
 import { createRecord, deleteRecord, isPrivateV4, upsertRecord } from './cf'
 
 export type Env = { BOXES: KVNamespace; CF_API_TOKEN: string; CF_ZONE_ID: string; BASE_DOMAIN: string }
@@ -32,8 +33,14 @@ const acme = (act: typeof createRecord): Route => async ({ req, env, cf }) => {
   return json({})
 }
 
+const find: Route = async ({ req, env }) => {
+  const u = new URL(req.url)
+  return findPage(u.searchParams.get('id'), req.headers.get('CF-Connecting-IP'), env)
+}
+
 // path -> { METHOD: handler }. Add new routes here.
 const routes: Record<string, Record<string, Route>> = {
+  '/find': { GET: find },
   '/api/ip': { POST: postIp },
   '/api/acme/present': { POST: acme(createRecord) },
   '/api/acme/cleanup': { POST: acme(deleteRecord) },
