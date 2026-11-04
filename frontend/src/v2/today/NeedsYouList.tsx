@@ -5,6 +5,7 @@ import { Tooltip } from '@mantine/core'
 import type { NeedsItem } from '../types'
 import { useApproveChore, useSendBack } from '../hooks/useToday'
 import { useDecideRedemption } from '../hooks/useRewards'
+import { useDecideHomework } from '../hooks/useHomeworkRequest'
 import { openChat } from '../chat/dock'
 import { Chip } from '../parent/Chip'
 import { Icon } from '../parent/Icon'
@@ -46,6 +47,8 @@ export function NeedsYouList({ items }: { items: NeedsItem[] }) {
   const approve = useApproveChore()
   const sendBack = useSendBack()
   const decide = useDecideRedemption()
+  const decideHw = useDecideHomework()
+  const [mins, setMins] = useState<Record<number, number>>({})
   const [viewing, setViewing] = useState<NeedsItem | null>(null)
   const [sending, setSending] = useState<number | null>(null)
   const [note, setNote] = useState('')
@@ -57,7 +60,9 @@ export function NeedsYouList({ items }: { items: NeedsItem[] }) {
   }
 
   const approvable = items.filter((i) => i.type !== 'note')
-  const approveOne = (i: NeedsItem) => (isChore(i) ? approve.mutateAsync(i.id) : decide.mutateAsync({ id: i.id, approve: true }))
+  const approveOne = (i: NeedsItem) =>
+    isChore(i) ? approve.mutateAsync(i.id) : i.type === 'homework' ? decideHw.mutateAsync({ id: i.id, approve: true, minutes: mins[i.id] ?? 60 }) : decide.mutateAsync({ id: i.id, approve: true })
+  const declineOne = (i: NeedsItem) => (i.type === 'homework' ? decideHw.mutateAsync({ id: i.id, approve: false }) : decide.mutateAsync({ id: i.id, approve: false }))
   const run = (go: () => Promise<unknown>, ok: string, key?: string) => {
     if (lock.current) return Promise.resolve()
     lock.current = true
@@ -126,6 +131,8 @@ export function NeedsYouList({ items }: { items: NeedsItem[] }) {
                   {i.kid_name ?? 'A kid'}
                   {i.type === 'note'
                     ? `: ${i.note ?? ''}`
+                    : i.type === 'homework'
+                    ? `${i.submitted_at ? ` · ${clock(i.submitted_at)}` : ''} · wants the internet on for homework`
                     : chore
                     ? `${i.attempt && i.attempt > 1 ? ` · ${ordinal(i.attempt)} try` : ''}${i.subtasks_total ? ` · ${i.subtasks_done}/${i.subtasks_total} steps` : ''}${i.submitted_at ? ` · ${clock(i.submitted_at)}` : ''}`
                     : `${i.device_name ? ` · from ${i.device_name}` : ''} · ${i.cost} pts · has ${i.kid_balance}`}
@@ -155,6 +162,15 @@ export function NeedsYouList({ items }: { items: NeedsItem[] }) {
               </div>
             ) : (
               <div className="p-needs-actions">
+                {i.type === 'homework' && (
+                  <select className="pk-input" aria-label="Minutes" value={mins[i.id] ?? 60} onChange={(e) => setMins({ ...mins, [i.id]: Number(e.currentTarget.value) })}>
+                    {[30, 60, 90, 120].map((m) => (
+                      <option key={m} value={m}>
+                        {m} min
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <button type="button" className="p-btn" data-variant="accent" disabled={!!busy} data-loading={busy === `a${i.type}${i.id}`} onClick={() => run(() => approveOne(i), 'Approved', `a${i.type}${i.id}`)}>
                   <Icon name="check" size={16} />
                   Approve
@@ -172,7 +188,7 @@ export function NeedsYouList({ items }: { items: NeedsItem[] }) {
                     </button>
                   )
                 ) : (
-                  <button type="button" className="p-btn" data-variant="red" disabled={!!busy} data-loading={busy === `d${i.id}`} onClick={() => run(() => decide.mutateAsync({ id: i.id, approve: false }), 'Declined', `d${i.id}`)}>
+                  <button type="button" className="p-btn" data-variant="red" disabled={!!busy} data-loading={busy === `d${i.id}`} onClick={() => run(() => declineOne(i), 'Declined', `d${i.id}`)}>
                     <Icon name="close" size={16} />
                     Decline
                   </button>
