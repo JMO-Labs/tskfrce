@@ -41,6 +41,9 @@ On your phone or another computer **on the same Wi-Fi**, open a web browser (Saf
 
 You should see: "t@sk4ce setup" and "Make your parent account". That is the setup wizard. Go to [First-time setup](03-first-setup.md).
 
+If your box came prepared with a sticker, open `https://<box-id>.taskfrce.jmolabs.dev` instead (the box-id is the 6-character code on the sticker).
+If that page does not load, go to `https://taskfrce.jmolabs.dev/find` and type the code from the sticker.
+
 Tip: bookmark this page. On a phone, you can also choose **Add to Home Screen** in the browser's share or menu button, to get an icon. Write the address on a sticky note near the router. The box's address can change if the router is restarted; if the page stops opening, run `hostname -I` on the box again.
 
 ## Keeping it running

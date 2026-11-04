@@ -42,6 +42,12 @@ jobs:
         cd frontend
         npm run lint
         npm run type-check
+    - name: Set up Node.js 22 (registry)
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: '22'
+    - name: Registry typecheck and tests
+      run: cd registry && npm ci && npm run typecheck && npm test
 
   test:
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
@@ -63,7 +69,7 @@ jobs:
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
     - name: Shellcheck
-      run: shellcheck install.sh scripts/test-install.sh scripts/start.sh scripts/prep-box.sh edge/edge.sh edge/test-edge.sh scripts/enable-hostname.sh scripts/test-enable-hostname.sh
+      run: shellcheck install.sh scripts/test-install.sh scripts/start.sh scripts/prep-box.sh edge/edge.sh edge/test-edge.sh scripts/enable-hostname.sh scripts/test-enable-hostname.sh registry/scripts/new-box.sh
     - name: Installer smoke test
       run: bash scripts/test-install.sh
     - name: Edge tests
