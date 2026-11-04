@@ -118,3 +118,21 @@ test('v6 report updates seenAt6 only, leaves v4 fields intact', async () => {
     publicIp4: '203.0.113.9', seenAt4: 1000, publicIp6: '2001:db8:1:2::5', seenAt6: 5000, seenAt: 5000,
   })
 })
+
+test('v4 report drops legacy publicIp key', async () => {
+  const env = await makeEnv(), cf = fakeCf()
+  await env.BOXES.put('seen:abc123', JSON.stringify({ lanIp: '10.0.0.1', publicIp: '2001:db8::1', seenAt: 1 }))
+  await handle(post('/api/ip', { ip: '192.168.1.40' }, basic('abc123', 's3cret'), '203.0.113.9'), env, cf)
+  expect(JSON.parse((await env.BOXES.get('seen:abc123'))!)).not.toHaveProperty('publicIp')
+})
+
+test('report without CF-Connecting-IP leaves family fields unchanged', async () => {
+  const env = await makeEnv(), cf = fakeCf()
+  const fam = { publicIp4: '203.0.113.9', seenAt4: 11, publicIp6: '2001:db8::1', seenAt6: 22 }
+  await env.BOXES.put('seen:abc123', JSON.stringify({ lanIp: '10.0.0.1', seenAt: 22, ...fam }))
+  const res = await handle(post('/api/ip', { ip: '192.168.1.40' }, basic('abc123', 's3cret')), env, cf)
+  expect(res.status).toBe(204)
+  const got = JSON.parse((await env.BOXES.get('seen:abc123'))!)
+  expect(got).toMatchObject({ ...fam, lanIp: '192.168.1.40' })
+  expect(got.seenAt).toBeGreaterThan(22)
+})

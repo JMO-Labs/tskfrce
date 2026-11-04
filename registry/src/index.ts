@@ -20,8 +20,10 @@ const postIp: Route = async ({ req, env, cf }) => {
   try { prev = JSON.parse((await env.BOXES.get(`seen:${id}`)) ?? '{}') } catch { /* corrupt -> reset */ }
   const pub = req.headers.get('CF-Connecting-IP') ?? ''
   const now = Date.now()
-  const f = pub.includes(':') ? '6' : '4'
-  const seen = { ...prev, lanIp: ip, seenAt: now, [`publicIp${f}`]: pub, [`seenAt${f}`]: now }
+  const f = pub ? (pub.includes(':') ? '6' : '4') : ''
+  const seen: Record<string, unknown> = { lanIp: ip, seenAt: now }
+  for (const k of ['publicIp4', 'seenAt4', 'publicIp6', 'seenAt6']) if (prev[k] !== undefined) seen[k] = prev[k]
+  if (f) { seen[`publicIp${f}`] = pub; seen[`seenAt${f}`] = now }
   await env.BOXES.put(`seen:${id}`, JSON.stringify(seen))
   return new Response(null, { status: 204 })
 }

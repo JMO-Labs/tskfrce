@@ -34,9 +34,9 @@ describe('GET /find expiry', () => {
     expect((await get('?id=abc123', '203.0.113.9', s)).body).toContain('192.168.1.40')
     expect((await get('?id=abc123', V6, s)).body).not.toContain('192.168.1.40')
   })
-  test('legacy entry without timestamps -> no match', async () => {
+  test('legacy publicIp-only entry (even fresh seenAt) -> no match', async () => {
     expect((await get('?id=abc123', '203.0.113.9', mk({ publicIp: '203.0.113.9' }))).body).not.toContain('192.168.1.40')
-    expect((await get('?id=abc123', '203.0.113.9', mk({ publicIp: '203.0.113.9', seenAt: NOW - H2 - 1 }))).body).not.toContain('192.168.1.40')
+    expect((await get('?id=abc123', '203.0.113.9', mk({ publicIp: '203.0.113.9', seenAt: NOW }))).body).not.toContain('192.168.1.40')
   })
 })
 
@@ -54,9 +54,6 @@ describe('GET /find ipv6', () => {
   test('v4 visitor still exact on publicIp4', async () => {
     expect((await get('?id=abc123', '203.0.113.9', seen6)).body).toContain('192.168.1.40')
     expect((await get('?id=abc123', '203.0.113.10', seen6)).body).not.toContain('192.168.1.40')
-  })
-  test('legacy publicIp v6 read by shape', async () => {
-    expect((await get('?id=abc123', '2001:db8:1:2::7', JSON.stringify({ lanIp: '192.168.1.40', publicIp: '2001:db8:1:2::5', seenAt: NOW }))).body).toContain('192.168.1.40')
   })
   test('garbage visitor v6 -> no match', async () => {
     expect((await get('?id=abc123', '2001:db8::1::2', seen6)).body).not.toContain('192.168.1.40')

@@ -33,17 +33,14 @@ export function v6prefix(ip: string): string | null {
   return all.slice(0, 4).map((x) => parseInt(x, 16)).join(':')
 }
 
-type Seen = { lanIp?: string; publicIp?: string; publicIp4?: string; publicIp6?: string; seenAt?: number; seenAt4?: number; seenAt6?: number }
+type Seen = { lanIp?: string; publicIp4?: string; publicIp6?: string; seenAt4?: number; seenAt6?: number }
 
 /** Box reports hourly; ignore a family not heard from in 2 reports. */
 export const FIND_MAX_AGE_MS = 2 * 60 * 60 * 1000
 
 function sameNetwork(seen: Seen, visitor: string, now: number): boolean {
   const fresh = (t?: number) => typeof t === 'number' && now - t <= FIND_MAX_AGE_MS
-  const legacy = seen.publicIp
-  const l4 = legacy && !legacy.includes(':') ? legacy : '', l6 = legacy?.includes(':') ? legacy : ''
-  const p4 = seen.publicIp4 ? (fresh(seen.seenAt4) ? seen.publicIp4 : '') : fresh(seen.seenAt) ? l4 : ''
-  const p6 = seen.publicIp6 ? (fresh(seen.seenAt6) ? seen.publicIp6 : '') : fresh(seen.seenAt) ? l6 : ''
+  const p4 = fresh(seen.seenAt4) ? seen.publicIp4 : '', p6 = fresh(seen.seenAt6) ? seen.publicIp6 : ''
   if (!visitor.includes(':')) return !!p4 && p4 === visitor
   const v = v6prefix(visitor)
   return !!v && !!p6 && v === v6prefix(p6)
