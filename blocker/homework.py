@@ -76,6 +76,9 @@ class _Activity:
     active_minutes: set[int]  # Set of minute offsets from session start
 
 
+_ZONE = "*."  # ip_names key prefix for names tracked by list entry past MAX_NAMES
+
+
 def _listed(sess: _Session, name: str) -> bool:
     return not any(domain_matches(name, b) for b in sess.block) and any(
         domain_matches(name, a) for a in sess.allow
@@ -84,6 +87,10 @@ def _listed(sess: _Session, name: str) -> bool:
 
 def _still_allowed(sess: _Session, name: str) -> bool:
     """Would this name still be allowed under the current lists (follow window aside)?"""
+    if name.startswith(_ZONE):  # capped-session marker: the whole list entry's zone
+        entry = name[len(_ZONE) :]
+        # fail closed: any block inside the zone cuts it (names re-resolve and re-pair)
+        return _listed(sess, entry) and not any(domain_matches(b, entry) for b in sess.block)
     if any(domain_matches(name, b) for b in sess.block):
         return False
     if any(domain_matches(name, a) for a in sess.allow):
@@ -236,11 +243,12 @@ class HomeworkGate:
             expiry = now + min(max(int(ttl), MIN_PAIR_SECS), MAX_PAIR_SECS)
             if not _admit(sess, name):
                 # At the cap only listed names get here: install pairs, keyed in ip_names by
-                # the list entry (bounded) so a later de-list still cuts them; no activity.
+                # a zone marker for the list entry (bounded) so a later de-list, or a block
+                # of any name in the zone, still cuts them; no activity.
                 entry = next((a for a in sess.allow if domain_matches(name, a)), None)
                 if entry is None:
                     return set()
-                return self._add_pairs(sess, entry, ips, expiry, now)
+                return self._add_pairs(sess, _ZONE + entry, ips, expiry, now)
             minute_bucket = int(now) // 60
             act = sess.activity.get(name)
             if act is None:

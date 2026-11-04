@@ -102,3 +102,11 @@ def test_pair_timeout_floor_one_second(gate, wall):
     _lookup(gate, "school.org", ["8.8.8.8"])
     assert gate.pairs_ttl() == {(MAC, "8.8.8.8"): 1}
     assert gate.remaining(MAC, ["8.8.8.8"]) == {"8.8.8.8": 1}
+
+
+def test_cap_then_blocking_resolved_subdomain_cuts_its_ips(capped):
+    """Past the cap, blocking a subdomain that already resolved must still cut its IPs."""
+    _lookup(capped, "video.school.org", ["7.7.7.7"])  # capped: tracked under the entry
+    capped.update({MAC: {"allow": ["school.org"], "block": ["video.school.org"], "until": FUTURE}})
+    assert "7.7.7.7" in capped.blocked_cut(MAC)
+    assert not any(ip == "7.7.7.7" for _, ip in capped.pairs())
