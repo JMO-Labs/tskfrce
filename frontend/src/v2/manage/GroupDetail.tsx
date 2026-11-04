@@ -10,6 +10,7 @@ import type { Device, Group, HourRule, Kid } from '@/v2/types'
 import { ActionButton } from './ActionButton'
 import { ConfirmDelete } from './ConfirmDelete'
 import { GroupStats } from './GroupStats'
+import { HomeworkButton } from './HomeworkButton'
 import { HoursTimeline } from './HoursTimeline'
 import { nameOf } from './choreMeta'
 import { toastFail, toastOk, toasted } from '../notify'
@@ -26,7 +27,7 @@ interface Props {
   rules?: HourRule[]
   /** Select a group, or null to close the detail. */
   onSelect: (id: number | null) => void
-  onRequestOverride: (req: { kind: string; id: number; action: string }) => void
+  onRequestOverride: (req: { kind: string; id: number; action: string; minutes?: number }) => void
   /** Family time zone for the next-lock time. */
   timeZone?: string
   /** Override action in flight (lock / unlock / clear), if any. */
@@ -103,6 +104,7 @@ export function GroupDetail({ group, devices, kids, groups, rules, onSelect, onR
             <ActionButton icon="lock_open" busy={pendingAction === 'unlock'} disabled={!!pendingAction || members.length === 0} onClick={() => onRequestOverride({ kind: 'group', id: group.id, action: 'unlock' })}>
               Unlock 30 min
             </ActionButton>
+            <HomeworkButton target={{ kind: 'group', id: group.id }} disabled={members.length === 0} busy={pendingAction === 'homework'} onStart={(minutes) => onRequestOverride({ kind: 'group', id: group.id, action: 'homework', minutes })} />
             <ActionButton icon="event_repeat" busy={pendingAction === 'clear'} disabled={!!pendingAction || members.length === 0} onClick={() => onRequestOverride({ kind: 'group', id: group.id, action: 'schedule' })}>
               Back to schedule
             </ActionButton>

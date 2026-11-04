@@ -3,7 +3,7 @@ import type { KidScreen } from './rewardTypes'
 
 export type ChoreState = 'done' | 'needs_you' | 'todo' | 'skipped'
 export type DeviceStatus = 'unassigned' | 'assigned' | 'guest'
-export type OverrideAction = 'lock' | 'unlock'
+export type OverrideAction = 'lock' | 'unlock' | 'homework'
 
 /** GET /setup */
 export interface SetupStatus {
@@ -228,7 +228,7 @@ export interface TodayKid {
 
 /** Item in GET /today needs_you. */
 export interface NeedsItem {
-  type: 'chore' | 'redo' | 'screen_time' | 'reward' | 'note'
+  type: 'chore' | 'redo' | 'screen_time' | 'reward' | 'note' | 'homework'
   id: number
   kid_id: number | null
   kid_name: string | null
@@ -334,6 +334,10 @@ export interface KidToday {
   age_group: AgeGroup
   /** UTC ISO when the kid next locks; null = not today */
   locks_at: string | null
+  /** homework mode until timestamp; null = not in homework mode */
+  homework?: { until: string } | null
+  /** true if kid has a pending homework request */
+  homework_pending?: boolean
 }
 
 /** GET /kids/{id}/push */
