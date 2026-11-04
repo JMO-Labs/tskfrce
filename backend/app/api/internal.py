@@ -314,6 +314,9 @@ def devices_hits(body: HitsReport, db: Session = Depends(get_db)) -> dict:
     return {"logged": logged}
 
 
+HW_ACTIVITY_MAX_ROWS = 5000  # per device per session; matches the blocker's name cap
+
+
 @router.post("/homework/activity", dependencies=[Depends(require_token)])
 def homework_activity(body: ActivityReport, db: Session = Depends(get_db)) -> dict:
     """Upsert per-name homework totals; the blocker sends running totals, so they replace."""
@@ -326,6 +329,11 @@ def homework_activity(body: ActivityReport, db: Session = Depends(get_db)) -> di
         key = {"device_id": ids[i.mac], "session_start": i.session_start, "domain": i.domain}
         row = db.query(HomeworkActivity).filter_by(**key).first()
         if row is None:
+            sess = db.query(HomeworkActivity).filter_by(
+                device_id=ids[i.mac], session_start=i.session_start
+            )
+            if sess.count() >= HW_ACTIVITY_MAX_ROWS:
+                continue  # session full: keep known rows, refuse new names
             row = HomeworkActivity(**key, first_seen=i.first_seen, last_seen=i.last_seen)
             db.add(row)
         row.via, row.pulled_by = i.via, i.pulled_by

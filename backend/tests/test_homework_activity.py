@@ -135,3 +135,16 @@ def test_tick_purges_after_7_days(db):
     db.commit()
     tick(db, now.replace(tzinfo=UTC))
     assert [r.domain for r in db.query(HomeworkActivity)] == ["recent.example"]
+
+
+def test_rows_capped_per_device_session(client, db, monkeypatch):
+    from app.api import internal
+
+    monkeypatch.setattr(internal, "HW_ACTIVITY_MAX_ROWS", 2)
+    mk(db)
+    assert up(client, [item("a.example"), item("b.example")]).json()["stored"] == 2
+    r = up(client, [item("c.example"), item("a.example", 5, 9)])
+    assert r.json()["stored"] == 1  # new name refused, known name still updated
+    assert {x.domain for x in db.query(HomeworkActivity)} == {"a.example", "b.example"}
+    other = item("d.example", session_start="2026-11-05T15:00:00Z")
+    assert up(client, [other]).json()["stored"] == 1  # the cap is per session
