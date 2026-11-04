@@ -47,6 +47,7 @@ def db():
 def parent(db):
     """Create a parent user."""
     from app.models.user import User, UserRole
+
     parent = User(
         username="mom",
         email="mom@family.local",

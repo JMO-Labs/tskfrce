@@ -58,6 +58,18 @@ def device_facts(
     )
     live = [o for o in overrides if o.expires_at is None or o.expires_at > now]
     manual = [o for o in live if o.source == "manual"]
+
+    # Extract homework_until from the newest homework override
+    homework_until = None
+    homework_override = next((o for o in manual if o.action == "homework"), None)
+    if homework_override:
+        homework_until = homework_override.expires_at
+
+    # For block_reason, override is treated as None when action is homework
+    override_for_block = None
+    if manual and manual[0].action != "homework":
+        override_for_block = manual[0].action
+
     r = hours.resolve(
         pre.rules if pre else hours.load(db),
         {o.id for o in device.owners},
@@ -78,11 +90,12 @@ def device_facts(
         off=r.off,
         exempt=device.exempt,
         chores_apply=fam.chores_lock and all(g.chore_lock for g in device.groups),
-        override=manual[0].action if manual else None,
+        override=override_for_block,
         bonus_active=any(o.source == "bonus" for o in live),
         new_devices_blocked=fam.new_devices_blocked,
         points_unlock_early=fam.points_unlock_early,
         bonus_any_hours=not fam.screen_only_allowed_hours,
+        homework_until=homework_until,
     )
 
 
@@ -96,7 +109,9 @@ def desired_blocked(db: Session, now_utc: datetime) -> list[str]:
     )
 
 
-def tick(db: Session, now_utc: datetime) -> list[str]:
+def tick(db: Session, now_utc: datetime) -> tuple[list[str], dict]:
+    from app.lock.homework import state_map
+
     fam = get_family(db)
     now_local = local_now(fam.timezone, _aware_utc(now_utc))
     if reset_due(fam, now_local):
@@ -108,7 +123,8 @@ def tick(db: Session, now_utc: datetime) -> list[str]:
     pre = Prefetch(db, devices)
     rows = [(d, device_facts(db, d, fam, now_utc, pre)) for d in devices]
     blocked = sorted(d.mac for d, f in rows if not is_online(f, now_local))
+    homework = state_map(db, rows, set(blocked))
     activity.record_transitions(db, rows, now, now_local)
     activity.prune(db, now)
     db.commit()
-    return blocked
+    return blocked, homework

@@ -156,3 +156,48 @@ def test_expired_homework_not_in_map(db):
 
     # Should not be in map since it's expired
     assert "aa:bb:cc:dd:ee:01" not in result
+
+
+def test_tick_returns_tuple(db):
+    """Test that tick returns a tuple of (blocked, homework)."""
+    from app.lock.state import tick
+
+    result = tick(db, datetime.utcnow())
+    assert isinstance(result, tuple)
+    assert len(result) == 2
+    blocked, homework = result
+    assert isinstance(blocked, list)
+    assert isinstance(homework, dict)
+
+
+def test_push_state_body(db, monkeypatch):
+    """Test that push_state sends the correct body."""
+    from app.lock.blocker_client import push_state
+    import json
+
+    captured_body = None
+
+    def mock_post(url, json=None, headers=None, timeout=None):
+        nonlocal captured_body
+        captured_body = json
+
+        class MockResponse:
+            def raise_for_status(self):
+                pass
+
+        return MockResponse()
+
+    import httpx
+
+    monkeypatch.setattr(httpx, "post", mock_post)
+
+    blocked = ["aa:bb:cc:dd:ee:ff"]
+    homework = {
+        "aa:bb:cc:dd:ee:ff": {"allow": ["test.com"], "block": [], "until": "2026-11-04T12:00:00Z"}
+    }
+
+    push_state(blocked, homework)
+
+    assert captured_body is not None
+    assert captured_body["blocked"] == blocked
+    assert captured_body["homework"] == homework

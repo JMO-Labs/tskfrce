@@ -67,10 +67,10 @@ def normalize_domain(raw: str) -> str | None:
     if len(labels) < 2:
         return None
 
-    # Validate each label
+    # Validate each label (no consecutive hyphens allowed)
     label_pattern = re.compile(r"^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$")
     for label in labels:
-        if not label or not label_pattern.match(label):
+        if not label or not label_pattern.match(label) or "--" in label:
             return None
 
     # Try IDNA encoding

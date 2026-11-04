@@ -28,6 +28,7 @@ from app.core.database import Base, _import_all_models
 def _reset_rate_limits():
     try:
         from app.core.ratelimit import reset
+
         reset()
     except (ImportError, AttributeError):
         pass
@@ -45,6 +46,7 @@ def db():
     session = sessionmaker(bind=engine, autoflush=False)()
     try:
         from app.services.chore_types import seed as seed_chore_types
+
         seed_chore_types(session)
         session.commit()
     except ImportError:
@@ -83,12 +85,14 @@ def _headers(db, user):
 @pytest.fixture
 def parent(db):
     from app.models.user import UserRole
+
     return _make_user(db, "mom", UserRole.PARENT)
 
 
 @pytest.fixture
 def kid(db):
     from app.models.user import UserRole
+
     return _make_user(db, "timmy", UserRole.KID)
 
 

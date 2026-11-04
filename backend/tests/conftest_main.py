@@ -40,6 +40,7 @@ except ImportError:
 def _reset_rate_limits():
     try:
         from app.core.ratelimit import reset
+
         reset()
     except (ImportError, AttributeError):
         pass
@@ -57,6 +58,7 @@ def db():
     session = sessionmaker(bind=engine, autoflush=False)()
     try:
         from app.services.chore_types import seed as seed_chore_types
+
         seed_chore_types(session)
         session.commit()
     except ImportError:

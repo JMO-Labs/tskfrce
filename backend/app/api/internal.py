@@ -204,11 +204,29 @@ def _note_new_address(db: Session, new: Device, now: datetime) -> None:
 
 @router.get("/state", dependencies=[Depends(require_token)])
 def state(db: Session = Depends(get_db)) -> dict:
+    from app.lock.homework import state_map
+    from app.lock.state import Prefetch, device_facts
+    from app.models.family import get_family
+
     _touch(db)
     fam = get_family(db)
     covered = [v for (v,) in db.query(Vlan.vid).filter(Vlan.covered.is_(True)).order_by(Vlan.vid)]
     blocked = [] if fam.listen_only else desired_blocked(db, datetime.now(UTC))
-    return {"blocked": blocked, "listen_only": fam.listen_only, "covered_vlans": covered}
+
+    # Build homework map
+    homework = {}
+    if not fam.listen_only:
+        devices = db.query(Device).all()
+        pre = Prefetch(db, devices)
+        rows = [(d, device_facts(db, d, fam, datetime.now(UTC), pre)) for d in devices]
+        homework = state_map(db, rows, set(blocked))
+
+    return {
+        "blocked": blocked,
+        "homework": homework,
+        "listen_only": fam.listen_only,
+        "covered_vlans": covered,
+    }
 
 
 @router.post("/vlans", dependencies=[Depends(require_token)])
