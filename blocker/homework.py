@@ -187,14 +187,9 @@ class HomeworkGate:
             ip_is_shared = False
             for activity in sess.activity.values():
                 if activity.domain not in blocked_names:
-                    # This activity is still allowed; check if it could have this IP
-                    for block_entry in sess.block:
-                        if domain_matches(activity.domain, block_entry):
-                            break
-                    else:
-                        # Not in block list, so it's allowed
-                        ip_is_shared = True
-                        break
+                    # This activity is still allowed
+                    ip_is_shared = True
+                    break
             if not ip_is_shared:
                 ips_to_cut.add(ip)
 
