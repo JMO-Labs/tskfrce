@@ -50,7 +50,7 @@ class _Session:
     last_allowed_time: float
     started_wall: float = 0.0
     last_allowed_name: str | None = None
-    followed_names: set[str] = field(default_factory=set)
+    followed_names: dict[str, str] = field(default_factory=dict)  # {name: list name it followed}
     pairs: dict[str, float] = field(default_factory=dict)  # {ip: expiry_time}
     # {ip: names that resolved to it}; persists across activity drains (shared-IP cuts)
     ip_names: dict[str, set[str]] = field(default_factory=dict)
@@ -68,6 +68,32 @@ class _Activity:
     last_seen: float
     lookups: int
     active_minutes: set[int]  # Set of minute offsets from session start
+
+
+def _listed(sess: _Session, name: str) -> bool:
+    return not any(domain_matches(name, b) for b in sess.block) and any(
+        domain_matches(name, a) for a in sess.allow
+    )
+
+
+def _still_allowed(sess: _Session, name: str) -> bool:
+    """Would this name still be allowed under the current lists (follow window aside)?"""
+    if any(domain_matches(name, b) for b in sess.block):
+        return False
+    if any(domain_matches(name, a) for a in sess.allow):
+        return True
+    return name in sess.followed_names  # pruned to live parents by _prune_follow
+
+
+def _prune_follow(sess: _Session) -> None:
+    """Forget follows whose parent left the list (or got blocked) and blocked follows."""
+    sess.followed_names = {
+        n: parent
+        for n, parent in sess.followed_names.items()
+        if _listed(sess, parent) and not any(domain_matches(n, b) for b in sess.block)
+    }
+    if sess.last_allowed_name and not _listed(sess, sess.last_allowed_name):
+        sess.last_allowed_name = None
 
 
 class HomeworkGate:
@@ -124,6 +150,7 @@ class HomeworkGate:
                     )
                 else:
                     sess.allow, sess.block, sess.until = allow, block, until
+                    _prune_follow(sess)
             return ended
 
     def expire(self) -> set[str]:
@@ -162,7 +189,7 @@ class HomeworkGate:
             if name in sess.followed_names:
                 return True, "follow", None
             if sess.last_allowed_name and (now - sess.last_allowed_time) < FOLLOW_SECS:
-                sess.followed_names.add(name)
+                sess.followed_names[name] = sess.last_allowed_name
                 return True, "follow", sess.last_allowed_name
 
             return False, None, None
@@ -195,8 +222,8 @@ class HomeworkGate:
                 act.lookups += 1
                 act.active_minutes.add(minute_bucket)
 
-            if via == "follow":
-                sess.followed_names.add(name)
+            if via == "follow" and pulled_by:
+                sess.followed_names.setdefault(name, norm_name(pulled_by))
 
             expiry = now + min(max(int(ttl), MIN_PAIR_SECS), MAX_PAIR_SECS)
             new_ips = set()
@@ -239,25 +266,25 @@ class HomeworkGate:
         return set(self.pairs_ttl())
 
     def blocked_cut(self, mac: str) -> set[str]:
-        """Drop and return IPs that only now-blocked names resolved to.
+        """Drop and return IPs no still-allowed name resolved to (after a list change).
 
-        Uses the persistent ip->names map (not drained activity). An IP is cut only if
-        every name that resolved to it matches the block list.
+        Uses the persistent ip->names map (not drained activity): an IP stays while any
+        name that resolved to it is still allowed (list match, or a follow whose parent
+        is still on the list); blocked, de-listed and orphaned-follow names don't count.
         """
         with self._lock:
             sess = self._sessions.get(mac)
             if sess is None:
                 return set()
-            cut = set()
-            for ip, names in sess.ip_names.items():
-                if names and all(any(domain_matches(n, b) for b in sess.block) for n in names):
-                    cut.add(ip)
+            _prune_follow(sess)
+            cut = {
+                ip
+                for ip, names in sess.ip_names.items()
+                if not any(_still_allowed(sess, n) for n in names)
+            }
             for ip in cut:
                 sess.pairs.pop(ip, None)
                 del sess.ip_names[ip]
-            sess.followed_names = {
-                n for n in sess.followed_names if not any(domain_matches(n, b) for b in sess.block)
-            }
             return cut
 
     def drain_activity(self) -> list[dict]:

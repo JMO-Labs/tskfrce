@@ -151,3 +151,34 @@ def test_session_start_is_stable_across_drains(gate, clock):
     clock.advance(120)
     _lookup(gate, "google.com", ["8.8.8.8"])
     assert gate.drain_activity()[0]["session_start"] == first
+
+
+# --- 13: narrowing the allow list revokes follows and their pairs -----------
+
+
+def test_removing_list_name_revokes_its_follows_and_pairs(gate, clock):
+    gate.update(_hw(["a.com", "keep.org"]))
+    _lookup(gate, "a.com", ["1.1.1.1"])
+    _lookup(gate, "cdn.x", ["2.2.2.2"])  # followed from a.com
+    _lookup(gate, "keep.org", ["3.3.3.3"])
+    gate.update(_hw(["keep.org"]))  # a.com removed, nothing blocked
+    clock.advance(11)  # past keep.org's own follow window
+    assert gate.decide(MAC, "cdn.x")[0] is False  # no longer followed
+    assert gate.blocked_cut(MAC) == {"1.1.1.1", "2.2.2.2"}
+    assert gate.pairs() == {(MAC, "3.3.3.3")}
+
+
+def test_follow_from_still_listed_parent_survives_narrowing(gate):
+    gate.update(_hw(["a.com", "b.com"]))
+    _lookup(gate, "a.com", ["1.1.1.1"])
+    _lookup(gate, "cdn.x", ["2.2.2.2"])
+    gate.update(_hw(["a.com"]))
+    assert gate.blocked_cut(MAC) == set()
+    assert gate.decide(MAC, "cdn.x") == (True, "follow", None)
+
+
+def test_narrowing_clears_follow_window_parent(gate):
+    gate.update(_hw(["a.com", "b.com"]))
+    _lookup(gate, "a.com", ["1.1.1.1"])
+    gate.update(_hw(["b.com"]))
+    assert gate.decide(MAC, "fresh.cdn")[0] is False  # window parent a.com is gone
