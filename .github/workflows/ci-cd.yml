@@ -55,6 +55,10 @@ jobs:
       run: pip install -r backend/requirements.txt
     - name: Run test suite
       run: cd backend && python -m pytest tests -q
+    - name: Run blocker test suite
+      run: |
+        pip install "scapy>=2.6" pytest pyyaml
+        python -m pytest blocker -q
 
   installer:
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
