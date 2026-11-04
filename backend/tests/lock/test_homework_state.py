@@ -173,7 +173,6 @@ def test_tick_returns_tuple(db):
 def test_push_state_body(db, monkeypatch):
     """Test that push_state sends the correct body."""
     from app.lock.blocker_client import push_state
-    import json
 
     captured_body = None
 
