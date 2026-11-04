@@ -1,0 +1,14 @@
+# Starter list of homework-related domains
+# Each line is a domain that students can access during homework mode
+# Comments start with #
+
+google.com
+youtube.com
+wikipedia.org
+khan-academy.org
+coursera.org
+edx.org
+codecademy.com
+github.com
+stackoverflow.com
+amazon.com

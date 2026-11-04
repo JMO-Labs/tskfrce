@@ -5,7 +5,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 # Load starter list once
-_STARTER_PATH = Path(__file__).parent.parent / "data" / "homework_starter.txt"
+_STARTER_PATH = Path(__file__).parent.parent.parent / "resources" / "homework_starter.txt"
 
 
 def _load_starter() -> tuple[str, ...]:
