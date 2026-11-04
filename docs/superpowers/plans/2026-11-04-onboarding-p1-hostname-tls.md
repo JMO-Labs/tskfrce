@@ -274,7 +274,7 @@ itself. Boxes installed with `install.sh` keep working unchanged.
   - It sets or replaces these keys in the env file (others kept, file mode 600):
     - `BOX_ID`, `BOX_SECRET`
     - `BOX_URL=https://<id>.taskfrce.jmolabs.dev`
-    - `NTFY_PUBLIC_URL=https://<id>.taskfrce.jmolabs.dev:2443`
+    - (`NTFY_PUBLIC_URL` is left as install.sh wrote it)
     - `COMPOSE_PROFILES`: `edge` appended if missing, e.g. `blocker` → `blocker,edge`
   - It validates the box ID against `^[a-z0-9]{6}$` and the secret against
     64 hex chars.
@@ -345,6 +345,9 @@ the owner does them.
   within 5 minutes.
 - [ ] From a phone on mobile data, `/find?id=<id>` says "not found on this
   network".
+- [ ] Verify the script's printed next-steps text, then revert: remove `BOX_ID`, `BOX_SECRET`,
+  `EDGE_TOKEN` and `BOX_URL` from `.env`, set `BOX_URL` back to `http://<lan-ip>:3000`, and
+  confirm the LAN URL still works.
 - [ ] Pause a test device. Its browser is redirected to
   `https://<id>.taskfrce.jmolabs.dev/kid` and that page loads. `PORTAL_REDIRECT_URL`
   now uses the HTTPS hostname, and traffic to the box itself must not be
