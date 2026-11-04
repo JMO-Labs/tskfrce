@@ -116,8 +116,24 @@ services:
       PORTAL_REDIRECT_URL: ${BOX_URL:-http://task4ce.local:3000}/kid
     restart: unless-stopped
 
+  # HTTPS front on <id>.taskfrce.jmolabs.dev (scripts/enable-hostname.sh). Opt-in via COMPOSE_PROFILES=edge.
+  # Empty-default env on purpose: `:?` is interpolated even with the profile off; edge.sh checks them.
+  edge:
+    image: ghcr.io/jmo-labs/tskfrce/edge:${TASK4CE_TAG:-latest}
+    build:
+      context: ./edge
+    profiles: ["edge"]
+    network_mode: host
+    environment:
+      BOX_ID: ${BOX_ID:-}
+      BOX_SECRET: ${BOX_SECRET:-}
+    volumes:
+      - edge_data:/data
+    restart: unless-stopped
+
 volumes:
   task4ce_data:
+  edge_data:
   ntfy_cache:
   ntfy_conf:
 

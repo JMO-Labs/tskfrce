@@ -53,3 +53,15 @@ def test_ntfy_base_url_matches_backend_public_url():
 
 def test_ntfy_starts_after_backend():
     assert "backend" in yaml.safe_load(PROD.read_text())["services"]["ntfy"]["depends_on"]
+
+
+def test_prod_edge_is_opt_in_host_net():
+    edge = yaml.safe_load(PROD.read_text())["services"]["edge"]
+    assert edge["profiles"] == ["edge"]
+    assert edge["network_mode"] == "host"
+    assert "edge_data:/data" in edge["volumes"]
+    assert "cap_add" not in edge
+    assert not edge.get("privileged", False)
+    # `:?` would break every box without BOX_ID, even with the profile off
+    for v in edge["environment"].values():
+        assert ":?" not in str(v)
