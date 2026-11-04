@@ -16,7 +16,10 @@ const postIp: Route = async ({ req, env, cf }) => {
   const ip = body?.ip
   if (typeof ip !== 'string' || !isPrivateV4(ip)) return json({ error: 'ip must be private IPv4' }, 400)
   await upsertRecord(env, cf, 'A', `${id}.${env.BASE_DOMAIN}`, ip)
-  const seen = { lanIp: ip, publicIp: req.headers.get('CF-Connecting-IP') ?? '', seenAt: Date.now() }
+  let prev: Record<string, unknown> = {}
+  try { prev = JSON.parse((await env.BOXES.get(`seen:${id}`)) ?? '{}') } catch { /* corrupt -> reset */ }
+  const pub = req.headers.get('CF-Connecting-IP') ?? ''
+  const seen = { publicIp4: prev.publicIp4, publicIp6: prev.publicIp6, lanIp: ip, seenAt: Date.now(), [pub.includes(':') ? 'publicIp6' : 'publicIp4']: pub }
   await env.BOXES.put(`seen:${id}`, JSON.stringify(seen))
   return new Response(null, { status: 204 })
 }

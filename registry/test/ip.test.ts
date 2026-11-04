@@ -15,7 +15,7 @@ test('valid box + private IP upserts A record and stores seen', async () => {
   const res = await handle(post('/api/ip', { ip: '192.168.1.40' }, basic('abc123', 's3cret'), '203.0.113.9'), env, cf)
   expect(res.status).toBe(204)
   expect(cf.calls.some((c) => c.method === 'POST' && c.body.name === 'abc123.taskfrce.jmolabs.dev' && c.body.content === '192.168.1.40' && c.body.type === 'A' && c.body.ttl === 60 && c.body.proxied === false)).toBe(true)
-  expect(JSON.parse((await env.BOXES.get('seen:abc123'))!)).toMatchObject({ lanIp: '192.168.1.40', publicIp: '203.0.113.9' })
+  expect(JSON.parse((await env.BOXES.get('seen:abc123'))!)).toMatchObject({ lanIp: '192.168.1.40', publicIp4: '203.0.113.9' })
 })
 
 test('existing record is PUT', async () => {
@@ -97,4 +97,11 @@ test('acme challenge name allowed', async () => {
   const env = await makeEnv(), cf = fakeCf()
   await upsertRecord(env, cf, 'TXT', '_acme-challenge.abc123.taskfrce.jmolabs.dev', 'tok')
   expect(cf.calls.length).toBeGreaterThan(0)
+})
+
+test('v6 report stores publicIp6 and keeps publicIp4', async () => {
+  const env = await makeEnv(), cf = fakeCf()
+  await handle(post('/api/ip', { ip: '192.168.1.40' }, basic('abc123', 's3cret'), '203.0.113.9'), env, cf)
+  await handle(post('/api/ip', { ip: '192.168.1.40' }, basic('abc123', 's3cret'), '2001:db8:1:2::5'), env, cf)
+  expect(JSON.parse((await env.BOXES.get('seen:abc123'))!)).toMatchObject({ lanIp: '192.168.1.40', publicIp4: '203.0.113.9', publicIp6: '2001:db8:1:2::5' })
 })

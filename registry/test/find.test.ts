@@ -13,6 +13,31 @@ const get = async (qs: string, ip: string | null = '203.0.113.9', seen: string =
   return { res, body: await res.text(), cf, gets }
 }
 
+const seen6 = JSON.stringify({ lanIp: '192.168.1.40', publicIp4: '203.0.113.9', publicIp6: '2001:db8:1:2::5', seenAt: 1 })
+
+describe('GET /find ipv6', () => {
+  test('v6 visitor same /64, other host -> match', async () => {
+    expect((await get('?id=abc123', '2001:db8:1:2:aaaa:bbbb:cccc:dddd', seen6)).body).toContain('http://192.168.1.40:3000')
+  })
+  test('v6 visitor different /64 -> no match', async () => {
+    expect((await get('?id=abc123', '2001:db8:1:3::5', seen6)).body).not.toContain('192.168.1.40')
+  })
+  test('compressed vs expanded forms match', async () => {
+    expect((await get('?id=abc123', '2001:0db8:0001:0002:0000:0000:0000:0009', seen6)).body).toContain('192.168.1.40')
+    expect((await get('?id=abc123', '2001:db8:1:2::9', JSON.stringify({ lanIp: '192.168.1.40', publicIp6: '2001:0db8:0001:0002:0:0:0:5' }))).body).toContain('192.168.1.40')
+  })
+  test('v4 visitor still exact on publicIp4', async () => {
+    expect((await get('?id=abc123', '203.0.113.9', seen6)).body).toContain('192.168.1.40')
+    expect((await get('?id=abc123', '203.0.113.10', seen6)).body).not.toContain('192.168.1.40')
+  })
+  test('legacy publicIp v6 read by shape', async () => {
+    expect((await get('?id=abc123', '2001:db8:1:2::7', JSON.stringify({ lanIp: '192.168.1.40', publicIp: '2001:db8:1:2::5' }))).body).toContain('192.168.1.40')
+  })
+  test('garbage visitor v6 -> no match', async () => {
+    expect((await get('?id=abc123', '2001:db8::1::2', seen6)).body).not.toContain('192.168.1.40')
+  })
+})
+
 describe('GET /find', () => {
   test('same public IP shows http://<lan>:3000 link', async () => {
     const { res, body, cf } = await get('?id=abc123')

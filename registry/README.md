@@ -15,12 +15,15 @@ Boxes authenticate with Basic auth (`<box-id>:<secret>`). KV (`BOXES`) stores
 
 ## Deploy (owner, once)
 
+Prerequisites: Node >=22, `npm ci`, `npx wrangler login`, `openssl`, and `sha256sum` or `shasum`.
+
 1. `npm ci`, then `npx wrangler kv namespace create BOXES`. Paste the id into
    `wrangler.toml`.
 2. Set `CF_ZONE_ID` (the `jmolabs.dev` zone id) in `wrangler.toml` `[vars]`.
 3. `npx wrangler secret put CF_API_TOKEN` with a token scoped to
    **Zone > DNS > Edit on jmolabs.dev only**.
-4. `npx wrangler deploy`.
+4. `npx wrangler deploy`. The `custom_domain` route creates the DNS record for
+   `taskfrce.jmolabs.dev` itself.
 5. Register each box with `scripts/new-box.sh`.
 
 ## Register a box

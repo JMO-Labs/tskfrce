@@ -21,17 +21,40 @@ const ASK = FORM
 const MISS =
   '<p>No box with that code was found on this network. Make sure your phone is on your home Wi-Fi.</p>' + FORM
 
+/** First 4 hextets (/64) of an IPv6 address, expanded; null if malformed. */
+export function v6prefix(ip: string): string | null {
+  if (!/^[0-9a-f:]+$/i.test(ip) || (ip.match(/::/g) ?? []).length > 1) return null
+  const [h, t] = ip.split('::')
+  const head = h ? h.split(':') : [], tail = t ? t.split(':') : []
+  const fill = ip.includes('::') ? 8 - head.length - tail.length : 0
+  if (fill < 0 || (!ip.includes('::') && head.length !== 8)) return null
+  const all = [...head, ...Array(fill).fill('0'), ...tail]
+  if (all.length !== 8 || all.some((x) => !/^[0-9a-f]{1,4}$/i.test(x))) return null
+  return all.slice(0, 4).map((x) => parseInt(x, 16)).join(':')
+}
+
+type Seen = { lanIp?: string; publicIp?: string; publicIp4?: string; publicIp6?: string }
+
+function sameNetwork(seen: Seen, visitor: string): boolean {
+  const legacy = seen.publicIp
+  const p4 = seen.publicIp4 || (legacy && !legacy.includes(':') ? legacy : '')
+  const p6 = seen.publicIp6 || (legacy?.includes(':') ? legacy : '')
+  if (!visitor.includes(':')) return !!p4 && p4 === visitor
+  const v = v6prefix(visitor)
+  return !!v && !!p6 && v === v6prefix(p6)
+}
+
 /** Reveals a LAN IP only to a visitor whose public IP matches the box's. Never lists boxes. */
 export async function findPage(id: string | null, visitorIp: string | null, env: Env): Promise<Response> {
   if (!id) return page(ASK)
   const code = id.trim().toLowerCase()
   if (!BOX_ID_RE.test(code)) return page(MISS)
-  let seen: { lanIp?: string; publicIp?: string } | null = null
+  let seen: Seen | null = null
   try {
     const raw = await env.BOXES.get(`seen:${code}`)
     seen = raw ? JSON.parse(raw) : null
   } catch { /* corrupt entry -> not found */ }
-  if (!seen?.lanIp || !isPrivateV4(seen.lanIp) || !visitorIp || seen.publicIp !== visitorIp) return page(MISS)
+  if (!seen?.lanIp || !isPrivateV4(seen.lanIp) || !visitorIp || !sameNetwork(seen, visitorIp)) return page(MISS)
   const url = esc(`http://${seen.lanIp}:3000`)
   return page(
     `<p>Found your box. Open it here:</p><p><a href="${url}">${url}</a></p>` +
