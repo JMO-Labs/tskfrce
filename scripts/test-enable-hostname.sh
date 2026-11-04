@@ -12,6 +12,7 @@ fail() { echo "FAIL: $1" >&2; exit 1; }
 
 printf '# keep me\nSECRET_KEY=abc\nCOMPOSE_PROFILES=blocker\nBOX_URL=http://192.168.1.5:3000\nNTFY_PUBLIC_URL=http://192.168.1.5:2586\n' >"$E"
 chmod 644 "$E"
+UID0="$(stat -c %u "$E")"
 sh "$S" abc123 "$SEC" "$E" || fail "script failed"
 grep -qx 'BOX_URL=https://abc123.taskfrce.jmolabs.dev' "$E" || fail "BOX_URL"
 grep -qx 'NTFY_PUBLIC_URL=http://192.168.1.5:2586' "$E" || fail "NTFY_PUBLIC_URL must be untouched"
@@ -23,6 +24,7 @@ grep -qx '# keep me' "$E" || fail "comment lost"
 grep -Eq '^EDGE_TOKEN=[0-9a-f]{64}$' "$E" || fail "EDGE_TOKEN not generated"
 TOK="$(grep '^EDGE_TOKEN=' "$E")"
 [ "$(stat -c %a "$E")" = 600 ] || fail "mode not 600"
+[ "$(stat -c %u "$E")" = "$UID0" ] || fail "owner changed"
 
 before="$(cksum <"$E")"
 sh "$S" abc123 "$SEC" "$E" || fail "second run failed"

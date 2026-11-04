@@ -42,8 +42,8 @@ grep -Ev '^(BOX_ID|BOX_SECRET|BOX_URL|COMPOSE_PROFILES|EDGE_TOKEN)=' "$ENVF" >"$
   echo "COMPOSE_PROFILES=$PROFILES"
   echo "EDGE_TOKEN=$EDGE_TOKEN"
 } >>"$TMP"
-cat "$TMP" >"$ENVF" # in place: keeps owner/group/mode of the existing file
-chmod 600 "$ENVF"
+chmod 600 "$ENVF" # before writing secrets
+cat "$TMP" >"$ENVF" # in place: keeps owner/group of the existing file
 echo "hostname https://$HOST enabled."
 echo "Next: docker compose -f docker-compose.prod.yml up -d, wait ~2 minutes, then open https://$HOST on a phone on your Wi-Fi."
 echo "If it doesn't load, see https://taskfrce.jmolabs.dev/find?id=$ID."
