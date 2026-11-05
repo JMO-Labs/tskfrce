@@ -16,6 +16,7 @@ import { useOnChange } from '@/v2/hooks/useOnChange'
 import { useClientValue } from '@/v2/hooks/useClientValue'
 import { StepFamily, detectTz } from '@/v2/setup/StepFamily'
 import { StepParent, parentErrors, type ParentForm } from '@/v2/setup/StepParent'
+import { StepPhones } from '@/v2/setup/StepPhones'
 import { StepKids } from '@/v2/setup/StepKids'
 import { StepDevices } from '@/v2/setup/StepDevices'
 import { StepChores } from '@/v2/setup/StepChores'
@@ -79,7 +80,7 @@ export default function SetupPage() {
   })
   useEffect(() => {
     if (!resumed) return
-    api<Kid[]>('/kids').then(setKids).catch(() => {}) // the wizard forgot them; steps 4-5 need them
+    api<Kid[]>('/kids').then(setKids).catch(() => {}) // the wizard forgot them; steps 4-6 need them
     api<LibChore[]>('/chores/') // ...and the starters it already made
       .then((have) => Array.isArray(have) && setAdded(have.map((h) => h.title).filter((t) => starter(t))))
       .catch(() => {})
@@ -168,7 +169,7 @@ export default function SetupPage() {
       setConflict(false)
       return void once(() => create.mutateAsync().catch(() => {})) // errors show via create.error
     }
-    if (step === 4) {
+    if (step === 5) {
       return run(
         kids.length === 0
           ? []
@@ -204,7 +205,7 @@ export default function SetupPage() {
             })),
       )
     }
-    if (step === 6) {
+    if (step === 7) {
       return run([
         ...hours.map((body, i) => ({
           key: `rule:${i}`,
@@ -228,10 +229,11 @@ export default function SetupPage() {
     1: { title: 'Make your parent account', sub: "You'll use this to log in. You can invite another parent later." },
     2: { title: 'Your family', sub: 'Shown on the kids\' screens and in notifications.' },
     3: { title: 'Add your kids', sub: 'Add each child. You can add more later from Kids & chores.' },
-    4: { title: 'Pick some starter chores', sub: 'Tap to choose. Everything can be changed later.' },
-    5: { title: 'Whose devices are these?', sub: 'Devices show up as the home box sees them on your Wi-Fi. Tap a kid to give it to them, or mark it Guest so it\'s never blocked.' },
-    6: { title: 'When can devices be online?', sub: 'A starting schedule. Add holidays, summer and per-kid hours later in Settings.' },
-    7: { title: 'Reach it from anywhere', sub: 'Approve chores when you\'re not home, using Tailscale (free, private).' },
+    4: { title: "Kids' phones", sub: "Each kid scans their code with their phone's camera. No phone? Skip it. You can do this later from the kid's page." },
+    5: { title: 'Pick some starter chores', sub: 'Tap to choose. Everything can be changed later.' },
+    6: { title: 'Whose devices are these?', sub: 'Devices show up as the home box sees them on your Wi-Fi. Tap a kid to give it to them, or mark it Guest so it\'s never blocked.' },
+    7: { title: 'When can devices be online?', sub: 'A starting schedule. Add holidays, summer and per-kid hours later in Settings.' },
+    8: { title: 'Reach it from anywhere', sub: 'Approve chores when you\'re not home, using Tailscale (free, private).' },
   } as const
 
   // what really exists (a resumed wizard forgot what it made)
@@ -268,7 +270,7 @@ export default function SetupPage() {
           }}
           busy={create.isPending || apply.isPending}
           done={step > LAST}
-          note={step === 4 ? `${chores.length} picked` : undefined}
+          note={step === 5 ? `${chores.length} picked` : undefined}
         >
           {step === 1 && <StepParent value={parent} showError={tried} onChange={setParent} />}
           {step === 2 && (
@@ -283,10 +285,11 @@ export default function SetupPage() {
           )}
           {step === 3 && <StepKids kids={kids} name={kidDraft} onName={setKidDraft} onAdd={(k) => setKids([...kids, k])}
               draftError={tried && kidDraft.trim() ? `Add ${kidDraft.trim()} first or clear the field.` : undefined} />}
-          {step === 4 && <StepChores selected={chores} made={addedStarters} hasKids={kids.length > 0} onChange={setChores} />}
-          {step === 5 && <StepDevices kids={kids} />}
-          {step === 6 && <StepHours drafts={hours} onChange={setHours} choresLock={choresLock} onChoresLock={setChoresLock} />}
-          {step === 7 && <StepRemote />}
+          {step === 4 && <StepPhones kids={kids} />}
+          {step === 5 && <StepChores selected={chores} made={addedStarters} hasKids={kids.length > 0} onChange={setChores} />}
+          {step === 6 && <StepDevices kids={kids} />}
+          {step === 7 && <StepHours drafts={hours} onChange={setHours} choresLock={choresLock} onChoresLock={setChoresLock} />}
+          {step === 8 && <StepRemote />}
           {step > LAST && <StepFinish />}
           {err && <p role="alert">Something went wrong: {err} Try again.</p>}
         </WizardFrame>

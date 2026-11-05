@@ -117,7 +117,7 @@ describe('RequireParent states', () => {
     auth({})
     renderGuard()
     expect(await screen.findByText("Let's finish setting up")).toBeTruthy()
-    expect(screen.getByText('Taking you to setup, step 5 of 7…')).toBeTruthy()
+    expect(screen.getByText('Taking you to setup, step 5 of 8…')).toBeTruthy()
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/setup'))
     expect(screen.queryByText('secret')).toBeNull()
   })
