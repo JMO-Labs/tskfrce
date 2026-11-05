@@ -6,6 +6,7 @@ export default function Kid() {
     <>
       <Head>
         <title>t@sk4ce</title>
+        <link rel="manifest" href="/kid.webmanifest" key="manifest" />
       </Head>
       <KidPage />
     </>

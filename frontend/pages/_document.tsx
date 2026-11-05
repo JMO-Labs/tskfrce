@@ -28,7 +28,11 @@ export default function Document() {
         <link rel="icon" href="/favicon_dark.ico" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon_dark.ico" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon_dark.ico" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/favicon_dark.ico" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="t@sk4ce" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         
         {/* Theme color */}
         <meta name="theme-color" content="#E6EFF1" media="(prefers-color-scheme: light)" />
