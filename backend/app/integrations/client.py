@@ -3,7 +3,7 @@
 import json
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from pydantic import BaseModel, ValidationError
 
@@ -23,14 +23,16 @@ TIMEOUT = 5.0
 
 
 class ProtocolError(Exception):
-    """Bad signature, request_id mismatch, non-JSON, bad schema or non-2xx reply."""
+    """Any failure talking to a service: blocked, transport, status, signature, shape.
+
+    Callers catch only this."""
 
 
 @dataclass
 class InstallCtx:
     public_id: str
     base_url: str
-    secret: str
+    secret: str = field(repr=False)
     grant_out: dict
 
 
@@ -61,24 +63,27 @@ class BoxClient:
             "X-Tsk-Signature": sign_request(self.ctx.secret, ts, rid, body),
         }
         url = f"{self.ctx.base_url.rstrip('/')}/{PROTOCOL_VERSION}/{name}"
-        resp = net.fetch(
-            "POST",
-            url,
-            body=body,
-            headers=headers,
-            policy=self.policy,
-            max_bytes=MAX_REPLY,
-            timeout=TIMEOUT,
-            transport=self.transport,
-        )
-        if not 200 <= resp.status < 300:
-            raise ProtocolError(f"status {resp.status}")
+        try:
+            resp = net.fetch(
+                "POST",
+                url,
+                body=body,
+                headers=headers,
+                policy=self.policy,
+                max_bytes=MAX_REPLY,
+                timeout=TIMEOUT,
+                transport=self.transport,
+            )
+        except net.BlockedError as e:
+            raise ProtocolError("blocked") from e
+        except net.FetchError as e:
+            raise ProtocolError(str(e)) from e
         got = {k.lower(): v for k, v in (resp.headers or {}).items()}.get("x-tsk-signature", "")
         if not verify(got, sign_reply(self.ctx.secret, rid, resp.body)):
             raise ProtocolError("bad signature")
         try:
             data = json.loads(resp.body)
-        except ValueError as e:
+        except (ValueError, RecursionError) as e:
             raise ProtocolError("not json") from e
         if not isinstance(data, dict):
             raise ProtocolError("schema")
