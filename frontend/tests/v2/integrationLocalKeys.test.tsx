@@ -43,7 +43,8 @@ describe('local keys', () => {
     await u.click(screen.getByRole('button', { name: 'Create key' }))
     expect(await screen.findByDisplayValue('tsk_local_abc')).toBeInTheDocument()
     expect(screen.getByText("Copy this now. You won't see it again.")).toBeInTheDocument()
-    expect(screen.getAllByText(/Bearer <token>/, { selector: 'pre' })).toHaveLength(2)
+    expect(screen.getAllByText(/Bearer tsk_local_abc/, { selector: 'pre' })).toHaveLength(2)
+    expect(screen.getAllByText(/"kid_id":3,"chore_id":7,"idempotency_key"/, { selector: 'pre' })).toHaveLength(2)
     expect(apiMock).toHaveBeenCalledWith('/integration-local/keys', expect.objectContaining({
       method: 'POST',
       body: { name: 'Home Assistant', permissions: ['chores.complete'], kid_ids: [3], chore_ids: [7], trusted: false },

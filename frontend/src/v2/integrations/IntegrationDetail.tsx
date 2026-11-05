@@ -7,6 +7,7 @@ import { toastFail, toastOk } from '@/v2/notify'
 import { Icon } from '@/v2/parent/Icon'
 import { ErrorPanel, Skeleton } from '@/v2/parent/states'
 import { PermissionList, trustLine } from './PermissionList'
+import { usePushUrl } from './pushUrl'
 import type { AuditRow } from './types'
 
 const RESULT: Record<string, [string, string]> = {
@@ -48,6 +49,7 @@ export function IntegrationDetail({ id, onClose }: { id: number; onClose: () => 
   const [cards, setCards] = useState<Record<number, boolean>>({}) // per-kid switch shown until the server answers
   const [trust, setTrust] = useState<{ was: boolean; val: boolean } | null>(null) // shown until the server answers
   const d = q.data
+  const { url } = usePushUrl()
 
   const back = (
     <button type="button" className="p-btn ig-back" onClick={onClose}>
@@ -110,7 +112,8 @@ export function IntegrationDetail({ id, onClose }: { id: number; onClose: () => 
 
       <section className="pn-card" aria-label="Permissions">
         <h3 className="pn-cap ig-cap">It can</h3>
-        <PermissionList perms={d.permissions} />
+        <PermissionList perms={d.permissions} scope={local ? 'Works only from your home network.' : undefined} />
+        {local && <p className="pn-help ig-scope">Pushes go to <code className="ig-code">{url}</code></p>}
       </section>
 
       {live && (

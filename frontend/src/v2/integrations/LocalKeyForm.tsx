@@ -8,21 +8,29 @@ import { toastFail } from '@/v2/notify'
 import { Icon } from '@/v2/parent/Icon'
 import { ErrorPanel, Skeleton } from '@/v2/parent/states'
 import { PermissionList, trustLine } from './PermissionList'
+import { usePushUrl } from './pushUrl'
 
-export const PUSH_URL = 'http://<box>:3000/api/proxy/integration-local/push'
-const CURL = `curl -X POST ${PUSH_URL} \\\n  -H "Authorization: Bearer <token>" \\\n  -H "Content-Type: application/json" \\\n  -d '{"actions":[...]}'`
-const HA = `rest_command:\n  tsk_push:\n    url: "${PUSH_URL}"\n    method: POST\n    headers:\n      Authorization: "Bearer <token>"\n      Content-Type: application/json\n    payload: '{"actions":[...]}'`
+interface Sample { kid: number; chore: number }
+
+const curl = (url: string, token: string, s: Sample) =>
+  `curl -X POST ${url} \\\n  -H "Authorization: Bearer ${token}" \\\n  -H "Content-Type: application/json" \\\n  -d '${action(s)}'`
+const action = (s: Sample) => `{"actions":[{"type":"chore.complete","kid_id":${s.kid},"chore_id":${s.chore},"idempotency_key":"my-first-push"}]}`
+const ha = (url: string, token: string, s: Sample) =>
+  `rest_command:\n  tsk_push:\n    url: "${url}"\n    method: POST\n    headers:\n      Authorization: "Bearer ${token}"\n      Content-Type: application/json\n    payload: '${action(s)}'`
 
 const toggle = <T,>(xs: T[], x: T) => (xs.includes(x) ? xs.filter((y) => y !== x) : [...xs, x])
 
 /** Shown once, in a dialog that only Done can close. The token lives in this component's state and nowhere else. */
-function TokenDialog({ token, onDone }: { token: string; onDone: () => void }) {
+function TokenDialog({ token, sample, onDone }: { token: string; sample: Sample; onDone: () => void }) {
+  const { url, filled } = usePushUrl()
   const [copied, setCopied] = useState(false)
   const field = useRef<HTMLInputElement>(null)
   const copy = async () => {
     field.current?.select()
     try {
-      await navigator.clipboard.writeText(token)
+      // the clipboard API needs https; the home network address is plain http, so fall back to the old way
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(token)
+      else if (!document.execCommand('copy')) throw new Error('copy')
       setCopied(true)
     } catch {
       toastFail('Could not copy. Select the key and copy it by hand.')
@@ -63,13 +71,13 @@ function TokenDialog({ token, onDone }: { token: string; onDone: () => void }) {
         </div>
         <VisuallyHidden role="status">{copied ? 'Key copied to the clipboard.' : ''}</VisuallyHidden>
         <p className="pn-help ig-scope">
-          Send pushes from your home network to <code className="ig-code">{PUSH_URL}</code>. Replace <code className="ig-code">&lt;box&gt;</code> with
-          this server&apos;s home network address. Through the public address they are refused.
+          Send pushes from your home network to <code className="ig-code">{url}</code>.
+          {filled ? ' It only works from inside your home.' : <> Replace <code className="ig-code">&lt;box&gt;</code> with this server&apos;s home network address. Through the public address they are refused.</>}
         </p>
         <h4 className="pn-cap ig-cap">curl</h4>
-        <pre className="ig-pre" tabIndex={0} aria-label="curl example">{CURL}</pre>
+        <pre className="ig-pre" tabIndex={0} aria-label="curl example">{curl(url, token, sample)}</pre>
         <h4 className="pn-cap ig-cap">Home Assistant</h4>
-        <pre className="ig-pre" tabIndex={0} aria-label="Home Assistant example">{HA}</pre>
+        <pre className="ig-pre" tabIndex={0} aria-label="Home Assistant example">{ha(url, token, sample)}</pre>
         <div className="pn-row">
           <button type="button" className="p-btn" data-variant="accent" onClick={onDone}>Done</button>
         </div>
@@ -146,7 +154,7 @@ export function LocalKeyForm({ onDone }: { onDone: () => void }) {
           </button>
         </div>
       </form>
-      {token && <TokenDialog token={token} onDone={onDone} />}
+      {token && <TokenDialog token={token} sample={{ kid: kidIds[0] ?? 1, chore: choreIds[0] ?? chores[0]?.id ?? 1 }} onDone={onDone} />}
     </section>
   )
 }

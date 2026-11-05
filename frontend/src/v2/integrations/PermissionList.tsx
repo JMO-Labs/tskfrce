@@ -11,7 +11,7 @@ export const trustLine = (on: boolean) =>
   on ? 'Its chore check-offs will count right away, without your OK.' : 'Its chore check-offs wait in Needs you.'
 
 /** Phone-style permission list: the fixed baseline, then one row per extra thing the app can do. */
-export function PermissionList({ perms, picked, onToggle }: { perms: PermissionOut[]; picked?: string[]; onToggle?: (id: string) => void }) {
+export function PermissionList({ perms, picked, onToggle, scope = 'Its own settings, and nothing else unless listed above.' }: { scope?: string; perms: PermissionOut[]; picked?: string[]; onToggle?: (id: string) => void }) {
   const pick = !!onToggle // tickable rows: the parent chooses which permissions a key gets
   return (
     <>
@@ -39,7 +39,7 @@ export function PermissionList({ perms, picked, onToggle }: { perms: PermissionO
         </li>
       ))}
     </ul>
-    {!pick && <p className="pn-help ig-scope">Its own settings, and nothing else unless listed above.</p>}
+    {!pick && <p className="pn-help ig-scope">{scope}</p>}
     </>
   )
 }

@@ -5,7 +5,8 @@ import { EmptyState, ErrorPanel, Skeleton } from '@/v2/parent/states'
 import { PaneHead } from '../manage/PaneParts'
 import { InstallFlow } from './InstallFlow'
 import { IntegrationDetail } from './IntegrationDetail'
-import { LocalKeyForm, PUSH_URL } from './LocalKeyForm'
+import { LocalKeyForm } from './LocalKeyForm'
+import { usePushUrl } from './pushUrl'
 import type { CatalogItem, InstallOut, InstallStatus } from './types'
 
 const STATUS: Record<string, [string, string]> = {
@@ -33,6 +34,7 @@ export function IntegrationsPane() {
   const catalog = useCatalog()
   const [adding, setAdding] = useState<CatalogItem | null>(null)
   const [open, setOpen] = useState<number | null>(null)
+  const { url, filled } = usePushUrl()
   const [making, setMaking] = useState(false)
   const apps = installs.data?.filter((i) => i.source !== 'local') ?? []
   const keys = installs.data?.filter((i) => i.source === 'local') ?? []
@@ -82,7 +84,7 @@ export function IntegrationsPane() {
               </div>
               <p className="pn-help ig-scope">
                 Let Home Assistant or a script on your home network send actions. Pushes only work from inside your home at
-                {' '}<code className="ig-code">{PUSH_URL}</code>.
+                {' '}<code className="ig-code">{url}</code>.{!filled && ' They are refused through the public address.'}
               </p>
               {keys.map((i) => <InstallRow key={i.id} i={i} onOpen={setOpen} />)}
             </section>

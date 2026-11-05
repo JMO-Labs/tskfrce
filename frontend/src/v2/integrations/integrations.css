@@ -43,8 +43,9 @@
 [data-look='parent'] .ig-copy > :first-child { flex: 1; min-width: 0; }
 [data-look='parent'] .ig-copy .p-btn { min-width: 96px; justify-content: center; }
 [data-look='parent'] .ig-code { font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--p-ink); background: var(--p-soft); padding: 1px 6px; border-radius: 6px; overflow-wrap: anywhere; }
-[data-look='parent'] .ig-pre { margin: 0; padding: 12px 14px; background: var(--p-soft); color: var(--p-ink); border: 1px solid var(--p-line); border-radius: 12px; font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-x: auto; white-space: pre; }
+[data-look='parent'] .ig-pre { margin: 0; padding: 12px 14px; background: var(--p-soft); color: var(--p-ink); border: 1px solid var(--p-line); border-radius: 12px; font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 [data-look='parent'] .ig-pre:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
 [data-look='parent'] .ig-perm .ig-ptext label { font-weight: 600; color: inherit; }
 [data-look='parent'] .ig-perm .ig-ptext [class*='description'] { color: inherit; opacity: .85; }
 [data-look='parent'] .ig-flow > .ig-cap { margin: 0 0 -8px; }
+[data-look='parent'] .ig-copy .p-btn:hover { opacity: 1; }
