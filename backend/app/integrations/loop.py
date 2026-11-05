@@ -9,12 +9,13 @@ from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
 from app.core.logging import get_logger
-from app.integrations import catalog, events
+from app.integrations import catalog, events, poller
 
 logger = get_logger(__name__)
 TICK_SECONDS = 15
 STEPS: list[Callable[[Session, datetime], None]] = [catalog.sync_step]
 STEPS.append(events.flush)
+STEPS.append(poller.poll_due)
 
 
 def _run_once(now: datetime) -> None:

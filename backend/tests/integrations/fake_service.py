@@ -14,9 +14,11 @@ class FakeService:
         self.last_path = self.last_body = None
         self.last_signature_ok = False
         self.failing = False
+        self.calls = 0
         self.transport = httpx.MockTransport(self._handle)
 
     def _handle(self, req):
+        self.calls += 1
         h, body = req.headers, req.content
         rid = h["x-tsk-request-id"]
         self.last_path, self.last_body = req.url.path, json.loads(body)
