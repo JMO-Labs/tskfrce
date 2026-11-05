@@ -2,8 +2,8 @@
 
 The registry being down never stops installed integrations: the last verified catalog stays
 cached and revocations apply on the next successful sync. A fetched catalog must carry an
-issued_at strictly newer than the cached one, so a replayed old (validly signed) catalog
-cannot undo a revocation.
+issued_at strictly newer than the cached one (and at most 24 h ahead of the box clock), so a
+replayed old (validly signed) catalog cannot undo a revocation.
 """
 
 import json
@@ -27,6 +27,7 @@ log = logging.getLogger(__name__)
 MAX_BYTES = 1_048_576
 SYNC_EVERY = timedelta(hours=6)
 FIRST_RETRY = timedelta(seconds=60)
+MAX_SKEW = timedelta(hours=24)  # a later issued_at would block every newer catalog
 
 
 @dataclass(frozen=True)
@@ -86,8 +87,20 @@ def _write(env: dict) -> None:
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as f:
         json.dump(env, f)
+        f.flush()
+        os.fsync(f.fileno())  # a torn file would drop replay protection
     os.chmod(tmp, 0o600)  # O_CREAT mode is ignored when tmp already existed
     os.replace(tmp, path)
+    try:  # persist the rename itself
+        dfd = os.open(path.parent, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(dfd)
+    except OSError:
+        pass
+    finally:
+        os.close(dfd)
 
 
 def _revoke(db: Session, revoked: frozenset[str]) -> None:
@@ -129,6 +142,9 @@ def sync(db: Session, now: datetime, transport: httpx.BaseTransport | None = Non
     except Exception as e:
         log.warning("Catalog sync failed: %s", e)
         return False
+    if new.issued_at > now + MAX_SKEW:
+        log.warning("Catalog sync rejected: issued_at %s is in the future", new.issued_at)
+        return False
     old = cached()
     if old is not None and new.issued_at <= old.issued_at:
         log.warning("Catalog sync rejected: issued_at %s is not newer", new.issued_at)
@@ -162,5 +178,10 @@ _schedule = SyncSchedule()
 
 def sync_step(db: Session, now: datetime) -> None:
     """Loop step: sync when due."""
-    if _schedule.due(now):
-        _schedule.mark(sync(db, now), now)
+    if not _schedule.due(now):
+        return
+    ok = False
+    try:
+        ok = sync(db, now)
+    finally:  # a DB or disk error still backs off
+        _schedule.mark(ok, now)

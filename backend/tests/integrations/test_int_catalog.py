@@ -2,7 +2,7 @@
 
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from app.integrations import catalog as cat
@@ -14,9 +14,9 @@ from app.models.reward import Reward
 from sqlalchemy.exc import OperationalError
 from tests.integrations.int_helpers import DEMO, other_signer, sign_env
 
-NOW = datetime(2026, 11, 5, 12, 0)
-T1 = datetime(2026, 11, 5, 10, 0)
-T2 = datetime(2026, 11, 5, 11, 0)
+NOW = datetime.now(UTC).replace(tzinfo=None, microsecond=0)  # catalog() stamps the real clock
+T1 = NOW - timedelta(hours=2)
+T2 = NOW - timedelta(hours=1)
 
 
 @pytest.fixture(autouse=True)
@@ -120,7 +120,7 @@ def test_bad_manifest_skipped_rest_load(db, keypair, registry):
     other = {**DEMO, "id": "other", "name": "Other"}
     body = {
         "v": 1,
-        "issued_at": "2026-11-05T10:00:00.000Z",
+        "issued_at": T1.isoformat() + "Z",
         "integrations": [
             other_signer().sign(DEMO),
             sign_env({**DEMO, "id": "X!"}),
@@ -183,3 +183,42 @@ def test_run_once_survives_failing_steps(monkeypatch):
 
 def test_catalog_sync_is_first_step():
     assert loop.STEPS[0] is cat.sync_step
+
+
+def test_write_fsyncs_before_replace(db, keypair, registry, monkeypatch):
+    order = []
+    real_fsync, real_replace = os.fsync, os.replace
+    monkeypatch.setattr(cat.os, "fsync", lambda fd: order.append("fsync") or real_fsync(fd))
+    monkeypatch.setattr(
+        cat.os, "replace", lambda a, b: order.append("replace") or real_replace(a, b)
+    )
+    registry.serve(keypair.catalog([DEMO]))
+    assert sync(db, NOW, transport=registry.transport) is True
+    assert order[0] == "fsync" and "replace" in order
+
+
+def test_far_future_catalog_is_rejected(db, keypair, registry, caplog):
+    registry.serve(keypair.catalog([DEMO], issued_at=T1))
+    sync(db, NOW, transport=registry.transport)
+    registry.serve(keypair.catalog([], revoked=["demo"], issued_at=NOW + timedelta(hours=25)))
+    assert sync(db, NOW, transport=registry.transport) is False
+    assert cached().issued_at == T1 and "demo" in cached().manifests
+    assert "future" in caplog.text
+
+
+def test_slightly_future_catalog_is_accepted(db, keypair, registry):
+    registry.serve(keypair.catalog([DEMO], issued_at=NOW + timedelta(hours=23)))
+    assert sync(db, NOW, transport=registry.transport) is True
+
+
+def test_sync_error_still_backs_off(monkeypatch):
+    s = SyncSchedule()
+    monkeypatch.setattr(cat, "_schedule", s)
+
+    def boom(db, now):
+        raise OperationalError("x", {}, Exception("database is locked"))
+
+    monkeypatch.setattr(cat, "sync", boom)
+    with pytest.raises(OperationalError):
+        cat.sync_step(None, NOW)
+    assert s.next_at == NOW + timedelta(seconds=60)
