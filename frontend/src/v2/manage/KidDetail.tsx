@@ -15,6 +15,7 @@ import { threadGlyph } from '@/v2/today/choreIcon'
 import type { Kid } from '@/v2/types'
 import { AGE_LABEL } from './ageGroups'
 import { KidEditor } from './KidEditor'
+import { KidPhonesPanel } from './KidPhonesPanel'
 import { PointsForm } from './PointsForm'
 import { initial, nameOf, schedules } from './choreMeta'
 import { DEVICE_TYPE_ICON, getDeviceType } from './deviceMeta'
@@ -119,6 +120,8 @@ export function KidDetail({ kid, focusPin, onDeleted }: Props) {
             </div>
           ))}
         </section>
+
+        <KidPhonesPanel kid={kid} />
 
         <section className="pk-panel pk-span" aria-label="Chores assigned">
           <h3>
