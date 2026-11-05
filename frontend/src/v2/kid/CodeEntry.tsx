@@ -39,6 +39,7 @@ export function CodeEntry({ onDone }: { onDone: () => void }) {
         autoCapitalize="characters"
         spellCheck={false}
         autoFocus
+        maxLength={32}
         aria-invalid={!!error}
         aria-describedby={error ? 'k-code-err' : undefined}
       />

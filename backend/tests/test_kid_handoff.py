@@ -90,15 +90,32 @@ def test_inactive_kid_410(client, kid, db):
 def test_new_handoff_replaces_old(client, kid, db):
     first = _enroll(client, db, kid)["handoff"]
     dev = db.query(KidDevice).one()
-    second = kid_handoff.issue(dev.id)
+    second = kid_handoff.issue(dev)
     assert _hand(client, first).status_code == 410
     assert _hand(client, second).status_code == 200
 
 
 def test_store_capped():
     for i in range(kid_handoff.MAX + 5):
-        kid_handoff.issue(i)
+        kid_handoff.issue(KidDevice(id=i, secret_hash=str(i)))
     assert len(kid_handoff._store) == kid_handoff.MAX
+
+
+def test_reused_device_id_410(client, kid, db):
+    old = _enroll(client, db, kid)["handoff"]
+    first = db.query(KidDevice).one()
+    first_id, now = first.id, first.created_at
+    db.delete(first)
+    db.commit()
+    db.add(
+        KidDevice(
+            id=first_id, kid_id=kid.id, secret_hash="x", label="n", created_at=now, last_seen_at=now
+        )
+    )
+    db.commit()  # a newer phone got the same id and has no code of its own
+    r = _hand(client, old)
+    assert r.status_code == 410 and r.json()["detail"] == HANDOFF_GONE
+    assert db.query(KidDevice).one().secret_hash == "x"
 
 
 def test_wrong_codes_lock_out(client, kid, db):

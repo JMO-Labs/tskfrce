@@ -111,7 +111,7 @@ def redeem_enroll(body: EnrollIn, request: Request, db: Session = Depends(get_db
         "device_token": secret,
         "kid": _kid_out(kid),
         "alert": alert_for(kid),
-        "handoff": kid_handoff.issue(dev.id),
+        "handoff": kid_handoff.issue(dev),
     }
 
 

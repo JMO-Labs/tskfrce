@@ -17,9 +17,13 @@ import { KidPicker } from './KidPicker'
 import { PinPad } from './PinPad'
 import { KidWelcome } from './KidWelcome'
 import { CodeEntry } from './CodeEntry'
+import { installPlatform } from '../components/installPlatform'
 import { deviceKid, deviceToken, refreshKid, removedMsg, takeEnrollToken } from './kidDevice'
 
 type K = KidWhoami['kids'][number]
+
+const onIos = () =>
+  typeof navigator !== 'undefined' && installPlatform({ ua: navigator.userAgent, touch: navigator.maxTouchPoints > 1, standalone: false, secure: true, hasPrompt: false }) === 'ios'
 
 const Msg = ({ children }: { children: string }) => <p className="k-gate-msg">{children}</p>
 
@@ -215,11 +219,17 @@ function KidScreen() {
   else if (!whoami.data?.device)
     body = (
       <>
-        <Msg>This device isn&apos;t set up yet. Ask a parent to add it.</Msg>
+        <Msg>{onIos() ? 'Have a code from your welcome screen? Tap I have a code.' : "This device isn't set up yet. Ask a parent to add it."}</Msg>
         <CodeEntry onDone={resume} />
       </>
     )
-  else if (!kids.length) body = <Msg>No kid is set up on this device. Ask a parent to add one.</Msg>
+  else if (!kids.length)
+    body = (
+      <>
+        <Msg>No kid is set up on this device. Ask a parent to add one.</Msg>
+        <CodeEntry onDone={resume} />
+      </>
+    )
   else if (who?.has_pin)
     body = (
       <>
@@ -237,6 +247,7 @@ function KidScreen() {
             Not me
           </KBtn>
         )}
+        {!deviceToken() && <CodeEntry onDone={resume} />}
       </>
     )
   else if (!who)
@@ -244,6 +255,7 @@ function KidScreen() {
       <>
         <h1 className="k-disp">Who is this?</h1>
         <KidPicker kids={kids} onPick={pick} />
+        {!deviceToken() && <CodeEntry onDone={resume} />}
       </>
     )
   else

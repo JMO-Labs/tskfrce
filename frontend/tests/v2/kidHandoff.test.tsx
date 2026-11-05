@@ -105,6 +105,32 @@ describe('hand-off code', () => {
       expect(deviceToken()).toBeNull()
     })
 
+    test('network failure shows the reach text and keeps the input', async () => {
+      const box = await gate()
+      const base = fetchMock.getMockImplementation() as (u: string, i?: { method?: string }) => Promise<unknown>
+      fetchMock.mockImplementation(async (u: string, i?: { method?: string }) => {
+        if (String(u).endsWith('/kid/handoff')) throw new TypeError('offline')
+        return base(u, i)
+      })
+      await userEvent.type(box, 'AAAA-AAAA')
+      await userEvent.click(screen.getByRole('button', { name: 'Go' }))
+      expect(await screen.findByText("Can't reach your box. Try again.")).toBeInTheDocument()
+      expect(screen.getByPlaceholderText('XXXX-XXXX')).toHaveValue('AAAA-AAAA')
+    })
+
+    test('the input keeps its value after a 410', async () => {
+      const box = await gate()
+      expect(box).toHaveAttribute('maxlength', '32')
+      const base = fetchMock.getMockImplementation() as (u: string, i?: { method?: string }) => Promise<unknown>
+      fetchMock.mockImplementation(async (u: string, i?: { method?: string }) =>
+        String(u).endsWith('/kid/handoff') ? reply(410, { detail: GONE }) : base(u, i),
+      )
+      await userEvent.type(box, 'AAAA-AAAA')
+      await userEvent.click(screen.getByRole('button', { name: 'Go' }))
+      await screen.findByText(GONE)
+      expect(screen.getByPlaceholderText('XXXX-XXXX')).toHaveValue('AAAA-AAAA')
+    })
+
     test('429 shows the wait text', async () => {
       const box = await gate()
       const base = fetchMock.getMockImplementation() as (u: string, i?: { method?: string }) => Promise<unknown>
@@ -115,5 +141,54 @@ describe('hand-off code', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Go' }))
       expect(await screen.findByText('Too many tries. Wait a minute and try again.')).toBeInTheDocument()
     })
+  })
+})
+
+describe('code entry on every gate', () => {
+  test('iPhone not-set-up gate points at the code', async () => {
+    ua(IPHONE)
+    routes({ 'GET /kid/whoami': () => reply(200, { device: false, kids: [] }) })
+    renderKid()
+    expect(await screen.findByText('Have a code from your welcome screen? Tap I have a code.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'I have a code' })).toBeInTheDocument()
+  })
+
+  test('Android not-set-up gate keeps the old text', async () => {
+    ua(ANDROID)
+    routes({ 'GET /kid/whoami': () => reply(200, { device: false, kids: [] }) })
+    renderKid()
+    expect(await screen.findByText("This device isn't set up yet. Ask a parent to add it.")).toBeInTheDocument()
+  })
+
+  test('the no-kids gate offers it', async () => {
+    ua(ANDROID)
+    routes({ 'GET /kid/whoami': () => reply(200, { device: true, kids: [] }) })
+    renderKid()
+    expect(await screen.findByText(/No kid is set up/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'I have a code' })).toBeInTheDocument()
+  })
+
+  test('the picker and the PIN screen offer it', async () => {
+    ua(ANDROID)
+    const kids = [
+      { id: 3, full_name: 'Ana', avatar: '🦊', has_pin: true },
+      { id: 4, full_name: 'Bo', avatar: '🐻', has_pin: true },
+    ]
+    routes({ 'GET /kid/whoami': () => reply(200, { device: true, kids }) })
+    renderKid()
+    expect(await screen.findByText('Who is this?')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'I have a code' })).toBeInTheDocument()
+    await userEvent.click(screen.getByText('Ana'))
+    expect(await screen.findByText(/enter your PIN/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'I have a code' })).toBeInTheDocument()
+  })
+
+  test('the removed-phone gate offers it', async () => {
+    ua(ANDROID)
+    localStorage.setItem('task4ce-kid-removed', 'This phone was removed. Ask a parent for a new code.')
+    routes({ 'GET /kid/whoami': () => reply(200, { device: false, kids: [] }) })
+    renderKid()
+    expect(await screen.findByText(/phone was removed/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'I have a code' })).toBeInTheDocument()
   })
 })
