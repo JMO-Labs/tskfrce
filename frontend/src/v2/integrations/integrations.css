@@ -32,3 +32,6 @@
 [data-look='parent'] .p-needs-via { font-weight: 600; }
 [data-look='parent'] .ig-tags .p-chip { text-transform: none; letter-spacing: 0; font-size: 12.5px; }
 [data-look='parent'] .ig-tags + .ig-cap { margin-top: 14px; }
+[data-look='parent'] .ig-scope { margin: 10px 0 0; }
+[data-look='parent'] .ig-trust .pn-help[data-warn] { color: var(--p-ambink); font-weight: 600; }
+[data-look='parent'] .ig-flow > .ig-meta { margin: -8px 0 0; }

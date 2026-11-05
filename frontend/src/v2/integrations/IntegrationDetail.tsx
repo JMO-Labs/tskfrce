@@ -63,7 +63,6 @@ export function IntegrationDetail({ id, onClose }: { id: number; onClose: () => 
     setTrust({ was: d.trusted, val: trusted })
     patch.mutate({ trusted }, { onError: (e) => (setTrust(null), toastFail(errorText(e))) })
   }
-  const byLine = [d.developer && `By ${d.developer}`, d.domain && `Talks to ${d.domain}`].filter(Boolean).join(' · ')
 
   return (
     <div className="ig-flow">
@@ -71,8 +70,10 @@ export function IntegrationDetail({ id, onClose }: { id: number; onClose: () => 
       <section className="pn-card ig-flow" aria-label={d.name}>
         <div className="ig-top">
           <span className="ig-icon" aria-hidden="true"><Icon name={d.icon} size={22} /></span>
-          <div className="pn-t2"><h3 className="ig-h">{d.name}</h3>{byLine && <small>{byLine}</small>}</div>
+          <h3 className="ig-h">{d.name}</h3>
         </div>
+        {d.developer && <p className="ig-meta"><Icon name="code" size={16} />By {d.developer}</p>}
+        {d.domain && <p className="ig-meta"><Icon name="public" size={16} />Data goes to: {d.domain}</p>}
         {d.status === 'paused' && (
           <div className="ig-banner" data-tone="amb" role="status">
             <Icon name="pause_circle" size={20} />
@@ -104,7 +105,7 @@ export function IntegrationDetail({ id, onClose }: { id: number; onClose: () => 
             onChange={(e) => setTrusted(e.currentTarget.checked)}
             aria-describedby="ig-trust-line"
           />
-          <p id="ig-trust-line" className="pn-help" aria-live="polite">
+          <p id="ig-trust-line" className="pn-help" data-warn={on || undefined} aria-live="polite">
             {on ? 'Its chore check-offs will count right away, without your OK.' : 'Its chore check-offs wait in Needs you.'}
           </p>
         </section>
@@ -138,7 +139,7 @@ export function IntegrationDetail({ id, onClose }: { id: number; onClose: () => 
       <div className="pn-row">
         <button type="button" className="p-btn" data-variant="red" disabled={remove.isPending} onClick={() => setAsking(true)}>
           <Icon name="delete" size={16} />
-          Remove
+          {remove.isPending ? 'Removing…' : 'Remove'}
         </button>
       </div>
       <ConfirmDelete

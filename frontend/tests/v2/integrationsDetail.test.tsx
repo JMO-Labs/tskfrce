@@ -33,7 +33,8 @@ beforeEach(() => serve())
 describe('IntegrationDetail', () => {
   test('header, linked kids and log', async () => {
     wrap(<IntegrationDetail id={7} onClose={() => {}} />)
-    expect(await screen.findByText('By Acme · Talks to demo.example.com')).toBeInTheDocument()
+    expect(await screen.findByText('By Acme')).toBeInTheDocument()
+    expect(screen.getByText('Data goes to: demo.example.com')).toBeInTheDocument()
     expect(screen.getByText('Sam')).toBeInTheDocument()
     expect(await screen.findByText('Rejected')).toBeInTheDocument()
     expect(screen.getByText(/Not linked/)).toBeInTheDocument()
