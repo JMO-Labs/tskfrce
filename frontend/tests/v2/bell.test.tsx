@@ -22,10 +22,12 @@ const item = (id: number, over: object = {}) => ({
 })
 const serve = (items: object[], unread = items.length) =>
   apiMock.mockImplementation(async (p) => (p === '/notifications' ? { items, unread, has_more: false } : undefined))
+// env="test": jsdom has no layout, so floating-ui's hide middleware sees every rect as clipped and
+// sets display:none on the popover a tick after it opens; role queries then raced that update.
 const wrap = (ui: React.ReactElement) =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MantineProvider>{ui}</MantineProvider>
+      <MantineProvider env="test">{ui}</MantineProvider>
     </QueryClientProvider>,
   )
 const posts = (p: string) => apiMock.mock.calls.filter((c) => c[0] === p && c[1]?.method === 'POST')
@@ -45,6 +47,9 @@ describe('Bell', () => {
     wrap(<Bell />)
     await userEvent.click(screen.getByRole('button', { name: /Notifications/ }))
     expect(await screen.findByRole('status', { name: 'Loading' })).toBeTruthy()
+    // still visible once floating-ui has positioned the popover (was the flake: see wrap)
+    await new Promise((r) => setTimeout(r, 100))
+    expect(screen.getByRole('status', { name: 'Loading' })).toBeTruthy()
     expect(screen.queryByText('No notifications')).toBeNull()
   })
 
@@ -52,7 +57,7 @@ describe('Bell', () => {
     apiMock.mockRejectedValue(new Error('down'))
     wrap(<Bell />)
     await userEvent.click(screen.getByRole('button', { name: /Notifications/ }))
-    expect(await screen.findByRole('button', { name: /Try again/, hidden: true })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /Try again/ })).toBeTruthy()
     expect(screen.queryByText('No notifications')).toBeNull()
   })
 
@@ -255,7 +260,9 @@ describe('Bell', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Notifications/ }))
     await userEvent.click(await screen.findByRole('button', { name: /Ask Mia/, hidden: true }))
     expect(openChat).toHaveBeenCalledWith('private', '4')
-    await userEvent.click(screen.getByRole('button', { name: /^View$/, hidden: true }))
+    // Ask closes the bell; reopen it for View
+    await userEvent.click(screen.getByRole('button', { name: /Notifications/ }))
+    await userEvent.click(await screen.findByRole('button', { name: /^View$/ }))
     expect(push).toHaveBeenCalledWith('/devices?item=9')
   })
 
