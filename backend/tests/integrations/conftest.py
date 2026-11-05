@@ -10,7 +10,7 @@ from app.models.chores import ChoreRun
 from app.models.integration import IntegrationChore, IntegrationInstall, IntegrationKid
 from tests.conftest import _make_user
 from tests.factories import make_chore
-from tests.integrations.int_helpers import DEMO, TEST_KEY, Signer, sign_env
+from tests.integrations.int_helpers import DEMO, TEST_KEY, Signer, sign_env, streamed
 
 
 @pytest.fixture(autouse=True)
@@ -75,15 +75,22 @@ def other_kid(db):
 
 @pytest.fixture(autouse=True)
 def resolve_to(monkeypatch):
-    """Stub DNS for app.integrations.net: resolve_to(*ips) sets the answers (no real DNS)."""
+    """Stub net's resolver: resolve_to(*ips) sets the answers; IP literals resolve to
+    themselves, as with real getaddrinfo. Only net._getaddrinfo is patched (no real DNS)."""
+    import ipaddress
+
     from app.integrations import net
 
     answers = ["93.184.216.34"]
 
-    def fake(host, port, *a, **kw):
-        return [(None, None, None, "", (ip, port)) for ip in answers]
+    def fake(host, port):
+        try:
+            ips = [str(ipaddress.ip_address(host))]
+        except ValueError:
+            ips = answers
+        return [(None, None, None, "", (ip, port)) for ip in ips]
 
-    monkeypatch.setattr(net.socket, "getaddrinfo", fake)
+    monkeypatch.setattr(net, "_getaddrinfo", fake)
 
     def set_answers(*ips):
         answers[:] = ips
@@ -100,7 +107,9 @@ class _Seen:
 
     def _handle(self, req):
         self.url, self.headers, self.extensions = req.url, req.headers, req.extensions
-        return httpx.Response(200, headers={"content-type": "application/json"}, content=b"{}")
+        return httpx.Response(
+            200, headers={"content-type": "application/json"}, stream=streamed(b"{}")
+        )
 
 
 @pytest.fixture

@@ -11,7 +11,7 @@ from app.integrations.net import (
     is_public,
     resolve_pinned,
 )
-from tests.integrations.int_helpers import reply
+from tests.integrations.int_helpers import reply, streamed
 
 
 @pytest.mark.parametrize(
@@ -42,6 +42,17 @@ def test_private_targets_blocked(resolve_to, ip):
         "ff0e::1",  # IPv6 global-scope multicast
         "240.0.0.1",  # reserved
         "::",  # unspecified
+        "64:ff9b::c0a8:101",  # NAT64 of 192.168.1.1
+        "64:ff9b:1::c0a8:101",  # local-use NAT64 of 192.168.1.1
+        "::127.0.0.1",  # IPv4-compatible loopback
+        "::a00:1",  # IPv4-compatible 10.0.0.1
+        "fec0::1",  # IPv6 site-local
+        "2002:c0a8:101::1",  # 6to4 of 192.168.1.1
+        "2001:0:4136:e378:8000:63bf:80ff:fffe",  # Teredo, client 127.0.0.1
+        "2001:db8::1",  # IPv6 documentation
+        "198.18.0.1",  # benchmarking
+        "255.255.255.255",  # broadcast
+        "192.0.2.1",  # documentation
     ],
 )
 def test_hostname_resolving_to_blocked_range(resolve_to, ip):
@@ -159,11 +170,15 @@ def test_transport_error_is_fetch_error():
 
 def test_wall_clock_deadline(monkeypatch):
     """A server trickling bytes past the total budget is cut off mid-stream."""
-    from app.integrations import net
+    clock = _clock(monkeypatch)
 
-    ticks = iter([0.0])  # first call sets the deadline; every later call is past it
-    monkeypatch.setattr(net.time, "monotonic", lambda: next(ticks, 10.0))
-    stream = _Chunks([b"a", b"b", b"c"])
+    def drip():
+        yield b"a"
+        clock[0] = 10.0
+        yield b"b"
+        yield b"c"
+
+    stream = _Chunks(drip())
     with pytest.raises(FetchError, match="timeout"):
         fetch(
             "GET",
@@ -180,6 +195,128 @@ class _Chunks(httpx.SyncByteStream):
         yield from self.parts
 
 
+def _clock(monkeypatch):
+    """Fake monotonic clock for net; set clock[0] to move time."""
+    from app.integrations import net
+
+    clock = [0.0]
+    monkeypatch.setattr(net.time, "monotonic", lambda: clock[0])
+    return clock
+
+
 def test_dev_policy_allows_loopback_http(resolve_to):
     resolve_to("127.0.0.1")
     assert fetch("GET", "http://localhost:8080/", policy=DEV, transport=reply(200)).status == 200
+
+
+@pytest.mark.parametrize(
+    "ip",
+    [
+        "93.184.216.34",
+        "2606:2800:220:1:248:1893:25c8:1946",
+        "64:ff9b::5db8:d822",  # NAT64 of a public address (DNS64 networks)
+        "2002:5db8:d822::1",  # 6to4 of a public address
+    ],
+)
+def test_public_addresses_allowed(ip):
+    assert is_public(ipaddress.ip_address(ip))
+
+
+def test_ip_literal_url_checked_for_real():
+    with pytest.raises(BlockedError):
+        fetch("GET", "https://10.0.0.1/")
+    with pytest.raises(BlockedError):
+        fetch("GET", "https://[::1]/")
+
+
+def test_resolver_stub_does_not_touch_global_socket():
+    import socket
+
+    from app.integrations import net
+
+    assert socket.getaddrinfo is net.socket.getaddrinfo
+    assert socket.getaddrinfo.__module__ == "socket"
+
+
+def test_compressed_reply_refused():
+    import gzip
+
+    bomb = gzip.compress(b"x" * 10_000_000)
+    t = reply(200, headers={"content-encoding": "gzip"}, content=bomb)
+    with pytest.raises(FetchError, match="content-encoding"):
+        fetch("GET", "https://svc.example/", transport=t)
+
+
+def test_identity_encoding_allowed():
+    t = reply(200, headers={"content-encoding": "identity"}, content=b"ok")
+    assert fetch("GET", "https://svc.example/", transport=t).body == b"ok"
+
+
+def test_dns_bounded_by_budget(monkeypatch):
+    import threading
+
+    from app.integrations import net
+
+    release = threading.Event()
+    monkeypatch.setattr(net, "_getaddrinfo", lambda host, port: release.wait(5) and [])
+    try:
+        with pytest.raises(FetchError, match="timeout"):
+            fetch("GET", "https://svc.example/", timeout=0.05)
+    finally:
+        release.set()
+
+
+def test_deadline_checked_after_resolve(monkeypatch, seen):
+    from app.integrations import net
+
+    clock = _clock(monkeypatch)
+
+    def slow_dns(host, port):
+        clock[0] = 6.0
+        return [(None, None, None, "", ("93.184.216.34", port))]
+
+    monkeypatch.setattr(net, "_getaddrinfo", slow_dns)
+    with pytest.raises(FetchError, match="timeout"):
+        fetch("GET", "https://svc.example/", transport=seen.transport)
+    assert seen.url is None  # never sent
+
+
+def test_deadline_checked_after_send(monkeypatch):
+    clock = _clock(monkeypatch)
+
+    def slow(req):
+        clock[0] = 6.0
+        return httpx.Response(200, stream=streamed(b"ok"))
+
+    with pytest.raises(FetchError, match="timeout"):
+        fetch("GET", "https://svc.example/", transport=httpx.MockTransport(slow))
+
+
+def test_http_timeout_is_remaining_budget(monkeypatch, seen):
+    from app.integrations import net
+
+    clock = _clock(monkeypatch)
+
+    def slow_dns(host, port):
+        clock[0] = 3.0
+        return [(None, None, None, "", ("93.184.216.34", port))]
+
+    monkeypatch.setattr(net, "_getaddrinfo", slow_dns)
+    fetch("GET", "https://svc.example/", transport=seen.transport)
+    assert set(seen.extensions["timeout"].values()) == {2.0}
+
+
+@pytest.mark.parametrize("url", ["https://user:pw@svc.example/", "https://user@svc.example/"])
+def test_userinfo_refused(url):
+    with pytest.raises(BlockedError, match="credentials"):
+        fetch("GET", url)
+
+
+@pytest.mark.parametrize(
+    "url",
+    ["https://svc.example:abc/", "https://[::1/", "https://\x00bad/"],
+)
+def test_malformed_url_is_fetch_error(resolve_to, url):
+    resolve_to("93.184.216.34")
+    with pytest.raises(FetchError):
+        fetch("GET", url, transport=reply(200))

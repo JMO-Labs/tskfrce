@@ -100,8 +100,21 @@ def other_signer() -> Signer:
     return Signer(Ed25519PrivateKey.from_private_bytes(bytes(range(32))))
 
 
+def streamed(content: bytes):
+    """A wire-like body stream (httpx pre-reads content=, which a real transport never does)."""
+    import httpx
+
+    class _Body(httpx.SyncByteStream):
+        def __iter__(self):
+            yield content
+
+    return _Body()
+
+
 def reply(status, headers=None, content=b""):
     """A MockTransport that answers every request with the given status, headers and body."""
     import httpx
 
-    return httpx.MockTransport(lambda req: httpx.Response(status, headers=headers, content=content))
+    return httpx.MockTransport(
+        lambda req: httpx.Response(status, headers=headers, stream=streamed(content))
+    )
