@@ -85,10 +85,14 @@ async function toFamily(user: ReturnType<typeof userEvent.setup>) {
   await user.type(await screen.findByLabelText('Family name'), 'The Sams')
 }
 
-/** Skip the current step; step 4 has no Skip without kids (Next does the same). */
+/** Skip the current step; fails if there is no Skip button. */
 const skipStep = async (user: ReturnType<typeof userEvent.setup>) => {
-  const [b] = await screen.findAllByRole('button', { name: /^(Skip|Next)$/ }).then((all) => [all.find((x) => x.textContent === 'Skip') ?? all[0]])
-  await user.click(b)
+  await user.click(await screen.findByRole('button', { name: 'Skip' }))
+}
+/** Step 4 with no kids has no Skip, only Next. */
+const nextNoSkip = async (user: ReturnType<typeof userEvent.setup>) => {
+  expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull()
+  await user.click(await screen.findByRole('button', { name: 'Next' }))
 }
 
 describe('setup wizard', () => {
@@ -128,13 +132,35 @@ describe('setup wizard', () => {
     expect(link).toHaveAttribute('href', '/login')
   })
 
+  test('Skip is on steps 4 (with kids) to 8 and off step 4 without kids', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await finishAccount(user)
+    await user.click(screen.getByRole('button', { name: 'Skip' })) // 3 → 4, no kids yet
+    expect(await screen.findByText('Add a kid first, or tap Next to go on.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+    await user.type(await screen.findByLabelText('Name'), 'Ava')
+    await user.click(screen.getByRole('button', { name: 'Add kid' }))
+    await screen.findByText(/Ava/)
+    await user.click(screen.getByRole('button', { name: 'Next' })) // 3 → 4 with a kid
+    await screen.findByRole('button', { name: 'Show code for Ava' })
+    for (let step = 4; step <= 7; step++) {
+      expect(screen.getByRole('button', { name: 'Skip' })).toBeInTheDocument() // step 4..7
+      await skipStep(user)
+    }
+    expect(await screen.findByRole('button', { name: 'Finish' })).toBeInTheDocument() // step 8
+  })
+
   test('skipping steps 3 to 7 reaches Finish', async () => {
     const user = userEvent.setup()
     wrap()
     await toFamily(user)
     await user.click(screen.getByRole('button', { name: 'Next' }))
     await waitFor(() => expect(loginWithToken).toHaveBeenCalledWith('t', 'r', 1800))
-    for (let i = 0; i < 6; i++) await skipStep(user)
+    await skipStep(user) // 3 → 4
+    await nextNoSkip(user) // 4 → 5, no kids
+    for (let i = 0; i < 4; i++) await skipStep(user) // 5 → 8
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Finish' })).toBeNull()
     await user.click(await screen.findByRole('button', { name: 'Go to Today' }))
@@ -221,7 +247,9 @@ describe('setup wizard', () => {
 
   const toHours = async (user: ReturnType<typeof userEvent.setup>) => {
     await finishAccount(user)
-    for (let i = 0; i < 4; i++) await skipStep(user)
+    await skipStep(user) // 3 → 4
+    await nextNoSkip(user) // 4 → 5
+    for (let i = 0; i < 2; i++) await skipStep(user) // 5 → 7
     await screen.findByText('Allowed hours')
   }
   const rowText = (name: string) => screen.getByRole('button', { name: `Edit ${name}` }).parentElement!.textContent
@@ -310,7 +338,7 @@ describe('setup wizard', () => {
     await finishAccount(user)
     const puts = () => apiMock.mock.calls.filter((c) => c[0] === '/setup/step').map((c) => (c[1] as { body: unknown }).body)
     await skipStep(user) // 3 → 4
-    await skipStep(user) // 4 → 5
+    await nextNoSkip(user) // 4 → 5, no kids
     await waitFor(() => expect(puts()).toEqual([{ step: 4 }, { step: 5 }]))
     for (let i = 0; i < 3; i++) await skipStep(user) // → 8
     await user.click(await screen.findByRole('button', { name: 'Finish' }))

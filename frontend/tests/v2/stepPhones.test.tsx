@@ -65,6 +65,6 @@ describe('StepPhones', () => {
 
   test('no kids', () => {
     view([])
-    expect(screen.getByText('Add a kid first, or skip this step.')).toBeInTheDocument()
+    expect(screen.getByText('Add a kid first, or tap Next to go on.')).toBeInTheDocument()
   })
 })

@@ -38,7 +38,7 @@ export function StepPhones({ kids }: { kids: Kid[] }) {
     return (
       <div className={styles.tip}>
         <Icon name="info" size={20} />
-        <div>Add a kid first, or skip this step.</div>
+        <div>Add a kid first, or tap Next to go on.</div>
       </div>
     )
   return (
