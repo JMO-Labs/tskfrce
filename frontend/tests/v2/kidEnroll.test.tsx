@@ -110,6 +110,24 @@ describe('kid enrollment', () => {
     expect(screen.queryByText('Who is this?')).toBeNull()
   })
 
+  test('retry on a revoked phone shows the removed gate', async () => {
+    window.history.replaceState(null, '', '/kid#enroll=tok')
+    let status = 503
+    routes({
+      'POST /kid/enroll': () => reply(200, enrolled),
+      'GET /kid/today': () => reply(401, { detail: 'expired' }),
+      'GET /kid/celebrations': () => reply(401, { detail: 'expired' }),
+      'POST /kid/session': () => reply(status, { detail: 'This phone was removed. Ask a parent for a new code.' }),
+    })
+    renderKid()
+    await userEvent.click(await screen.findByRole('button', { name: 'Start' }))
+    await screen.findByRole('button', { name: 'Retry' })
+    status = 401
+    await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(await screen.findByText('This phone was removed. Ask a parent for a new code.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+  })
+
   test('a removed-phone message survives a reload', async () => {
     saveDevice('dev')
     routes({ 'POST /kid/session': () => reply(401, { detail: 'This phone was removed. Ask a parent for a new code.' }) })
@@ -137,7 +155,6 @@ describe('kid enrollment', () => {
     saveDevice('dev')
     localStorage.setItem('refresh_token', 'r')
     routes({ 'GET /today': () => reply(401, { detail: 'nope' }), 'POST /auth/refresh': () => reply(401, { detail: 'bad' }) })
-    routes({ 'GET /today': () => reply(401, { detail: 'nope' }) })
     await expect(api('/today')).rejects.toThrow()
     await waitFor(() => expect(paths()).not.toContain('/kid/session'))
   })

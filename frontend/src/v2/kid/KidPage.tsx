@@ -165,15 +165,26 @@ function KidScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // session expired: an enrolled phone keeps its device sign-in and offers a retry; anyone else starts over
   const exit = () => {
     tried.current = false
     setPicked(null)
-    const keep = !!deviceToken()
-    setStuck(keep)
-    logout(keep)
+    logout()
   }
-  const retry = () => void refreshKid().then((ok) => ok && (setStuck(false), resume()))
+  // session expired: an enrolled phone keeps its device sign-in and offers a retry; anyone else starts over
+  const expire = () => {
+    const keep = !!deviceToken()
+    if (!keep) return exit()
+    tried.current = false
+    setPicked(null)
+    setStuck(true)
+    logout(true)
+  }
+  // a 401 clears the device: leaving "stuck" lets the removed-phone gate show
+  const retry = () =>
+    void refreshKid().then((ok) => {
+      if (ok) resume()
+      if (ok || !deviceToken()) setStuck(false)
+    })
   const pick = (k: K) => {
     setPicked(k)
     if (!k.has_pin) login.mutate({ kid_id: k.id })
@@ -238,7 +249,7 @@ function KidScreen() {
         <KidWelcome name={enroll.data.kid.full_name} avatar={enroll.data.kid.avatar} alert={enroll.data.alert} onStart={() => setWelcomed(true)} />
       </Gate>
     )
-  if (authed) return <Session name={dk?.full_name ?? who?.full_name ?? undefined} avatar={dk?.avatar ?? who?.avatar} kidId={dk?.id ?? who?.id ?? kidId} onExit={exit} canSwitch={kids.length > 1 && !deviceToken()} />
+  if (authed) return <Session name={dk?.full_name ?? who?.full_name ?? undefined} avatar={dk?.avatar ?? who?.avatar} kidId={dk?.id ?? who?.id ?? kidId} onExit={expire} canSwitch={kids.length > 1 && !deviceToken()} />
   return (
     <Gate>{body}</Gate>
   )
