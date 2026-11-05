@@ -70,6 +70,20 @@ def test_tampered_stored_manifest_pauses(db, install):
     assert install.status == "paused" and install.paused_reason == "bad manifest"
 
 
+def test_bad_manifest_pause_tells_parents_and_drops_widgets(db, install):
+    from app.integrations import widget_service
+    from app.models.inbox import Notification
+
+    widget_service._cache[(install.id, "parent", None)] = (9e12, [{"id": "w"}], set())
+    install.manifest = json.dumps({"payload": "e30=", "sig": "AAAA"})
+    install.next_poll_at = NOW
+    db.commit()
+    poll_due(db, NOW)
+    assert db.query(Notification).filter_by(kind="integration_paused").count() == 1
+    assert widget_service.button(install.id, "parent", None, "w", "b") is None
+    assert not [k for k in widget_service._cache if k[0] == install.id]
+
+
 def test_interval_never_below_60(db, install):
     assert poller.interval(install) >= 60
 

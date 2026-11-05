@@ -26,7 +26,7 @@ def _poll(db: Session, install: IntegrationInstall, now: datetime) -> None:
     try:
         secs = interval(install)
     except Exception:
-        install.status, install.paused_reason = "paused", "bad manifest"
+        health.pause(db, install, "bad manifest")
         install.next_poll_at = now + timedelta(seconds=MIN_INTERVAL)
         db.commit()
         return
