@@ -1,6 +1,7 @@
 """Fetch, sanitize and cache an install's widgets. Image URLs are rewritten to the box proxy."""
 
 import json
+import threading
 import time
 from urllib.parse import quote
 
@@ -15,6 +16,7 @@ TTL = 60
 
 # (install_id, surface, kid_id) -> (expires_at, widgets, original image URLs)
 _cache: dict[tuple[int, str, int | None], tuple[float, list[dict], set[str]]] = {}
+_lock = threading.Lock()  # sync routes run in a threadpool
 
 
 def _proxy(install_id: int, b: dict) -> None:
@@ -49,18 +51,21 @@ def get(
     """The install's clean widgets for surface (and kid), cached for TTL seconds. The caller
     commits (health may have changed)."""
     key = (install.id, surface, kid_id)
-    hit = _cache.get(key)
+    with _lock:
+        hit = _cache.get(key)
     if hit and hit[0] > now:
         return hit[1]
-    widgets, images = _fetch(db, install, surface, kid_id)
-    _cache[key] = (now + TTL, widgets, images)
+    widgets, images = _fetch(db, install, surface, kid_id)  # outside the lock: network
+    with _lock:
+        _cache[key] = (now + TTL, widgets, images)
     return widgets
 
 
 def image_allowed(install_id: int, url: str) -> bool:
     """True when a live cache entry of the install shows this image URL."""
     now = time.time()
-    return any(k[0] == install_id and v[0] > now and url in v[2] for k, v in _cache.items())
+    with _lock:
+        return any(k[0] == install_id and v[0] > now and url in v[2] for k, v in _cache.items())
 
 
 def _find(b: dict, button_id: str) -> dict | None:
@@ -76,7 +81,8 @@ def button(
     install_id: int, surface: str, kid_id: int | None, widget_id: str, button_id: str
 ) -> dict | None:
     """The button as last shown on this surface, or None."""
-    hit = _cache.get((install_id, surface, kid_id))
+    with _lock:
+        hit = _cache.get((install_id, surface, kid_id))
     if not hit or hit[0] <= time.time():
         return None
     for w in hit[1]:
@@ -87,5 +93,6 @@ def button(
 
 def forget(install_id: int) -> None:
     """Drop every cached widget of the install."""
-    for k in [k for k in _cache if k[0] == install_id]:
-        del _cache[k]
+    with _lock:
+        for k in [k for k in _cache if k[0] == install_id]:
+            del _cache[k]

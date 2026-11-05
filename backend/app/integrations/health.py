@@ -39,6 +39,9 @@ def fail(db: Session, install: IntegrationInstall, reason: str) -> None:
     if install.failures >= FAIL_LIMIT and install.status == "active":
         install.status = "paused"
         install.paused_reason = reason[:200]
+        from app.integrations import widget_service  # widget_service imports health
+
+        widget_service.forget(install.id)
         inbox.notify_parents(
             db,
             "integration_paused",

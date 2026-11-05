@@ -12,6 +12,7 @@ def _grant(*perms) -> Grant:
 
 DECLS = [
     WidgetDecl(id="w1", surface="parent", title="One"),
+    WidgetDecl(id="w2", surface="parent", title="Two"),
     WidgetDecl(id="kid_only", surface="kid", title="Kid"),
     WidgetDecl(id="kid_w", surface="kid", title="Kid w"),
 ]
@@ -58,6 +59,12 @@ def test_granted_button_kept_on_parent():
         {"type": "progress", "label": "p", "value": 1, "max": 0},
         {"type": "button", "id": "Bad-Id", "label": "x", "action": "chore.complete"},
         {"type": "button", "id": "b", "label": "x", "action": "device.unlock"},
+        {"type": "text", "text": "x", "link": "https://ex.example/" + "a" * 2048},
+        {"type": "image", "url": "https://cdn.example/" + "a" * 2048, "alt": ""},
+        {"type": "progress", "label": "p", "value": 5, "max": 4},
+        {"type": "progress", "label": "p", "value": float("nan"), "max": 4},
+        {"type": "progress", "label": "p", "value": 1, "max": float("inf")},
+        card(button("b", "chore.complete"), card(button("b", "chore.complete"))),
     ],
 )
 def test_unsafe_blocks_rejected(bad):
@@ -81,7 +88,7 @@ def test_undeclared_or_wrong_surface_dropped():
 
 
 def test_invalid_widget_dropped_and_logged(caplog):
-    out, _ = sanitize([W("w1", {"type": "html"}), W("w1", text("ok"))], DECLS, "parent", GRANT)
+    out, _ = sanitize([W("w1", {"type": "html"}), W("w2", text("ok"))], DECLS, "parent", GRANT)
     assert [w["root"]["text"] for w in out] == ["ok"]
     assert "dropped widget" in caplog.text
 
@@ -227,3 +234,69 @@ def test_install_without_widget_perm_is_skipped(client, parent_headers, install,
 
 def test_kids_cannot_read_parent_widgets(client, kid_headers):
     assert client.get(URL, headers=kid_headers).status_code in (401, 403)
+
+
+def test_progress_at_max_is_fine():
+    p = {"type": "progress", "label": "p", "value": 4, "max": 4}
+    assert sanitize([W("w1", p)], DECLS, "parent", GRANT)[0][0]["root"]["value"] == 4
+
+
+def test_first_widget_per_id_wins():
+    out, _ = sanitize(
+        [W("w1", text("first")), W("w1", text("second")), W("w2", text("other"))],
+        DECLS,
+        "parent",
+        GRANT,
+    )
+    assert [(w["id"], w["root"]["text"]) for w in out] == [("w1", "first"), ("w2", "other")]
+
+
+def test_pause_forgets_widgets(db, widget_install):
+    from app.integrations import health, widget_service
+
+    widget_service._cache[(widget_install.id, "parent", None)] = (1e18, [], {"https://x.example/a"})
+    for _ in range(health.FAIL_LIMIT - 1):
+        health.fail(db, widget_install, "bad reply")
+    assert widget_service.image_allowed(widget_install.id, "https://x.example/a")
+    health.fail(db, widget_install, "bad reply")
+    assert widget_install.status == "paused" and not widget_service._cache
+
+
+def test_cache_is_thread_safe(monkeypatch):
+    """Readers and forget() run while another thread fills the cache."""
+    import sys
+    import threading
+    import time
+    from types import SimpleNamespace
+
+    from app.integrations import widget_service
+
+    monkeypatch.setattr(widget_service, "_fetch", lambda db, i, s, k: ([], {"u"}))
+    for n in range(2000):  # long iterations make a mid-loop insert likely
+        widget_service._cache[(n, "parent", None)] = (1e18, [], {"u"})
+    old = sys.getswitchinterval()
+    sys.setswitchinterval(1e-6)
+    stop, errors = threading.Event(), []
+
+    def fill():
+        n = 0
+        try:
+            while not stop.is_set():
+                n += 1
+                widget_service.get(None, SimpleNamespace(id=9999), "kid", n, time.time())
+        except Exception as e:  # pragma: no cover - only on a race
+            errors.append(e)
+
+    t = threading.Thread(target=fill)
+    t.start()
+    try:
+        for _ in range(100):
+            widget_service.image_allowed(7, "nope")
+            widget_service.forget(-1)
+    except RuntimeError as e:  # dictionary changed size during iteration
+        errors.append(e)
+    finally:
+        stop.set()
+        t.join()
+        sys.setswitchinterval(old)
+    assert not errors

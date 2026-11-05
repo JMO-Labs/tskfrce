@@ -4,7 +4,14 @@ import logging
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationError
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    model_validator,
+)
 
 from app.integrations.client import ProtocolError
 from app.integrations.manifest import WidgetDecl
@@ -24,7 +31,7 @@ def _https(v: str) -> str:
     return v
 
 
-Https = Annotated[str, AfterValidator(_https)]
+Https = Annotated[str, Field(max_length=2048), AfterValidator(_https)]
 
 
 def Short(n: int):  # noqa: N802 - reads as a type
@@ -32,7 +39,7 @@ def Short(n: int):  # noqa: N802 - reads as a type
 
 
 class _B(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
 
 
 class Card(_B):
@@ -65,6 +72,12 @@ class Progress(_B):
     value: float = Field(ge=0)
     max: float = Field(gt=0)
 
+    @model_validator(mode="after")
+    def _in_range(self):
+        if self.value > self.max:  # rejected, not clamped: the service sent a wrong bar
+            raise ValueError("value must not exceed max")
+        return self
+
 
 class Image(_B):
     type: Literal["image"]
@@ -90,15 +103,19 @@ class Widget(_B):
     root: Block
 
 
-def _size(b, depth: int = 1) -> tuple[int, int]:
-    """(deepest level, block count) of the tree under b."""
-    if not isinstance(b, Card):
-        return depth, 1
-    deep, n = depth, 1
-    for c in b.children:
-        d, k = _size(c, depth + 1)
-        deep, n = max(deep, d), n + k
-    return deep, n
+def _walk(b, depth: int = 1):
+    """Every (depth, block) of the tree under b, root at depth 1."""
+    yield depth, b
+    for c in b.children if isinstance(b, Card) else ():
+        yield from _walk(c, depth + 1)
+
+
+def _shape_error(root) -> str | None:
+    nodes = list(_walk(root))
+    if max(d for d, _ in nodes) > MAX_DEPTH or len(nodes) > MAX_BLOCKS:
+        return "too deep or too big"
+    ids = [b.id for _, b in nodes if isinstance(b, Button)]
+    return "repeated button id" if len(ids) != len(set(ids)) else None
 
 
 def _prune(b, ok_actions: set[str], images: set[str]):
@@ -112,18 +129,22 @@ def _prune(b, ok_actions: set[str], images: set[str]):
     return b
 
 
-def _clean(w, declared: set[str], ok_actions: set[str], images: set[str]) -> dict | str:
-    """The clean widget, or why it was dropped."""
+def _clean(
+    w, declared: set[str], claimed: set[str], ok_actions: set[str], images: set[str]
+) -> dict | str:
+    """The clean widget, or why it was dropped. The first widget with an id claims it."""
     wid = w.get("id") if isinstance(w, dict) else None
     if not isinstance(wid, str) or wid not in declared:
         return "not declared for this surface"
+    if wid in claimed:
+        return "repeated widget id"
+    claimed.add(wid)
     try:
         widget = Widget.model_validate(w)
     except ValidationError as e:
         return f"invalid ({e.error_count()} errors)"
-    deep, n = _size(widget.root)
-    if deep > MAX_DEPTH or n > MAX_BLOCKS:
-        return "too deep or too big"
+    if err := _shape_error(widget.root):
+        return err
     seen: set[str] = set()
     widget.root = _prune(widget.root, ok_actions, seen)
     if widget.root is None:
@@ -145,8 +166,9 @@ def sanitize(
         ok_actions &= KID_BUTTON_ACTIONS
     out: list[dict] = []
     images: set[str] = set()
+    claimed: set[str] = set()
     for w in raw:
-        r = _clean(w, declared, ok_actions, images)
+        r = _clean(w, declared, claimed, ok_actions, images)
         if isinstance(r, str):
             wid = w.get("id") if isinstance(w, dict) else None
             log.warning("integration %s: dropped widget %.40r: %s", grant.install_id, wid, r)
