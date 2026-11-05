@@ -1,5 +1,6 @@
 """Apply integration actions: grant check, idempotent audit, then the handler."""
 
+import logging
 import re
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -13,23 +14,21 @@ from app.integrations import audit, store
 from app.integrations.audit import ActionResult
 from app.integrations.permissions import Denied, Grant, Origin, check_action
 from app.integrations.protocol import KEY_PATTERN, Action, parse_action
-from app.models.chores import ChoreAssignment, ChoreRun
+from app.models.chores import Chore, ChoreAssignment, ChoreRun
 from app.models.integration import IntegrationInstall
 from app.models.user import User
 from app.services import chore_actions, inbox
 from app.services import chores as svc
 from app.services.chat_extras import first_name
 
+log = logging.getLogger(__name__)
+
 Outcome = tuple[str, str | None, dict]  # result, reason, audit refs
 Handler = Callable[[Session, IntegrationInstall, Grant, Action, bool], Outcome]
 
 
-def _chore_complete(
-    db: Session, install: IntegrationInstall, grant: Grant, a: Action, needs_approval: bool
-) -> Outcome:
-    now = datetime.now(UTC).replace(tzinfo=None)
-    refs = {"kid_id": a.kid_id, "chore_id": a.chore_id, "created_at": now}
-    run = (
+def _todays_run(db: Session, a: Action, now: datetime) -> ChoreRun | None:
+    return (
         db.query(ChoreRun)
         .join(ChoreAssignment, ChoreRun.assignment_id == ChoreAssignment.id)
         .filter(
@@ -39,7 +38,25 @@ def _chore_complete(
         )
         .first()
     )
-    if run is None or run.status != "todo":
+
+
+def _claim(db: Session, run: ChoreRun) -> bool:
+    """Compare-and-set todo -> submitted, so a racing completion cannot pay twice."""
+    n = (
+        db.query(ChoreRun)
+        .filter(ChoreRun.id == run.id, ChoreRun.status == "todo")
+        .update({"status": "submitted"}, synchronize_session=False)
+    )
+    return n == 1
+
+
+def _chore_complete(
+    db: Session, install: IntegrationInstall, grant: Grant, a: Action, needs_approval: bool
+) -> Outcome:
+    now = datetime.now(UTC).replace(tzinfo=None)
+    refs = {"kid_id": a.kid_id, "chore_id": a.chore_id, "created_at": now}
+    run = _todays_run(db, a, now)
+    if run is None or run.status != "todo" or not _claim(db, run):
         return "rejected", "nothing to do today", refs
     refs["run_id"] = run.id
     # Ruling: an integration completion skips the photo requirement. The signal is the proof.
@@ -67,22 +84,36 @@ def _key_of(raw: dict) -> str | None:
     return k if isinstance(k, str) and re.fullmatch(KEY_PATTERN, k) else None
 
 
+def _refs_of(db: Session, action: Action | None) -> dict:
+    """The action's kid and chore, when they parsed and exist (the audit FKs stay valid)."""
+    kid_id, chore_id = getattr(action, "kid_id", None), getattr(action, "chore_id", None)
+    return {
+        "kid_id": kid_id if kid_id is not None and db.get(User, kid_id) else None,
+        "chore_id": chore_id if chore_id is not None and db.get(Chore, chore_id) else None,
+    }
+
+
 def _outcome(db, install, grant, raw, origin, actor_kid_id) -> Outcome:
-    """Everything before the handler is change-free; handler failures roll back."""
+    """Checks are change-free. The handler runs in a savepoint, so a failure undoes only
+    its own writes, never the caller's pending work or earlier actions."""
+    action = None
     try:
         action = parse_action(raw)
         needs_approval = check_action(grant, action, origin, actor_kid_id)
         handler = HANDLERS.get(action.type)
         if handler is None:
             raise ValueError("unknown action")
-    except (ValueError, Denied) as e:
-        return "rejected", getattr(e, "reason", None) or str(e), {}
-    try:
-        return handler(db, install, grant, action, needs_approval)
-    except (ValueError, Denied, HTTPException) as e:
-        db.rollback()
-        reason = e.detail if isinstance(e, HTTPException) else getattr(e, "reason", None)
-        return "rejected", str(reason or e), {}
+        with db.begin_nested():
+            return handler(db, install, grant, action, needs_approval)
+    except HTTPException as e:
+        return "rejected", str(e.detail), _refs_of(db, action)
+    except Denied as e:
+        return "rejected", e.reason, _refs_of(db, action)
+    except ValueError as e:
+        return "rejected", str(e), _refs_of(db, action)
+    except Exception:
+        log.exception("integration %s: action handler failed", install.id)
+        return "rejected", "internal error", _refs_of(db, action)
 
 
 def apply_actions(
@@ -92,7 +123,11 @@ def apply_actions(
     origin: Origin = "service",
     actor_kid_id: int | None = None,
 ) -> list[ActionResult]:
-    """Apply each action in order, committing one at a time. Duplicate keys apply once."""
+    """Apply each action in order, committing one at a time. Duplicate keys apply once.
+
+    The audit row is inserted first: it claims the key (a concurrent duplicate fails there,
+    before its handler runs) and opens the transaction. Each handler then runs in a
+    savepoint, so a failing action rolls back only its own writes."""
     results = []
     for item in raw:
         item = item if isinstance(item, dict) else {}
@@ -101,15 +136,19 @@ def apply_actions(
             results.append(audit.as_result(row))
             continue
         key = key or f"invalid:{uuid4().hex}"
-        grant = store.load_grant(db, install)
-        result, reason, refs = _outcome(db, install, grant, item, origin, actor_kid_id)
-        row = audit.record(db, install, str(item.get("type"))[:24], key, result, reason, **refs)
+        row = audit.record(db, install, str(item.get("type")), key, "rejected", "internal error")
         try:
-            db.commit()
+            db.flush()
         except IntegrityError:  # a concurrent duplicate won the key; its result stands
             db.rollback()
             row = audit.prior(db, install.id, key)
             if row is None:
                 raise
+            results.append(audit.as_result(row))
+            continue
+        grant = store.load_grant(db, install)
+        result, reason, refs = _outcome(db, install, grant, item, origin, actor_kid_id)
+        audit.settle(row, result, reason, **refs)
+        db.commit()
         results.append(audit.as_result(row))
     return results

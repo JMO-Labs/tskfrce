@@ -29,16 +29,16 @@ def record(
     **refs,
 ) -> IntegrationAction:
     """refs: kid_id, chore_id, run_id, redemption_id, and created_at to pin the time."""
-    row = IntegrationAction(
-        install_id=install.id,
-        kind=kind[:24],
-        idempotency_key=key,
-        result=result,
-        reason=reason[:200] if reason else None,
-        **refs,
-    )
+    row = IntegrationAction(install_id=install.id, kind=kind[:24], idempotency_key=key)
+    settle(row, result, reason, **refs)
     db.add(row)
     return row
+
+
+def settle(row: IntegrationAction, result: str, reason: str | None = None, **refs) -> None:
+    row.result, row.reason = result, reason[:200] if reason else None
+    for k, v in refs.items():
+        setattr(row, k, v)
 
 
 def as_result(row: IntegrationAction) -> ActionResult:
