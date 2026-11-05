@@ -23,32 +23,38 @@ def upgrade() -> None:
         "kid_enroll_tokens",
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column(
-            "kid_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+            "kid_id",
+            sa.Integer(),
+            sa.ForeignKey("users.id", ondelete="CASCADE", name="fk_kid_enroll_tokens_kid"),
+            nullable=False,
         ),
         sa.Column("token_hash", sa.String(64), nullable=False),
         sa.Column(
             "created_by_id",
             sa.Integer(),
-            sa.ForeignKey("users.id", ondelete="SET NULL"),
+            sa.ForeignKey("users.id", ondelete="SET NULL", name="fk_kid_enroll_tokens_created_by"),
             nullable=True,
         ),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("expires_at", sa.DateTime(), nullable=False),
         sa.Column("used_at", sa.DateTime(), nullable=True),
-        sa.UniqueConstraint("token_hash"),
+        sa.UniqueConstraint("token_hash", name="uq_kid_enroll_tokens_token_hash"),
     )
     op.create_index("ix_kid_enroll_tokens_kid_id", "kid_enroll_tokens", ["kid_id"])
     op.create_table(
         "kid_devices",
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column(
-            "kid_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+            "kid_id",
+            sa.Integer(),
+            sa.ForeignKey("users.id", ondelete="CASCADE", name="fk_kid_devices_kid"),
+            nullable=False,
         ),
         sa.Column("secret_hash", sa.String(64), nullable=False),
         sa.Column("label", sa.String(40), nullable=False),
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("last_seen_at", sa.DateTime(), nullable=False),
-        sa.UniqueConstraint("secret_hash"),
+        sa.UniqueConstraint("secret_hash", name="uq_kid_devices_secret_hash"),
     )
     op.create_index("ix_kid_devices_kid_id", "kid_devices", ["kid_id"])
     with op.batch_alter_table("users") as b:

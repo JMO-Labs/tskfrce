@@ -38,19 +38,23 @@ def _steps(path):
 
 
 def _seed(path):
-    """Insert family_settings rows via the model defaults (one per step value)."""
-    from app.models import FamilySettings
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import Session
-
+    """Raw inserts at the old schema (only the NOT NULL columns without defaults)."""
     con = sqlite3.connect(path)
     con.execute("DELETE FROM family_settings")
+    cols = [r for r in con.execute("PRAGMA table_info(family_settings)") if r[3] and r[4] is None]
+    names = [r[1] for r in cols if r[1] not in ("id", "setup_step")]
+    for i, step in enumerate((4, 3, None, 7), start=1):
+        vals = [
+            f"x{i}" if n == "name" else "UTC" if n == "timezone" else "00:00" if "time" in n else 0
+            for n in names
+        ]
+        con.execute(
+            f"INSERT INTO family_settings (id, setup_step, {', '.join(names)}) "
+            f"VALUES (?, ?, {', '.join('?' * len(names))})",
+            (i, step, *vals),
+        )
     con.commit()
     con.close()
-    with Session(create_engine(f"sqlite:///{path}")) as s:
-        for i, step in enumerate((4, 3, None, 7), start=1):
-            s.add(FamilySettings(id=i, name=f"F{i}", timezone="UTC", setup_step=step))
-        s.commit()
 
 
 def test_tables_created(db):
@@ -94,3 +98,19 @@ def test_downgrade_round_trip(db):
     con.close()
     alembic(url, "upgrade", NEW)
     assert _steps(path) == [5, 3, None, 8]
+
+
+def test_cascade_and_indexes(db):
+    path, url = db
+    alembic(url, "upgrade", "head")
+    con = sqlite3.connect(path)
+    for t in ("kid_enroll_tokens", "kid_devices"):
+        fks = {r[3]: r[6] for r in con.execute(f"PRAGMA foreign_key_list({t})")}
+        assert fks["kid_id"] == "CASCADE"
+        assert any(
+            [c[2] for c in con.execute(f"PRAGMA index_info({i[1]})")] == ["kid_id"]
+            for i in con.execute(f"PRAGMA index_list({t})")
+        )
+    fk = {r[3]: r[6] for r in con.execute("PRAGMA foreign_key_list(kid_enroll_tokens)")}
+    assert fk["created_by_id"] == "SET NULL"
+    con.close()
