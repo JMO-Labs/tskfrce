@@ -8,7 +8,7 @@ export function AlertsMoved() {
   const a = moved ? alertStored() : null
   if (!a || !deviceKid()) return null
   return (
-    <a className="k-gate-msg" href={alertLink(a)} onClick={() => setAlertsMoved(false)}>
+    <a className="k-moved" href={alertLink(a)} onClick={() => setAlertsMoved(false)}>
       Your alerts moved. Tap to reconnect.
     </a>
   )

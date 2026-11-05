@@ -1,4 +1,4 @@
-import { writeToken } from '../hooks/useKid'
+import { writeToken } from './tokenStore'
 import { setAlertsMoved } from './movedFlag'
 import type { KidAlert, KidIdentity } from '../types/enroll'
 
@@ -19,7 +19,7 @@ const json = <T,>(k: string): T | null => {
 
 export const deviceToken = (): string | null => get(DEVICE_KEY)
 export const saveDevice = (t: string): void => {
-  removed = null
+  set(REMOVED_KEY, null)
   set(DEVICE_KEY, t)
 }
 export const saveKid = (k: KidIdentity): void => set(KID_KEY, JSON.stringify(k))
@@ -50,8 +50,8 @@ export function takeEnrollToken(): string | null {
   try { return decodeURIComponent(m[1]) || null } catch { return null }
 }
 
-let removed: string | null = null
-export const removedMsg = (): string | null => removed
+const REMOVED_KEY = 'task4ce-kid-removed'
+export const removedMsg = (): string | null => get(REMOVED_KEY)
 
 let inflight: Promise<boolean> | null = null
 async function refresh(): Promise<boolean> {
@@ -66,7 +66,7 @@ async function refresh(): Promise<boolean> {
     if (res.status === 401) {
       const d = await res.json().catch(() => null)
       clearDevice()
-      removed = typeof d?.detail === 'string' ? d.detail : null
+      set(REMOVED_KEY, typeof d?.detail === 'string' ? d.detail : null)
       return false
     }
     if (!res.ok) return false

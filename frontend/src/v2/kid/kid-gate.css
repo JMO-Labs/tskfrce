@@ -54,10 +54,13 @@
 .k-key[data-del] .ms { font-size: 30px; }
 [data-mantine-color-scheme='dark'] .k-key { box-shadow: 3px 3px 0 #000; }
 .k-gate .r-btn { width: auto; min-width: 200px; }
+/* "your alerts moved" strip above the chores */
+.k-moved { display: block; box-sizing: border-box; margin: 12px 16px 0; padding: 10px 14px; text-align: center; font-weight: 700; color: var(--k-ink); text-decoration: none; background: var(--k-card); border: 2px solid var(--k-ink); border-radius: 14px; box-shadow: var(--k-shadow); }
 /* add-to-home-screen / alerts help card (InstallHint, KidWelcome) */
 .k-install { width: 100%; box-sizing: border-box; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; color: var(--k-ink); background: var(--k-card); border: 2px solid var(--k-ink); border-radius: 20px; box-shadow: var(--k-shadow); }
 .k-install h2 { margin: 0; font-family: var(--font-display), 'Space Grotesk', sans-serif; font-size: 20px; line-height: 1.2; }
-.k-install ol { margin: 0; padding-left: 22px; font-weight: 600; line-height: 1.7; }
+.k-install ol { margin: 0; padding-left: 22px; font-weight: 500; line-height: 1.7; }
+.k-install b { font-family: var(--font-display), 'Space Grotesk', sans-serif; font-weight: 700; }
 .k-install .ms { vertical-align: middle; }
 .k-install a:not(.r-btn) { color: var(--k-ink); text-decoration: underline; }
 .k-install .r-btn { align-self: flex-start; }
@@ -68,4 +71,3 @@
   .k-keys { gap: 10px; }
 }
 @media (prefers-reduced-motion: reduce) { .k-pick, .k-key { transition: none; } }
-.k-install b { font-weight: 800; }

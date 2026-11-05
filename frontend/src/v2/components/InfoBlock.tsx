@@ -4,7 +4,7 @@ interface InfoBlockProps {
   /** Material Symbols icon name */
   icon: string
   /** Short explanation text */
-  text: string
+  text: React.ReactNode
   /** Whether this is a kid-mode info block (uses fridge colors) */
   kidMode?: boolean
   /** Optional additional content */

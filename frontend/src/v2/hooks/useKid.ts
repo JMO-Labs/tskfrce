@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useClientValue } from './useClientValue'
-import { api, ApiError, AuthError, KID_TOKEN_KEY } from '../api'
+import { api, ApiError, AuthError } from '../api'
+import { KID_ID_KEY, KID_TOKEN_KEY, writeToken } from '../kid/tokenStore'
 import { blocked, kidInit, useAsKid } from './usePreview'
 import { retryIfOffline, toastFail, toastOk } from '../notify'
 import type { KidToday, KidWhoami } from '../types'
 import type { KidAlert, KidIdentity } from '../types/enroll'
-import { clearDevice, saveAlert, saveDevice, saveKid } from '../kid/kidDevice'
+import { clearDevice, deviceKid, saveAlert, saveDevice, saveKid } from '../kid/kidDevice'
 
+export { writeToken }
 const readToken = (): string | null => {
   try {
     return localStorage.getItem(KID_TOKEN_KEY)
@@ -15,26 +17,12 @@ const readToken = (): string | null => {
     return null
   }
 }
-const KID_ID_KEY = 'task4ce-kid-id'
 const readId = (): number | null => {
   try {
     const v = Number(localStorage.getItem(KID_ID_KEY))
     return v > 0 ? v : null
   } catch {
     return null
-  }
-}
-export const writeToken = (t: string | null, kidId?: number) => {
-  try {
-    if (t) {
-      localStorage.setItem(KID_TOKEN_KEY, t)
-      if (kidId) localStorage.setItem(KID_ID_KEY, String(kidId))
-    } else {
-      localStorage.removeItem(KID_TOKEN_KEY)
-      localStorage.removeItem(KID_ID_KEY)
-    }
-  } catch {
-    /* storage blocked: the session just won't survive a reload */
   }
 }
 
@@ -56,19 +44,6 @@ export function useKidSession(enrolling = false) {
   const authed = session ? session.authed : storedAuthed
   const kidId = session ? session.kidId : storedId
 
-  const whoami = useQuery({
-    queryKey: ['kid', 'whoami'],
-    queryFn: () => api<KidWhoami>('/kid/whoami'),
-    enabled: !enrolling, // a scanned code signs in first; whoami would be wasted
-  })
-  const login = useMutation({
-    mutationFn: (v: { kid_id: number; pin?: string }) =>
-      api<{ access_token: string }>('/kid/login', { method: 'POST', body: v, kid: true }),
-    onSuccess: (r, v) => {
-      writeToken(r.access_token, v.kid_id)
-      setSession({ authed: true, kidId: v.kid_id })
-    },
-  })
   const enroll = useMutation({
     mutationFn: (token: string) =>
       api<{ access_token: string; device_token: string; kid: KidIdentity; alert: KidAlert | null }>('/kid/enroll', {
@@ -83,16 +58,32 @@ export function useKidSession(enrolling = false) {
       setSession({ authed: true, kidId: r.kid.id })
     },
   })
+
+  const whoami = useQuery({
+    queryKey: ['kid', 'whoami'],
+    queryFn: () => api<KidWhoami>('/kid/whoami'),
+    enabled: !enrolling || enroll.isSuccess, // a scanned code signs in first; whoami would be wasted
+  })
+  const login = useMutation({
+    mutationFn: (v: { kid_id: number; pin?: string }) =>
+      api<{ access_token: string }>('/kid/login', { method: 'POST', body: v, kid: true }),
+    onSuccess: (r, v) => {
+      writeToken(r.access_token, v.kid_id)
+      setSession({ authed: true, kidId: v.kid_id })
+    },
+  })
   /** Clear the token (and this phone's device sign-in) and start again at whoami. */
-  const logout = () => {
+  const logout = (keepDevice = false) => {
     writeToken(null)
-    clearDevice()
+    if (!keepDevice) clearDevice()
     setSession({ authed: false, kidId: null })
     login.reset()
     qc.removeQueries({ queryKey: ['kid', 'today'] })
     qc.invalidateQueries({ queryKey: ['kid', 'whoami'] })
   }
-  return { ready, authed, kidId, whoami, login, enroll, logout }
+  /** Back to the signed-in view after a successful refreshKid(). */
+  const resume = () => setSession({ authed: true, kidId: deviceKid()?.id ?? null })
+  return { ready, authed, kidId, whoami, login, enroll, logout, resume }
 }
 
 /** Kid's chores and lock state, refetched every 10 s. A 401 calls onExpired. */

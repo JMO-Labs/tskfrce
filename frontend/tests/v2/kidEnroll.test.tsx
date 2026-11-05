@@ -5,7 +5,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MantineProvider } from '@mantine/core'
 import { KidPage } from '@/v2/kid/KidPage'
 import { api } from '@/v2/api'
-import { clearDevice, saveDevice } from '@/v2/kid/kidDevice'
+import { AlertsMoved } from '@/v2/kid/AlertsMoved'
+import { alertsMoved } from '@/v2/kid/movedFlag'
+import { clearDevice, refreshKid, removedMsg, saveAlert, saveDevice, saveKid } from '@/v2/kid/kidDevice'
 import { fridgeTheme } from '@/v2/theme'
 
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
@@ -50,7 +52,7 @@ describe('kid enrollment', () => {
     expect(await screen.findByText(/You're in, Ana!/)).toBeInTheDocument()
     expect(paths()[0]).toBe('/kid/enroll')
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ token: 'tok' })
-    expect(paths()).not.toContain('/kid/whoami')
+    expect(paths().indexOf('/kid/whoami')).not.toBe(0) // the code is redeemed first
     await userEvent.click(screen.getByRole('button', { name: 'Start' }))
     expect(await screen.findByRole('button', { name: /^Open Dishes/ })).toBeInTheDocument()
     expect(window.location.hash).toBe('')
@@ -92,8 +94,49 @@ describe('kid enrollment', () => {
     expect(screen.queryByText('Who is this?')).toBeNull()
   })
 
+  test('a transient refresh failure keeps the device and offers a retry', async () => {
+    window.history.replaceState(null, '', '/kid#enroll=tok')
+    routes({
+      'POST /kid/enroll': () => reply(200, enrolled),
+      'GET /kid/today': () => reply(401, { detail: 'expired' }),
+      'GET /kid/celebrations': () => reply(401, { detail: 'expired' }),
+      'POST /kid/session': () => reply(503, { detail: 'down' }),
+    })
+    renderKid()
+    await userEvent.click(await screen.findByRole('button', { name: 'Start' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument(), { timeout: 3000 })
+    expect(screen.queryByText('Loading…')).toBeNull()
+    expect(localStorage.getItem('task4ce-kid-device')).toBe('dev')
+    expect(screen.queryByText('Who is this?')).toBeNull()
+  })
+
+  test('a removed-phone message survives a reload', async () => {
+    saveDevice('dev')
+    routes({ 'POST /kid/session': () => reply(401, { detail: 'This phone was removed. Ask a parent for a new code.' }) })
+    expect(await refreshKid()).toBe(false)
+    expect(removedMsg()).toMatch(/phone was removed/)
+    expect(localStorage.getItem('task4ce-kid-removed')).toMatch(/phone was removed/)
+    saveDevice('new')
+    expect(removedMsg()).toBeNull()
+  })
+
+  test('a changed alert topic shows the reconnect banner', async () => {
+    saveDevice('dev')
+    saveKid(kid)
+    saveAlert({ server: 'https://ntfy.sh', topic: 'a' })
+    routes({ 'POST /kid/session': () => reply(200, { access_token: 'acc', kid, alert: { server: 'https://ntfy.sh', topic: 'b' } }) })
+    await refreshKid()
+    expect(alertsMoved()).toBe(true)
+    render(<AlertsMoved />)
+    expect(screen.getByRole('link', { name: /alerts moved/i })).toHaveAttribute('href', 'ntfy://ntfy.sh/b?display=t%40sk4ce')
+    await userEvent.click(screen.getByRole('link'))
+    expect(alertsMoved()).toBe(false)
+  })
+
   test('a parent request 401 never calls /kid/session', async () => {
     saveDevice('dev')
+    localStorage.setItem('refresh_token', 'r')
+    routes({ 'GET /today': () => reply(401, { detail: 'nope' }), 'POST /auth/refresh': () => reply(401, { detail: 'bad' }) })
     routes({ 'GET /today': () => reply(401, { detail: 'nope' }) })
     await expect(api('/today')).rejects.toThrow()
     await waitFor(() => expect(paths()).not.toContain('/kid/session'))

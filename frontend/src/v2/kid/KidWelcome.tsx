@@ -31,9 +31,8 @@ export function KidWelcome({ name, avatar, alert, onStart }: { name: string; ava
                 </span>
               ))}
             </li>
-            <li>Tap the button below.</li>
           </ol>
-          <a className="r-btn" href={alertLink(alert)}>
+          <a className="r-btn" data-tone="plain" href={alertLink(alert)}>
             Add my alerts
           </a>
         </section>

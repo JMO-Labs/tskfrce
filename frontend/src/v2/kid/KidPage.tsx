@@ -16,7 +16,7 @@ import { KidIntroSwipe } from './KidIntroSwipe'
 import { KidPicker } from './KidPicker'
 import { PinPad } from './PinPad'
 import { KidWelcome } from './KidWelcome'
-import { deviceKid, deviceToken, removedMsg, takeEnrollToken } from './kidDevice'
+import { deviceKid, deviceToken, refreshKid, removedMsg, takeEnrollToken } from './kidDevice'
 
 type K = KidWhoami['kids'][number]
 
@@ -137,7 +137,8 @@ export function KidPage() {
 function KidScreen() {
   useLook('kid')
   const [enrollToken] = useState(takeEnrollToken) // lazy: read and stripped before whoami can fire
-  const { ready, authed, kidId, whoami, login, enroll, logout } = useKidSession(!!enrollToken)
+  const { ready, authed, kidId, whoami, login, enroll, logout, resume } = useKidSession(!!enrollToken)
+  const [stuck, setStuck] = useState(false)
   const [welcomed, setWelcomed] = useState(false)
   const enrolled = useRef(false)
   const [picked, setPicked] = useState<K | null>(null)
@@ -164,11 +165,15 @@ function KidScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // session expired: an enrolled phone keeps its device sign-in and offers a retry; anyone else starts over
   const exit = () => {
     tried.current = false
     setPicked(null)
-    logout()
+    const keep = !!deviceToken()
+    setStuck(keep)
+    logout(keep)
   }
+  const retry = () => void refreshKid().then((ok) => ok && (setStuck(false), resume()))
   const pick = (k: K) => {
     setPicked(k)
     if (!k.has_pin) login.mutate({ kid_id: k.id })
@@ -180,6 +185,13 @@ function KidScreen() {
   if (enrollToken && !authed && !enroll.isSuccess)
     body = enroll.isError ? <Msg>{loginMessage(enroll.error)}</Msg> : <Msg>Loading…</Msg>
   else if (gone) body = <Msg>{gone}</Msg>
+  else if (stuck)
+    body = (
+      <>
+        <Msg>{CANT_REACH}</Msg>
+        <KBtn onClick={retry}>Retry</KBtn>
+      </>
+    )
   else if (!ready || (!authed && whoami.isPending)) body = <Msg>Loading…</Msg>
   else if (whoami.isError) body = <Msg>{CANT_REACH}</Msg>
   else if (!whoami.data?.device) body = <Msg>This device isn&apos;t set up yet. Ask a parent to add it.</Msg>
@@ -223,7 +235,7 @@ function KidScreen() {
   if (authed && enroll.isSuccess && !welcomed)
     return (
       <Gate>
-        <KidWelcome name={dk?.full_name ?? 'friend'} avatar={dk?.avatar ?? null} alert={enroll.data.alert} onStart={() => setWelcomed(true)} />
+        <KidWelcome name={enroll.data.kid.full_name} avatar={enroll.data.kid.avatar} alert={enroll.data.alert} onStart={() => setWelcomed(true)} />
       </Gate>
     )
   if (authed) return <Session name={dk?.full_name ?? who?.full_name ?? undefined} avatar={dk?.avatar ?? who?.avatar} kidId={dk?.id ?? who?.id ?? kidId} onExit={exit} canSwitch={kids.length > 1 && !deviceToken()} />

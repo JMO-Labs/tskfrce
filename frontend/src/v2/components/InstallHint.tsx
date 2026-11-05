@@ -29,12 +29,16 @@ export function InstallHint({ who }: { who: 'kid' | 'parent' }) {
     return who === 'kid' ? null : (
       <InfoBlock
         icon="home"
-        text="You can add t@sk4ce to your home screen once your box has its secure address. Open it from the Open my box code on the sticker."
+        text={
+          <>
+            You can add t@sk4ce to your home screen once your box has its secure address. Open it from the <b>Open my box</b> code on the sticker.
+          </>
+        }
       />
     )
   const kid = who === 'kid'
   const add = kid ? (
-    <button type="button" className="r-btn" onClick={() => void prompt?.prompt()}>
+    <button type="button" className="r-btn" data-tone="plain" onClick={() => void prompt?.prompt()}>
       Add to home screen
     </button>
   ) : (
