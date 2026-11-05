@@ -17,6 +17,11 @@ the home screen like an app. Boxes installed with `install.sh` keep working unch
 - **PWA:** two static manifests (`/` for parents, `/kid` for kids), PNG icons, and a
   ~30-line service worker that only serves an offline page for navigations. It never
   caches `/api`.
+- **Kid alerts away from home:** the box also publishes each kid alert to an upstream ntfy
+  server (`NTFY_UPSTREAM_URL`, default `https://ntfy.sh`), on a random per-kid topic that
+  only reaches the phone inside the enrollment response. Upstream messages are generic
+  ("You have a new chore"). The LAN ntfy on `:2586` keeps working unchanged. ntfy is
+  **not** served on the box's public hostname: the edge's `:2443` block is removed.
 - Fragments (`#claim=`, `#enroll=`) carry the secrets in QR URLs, so they never reach a
   server or an access log. The page posts them in a JSON body and strips the hash.
 
@@ -28,7 +33,7 @@ Testing Library, Playwright (light/dark screenshot projects), POSIX sh + shellch
 the launch half of 7, and 8; build-order item 2). Phase 1 plan:
 `docs/superpowers/plans/2026-11-04-onboarding-p1-hostname-tls.md`.
 
-**Plan files:** this file (Global Constraints, Review Focus, Tasks 1–7: backend and box
+**Plan files:** this file (Global Constraints, Review Focus, Tasks 1–7A: backend and box
 scripts) and `2026-11-05-onboarding-p2-claim-enroll-part2.md` (Tasks 8–14: PWA, UI, docs,
 owner check, self-review).
 
@@ -55,6 +60,20 @@ owner check, self-review).
   Kid QR URL: `${BOX_URL}/kid#enroll=<token>`. Never generate `http://…taskfrce.jmolabs.dev`.
 - The gate, enrollment and install hints must work over plain `http://<lan-ip>:3000`
   (IP mode). Only installing waits for HTTPS.
+- Upstream alerts: `NTFY_UPSTREAM_URL` (default `https://ntfy.sh`; empty = off) and an optional
+  `NTFY_UPSTREAM_TOKEN` (sent as `Authorization: Bearer`). A self-hosted URL (e.g. behind the
+  owner's Cloudflare tunnel) is used as is.
+- Upstream topic: `users.alert_topic`, `secrets.token_urlsafe(24)` (192 bits), made on the box
+  at the kid's first enrollment and rotated when a phone is removed. It is sent only in the
+  `POST /kid/enroll` and `/kid/session` response bodies. It never appears in a box URL, a QR
+  code, a log line or the parent UI.
+- Upstream message content: the title is always `t@sk4ce`; the body is a fixed generic line
+  per alert kind (`push.GENERIC`). No kid names, chore titles, reward names, chat text,
+  points or click URL. Privacy tradeoff, stated in the guide: the ntfy server sees the
+  generic text, the topic, the time of each alert and the box's public IP.
+- An upstream failure never blocks or delays the LAN send (separate try, 5 s timeout).
+- ntfy is never served on `<box-id>.taskfrce.jmolabs.dev`. Never generate an
+  `http://…taskfrce.jmolabs.dev` URL.
 - Wizard: 8 steps. 1 You, 2 Family, 3 Kids, **4 Kids' phones (new, skippable)**, 5 Chores,
   6 Devices, 7 Hours, 8 Remote access (optional). Backend `LAST_STEP = 8`.
 - UI: v3 tokens and existing classes only. **No new colors.** Light and dark. Every UI task
@@ -88,8 +107,11 @@ owner check, self-review).
 4. **The kid QR opened over plain HTTP** (IP-mode box, or the cert isn't issued yet).
    Sign-in still works; the kid sees no install text; the parent finish screen explains why.
    Task 10 jest `insecure: kid hint hidden`, Task 11 jest `insecure: parent sees why`.
-5. **A box updated mid-wizard** with a saved step ≥ 4 resumes on the same screen after the
-   wizard grows from 7 to 8 steps. Task 5 test `test_setup_step_shifts_past_new_step`.
+5. **A kid alert leaks family details to ntfy.sh**: a chore titled "Clean Sam's room", a
+   chat message or a reward name ends up in the upstream payload. The upstream body must be
+   the generic line only. Task 7A tests `test_upstream_payload_is_generic` and
+   `test_every_kid_kind_has_generic_text`. (The wizard-step shift is pinned by Task 5's
+   `test_setup_step_shifts_past_new_step`.)
 
 ---
 
@@ -190,15 +212,17 @@ owner check, self-review).
 - [ ] **Step 4: Run** the two test files and ruff. Expected: pass.
 - [ ] **Step 5: Commit** `feat(setup): require the box claim code before the first parent`
 
-### Task 3: Box scripts and compose: `CLAIM_CODE`, HTTPS ntfy URL
+### Task 3: Box scripts and compose: `CLAIM_CODE`, upstream ntfy settings
 
 **Files:**
 - Modify: `registry/scripts/new-box.sh` — also generate and print the claim code and QR 2 URL.
 - Create: `registry/scripts/test-new-box.sh` (stubs `npx` on `PATH`; ≤ 60 lines)
-- Modify: `scripts/enable-hostname.sh` — optional `CLAIM_CODE` env var; write
-  `NTFY_PUBLIC_URL=https://<id>.taskfrce.jmolabs.dev:2443`.
+- Modify: `scripts/enable-hostname.sh` — optional `CLAIM_CODE` env var. It does not touch
+  `NTFY_PUBLIC_URL` (the LAN ntfy address install.sh wrote stays).
 - Modify: `scripts/test-enable-hostname.sh`
-- Modify: `docker-compose.prod.yml` backend `environment:` add `CLAIM_CODE: ${CLAIM_CODE:-}`
+- Modify: `docker-compose.prod.yml` backend `environment:` add `CLAIM_CODE: ${CLAIM_CODE:-}`,
+  `NTFY_UPSTREAM_URL: ${NTFY_UPSTREAM_URL-https://ntfy.sh}` (an explicit empty value turns it
+  off) and `NTFY_UPSTREAM_TOKEN: ${NTFY_UPSTREAM_TOKEN:-}`
 - Modify: `blocker/tests/test_compose.py` (one test)
 - Modify: `.github/workflows/ci-cd.yml` installer job: shellcheck and run `test-new-box.sh`.
 
@@ -210,8 +234,7 @@ owner check, self-review).
   The claim code is **not** sent to the registry (it never leaves the box and sticker).
 - `enable-hostname.sh`: when `CLAIM_CODE` is set in the environment, validate it against
   `^[0-9A-HJKMNP-TV-Z]{10}$` (after upper-casing and dropping `-`) and write it; when unset,
-  keep any existing `CLAIM_CODE` line. Always replace `NTFY_PUBLIC_URL`. Undo text gains
-  `CLAIM_CODE` and `NTFY_PUBLIC_URL`.
+  keep any existing `CLAIM_CODE` line. Undo text gains `CLAIM_CODE`.
 - Backend: an empty `CLAIM_CODE=` from compose must mean "unset": Task 1's validator maps
   `""` to `None`.
 
@@ -220,9 +243,10 @@ owner check, self-review).
     alphabet and length 10; `STICKER_QR2` ends with `#claim=<that code>`; the `npx` log
     never contains the claim code.
   - `test-enable-hostname.sh`: `CLAIM_CODE=k7m2q-xa9pb` → file has `CLAIM_CODE=K7M2QXA9PB`
-    and `NTFY_PUBLIC_URL=https://abc123.taskfrce.jmolabs.dev:2443`; a second run without
+    and an existing `NTFY_PUBLIC_URL=http://192.168.1.5:2586` is unchanged; a second run without
     `CLAIM_CODE` keeps it; `CLAIM_CODE=BAD` → non-zero exit, file untouched.
-  - `test_compose.py::test_prod_backend_passes_claim_code`: backend env has `CLAIM_CODE`.
+  - `test_compose.py::test_prod_backend_passes_claim_code`: backend env has `CLAIM_CODE`,
+    `NTFY_UPSTREAM_URL` (default `https://ntfy.sh`) and `NTFY_UPSTREAM_TOKEN`.
   - `backend/tests/test_claim.py::test_empty_setting_is_unset`: `Settings(CLAIM_CODE="")`
     → `None`.
 - [ ] **Step 2: Run** `bash registry/scripts/test-new-box.sh; bash scripts/test-enable-hostname.sh;
@@ -230,27 +254,35 @@ owner check, self-review).
 - [ ] **Step 3: Implement.**
 - [ ] **Step 4: Run** the three commands, `shellcheck` on all four scripts, and
   `cd backend && python -m pytest tests/test_claim.py -q`. Expected: pass.
-- [ ] **Step 5: Commit** `feat(scripts): claim code on new boxes; ntfy over the HTTPS hostname`
+- [ ] **Step 5: Commit** `feat(scripts): claim code on new boxes; upstream ntfy settings`
 
-### Task 4: ntfy public URL never uses `http://` on a box hostname
+### Task 4: Keep ntfy off the public hostname
 
 **Files:**
+- Modify: `edge/Caddyfile` (delete the `:2443` site block)
+- Modify: `docker-compose.prod.yml` (drop `NTFY_UPSTREAM` from the `edge` service env; it only
+  fed that block)
 - Modify: `backend/app/services/push.py:20-25` (`public_url`)
-- Test: `backend/tests/test_push.py`
+- Test: `backend/tests/test_push.py`, `blocker/tests/test_compose.py`, `edge/test-edge.sh`
 
 **Interfaces:**
-- `push.public_url() -> str | None`: unchanged when `NTFY_PUBLIC_URL` is set. Otherwise, when
-  `BOX_URL` is `https://…`, return `f"https://{host}:2443"`; keep the `http://{host}:{port}`
-  form for `http` BOX_URLs.
+- `push.public_url() -> str | None`: unchanged when `NTFY_PUBLIC_URL` is set. Otherwise it
+  derives `http://{host}:{port}` from `BOX_URL` **only when `BOX_URL` is `http://`**; an
+  `https://` BOX_URL → `None` (never `http://<id>.taskfrce.jmolabs.dev`).
 
-- [ ] **Step 1: Write failing test** `test_public_url_https_box_uses_2443`: `BOX_URL=
-  "https://abc123.taskfrce.jmolabs.dev"`, `NTFY_PUBLIC_URL=None` →
-  `"https://abc123.taskfrce.jmolabs.dev:2443"`. Keep the existing http test.
-- [ ] **Step 2: Run** `python -m pytest tests/test_push.py -q`. Expected: FAIL.
+- [ ] **Step 1: Write failing tests.**
+  - `test_public_url_never_http_on_hostname`: `BOX_URL="https://abc123.taskfrce.jmolabs.dev"`,
+    `NTFY_PUBLIC_URL=None` → `None`. Keep the existing http test.
+  - `test_compose.py::test_edge_has_no_ntfy_upstream`: `"NTFY_UPSTREAM" not in
+    svcs["edge"]["environment"]`.
+  - `edge/test-edge.sh`: `grep -q 2443 edge/Caddyfile` fails.
+- [ ] **Step 2: Run** `cd backend && python -m pytest tests/test_push.py -q`,
+  `cd blocker && python -m pytest tests/test_compose.py -q`, `bash edge/test-edge.sh`.
+  Expected: FAIL.
 - [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `python -m pytest tests/test_push.py tests/test_kid_push.py -q`. Expected:
-  pass. The kid ntfy QR link then has no `&secure=false`.
-- [ ] **Step 5: Commit** `fix(push): ntfy link uses the HTTPS edge port on hostname boxes`
+- [ ] **Step 4: Run** the three commands plus `python -m pytest tests/test_kid_push.py -q` and
+  `docker build -t edge-test edge`. Expected: pass.
+- [ ] **Step 5: Commit** `fix(edge): stop serving ntfy on the box hostname`
 
 ### Task 5: Models and migration: enrollment tokens, kid devices, wizard step shift
 
@@ -270,15 +302,19 @@ owner check, self-review).
   - `KidDevice` (`kid_devices`): `id` int pk; `kid_id` FK `users.id` CASCADE, index;
     `secret_hash` String(64) unique not null; `label` String(40) not null; `created_at`
     DateTime not null; `last_seen_at` DateTime not null.
+  - `User.alert_topic = Column(String(64), nullable=True, unique=True)` (in `models/user.py`
+    next to `push_topic`).
   - Naive UTC datetimes, like `deps.touch_active`.
-- Migration `upgrade()`: create both tables, then
+- Migration `upgrade()`: create both tables, add `users.alert_topic` (batch mode, unique
+  constraint `uq_users_alert_topic`), then
   `UPDATE family_settings SET setup_step = setup_step + 1 WHERE setup_step >= 4`.
-  `downgrade()`: `UPDATE … SET setup_step = setup_step - 1 WHERE setup_step >= 5`, then drop
-  both tables.
+  `downgrade()`: `UPDATE … SET setup_step = setup_step - 1 WHERE setup_step >= 5`, drop the
+  column, then drop both tables.
 
 - [ ] **Step 1: Write failing tests.**
-  - `test_tables_created`: upgrade to head; both tables and the `token_hash` / `secret_hash`
-    unique indexes exist (`sqlite_master`).
+  - `test_tables_created`: upgrade to head; both tables, the `token_hash` / `secret_hash`
+    unique indexes and the `users.alert_topic` column exist (`sqlite_master`, `PRAGMA
+    table_info`).
   - `test_setup_step_shifts_past_new_step`: at `b0c1d2e3f4a5`, set `family_settings.setup_step
     = 4` → upgrade → 5; a row at 3 stays 3; `NULL` stays `NULL`.
   - `test_downgrade_round_trip`: upgrade then downgrade to `b0c1d2e3f4a5` restores 4 and
@@ -366,12 +402,16 @@ owner check, self-review).
   - `access_for(auth: AuthService, kid: User, dev: KidDevice) -> str`:
     `create_access_token(data={"sub": str(kid.id), "sid": dev.id})`.
 - Produces (routes):
+  - `alert_for(kid: User) -> dict | None`: `{"server": NTFY_UPSTREAM_URL, "topic":
+    kid.alert_topic}`, or None when `NTFY_UPSTREAM_URL` is empty. `redeem` sets
+    `kid.alert_topic = secrets.token_urlsafe(24)` when it is None.
   - `POST /api/v1/kid/enroll` body `{"token": str}` (`max_length=64`) → 200
-    `{"access_token", "device_token", "kid": {"id", "full_name", "avatar"}}`; 410
+    `{"access_token", "device_token", "kid": {"id", "full_name", "avatar"}, "alert":
+    alert_for(kid)}`; 410
     `ENROLL_GONE = "This code has expired or was already used. Ask a parent for a new one."`.
     Failures counted with `check/hit` on `f"enroll:{ip}"`, 10 per 60 s.
   - `POST /api/v1/kid/session` body `{"device_token": str}` (`max_length=64`) → 200
-    `{"access_token"}`; 401 `PHONE_REMOVED = "This phone was removed. Ask a parent for a new
+    `{"access_token", "alert": alert_for(kid)}`; 401 `PHONE_REMOVED = "This phone was removed. Ask a parent for a new
     code."`. Failures on `f"kidsess:{ip}"`, 10 per 60 s.
 - `get_current_user`: if the payload has `sid`, return None unless a `KidDevice` with that id
   **and** `kid_id == user.id` exists. Tokens without `sid` (parents, IP-based kid login) are
@@ -380,6 +420,9 @@ owner check, self-review).
 - [ ] **Step 1: Write failing tests:**
   ```python
   def test_redeem_signs_kid_in(client, kid, db): ...          # issue via service; POST /kid/enroll -> 200; GET /kid/today with access_token -> 200
+  def test_redeem_returns_alert_topic(client, kid, db): ...   # alert.server == "https://ntfy.sh"; len(topic) >= 32; same topic on a second phone
+  def test_alert_none_when_upstream_off(...): ...             # NTFY_UPSTREAM_URL = "" -> "alert": None
+  def test_alert_topic_not_in_parent_api(...): ...            # GET /kids, /kids/{id}, /kids/{id}/phones bodies lack the topic
   def test_redeem_twice_second_gets_410(client, kid, db): ...
   def test_redeem_race_one_winner(db, kid): ...               # two redeem() calls on separate sessions (shared engine) -> exactly one non-None
   def test_expired_token_410(client, kid, db, monkeypatch): ...   # expires_at in the past
@@ -400,5 +443,56 @@ owner check, self-review).
 - [ ] **Step 4: Run** `python -m pytest tests -q` (whole backend suite: auth changed) and ruff.
   Expected: pass.
 - [ ] **Step 5: Commit** `feat(kid): sign in a kid's phone from a one-time code; revocable sessions`
+
+### Task 7A: Publish generic kid alerts to the upstream ntfy
+
+**Files:**
+- Modify: `backend/app/core/config.py` (`NTFY_UPSTREAM_URL: str = "https://ntfy.sh"`,
+  `NTFY_UPSTREAM_TOKEN: str | None = None`; a trailing `/` is stripped)
+- Modify: `backend/app/services/push.py` (stays < 200 lines)
+- Modify: `backend/app/api/kid_enroll.py` (`DELETE /kids/{id}/phones/{pid}` rotates
+  `kid.alert_topic`)
+- Test: `backend/tests/test_push_upstream.py`
+
+**Interfaces:**
+- Consumes: `User.alert_topic` (Task 5), `alert_for` (Task 7), `inbox.KID_KINDS`.
+- Produces:
+  - `push.GENERIC: dict[str, str]`, one line per `KID_KINDS` member, e.g. `chore_new` "You
+    have a new chore", `due_soon` "A chore is due soon", `missed_deadline` "A chore is
+    overdue", `lock_warning` "Screen time ends soon", `chat_message` "You have a new
+    message", `chore_approved` "A chore was approved", `chore_sent_back` "A chore needs
+    another look". Any other kind gets "Open t@sk4ce to see what's new".
+  - `push.queue(...)` keeps the LAN item exactly as today (only when `enabled()` and
+    `push_topic`). It also appends, when `NTFY_UPSTREAM_URL` and `u.alert_topic` are set,
+    `{"topic": u.alert_topic, "title": "t@sk4ce", "message": GENERIC[kind], "priority": …,
+    "_up": True, "_row": row}`. Nothing else: no `click`, no tags, no name.
+  - `push.send(item)` posts `_up` items to `f"{NTFY_UPSTREAM_URL}/"` with `Authorization:
+    Bearer {NTFY_UPSTREAM_TOKEN}` when set, and the rest to `NTFY_URL` as today. Each item
+    has its own try/except, so an upstream error only logs `"Upstream push failed"` (never
+    the topic).
+  - The LAN-only gate in `queue` (`if not enabled()`) no longer stops upstream items.
+
+- [ ] **Step 1: Write failing tests** (monkeypatch `push._spawn` to run inline and
+  `httpx.post` to record calls):
+  ```python
+  def test_upstream_payload_is_generic(db, kid, cfg):  # kid.full_name "Sam", chore "Clean Sam's room"
+      push.queue(db, kid.id, "chore_new", "New chore: Clean Sam's room", "Due 5 pm"); db.commit()
+      up = [c for c in calls if c.url == "https://ntfy.sh/"][0]
+      assert up.json == {"topic": kid.alert_topic, "title": "t@sk4ce",
+                         "message": "You have a new chore", "priority": 3}
+      assert "Sam" not in str(up) and "Clean" not in str(up)
+  def test_every_kid_kind_has_generic_text(): assert inbox.KID_KINDS <= push.GENERIC.keys()
+  def test_lan_send_unchanged(...): ...          # LAN item still has the real title/body and click
+  def test_upstream_down_lan_still_sent(...): ...  # upstream post raises -> LAN post still made
+  def test_token_header_only_when_set(...): ...
+  def test_self_hosted_url_used_as_is(...): ...  # NTFY_UPSTREAM_URL "https://ntfy.example.net/" -> posts to "https://ntfy.example.net/"
+  def test_upstream_off_when_empty(...): ...
+  def test_no_alert_topic_no_upstream(...): ...
+  def test_remove_phone_rotates_topic(client, kid, db, parent_headers): ...  # DELETE -> topic changed; /kid/session on the other phone returns the new one
+  ```
+- [ ] **Step 2: Run** `python -m pytest tests/test_push_upstream.py -q`. Expected: FAIL.
+- [ ] **Step 3: Implement.**
+- [ ] **Step 4: Run** `python -m pytest tests -q` and ruff. Expected: pass.
+- [ ] **Step 5: Commit** `feat(push): generic kid alerts through an upstream ntfy server`
 
 Continue with `2026-11-05-onboarding-p2-claim-enroll-part2.md`.

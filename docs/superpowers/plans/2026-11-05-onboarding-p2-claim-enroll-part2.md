@@ -159,10 +159,16 @@ PR for owner review. The lab is plain HTTP. Shots that need a secure page use
 - Produces:
   - `DEVICE_KEY = 'task4ce-kid-device'`; `deviceToken(): string | null`;
     `saveDevice(t: string): void`; `clearDevice(): void`
+  - `ALERT_KEY = 'task4ce-kid-alert'`; `type KidAlert = { server: string; topic: string }`;
+    `saveAlert(a: KidAlert | null): boolean` (true when the topic changed from a stored one);
+    `alertLink(a: KidAlert): string` →
+    `ntfy://{host}/{topic}?display=t%40sk4ce` (no kid name; host from `server`; add
+    `&secure=false` only for `http` servers).
   - `takeEnrollToken(): string | null`: reads `#enroll=` and strips the hash right away
     (`replaceState` to `/kid`).
   - `refreshKid(): Promise<boolean>`: plain `fetch('/api/proxy/kid/session')` (not `api()`, so
-    there is no loop). True → new access token stored; a 401 → `clearDevice()`, false.
+    there is no loop). True → new access token stored and `saveAlert(r.alert)`; a 401 →
+    `clearDevice()`, false. A changed topic (a phone was removed) sets `alertsMoved`.
   - `type InstallPlatform = 'installed' | 'insecure' | 'ios' | 'prompt' | 'android' | 'other'`
   - `installPlatform(e: { ua: string; touch: boolean; standalone: boolean; secure: boolean;
     hasPrompt: boolean }): InstallPlatform`. Order: standalone → `installed`; !secure →
@@ -181,16 +187,23 @@ PR for owner review. The lab is plain HTTP. Shots that need a secure page use
       screen once your box has its secure address. Open it from the **Open my box** code on
       the sticker."
     - installed: nothing.
-  - `<KidWelcome name avatar onStart />`: "You're in, {name}!", avatar, `<InstallHint
-    who="kid" />`, button "Start".
+  - `<KidWelcome name avatar alert onStart />`: "You're in, {name}!", avatar, `<InstallHint
+    who="kid" />`, then (when `alert` is set) "Get alerts on this phone": 1 "Get the free
+    **ntfy** app" (App Store and Google Play links), 2 a button "Add my alerts" →
+    `alertLink(alert)`. Button "Start".
+  - `KidApp` shows a one-line `k-gate-msg` banner "Your alerts moved. Tap to reconnect." →
+    `alertLink` when `alertsMoved`; tapping clears the flag.
 - `KidScreen` flow: if `takeEnrollToken()` → `enroll.mutate(token)`. Success → `writeToken`,
   `saveDevice`, show `KidWelcome` until Start. Failure → `Gate` with the server detail and
-  no picker. With no token, the existing whoami/PIN flow is unchanged. Ruling: an enrolled
+  no picker. The alert topic only ever travels in the POST response body and the
+  `ntfy://` app link; it is never put in a box URL. With no token, the existing whoami/PIN flow is unchanged. Ruling: an enrolled
   phone skips the PIN.
 
 - [ ] **Step 1: Write failing tests.**
   - `kidDevice.test.ts`: `takeEnrollToken` with `/kid#enroll=abc` → `'abc'`, URL now `/kid`;
-    `refreshKid` 200 → token stored, true; 401 → device cleared, false.
+    `refreshKid` 200 → token stored, true; 401 → device cleared, false; a new topic in the
+    response → `saveAlert` returns true; `alertLink({server:'https://ntfy.sh', topic:'t'})
+    === 'ntfy://ntfy.sh/t?display=t%40sk4ce'`.
   - `installHint.test.tsx`: table test of `installPlatform` for an iPhone Safari UA, an iPad
     (Macintosh + touch), Android Chrome with a prompt, Android Firefox without one, desktop
     Firefox, standalone, and **`insecure: kid hint hidden`** (renders nothing) while
@@ -283,7 +296,7 @@ PR for owner review. The lab is plain HTTP. Shots that need a secure page use
   - Empty: "No phones yet. Not every kid has one, and that's fine."
   - "Add a phone" → `EnrollQr`.
   - Remove confirm: title "Remove {name}'s {label}?", body "It signs out right away. Scan a
-    new code to add it back.", confirm "Remove". Toast "Phone removed".
+    new code to add it back. {name}'s other phones will be asked to reconnect alerts.", confirm "Remove". Toast "Phone removed".
 
 - [ ] **Step 1: Write failing tests**: rows render with label and times; Remove → confirm →
   DELETE `/kids/3/phones/7` → list refetched → toast; "Add a phone" → POST enroll → QR shown;
@@ -306,8 +319,16 @@ PR for owner review. The lab is plain HTTP. Shots that need a secure page use
 - Modify: `docs/guide/03-first-setup.md` — "seven steps" → eight; a new section
   "Step 4. Kids' phones"; renumber the later sections; "Add t@sk4ce to your home screen"
   after Finish (iPhone and Android steps).
-- Modify: `docs/guide/05-for-kids.md` — "Scan your code, tap Add to Home Screen". Alerts:
-  ntfy stays; phones set up before the hostname switch need the alerts code scanned again.
+- Modify: `docs/guide/05-for-kids.md` — "Scan your code, tap Add to Home Screen", then
+  "Get the ntfy app and tap Add my alerts".
+- Modify: `docs/guide/04-everyday-use.md` (notifications part) — new short section "Kid
+  alerts away from home", in plain words:
+  - At home, alerts come straight from your box, as before.
+  - Away from home they go through a free public alert service, ntfy.sh. It only sees short,
+    generic lines like "You have a new chore" and when they were sent. It never sees names,
+    chores, messages or rewards.
+  - Want no outside service? Your box's installer can point it at your own ntfy server
+    (`NTFY_UPSTREAM_URL`, optional `NTFY_UPSTREAM_TOKEN`) or turn it off (empty value).
 - Modify: `docs/guide/06-troubleshooting.md` — "The box code doesn't work"; "Too many
   tries"; "The kid's code expired or was already used"; "I can't add it to my home screen"
   (needs the secure address; IP-mode boxes can't); "A lost phone" (Remove it on the kid's
@@ -350,7 +371,11 @@ are owner actions).
   parent for a new code".
 - [ ] Airplane-mode the kid phone, open the icon → the offline page shows.
 - [ ] `docker compose … logs frontend backend edge | grep -E "enroll=|claim="` → no hits.
-- [ ] Settings → Notifications → the kid ntfy code points at `https://<id>…:2443`.
+- [ ] On the kid phone, "Add my alerts" subscribes ntfy to `ntfy.sh`. Turn Wi-Fi off and
+  make a chore → the alert says "You have a new chore", with no name or title. On home Wi-Fi
+  the LAN ntfy alert still has the full text.
+- [ ] `curl -sk https://<id>.taskfrce.jmolabs.dev:2443` fails (ntfy is not on the hostname).
+- [ ] Set `NTFY_UPSTREAM_URL` to the owner's tunnelled ntfy (plus token) → alerts arrive there.
 - [ ] Revert per the script's undo text; the IP-mode box sets up with no code prompt.
 
 ## Self-review (done while writing)
@@ -364,7 +389,8 @@ are owner actions).
    - §6: token URL, long-lived session, optional PIN, platform hints, manifest + SW,
      single-use 24 h, re-issue, revoke, parent-only, unlimited devices, list + Remove →
      T5–T8, T10–T12.
-   - §7 launch (ntfy behind HTTPS) → T3–T4. Web push is a later follow-up per the spec.
+   - §7 launch, revised by the owner (ntfy not on the hostname; generic alerts via upstream
+     ntfy; LAN ntfy kept) → T3, T4, T7, T7A, T10, T13. Web push is a later follow-up.
    - §8 no migration → no `CLAIM_CODE` means no gate (T2).
    - Docs → T13.
 2. **Step scan.** No TBDs. Bodies only for the CAS update, the lockout schedule and fixed copy.
@@ -387,5 +413,9 @@ are owner actions).
 - Claim lockout is per IP and held in memory; a restart clears it, and attackers can't
   restart the box. There is no box-wide cap, because one would let a neighbor block the
   parent's setup.
+- Kid alerts away from home go to `NTFY_UPSTREAM_URL` (default ntfy.sh, owner decision) with
+  generic text only and no click URL (it would reveal the box hostname). Tradeoff: ntfy.sh
+  sees the text, topic, timing and the box's public IP. The topic rotates when a phone is
+  removed. The phase-1 edge `:2443` ntfy block is removed.
 - Manifests use the light background. Dark status bars come from the existing `theme-color`
   tags (manifests have no dark variant).
