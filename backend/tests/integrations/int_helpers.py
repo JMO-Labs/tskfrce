@@ -243,3 +243,8 @@ def img_path(install, url=IMG_URL) -> str:
     from urllib.parse import quote
 
     return f"/api/v1/integration-widgets/{install.id}/image?u={quote(url, safe='')}"
+
+
+def press_url(install) -> str:
+    """The box widget-button press path for this install."""
+    return f"/api/v1/integration-widgets/{install.id}/press"

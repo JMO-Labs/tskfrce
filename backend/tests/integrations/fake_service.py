@@ -14,6 +14,7 @@ class FakeService:
         self.last_path = self.last_body = None
         self.last_signature_ok = False
         self.failing = False
+        self.press_reply: list[dict] = []  # actions answered to a widget.pressed event
         self.calls = 0
         self.transport = httpx.MockTransport(self._handle)
 
@@ -28,10 +29,12 @@ class FakeService:
             self.secret = self.last_body["secret"]  # a real service learns it from install
         want = sign_request(self.secret, int(h["x-tsk-timestamp"]), rid, body)
         self.last_signature_ok = verify(h["x-tsk-signature"], want)
+        events = self.last_body.get("events") or [{}]
+        pressed = events[0].get("kind") == "widget.pressed"
         out = json.dumps(
             {
                 "request_id": self.request_id_override or rid,
-                "actions": self.actions,
+                "actions": self.press_reply if pressed else self.actions,
                 "widgets": self.widgets,
             }
         ).encode()

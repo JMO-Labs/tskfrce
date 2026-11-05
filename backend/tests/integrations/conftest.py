@@ -19,6 +19,7 @@ from tests.integrations.int_helpers import (
     TEST_KEY,
     Signer,
     W,
+    button,
     card,
     image,
     sign_env,
@@ -320,3 +321,48 @@ def cdn(monkeypatch):
         widget_service, "fetch_image", partial(widget_service.fetch_image, transport=c.transport)
     )
     return c
+
+
+@pytest.fixture
+def kid_widget_install(db, widget_install, svc, kid):
+    """`widget_install` plus widgets.kid, `kid` in kid_widget_ids, and kid widget kid_w with
+    button done -> chore.complete, shown (cached) on kid's surface."""
+    import time
+
+    from app.integrations import widget_service
+
+    m = {
+        **DEMO,
+        "permissions": ["chores.complete", "widgets.parent", "widgets.kid"],
+        "widgets": [
+            {"id": "w1", "surface": "parent", "title": "Demo card"},
+            {"id": "kid_w", "surface": "kid", "title": "Kid card"},
+        ],
+    }
+    widget_install.manifest = json.dumps(sign_env(m))
+    widget_install.permissions = json.dumps(["widgets.parent", "widgets.kid", "chores.complete"])
+    db.query(IntegrationKid).filter_by(install_id=widget_install.id, kid_id=kid.id).update(
+        {"kid_widgets": True}
+    )
+    db.commit()
+    svc.widgets = [W("kid_w", card(button("done", "chore.complete")))]
+    widget_service.get(db, widget_install, "kid", kid.id, time.time())
+    db.commit()
+    return widget_install
+
+
+@pytest.fixture
+def run_other(db, install, other_kid):
+    """Today's todo run of the install's linked chore for `other_kid`, who is also linked."""
+    from app.models.chores import ChoreAssignment
+    from app.services.chores import today
+
+    chore_id = install.chores[0].chore_id
+    a = db.query(ChoreAssignment).filter_by(chore_id=chore_id).one()
+    a.kids.append(other_kid)
+    db.add(IntegrationKid(install_id=install.id, kid_id=other_kid.id))
+    run = ChoreRun(assignment=a, day=today(db), kid_id=other_kid.id, status="todo")
+    db.add(run)
+    db.commit()
+    run.chore_id = chore_id  # unmapped convenience attribute for tests
+    return run
