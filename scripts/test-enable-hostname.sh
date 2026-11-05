@@ -32,6 +32,16 @@ sh "$S" abc123 "$SEC" "$E" || fail "second run failed"
 [ "$(grep '^EDGE_TOKEN=' "$E")" = "$TOK" ] || fail "EDGE_TOKEN changed"
 [ "$(grep -c '^BOX_URL=' "$E")" = 1 ] || fail "duplicate keys"
 
+before="$(cksum <"$E")"
+CLAIM_CODE=BAD sh "$S" abc123 "$SEC" "$E" 2>/dev/null && fail "bad claim accepted"
+[ "$before" = "$(cksum <"$E")" ] || fail "file touched on bad claim"
+CLAIM_CODE=k7m2q-xa9pb sh "$S" abc123 "$SEC" "$E" >/dev/null || fail "claim run failed"
+grep -qx 'CLAIM_CODE=K7M2QXA9PB' "$E" || fail "CLAIM_CODE not written"
+grep -qx 'NTFY_PUBLIC_URL=http://192.168.1.5:2586' "$E" || fail "NTFY_PUBLIC_URL changed"
+sh "$S" abc123 "$SEC" "$E" >/dev/null
+grep -qx 'CLAIM_CODE=K7M2QXA9PB' "$E" || fail "CLAIM_CODE not kept"
+[ "$(stat -c %a "$E")" = 600 ] || fail "mode not 600 with claim"
+
 printf 'FOO=1\n' >"$E"
 sh "$S" abc123 "$SEC" "$E"
 grep -qx 'COMPOSE_PROFILES=edge' "$E" || fail "profiles from empty"

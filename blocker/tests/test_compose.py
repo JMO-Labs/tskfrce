@@ -73,3 +73,9 @@ def test_prod_frontend_and_edge_receive_edge_token_only():
         env = svcs[name]["environment"]
         assert "EDGE_TOKEN" in env
         assert "INTERNAL_TOKEN" not in env
+
+
+def test_prod_backend_passes_claim_code():
+    env = yaml.safe_load(PROD.read_text())["services"]["backend"]["environment"]
+    assert "CLAIM_CODE" in env and "NTFY_UPSTREAM_TOKEN" in env
+    assert env["NTFY_UPSTREAM_URL"] == "${NTFY_UPSTREAM_URL-https://ntfy.sh}"

@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     NTFY_URL: str | None = None  # internal backend -> ntfy, e.g. http://ntfy:80
     NTFY_PUBLIC_URL: str | None = None  # what phones use
     NTFY_PORT: str = "2586"  # host port mapping ("2586" or "0.0.0.0:2586"); builds the phone URL
+    NTFY_UPSTREAM_URL: str = "https://ntfy.sh"  # generic kid alerts go here; "" = off
+    NTFY_UPSTREAM_TOKEN: str | None = None  # optional Bearer token for that server
     NTFY_CONF_FILE: str | None = None  # shared server.yml the ntfy container reads
     BLOCKER_URL: str = "http://127.0.0.1:7777"
     LOCK_INTERVAL_SECONDS: int = 30
@@ -78,6 +80,11 @@ class Settings(BaseSettings):
             if not getattr(self, name):
                 setattr(self, name, value)
         return self
+
+    @field_validator("NTFY_UPSTREAM_URL")
+    @classmethod
+    def strip_upstream_slash(cls, v: str) -> str:
+        return v.strip().rstrip("/")
 
     @field_validator("CLAIM_CODE")
     @classmethod

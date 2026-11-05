@@ -24,6 +24,9 @@ services:
       NTFY_PUBLIC_URL: ${NTFY_PUBLIC_URL:-http://task4ce.local:2586}
       NTFY_PORT: ${NTFY_PORT:-0.0.0.0:2586}
       NTFY_CONF_FILE: /ntfy-conf/server.yml
+      CLAIM_CODE: ${CLAIM_CODE:-}
+      NTFY_UPSTREAM_URL: ${NTFY_UPSTREAM_URL-https://ntfy.sh}
+      NTFY_UPSTREAM_TOKEN: ${NTFY_UPSTREAM_TOKEN:-}
     volumes:
       - task4ce_data:/app/data
       - ntfy_conf:/ntfy-conf
