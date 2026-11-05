@@ -33,9 +33,9 @@ Testing Library, Playwright (light/dark screenshot projects), POSIX sh + shellch
 the launch half of 7, and 8; build-order item 2). Phase 1 plan:
 `docs/superpowers/plans/2026-11-04-onboarding-p1-hostname-tls.md`.
 
-**Plan files:** this file (Global Constraints, Review Focus, Tasks 1–7A: backend and box
-scripts) and `2026-11-05-onboarding-p2-claim-enroll-part2.md` (Tasks 8–14: PWA, UI, docs,
-owner check, self-review).
+**Plan files:** this file (Global Constraints, Review Focus, plan rulings, Tasks 1–7: backend
+and box scripts) and `2026-11-05-onboarding-p2-claim-enroll-part2.md` (Task 7A upstream alerts,
+Tasks 8–14: PWA, UI, docs, owner check, self-review).
 
 ## Global Constraints
 
@@ -55,14 +55,16 @@ owner check, self-review).
   **180 days without use** (sliding). Remove = delete the row; the kid's next request → 401.
 - Secrets in URLs: only in the **fragment** (`/setup#claim=…`, `/kid#enroll=…`). The page
   strips it with `history.replaceState` before any request and sends it in a POST body.
-  Never put a token in a query string, path or log line.
+  Never put a token in a query string, path or log line. One allowed exception (ntfy's API
+  needs it): the alert topic sits in the `ntfy://host/{topic}` app link and the phone's ntfy
+  subscription path. It never goes in a box URL.
 - QR 2 (sticker) URL: `https://<box-id>.taskfrce.jmolabs.dev/setup#claim=<code>`.
   Kid QR URL: `${BOX_URL}/kid#enroll=<token>`. Never generate `http://…taskfrce.jmolabs.dev`.
 - The gate, enrollment and install hints must work over plain `http://<lan-ip>:3000`
   (IP mode). Only installing waits for HTTPS.
 - Upstream alerts: `NTFY_UPSTREAM_URL` (default `https://ntfy.sh`; empty = off) and an optional
   `NTFY_UPSTREAM_TOKEN` (sent as `Authorization: Bearer`). A self-hosted URL (e.g. behind the
-  owner's Cloudflare tunnel) is used as is.
+  owner's Cloudflare tunnel) is used as is, minus any trailing `/`.
 - Upstream topic: `users.alert_topic`, `secrets.token_urlsafe(24)` (192 bits), made on the box
   at the kid's first enrollment and rotated when a phone is removed. It is sent only in the
   `POST /kid/enroll` and `/kid/session` response bodies. It never appears in a box URL, a QR
@@ -76,17 +78,18 @@ owner check, self-review).
   `http://…taskfrce.jmolabs.dev` URL.
 - Wizard: 8 steps. 1 You, 2 Family, 3 Kids, **4 Kids' phones (new, skippable)**, 5 Chores,
   6 Devices, 7 Hours, 8 Remote access (optional). Backend `LAST_STEP = 8`.
-- UI: v3 tokens and existing classes only. **No new colors.** Light and dark. Every UI task
-  saves light and dark screenshots (phone 390×844 and desktop 1280×800) for owner review,
-  compared side by side with the named mockup in
-  `docs/superpowers/specs/2026-10-24-v3-redesign-mockups/`.
+- UI: v3 tokens and existing classes only. **No new colors, no new mockups**: the v3 mockups in
+  `docs/superpowers/specs/2026-10-24-v3-redesign-mockups/` are the style reference. Every UI
+  task saves light and dark screenshots (phone 390×844, desktop 1280×800), compares them side
+  by side with the named mockup, and the owner reviews them.
 - Copy: short sentences, no jargon (no "token", "IP", "DNS", "PWA" in UI text).
 - Alembic: the new migration chains from main's head **`b0c1d2e3f4a5`**. Re-chain rule:
   `feat/integrations` (PR #60: `c1d2e3f4a5b6`, `c2d3e4f5a6b7`) and `feat/homework-mode`
   also chain from `b0c1d2e3f4a5`. Whichever merges later rebases and sets its first
   migration's `down_revision` to main's head at that moment; `cd backend && alembic heads`
   must print exactly one head before merge.
-- Files < 500 lines. Python 3.11, `ruff format --check backend blocker && ruff check backend
+- Files < 500 lines. `frontend/src/v2/types.ts` is at 483: new types go in
+  `frontend/src/v2/types/enroll.ts`. Python 3.11, `ruff format --check backend blocker && ruff check backend
   blocker` clean, line length 100. Frontend `npm run lint`, `npm run type-check`, `npm test`.
 - Semantic commits. Every commit message ends with exactly:
   ```
@@ -113,6 +116,25 @@ owner check, self-review).
    `test_every_kid_kind_has_generic_text`. (The wizard-step shift is pinned by Task 5's
    `test_setup_step_shifts_past_new_step`.)
 
+## Rulings made in this plan
+
+- Kid QR uses `#enroll=` (fragment), not the spec's `?enroll=`. The secret then never
+  reaches a server or a log. The claim code uses `#claim=` and QR 2 targets `/setup`.
+- Residual risk: anyone who photographs a shown kid QR within 24 h, before the kid scans it,
+  gets that kid's (low-privilege) session. The parent sees the extra phone and can Remove it.
+- An enrolled phone skips the kid's PIN. Device sessions end after 180 idle days.
+- Claim lockout is per IP and held in memory; a restart clears it, and attackers can't
+  restart the box. There is no box-wide cap, because one would let a neighbor block the
+  parent's setup.
+- Spec drift (fragments, QR 2 on `/setup`, PIN skip, upstream ntfy) is recorded in the spec's
+  "Owner decisions 2026-11-05" note.
+- Kid alerts away from home go to `NTFY_UPSTREAM_URL` (default ntfy.sh, owner decision) with
+  generic text only and no click URL (it would reveal the box hostname). Tradeoff: ntfy.sh
+  sees the text, topic, timing and the box's public IP. The topic rotates when a phone is
+  removed. The phase-1 edge `:2443` ntfy block is removed.
+- Manifests use the light background. Dark status bars come from the existing `theme-color`
+  tags (manifests have no dark variant).
+
 ---
 
 ### Task 1: Claim-code core and growing lockout
@@ -122,6 +144,9 @@ owner check, self-review).
 - Create: `backend/app/core/lockout.py` (≤ 80 lines)
 - Modify: `backend/app/core/config.py` (add `CLAIM_CODE` after `BOX_URL`, line ~31)
 - Modify: `backend/tests/conftest.py:22-25` (autouse fixture also calls `lockout.reset()`)
+- Modify: `backend/app/models/family.py` (add `owner_set`, moved from `setup._owner_set`),
+  `backend/app/api/setup.py` (delete `_owner_set`; import and call `owner_set`),
+  `backend/tests/test_error_handlers.py:10` (patch target → `app.api.setup.owner_set`)
 - Test: `backend/tests/test_claim.py`, `backend/tests/test_lockout.py`
 
 **Interfaces:**
@@ -133,7 +158,9 @@ owner check, self-review).
   - `claim.normalize(raw: str) -> str`
   - `claim.matches(raw: str | None) -> bool` (False when `settings.CLAIM_CODE` is unset or
     `raw` is None; constant-time compare)
-  - `claim.required(db: Session) -> bool`: `settings.CLAIM_CODE` set and no owner yet.
+  - `family.owner_set(db: Session) -> bool`: `FamilySettings.owner_id` is set (body moved
+    unchanged from `setup._owner_set`; one owner check for setup and claim).
+  - `claim.required(db: Session) -> bool`: `settings.CLAIM_CODE` set and `not owner_set(db)`.
   - `lockout.check(key: str) -> None`: raises `HTTPException(429, detail)` while locked.
     Detail: `"Too many tries. Wait {n} minute(s) and try again."` (`n` = minutes left,
     rounded up; "minute" when 1).
@@ -156,6 +183,7 @@ owner check, self-review).
     `FamilySettings.owner_id` is set; False when `CLAIM_CODE` is None.
   - `test_settings_rejects_bad_code`: `Settings(CLAIM_CODE="short")` raises; `"k7m2q-xa9pb"`
     is stored as `"K7M2QXA9PB"`.
+  - `test_empty_setting_is_unset`: `Settings(CLAIM_CODE="")` → `None` (compose passes it).
   - `test_lockout.py` (monkeypatch `lockout._now` to a list-backed clock):
     - 4 fails → `check` passes; 5th fail → `check` raises 429 with `"Wait 1 minute"`.
     - After 61 s it passes again; 5 more fails → locked 120 s (`"Wait 2 minutes"`).
@@ -167,19 +195,20 @@ owner check, self-review).
 - [ ] **Step 3: Implement** `claim.py`, `lockout.py` and the setting. Lockout state:
   `dict[str, tuple[deque[float], int, float, float]]` (fails, strikes, locked_until,
   last_fail) under a `threading.Lock`, pruned like `ratelimit._sweep` above 1000 keys.
-- [ ] **Step 4: Run** the tests, then `ruff format --check backend && ruff check backend`.
-  Expected: pass.
+- [ ] **Step 4: Run** the tests plus `tests/test_setup.py tests/test_error_handlers.py`, then
+  `ruff format --check backend && ruff check backend`. Expected: pass.
 - [ ] **Step 5: Commit** `feat(setup): claim code check and growing lockout`
 
 ### Task 2: Setup API claim gate
 
 **Files:**
 - Modify: `backend/app/api/setup.py` (133 lines; stays < 200)
-- Test: `backend/tests/test_setup_claim.py`; update `backend/tests/test_setup.py` only where
-  `LAST_STEP` 7 is asserted.
+- Test: `backend/tests/test_setup_claim.py`; update `backend/tests/test_setup.py`: add
+  `"claim": False` to its 4 exact `{"needed": …}` asserts (lines 17, 31, 51, 62).
 
 **Interfaces:**
-- Consumes: `claim.matches`, `claim.required`, `lockout.check`, `lockout.fail` (Task 1).
+- Consumes: `claim.matches`, `claim.required`, `lockout.check`, `lockout.fail`,
+  `family.owner_set` (Task 1; `setup.py` already calls it, no `_owner_set`).
 - Produces:
   - `GET /api/v1/setup` → `{"needed": bool, "claim": bool}`; `claim = claim.required(db)`.
   - `POST /api/v1/setup/claim` body `{"code": str}` (`max_length=32`):
@@ -204,6 +233,7 @@ owner check, self-review).
   def test_claim_after_owner_409(client, cfg): ...                 # after setup, /setup/claim -> 409
   def test_no_claim_code_setting_no_gate(client): ...              # CLAIM_CODE None: claim False, setup 201 without code
   def test_step_8_accepted_9_rejected(client, parent_headers): ...
+  def test_claim_lockout_shared_with_setup(client, cfg): ...       # 5 wrong on /setup/claim -> POST /setup with right code 429
   ```
   Also assert the 403 response body never contains the configured code.
 - [ ] **Step 2: Run** `python -m pytest tests/test_setup_claim.py tests/test_setup.py -q`. Expected: FAIL.
@@ -224,6 +254,10 @@ owner check, self-review).
   `NTFY_UPSTREAM_URL: ${NTFY_UPSTREAM_URL-https://ntfy.sh}` (an explicit empty value turns it
   off) and `NTFY_UPSTREAM_TOKEN: ${NTFY_UPSTREAM_TOKEN:-}`
 - Modify: `blocker/tests/test_compose.py` (one test)
+- Modify: `backend/app/core/config.py`: `NTFY_UPSTREAM_URL: str = "https://ntfy.sh"`,
+  `NTFY_UPSTREAM_TOKEN: str | None = None`; a validator strips a trailing `/` (`""` stays
+  `""` = off). Tasks 7 and 7A read both.
+- Test: `backend/tests/test_upstream_settings.py`
 - Modify: `.github/workflows/ci-cd.yml` installer job: shellcheck and run `test-new-box.sh`.
 
 **Interfaces:**
@@ -236,7 +270,7 @@ owner check, self-review).
   `^[0-9A-HJKMNP-TV-Z]{10}$` (after upper-casing and dropping `-`) and write it; when unset,
   keep any existing `CLAIM_CODE` line. Undo text gains `CLAIM_CODE`.
 - Backend: an empty `CLAIM_CODE=` from compose must mean "unset": Task 1's validator maps
-  `""` to `None`.
+  `""` to `None` (tested in Task 1).
 
 - [ ] **Step 1: Write failing tests.**
   - `test-new-box.sh`: stub `npx` logs argv. Output has a `CLAIM_CODE=` line matching the
@@ -247,21 +281,25 @@ owner check, self-review).
     `CLAIM_CODE` keeps it; `CLAIM_CODE=BAD` → non-zero exit, file untouched.
   - `test_compose.py::test_prod_backend_passes_claim_code`: backend env has `CLAIM_CODE`,
     `NTFY_UPSTREAM_URL` (default `https://ntfy.sh`) and `NTFY_UPSTREAM_TOKEN`.
-  - `backend/tests/test_claim.py::test_empty_setting_is_unset`: `Settings(CLAIM_CODE="")`
-    → `None`.
+  - `test_upstream_settings.py`: defaults `"https://ntfy.sh"` and `None`;
+    `Settings(NTFY_UPSTREAM_URL="https://ntfy.example.net/")` → `"https://ntfy.example.net"`;
+    `""` stays `""`.
 - [ ] **Step 2: Run** `bash registry/scripts/test-new-box.sh; bash scripts/test-enable-hostname.sh;
-  cd blocker && python -m pytest tests/test_compose.py -q`. Expected: FAIL.
+  cd blocker && python -m pytest tests/test_compose.py -q`; `cd backend && python -m pytest
+  tests/test_upstream_settings.py -q`. Expected: FAIL.
 - [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the three commands, `shellcheck` on all four scripts, and
-  `cd backend && python -m pytest tests/test_claim.py -q`. Expected: pass.
+- [ ] **Step 4: Run** the four commands, `shellcheck` on all four scripts, and ruff.
+  Expected: pass.
 - [ ] **Step 5: Commit** `feat(scripts): claim code on new boxes; upstream ntfy settings`
 
 ### Task 4: Keep ntfy off the public hostname
 
 **Files:**
 - Modify: `edge/Caddyfile` (delete the `:2443` site block)
-- Modify: `docker-compose.prod.yml` (drop `NTFY_UPSTREAM` from the `edge` service env; it only
-  fed that block)
+- Modify: `docker-compose.prod.yml`: drop `NTFY_UPSTREAM` from the `edge` (line 134) and
+  `frontend` (line 52) env; it only fed that block
+- Modify: `.env.example:33-34`: delete `# NTFY_UPSTREAM=…`; the comment above says "frontend"
+  instead of "frontend/ntfy"
 - Modify: `backend/app/services/push.py:20-25` (`public_url`)
 - Test: `backend/tests/test_push.py`, `blocker/tests/test_compose.py`, `edge/test-edge.sh`
 
@@ -273,8 +311,8 @@ owner check, self-review).
 - [ ] **Step 1: Write failing tests.**
   - `test_public_url_never_http_on_hostname`: `BOX_URL="https://abc123.taskfrce.jmolabs.dev"`,
     `NTFY_PUBLIC_URL=None` → `None`. Keep the existing http test.
-  - `test_compose.py::test_edge_has_no_ntfy_upstream`: `"NTFY_UPSTREAM" not in
-    svcs["edge"]["environment"]`.
+  - `test_compose.py::test_no_service_has_ntfy_upstream`: no service's `environment` has the
+    exact key `NTFY_UPSTREAM` (backend's `NTFY_UPSTREAM_URL` is fine).
   - `edge/test-edge.sh`: `grep -q 2443 edge/Caddyfile` fails.
 - [ ] **Step 2: Run** `cd backend && python -m pytest tests/test_push.py -q`,
   `cd blocker && python -m pytest tests/test_compose.py -q`, `bash edge/test-edge.sh`.
@@ -333,11 +371,15 @@ owner check, self-review).
 - Create: `backend/app/services/kid_enroll.py` (≤ 150 lines; Task 7 adds to it)
 - Create: `backend/app/api/kid_enroll.py` (`parent_router`; Task 7 adds `kid_router`)
 - Modify: `backend/app/main.py:155-157` (include the router next to `kid_push_router`)
-- Test: `backend/tests/test_kid_enroll_parent.py`
+- Create: `backend/app/services/qr.py` (≤ 15 lines); Modify: `backend/app/api/kid_push.py`
+  (`_out` calls `qr_svg(link)` instead of its own segno code)
+- Test: `backend/tests/test_kid_enroll_parent.py`; `backend/tests/test_kid_push.py` unchanged
 
 **Interfaces:**
 - Consumes: `KidEnrollToken`, `KidDevice` (Task 5); `kids._kid(db, kid_id)` (404 helper used
-  by `kid_push.py`); `segno` SVG pattern from `kid_push._out`.
+  by `kid_push.py`).
+- Produces (shared): `qr.qr_svg(text: str) -> str`: the segno SVG from `kid_push._out`
+  (`scale=6, border=2, xmldecl=False`), used by both `kid_push._out` and enroll.
 - Produces (service):
   - `ENROLL_TTL = timedelta(hours=24)`
   - `hash_token(raw: str) -> str` (sha256 hex)
@@ -349,7 +391,8 @@ owner check, self-review).
   - `POST /{kid_id}/enroll` → 201 `{"url": str, "qr_svg": str, "expires_at": "…Z"}`
     (`utc_z` from `app.schemas.lock`). 409 `"Set BOX_URL on the box first."` when
     `BOX_URL` is unset.
-  - `GET /{kid_id}/phones` → `[{"id", "label", "created_at", "last_seen_at"}]`, newest first.
+  - `GET /{kid_id}/phones` → `[{"id", "label", "created_at", "last_seen_at"}]`, newest first;
+    both datetimes via `utc_z` (`"…Z"`).
   - `DELETE /{kid_id}/phones/{phone_id}` → 204; 404 `"We couldn't find that phone."` when
     the row is missing or belongs to another kid.
 
@@ -368,12 +411,12 @@ owner check, self-review).
   def test_kid_cannot_issue_403(client, kid, kid_headers, cfg): ...
   def test_unknown_kid_404(...): ...
   def test_no_box_url_409(...): ...
-  def test_list_and_remove_phone(...): ...       # seed a KidDevice; GET lists it; DELETE 204; GET []
+  def test_list_and_remove_phone(...): ...       # seed a KidDevice; GET lists it, both times end "Z"; DELETE 204; GET []
   def test_remove_other_kids_phone_404(...): ...
   ```
 - [ ] **Step 2: Run** `python -m pytest tests/test_kid_enroll_parent.py -q`. Expected: FAIL.
 - [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the test file and ruff. Expected: pass.
+- [ ] **Step 4: Run** the test file, `tests/test_kid_push.py` and ruff. Expected: pass.
 - [ ] **Step 5: Commit** `feat(kids): parent issues one-time phone codes and removes phones`
 
 ### Task 7: Kid API: redeem a code, refresh the session, instant revocation
@@ -386,7 +429,8 @@ owner check, self-review).
 - Test: `backend/tests/test_kid_enroll_kid.py`
 
 **Interfaces:**
-- Consumes: Task 5 models, Task 6 `hash_token`; `ratelimit.check/hit`; `client_ip`.
+- Consumes: Task 5 models, Task 6 `hash_token`; `ratelimit.check/hit`; `client_ip`;
+  `settings.NTFY_UPSTREAM_URL` (Task 3).
 - Produces (service):
   - `SESSION_IDLE = timedelta(days=180)`
   - `device_label(ua: str) -> str`: `"iPhone"`, `"iPad"`, `"Android phone"` (Android +
@@ -402,7 +446,7 @@ owner check, self-review).
   - `access_for(auth: AuthService, kid: User, dev: KidDevice) -> str`:
     `create_access_token(data={"sub": str(kid.id), "sid": dev.id})`.
 - Produces (routes):
-  - `alert_for(kid: User) -> dict | None`: `{"server": NTFY_UPSTREAM_URL, "topic":
+  - `alert_for(kid: User) -> dict | None`: `{"server": NTFY_UPSTREAM_URL.rstrip('/'), "topic":
     kid.alert_topic}`, or None when `NTFY_UPSTREAM_URL` is empty. `redeem` sets
     `kid.alert_topic = secrets.token_urlsafe(24)` when it is None.
   - `POST /api/v1/kid/enroll` body `{"token": str}` (`max_length=64`) → 200
@@ -411,7 +455,7 @@ owner check, self-review).
     `ENROLL_GONE = "This code has expired or was already used. Ask a parent for a new one."`.
     Failures counted with `check/hit` on `f"enroll:{ip}"`, 10 per 60 s.
   - `POST /api/v1/kid/session` body `{"device_token": str}` (`max_length=64`) → 200
-    `{"access_token", "alert": alert_for(kid)}`; 401 `PHONE_REMOVED = "This phone was removed. Ask a parent for a new
+    `{"access_token", "kid": {"id", "full_name", "avatar"}, "alert": alert_for(kid)}`; 401 `PHONE_REMOVED = "This phone was removed. Ask a parent for a new
     code."`. Failures on `f"kidsess:{ip}"`, 10 per 60 s.
 - `get_current_user`: if the payload has `sid`, return None unless a `KidDevice` with that id
   **and** `kid_id == user.id` exists. Tokens without `sid` (parents, IP-based kid login) are
@@ -422,19 +466,23 @@ owner check, self-review).
   def test_redeem_signs_kid_in(client, kid, db): ...          # issue via service; POST /kid/enroll -> 200; GET /kid/today with access_token -> 200
   def test_redeem_returns_alert_topic(client, kid, db): ...   # alert.server == "https://ntfy.sh"; len(topic) >= 32; same topic on a second phone
   def test_alert_none_when_upstream_off(...): ...             # NTFY_UPSTREAM_URL = "" -> "alert": None
+  def test_alert_server_slash_stripped(...): ...              # monkeypatch "https://ntfy.example.net/" -> server has no trailing "/"
   def test_alert_topic_not_in_parent_api(...): ...            # GET /kids, /kids/{id}, /kids/{id}/phones bodies lack the topic
   def test_redeem_twice_second_gets_410(client, kid, db): ...
-  def test_redeem_race_one_winner(db, kid): ...               # two redeem() calls on separate sessions (shared engine) -> exactly one non-None
+  def test_redeem_race_one_winner(db, kid): ...
+      # session A loads the token row; redeem on session B (commits); then redeem on A -> None.
+      # Exactly one non-None. A read-then-write redeem must fail this test.
   def test_expired_token_410(client, kid, db, monkeypatch): ...   # expires_at in the past
   def test_voided_token_410(...): ...                         # issue twice; first raw -> 410
   def test_inactive_kid_410(...): ...
   def test_label_from_user_agent(): ...                       # iPhone / iPad / Android phone / Android tablet / other
-  def test_session_refresh_returns_new_access(client, kid, db): ...
+  def test_session_refresh_returns_new_access(client, kid, db): ...  # body also has kid {id, full_name, avatar}
   def test_removed_phone_access_token_401(client, kid, db, parent_headers): ...
       # redeem -> DELETE /kids/{id}/phones/{pid} -> GET /kid/today with the old access_token -> 401
       # and POST /kid/session -> 401 PHONE_REMOVED
   def test_idle_180_days_401_and_row_deleted(...): ...
   def test_parent_token_unaffected(client, parent_headers): ...   # GET /auth/me -> 200
+  def test_enrolled_kid_token_cannot_issue_403(client, kid, db): ...  # sid access token -> POST /kids/{id}/enroll 403
   def test_enroll_failures_rate_limited(client): ...          # 10 bad tokens -> 11th 429
   def test_token_never_in_url_routes(): ...                   # no route path in fastapi_app contains "{token}" under /api/v1/kid
   ```
@@ -443,56 +491,5 @@ owner check, self-review).
 - [ ] **Step 4: Run** `python -m pytest tests -q` (whole backend suite: auth changed) and ruff.
   Expected: pass.
 - [ ] **Step 5: Commit** `feat(kid): sign in a kid's phone from a one-time code; revocable sessions`
-
-### Task 7A: Publish generic kid alerts to the upstream ntfy
-
-**Files:**
-- Modify: `backend/app/core/config.py` (`NTFY_UPSTREAM_URL: str = "https://ntfy.sh"`,
-  `NTFY_UPSTREAM_TOKEN: str | None = None`; a trailing `/` is stripped)
-- Modify: `backend/app/services/push.py` (stays < 200 lines)
-- Modify: `backend/app/api/kid_enroll.py` (`DELETE /kids/{id}/phones/{pid}` rotates
-  `kid.alert_topic`)
-- Test: `backend/tests/test_push_upstream.py`
-
-**Interfaces:**
-- Consumes: `User.alert_topic` (Task 5), `alert_for` (Task 7), `inbox.KID_KINDS`.
-- Produces:
-  - `push.GENERIC: dict[str, str]`, one line per `KID_KINDS` member, e.g. `chore_new` "You
-    have a new chore", `due_soon` "A chore is due soon", `missed_deadline` "A chore is
-    overdue", `lock_warning` "Screen time ends soon", `chat_message` "You have a new
-    message", `chore_approved` "A chore was approved", `chore_sent_back` "A chore needs
-    another look". Any other kind gets "Open t@sk4ce to see what's new".
-  - `push.queue(...)` keeps the LAN item exactly as today (only when `enabled()` and
-    `push_topic`). It also appends, when `NTFY_UPSTREAM_URL` and `u.alert_topic` are set,
-    `{"topic": u.alert_topic, "title": "t@sk4ce", "message": GENERIC[kind], "priority": …,
-    "_up": True, "_row": row}`. Nothing else: no `click`, no tags, no name.
-  - `push.send(item)` posts `_up` items to `f"{NTFY_UPSTREAM_URL}/"` with `Authorization:
-    Bearer {NTFY_UPSTREAM_TOKEN}` when set, and the rest to `NTFY_URL` as today. Each item
-    has its own try/except, so an upstream error only logs `"Upstream push failed"` (never
-    the topic).
-  - The LAN-only gate in `queue` (`if not enabled()`) no longer stops upstream items.
-
-- [ ] **Step 1: Write failing tests** (monkeypatch `push._spawn` to run inline and
-  `httpx.post` to record calls):
-  ```python
-  def test_upstream_payload_is_generic(db, kid, cfg):  # kid.full_name "Sam", chore "Clean Sam's room"
-      push.queue(db, kid.id, "chore_new", "New chore: Clean Sam's room", "Due 5 pm"); db.commit()
-      up = [c for c in calls if c.url == "https://ntfy.sh/"][0]
-      assert up.json == {"topic": kid.alert_topic, "title": "t@sk4ce",
-                         "message": "You have a new chore", "priority": 3}
-      assert "Sam" not in str(up) and "Clean" not in str(up)
-  def test_every_kid_kind_has_generic_text(): assert inbox.KID_KINDS <= push.GENERIC.keys()
-  def test_lan_send_unchanged(...): ...          # LAN item still has the real title/body and click
-  def test_upstream_down_lan_still_sent(...): ...  # upstream post raises -> LAN post still made
-  def test_token_header_only_when_set(...): ...
-  def test_self_hosted_url_used_as_is(...): ...  # NTFY_UPSTREAM_URL "https://ntfy.example.net/" -> posts to "https://ntfy.example.net/"
-  def test_upstream_off_when_empty(...): ...
-  def test_no_alert_topic_no_upstream(...): ...
-  def test_remove_phone_rotates_topic(client, kid, db, parent_headers): ...  # DELETE -> topic changed; /kid/session on the other phone returns the new one
-  ```
-- [ ] **Step 2: Run** `python -m pytest tests/test_push_upstream.py -q`. Expected: FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `python -m pytest tests -q` and ruff. Expected: pass.
-- [ ] **Step 5: Commit** `feat(push): generic kid alerts through an upstream ntfy server`
 
 Continue with `2026-11-05-onboarding-p2-claim-enroll-part2.md`.

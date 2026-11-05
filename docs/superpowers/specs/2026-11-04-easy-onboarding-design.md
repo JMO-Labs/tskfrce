@@ -34,6 +34,14 @@ for the target parent.
 
   Mockup: `.superpowers/brainstorm/3901583-1793800667/content/setup-flow.html`.
 
+### Owner decisions 2026-11-05 (amend §1, §6, §7; phase 2 plan follows these)
+
+- Secrets ride in URL **fragments**: QR 2 is `https://<box-id>.taskfrce.jmolabs.dev/setup#claim=<code>`
+  (not `/`), and the kid QR is `/kid#enroll=<token>` (not `?enroll=`), so they never reach a server or log.
+- An enrolled kid phone **skips the PIN** (§6 "PIN stays optional" is superseded).
+- ntfy is **not** served on the HTTPS hostname (§7). Away from home, kid alerts go through an
+  upstream ntfy server (`NTFY_UPSTREAM_URL`, default ntfy.sh) with generic text only; LAN ntfy stays.
+
 ## Goals
 
 1. First-time setup takes **≤ 5 minutes** with no typed addresses, no router
