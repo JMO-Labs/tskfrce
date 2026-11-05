@@ -228,7 +228,7 @@ export interface TodayKid {
 
 /** Item in GET /today needs_you. */
 export interface NeedsItem {
-  type: 'chore' | 'redo' | 'screen_time' | 'reward' | 'note'
+  type: 'chore' | 'redo' | 'screen_time' | 'reward' | 'note' | 'integration'
   id: number
   kid_id: number | null
   kid_name: string | null
@@ -246,6 +246,8 @@ export interface NeedsItem {
   mode?: string
   /** type 'note': the kid's note label */
   note?: string
+  /** type 'integration': the service that checked the chore off */
+  integration?: { id: number; name: string; icon: string }
 }
 
 /** GET /today */

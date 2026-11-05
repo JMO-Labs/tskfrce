@@ -4,6 +4,7 @@ import { Icon } from '@/v2/parent/Icon'
 import { EmptyState, ErrorPanel, Skeleton } from '@/v2/parent/states'
 import { PaneHead } from '../manage/PaneParts'
 import { InstallFlow } from './InstallFlow'
+import { IntegrationDetail } from './IntegrationDetail'
 import type { CatalogItem, InstallStatus } from './types'
 
 const STATUS: Record<string, [string, string]> = {
@@ -18,11 +19,14 @@ export function IntegrationsPane() {
   const installs = useInstalls()
   const catalog = useCatalog()
   const [adding, setAdding] = useState<CatalogItem | null>(null)
+  const [open, setOpen] = useState<number | null>(null)
   const addable = catalog.data?.filter((c) => !c.installed) ?? []
   return (
     <div className="pn">
       <PaneHead title="Integrations" sub="Connect other apps to your family." />
-      {adding ? (
+      {open !== null ? (
+        <IntegrationDetail key={open} id={open} onClose={() => setOpen(null)} />
+      ) : adding ? (
         <InstallFlow key={adding.id} item={adding} onDone={() => setAdding(null)} />
       ) : (
         <>
@@ -34,11 +38,12 @@ export function IntegrationsPane() {
               {installs.data.map((i) => {
                 const [label, tone] = chip(i.status)
                 return (
-                  <div key={i.id} className="pn-par">
+                  <button key={i.id} type="button" className="pn-par ig-row" aria-label={`Open ${i.name}`} onClick={() => setOpen(i.id)}>
                     <span className="ig-icon" aria-hidden="true"><Icon name={i.icon} size={20} /></span>
                     <div className="pn-t2">{i.name}</div>
                     <span className="p-chip" data-tone={tone}>{label}</span>
-                  </div>
+                    <Icon name="chevron_right" size={20} />
+                  </button>
                 )
               })}
             </section>

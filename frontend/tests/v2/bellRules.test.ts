@@ -38,4 +38,10 @@ describe('bellRules', () => {
     const now = new Date(2026, 9, 26, 12, 0)
     expect(when(new Date(2026, 9, 25, 12, 0).toISOString(), now)).toBe('Yesterday')
   })
+  it('integration kinds', () => {
+    expect(isNeedsYou(n({ kind: 'integration_done', pending: true }))).toBe(true)
+    expect(severity(n({ kind: 'integration_paused' }))).toEqual({ name: 'extension_off', tone: 'md' })
+    expect(severity(n({ kind: 'integration_msg' }))).toEqual({ name: 'extension', tone: 'ok' })
+    expect(severity(n({ kind: 'integration_done' }))).toEqual({ name: 'extension', tone: 'lv' })
+  })
 })
