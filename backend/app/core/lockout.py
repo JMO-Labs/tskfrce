@@ -20,8 +20,7 @@ SWEEP_ABOVE = 1000  # keys; the first sweep runs past this, then each time the m
 MAX_KEYS = 10_000  # hard cap; past it, the keys with the oldest last fail are evicted
 
 _now = time.monotonic
-# key -> (recent fail times, strikes, locked_until, last_fail)
-_state: dict[str, tuple[deque[float], int, float, float]] = {}
+_state: dict[str, tuple[deque[float], int, float, float]] = {}  # fails, strikes, until, last
 _lock = Lock()
 _sweep_at = SWEEP_ABOVE  # sweep once the map grows past this
 
@@ -60,15 +59,17 @@ def fail(key: str) -> None:
 
 
 def _sweep(now: float) -> None:
-    """Keep locked keys or recent fails; past MAX_KEYS halve it. Runs when the map doubles."""
+    """Keep locked keys or recent fails; past MAX_KEYS, evict oldest unlocked to half."""
     global _sweep_at
     idle = [k for k, v in _state.items() if v[2] <= now and not (v[0] and v[0][-1] > now - WINDOW)]
     for k in idle:
         del _state[k]
-    if len(_state) > MAX_KEYS:
-        for k in list(islice(_state, len(_state) - MAX_KEYS // 2)):
+    if len(_state) > MAX_KEYS:  # never evict a locked key: locked keys may exceed the cap,
+        free = (k for k, v in _state.items() if v[2] <= now)  # but each one costs FAILS fails
+        for k in list(islice(free, len(_state) - MAX_KEYS // 2)):
             del _state[k]
-    _sweep_at = min(MAX_KEYS, max(SWEEP_ABOVE, 2 * len(_state)))
+    n = len(_state)
+    _sweep_at = max(SWEEP_ABOVE, min(MAX_KEYS, 2 * n), n + SWEEP_ABOVE)
 
 
 def reset() -> None:

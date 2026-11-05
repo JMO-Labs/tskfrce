@@ -107,3 +107,12 @@ def test_sweep_not_run_every_fail(clock, monkeypatch):
     for i in range(3 * lockout.SWEEP_ABOVE):
         lockout.fail(f"claim:{i}")
     assert 1 <= len(calls) <= 2
+
+
+def test_cap_never_evicts_locked_key(clock):
+    _fail("claim:a", 5)
+    clock[0] += 1
+    for i in range(lockout.MAX_KEYS + 1000):
+        lockout.fail(f"claim:{i}")
+    assert _detail("claim:a") == "Too many tries. Wait 1 minute and try again."
+    assert len(lockout._state) <= lockout.MAX_KEYS
