@@ -66,3 +66,24 @@ def rd(key, target, id_, approve, note=None) -> dict:
         "approve": approve,
         "note": note,
     }
+
+
+def text(value) -> dict:
+    return {"type": "text", "text": value}
+
+
+def image(url, alt="") -> dict:
+    return {"type": "image", "url": url, "alt": alt}
+
+
+def button(label, action) -> dict:
+    return {"type": "button", "label": label, "action": action}
+
+
+def card(title, *blocks) -> dict:
+    return {"type": "card", "title": title, "blocks": list(blocks)}
+
+
+def W(*blocks, title="Demo") -> dict:
+    """A widget reply: one card holding the given blocks."""
+    return {"widget": card(title, *blocks)}

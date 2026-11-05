@@ -54,7 +54,8 @@ _BY_TYPE = {m.model_fields["type"].default: m for m in ACTION_MODELS}
 
 
 def parse_action(raw: dict) -> Action:
-    model = _BY_TYPE.get(raw.get("type")) if isinstance(raw, dict) else None
+    t = raw.get("type") if isinstance(raw, dict) else None
+    model = _BY_TYPE.get(t) if isinstance(t, str) else None
     if model is None:
         raise ValueError("unknown action")
     try:

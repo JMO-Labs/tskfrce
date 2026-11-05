@@ -99,3 +99,9 @@ def test_every_action_maps_to_a_permission():
 
 def test_high_risk_flags():
     assert {k for k, p in PERMS.items() if p.high_risk} == {"requests.decide", "widgets.kid"}
+
+
+@pytest.mark.parametrize("raw", [{"type": []}, {"type": {}}, {}, None, [], "x", 5])
+def test_untrusted_shapes_raise_value_error(raw):
+    with pytest.raises(ValueError, match="unknown action"):
+        parse_action(raw)
