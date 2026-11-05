@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.config import normalize_claim_code as normalize
 from app.core.config import settings
 from app.models.family import owner_set
+from app.models.user import User
 
 __all__ = ["matches", "normalize", "required"]
 
@@ -20,5 +21,7 @@ def matches(raw: str | None) -> bool:
 
 
 def required(db: Session) -> bool:
-    """A claim code guards setup until the first parent owns the box."""
-    return bool(settings.CLAIM_CODE) and not owner_set(db)
+    """A claim code guards a fresh box: no users yet and no owner."""
+    if not settings.CLAIM_CODE or owner_set(db):
+        return False
+    return db.query(User.id).first() is None

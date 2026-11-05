@@ -264,3 +264,51 @@ def test_token_never_in_url_routes():
     paths = list(fastapi_app.openapi()["paths"])
     assert f"{KID}/enroll" in paths and f"{KID}/session" in paths
     assert not [p for p in paths if p.startswith(KID) and "{token}" in p]
+
+
+def test_inactive_redeem_burns_code(client, kid, db):
+    raw = _code(db, kid)
+    kid.is_active = False
+    db.commit()
+    assert _enroll(client, raw).status_code == 410
+    kid.is_active = True
+    db.commit()
+    assert _enroll(client, raw).status_code == 410
+    assert db.query(KidDevice).count() == 0
+
+
+def _phone(client, db, kid):
+    return _enroll(client, _code(db, kid)).json()
+
+
+def test_promoted_kid_phone_loses_access(client, kid, db, parent_headers):
+    ph = _phone(client, db, kid)
+    r = client.put(f"/api/v1/users/{kid.id}", json={"role": "parent"}, headers=parent_headers)
+    assert r.status_code == 200
+    assert db.query(KidDevice).filter_by(kid_id=kid.id).count() == 0
+    assert client.get("/api/v1/users/", headers=_bearer(ph["access_token"])).status_code == 401
+    assert (
+        client.post(f"{KID}/session", json={"device_token": ph["device_token"]}).status_code == 401
+    )
+    db.refresh(kid)
+    assert kid.alert_topic is None
+
+
+def test_sid_token_rejected_for_non_kid(client, kid, db):
+    ph = _phone(client, db, kid)
+    kid.role = UserRole.PARENT  # raw flip, no helper: the auth check must still hold
+    db.commit()
+    assert client.get("/api/v1/users/", headers=_bearer(ph["access_token"])).status_code == 401
+    assert kid_enroll.refresh(db, ph["device_token"]) is None
+
+
+def test_deactivate_clears_devices_and_tokens(client, kid, db, parent_headers):
+    _phone(client, db, kid)
+    open_raw = _code(db, kid)
+    r = client.put(f"/api/v1/users/{kid.id}", json={"is_active": False}, headers=parent_headers)
+    assert r.status_code == 200
+    assert db.query(KidDevice).filter_by(kid_id=kid.id).count() == 0
+    assert db.query(KidEnrollToken).filter_by(kid_id=kid.id, used_at=None).count() == 0
+    kid.is_active = True
+    db.commit()
+    assert _enroll(client, open_raw).status_code == 410

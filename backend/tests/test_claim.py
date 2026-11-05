@@ -60,3 +60,9 @@ def test_settings_rejects_bad_code():
 
 def test_empty_setting_is_unset():
     assert Settings(CLAIM_CODE="").CLAIM_CODE is None
+
+
+def test_not_required_when_users_exist_without_owner(db, cfg):
+    db.add(User(username="d", email="d@x.io", hashed_password="x", role=UserRole.PARENT))
+    db.flush()
+    assert claim.required(db) is False

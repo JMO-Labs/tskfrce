@@ -82,7 +82,7 @@ def redeem(db: Session, raw: str, ua: str) -> tuple[User, KidDevice, str] | None
     kid_id = db.query(KidEnrollToken.kid_id).filter(KidEnrollToken.token_hash == th).scalar()
     kid = db.get(User, kid_id)
     if kid is None or kid.role != UserRole.KID or not kid.is_active:
-        db.rollback()  # leave the code unused so a parent can fix the kid and retry
+        db.commit()  # burn the code anyway; a parent issues a fresh one
         return None
     if kid.alert_topic is None:
         kid.alert_topic = secrets.token_urlsafe(24)
@@ -111,7 +111,7 @@ def refresh(db: Session, raw_device: str) -> tuple[User, KidDevice] | None:
         db.commit()
         return None
     kid = db.get(User, dev.kid_id)
-    if kid is None or not kid.is_active:
+    if kid is None or not kid.is_active or kid.role != UserRole.KID:
         return None
     if now - dev.last_seen_at >= ACTIVE_EVERY:
         dev.last_seen_at = now
