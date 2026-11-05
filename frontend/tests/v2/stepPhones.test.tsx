@@ -35,9 +35,11 @@ describe('StepPhones', () => {
   test('one Show code per kid; tap posts for that kid only', async () => {
     view(kids)
     expect(screen.getAllByRole('button', { name: /Show code/ })).toHaveLength(2)
+    expect(screen.queryByRole('img')).toBeNull()
+    expect(apiMock).not.toHaveBeenCalled()
     await userEvent.click(screen.getByRole('button', { name: 'Show code for Mia' }))
     expect(await screen.findByAltText('Sign-in code for Mia')).toBeInTheDocument()
-    expect(screen.getByText('Works once, for 24 hours.')).toBeInTheDocument()
+    expect(screen.getByText("Scan with Mia's phone camera. Works once, for 24 hours.")).toBeInTheDocument()
     expect(apiMock).toHaveBeenCalledTimes(1)
     expect(apiMock).toHaveBeenCalledWith('/kids/7/enroll', { method: 'POST' })
     expect(screen.getByRole('button', { name: 'Show code for Leo' })).toBeInTheDocument()
@@ -48,6 +50,17 @@ describe('StepPhones', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Show code for Mia' }))
     await userEvent.click(await screen.findByRole('button', { name: /New code/ }))
     await waitFor(() => expect(apiMock).toHaveBeenCalledTimes(2))
+  })
+
+  test('New code keeps the old QR while the request is pending', async () => {
+    view(kids)
+    await userEvent.click(screen.getByRole('button', { name: 'Show code for Mia' }))
+    await screen.findByAltText('Sign-in code for Mia')
+    apiMock.mockReturnValue(new Promise(() => {}))
+    await userEvent.click(screen.getByRole('button', { name: /New code/ }))
+    await waitFor(() => expect(apiMock).toHaveBeenCalledTimes(2))
+    expect(screen.getByAltText('Sign-in code for Mia')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /New code/ })).toBeDisabled()
   })
 
   test('no kids', () => {
