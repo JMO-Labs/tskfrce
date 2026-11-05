@@ -2,13 +2,15 @@ import { Checkbox } from '@mantine/core'
 import { Icon } from '@/v2/parent/Icon'
 import type { PermissionOut } from './types'
 
+const UNLOCKS = 'Finished chores can unlock devices.' // through the normal lock rules
+
 const CONSEQUENCE: Record<string, string> = {
-  'requests.decide': 'It can approve or deny on your behalf.',
+  'requests.decide': `It can approve or deny on your behalf. ${UNLOCKS}`,
   'widgets.kid': 'It can show its own cards to your kids.',
 }
 
 export const trustLine = (on: boolean) =>
-  on ? 'Its chore check-offs will count right away, without your OK.' : 'Its chore check-offs wait in Needs you.'
+  on ? `Its chore check-offs will count right away, without your OK. ${UNLOCKS}` : 'Its chore check-offs wait in Needs you.'
 
 /** Phone-style permission list: the fixed baseline, then one row per extra thing the app can do. */
 export function PermissionList({ perms, picked, onToggle, scope = 'Its own settings, and nothing else unless listed above.' }: { scope?: string; perms: PermissionOut[]; picked?: string[]; onToggle?: (id: string) => void }) {

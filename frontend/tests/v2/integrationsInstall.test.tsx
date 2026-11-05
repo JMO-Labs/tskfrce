@@ -51,6 +51,12 @@ describe('integrations install', () => {
     }
   })
 
+  test('requests.decide warns that finished chores can unlock devices', () => {
+    wrap(<PermissionList perms={item.permissions} />)
+    const row = screen.getByText(/Approve or deny/).closest('[data-risk]') as HTMLElement
+    expect(row.querySelector('small')?.textContent).toBe('It can approve or deny on your behalf. Finished chores can unlock devices.')
+  })
+
   test('unticked kids are not sent as widget kids', async () => {
     const u = userEvent.setup()
     wrap(<InstallFlow item={item} onDone={() => {}} />)

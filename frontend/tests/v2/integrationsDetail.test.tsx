@@ -45,7 +45,7 @@ describe('IntegrationDetail', () => {
     wrap(<IntegrationDetail id={7} onClose={() => {}} />)
     expect(await screen.findByText('Its chore check-offs wait in Needs you.')).toBeInTheDocument()
     await user.click(screen.getByRole('switch', { name: 'Trust automatically' }))
-    expect(screen.getByText('Its chore check-offs will count right away, without your OK.')).toBeInTheDocument()
+    expect(screen.getByText('Its chore check-offs will count right away, without your OK. Finished chores can unlock devices.')).toBeInTheDocument()
     expect(apiMock).toHaveBeenCalledWith('/integrations/7', expect.objectContaining({ method: 'PATCH', body: { trusted: true } }))
   })
 
