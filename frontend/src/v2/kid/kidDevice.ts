@@ -24,7 +24,10 @@ export const saveDevice = (t: string): void => {
 }
 export const saveKid = (k: KidIdentity): void => set(KID_KEY, JSON.stringify(k))
 export const deviceKid = (): KidIdentity | null => json<KidIdentity>(KID_KEY)
-export const clearDevice = (): void => [DEVICE_KEY, KID_KEY, ALERT_KEY].forEach((k) => set(k, null))
+export const clearDevice = (): void => {
+  ;[DEVICE_KEY, KID_KEY, ALERT_KEY].forEach((k) => set(k, null))
+  setAlertsMoved(false)
+}
 
 export const alertStored = (): KidAlert | null => json<KidAlert>(ALERT_KEY)
 

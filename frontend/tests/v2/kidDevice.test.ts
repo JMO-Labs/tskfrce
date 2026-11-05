@@ -61,3 +61,22 @@ describe('kid device', () => {
     expect(alertLink({ server: 'http://box:2586', topic: 't' })).toBe('ntfy://box:2586/t?display=t%40sk4ce&secure=false')
   })
 })
+
+describe('alerts-moved flag', () => {
+  test('survives a remount, clears on tap and on clearDevice', () => {
+    const load = () => {
+      let m!: typeof import('@/v2/kid/movedFlag')
+      jest.isolateModules(() => { m = require('@/v2/kid/movedFlag') })
+      return m
+    }
+    load().setAlertsMoved(true)
+    expect(localStorage.getItem('task4ce-kid-alerts-moved')).toBe('1')
+    const again = load() // fresh module = remount
+    expect(again.alertsMoved()).toBe(true)
+    again.setAlertsMoved(false) // tap
+    expect(load().alertsMoved()).toBe(false)
+    again.setAlertsMoved(true)
+    clearDevice()
+    expect(load().alertsMoved()).toBe(false)
+  })
+})
