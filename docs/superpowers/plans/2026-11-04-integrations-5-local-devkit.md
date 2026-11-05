@@ -14,10 +14,11 @@
 - Create: `backend/app/api/integration_local.py` (router `APIRouter(prefix="/api/v1/integration-local", tags=["integrations"])`)
 - Modify:
   - `backend/app/main.py` (include router)
-  - `backend/app/integrations/store.py` (`remove` skips the uninstall call for `source="local"`)
-  - `frontend/clientIp.js` (export `viaEdge(headers): boolean`, the same token check `clientIp` uses)
-  - `frontend/pages/api/proxy/[...path].ts` (when `viaEdge(req.headers)` and `rest.startsWith('integration-local/')` → `404 {detail: 'Not found.'}` before forwarding)
-- Test: `backend/tests/integrations/test_int_local_keys.py`, `frontend/tests/v2/clientIpEdge.test.ts`
+  - `backend/app/integrations/protocol.py` (define `PushIn` here from the start, so Task 27's schema export stays DB-free)
+  - `frontend/clientIp.js` (export `viaEdge(headers): boolean`, the same token check `clientIp` uses, and `proxied(headers): boolean` = `x-real-ip` **or** `x-edge-token` present at all)
+  - `frontend/pages/api/proxy/[...path].ts` (when `proxied(req.headers)` and `rest.startsWith('integration-local/')` → `404 {detail: 'Not found.'}` before forwarding. Caddy always sets `X-Real-IP` and proxies to `127.0.0.1:3000`, so with `EDGE_TOKEN` unset `viaEdge` alone would let edge traffic through as loopback.)
+  - No `store.py` change: Task 12's `remove` already skips the uninstall call when `secret is None`, which covers local installs.
+- Test: `backend/tests/integrations/test_int_local_keys.py`, `frontend/tests/v2/clientIpEdge.test.ts`; `tests/integrations/conftest.py` gains `local_key` (created via `POST /keys` with `chores.complete` for `kid`; exposes `.id`, `.token`); `int_helpers.py` gains `push(client, token, actions, ip) -> Response`
 
 **Interfaces — Produces:**
 - `LOCAL_PERMS = frozenset({"chores.complete", "rewards.manage", "messages.parents", "requests.decide"})`. Events and widgets need an outbound service, so they are not offered.
@@ -26,10 +27,11 @@
 - Dependency `require_local_key(request: Request, authorization: str = Header("")) -> IntegrationInstall`, with checks in this order:
   1. `not is_lan(client_ip(request))` → 403 `"Local keys only work on your home network."`
   2. No `Bearer tsk_local_` prefix, or no active install with that `key_hash` → 401 `"That key isn't valid."`
-  3. `RateLimiter(60)` per install → 429 `"Slow down."`
-- `POST /push` with `PushIn{actions: list[dict] (max 20)}` → `{"results": [{key, result, reason}]}` via `apply_actions(db, install, actions, origin="local")`.
+  3. `ratelimit.limit(f"int-local:{install.id}", 60, 60)` (`app.core.ratelimit`; no new limiter class, the autouse reset clears it) → 429 (catch and re-raise with `"Slow down."`)
+- `GET /permissions` (`require_parent`) → `[{id, text, high_risk}]` for `LOCAL_PERMS`, built from `PERMS` (the UI never hard-codes the texts).
+- `POST /push` with `protocol.PushIn{actions: list[dict] (max 20)}` → `{"results": [{key, result, reason}]}` via `apply_actions(db, install, actions, origin="local")`.
 
-- [ ] **Step 1: Write the failing tests** (set the peer IP via `X-Real-IP`; the `TestClient` peer is in `TRUSTED_PROXY_IPS` through `base_url`/monkeypatch)
+- [ ] **Step 1: Write the failing tests** (build the client as `TestClient(app, client=("127.0.0.1", 50000))` so the peer is loopback, which is in `TRUSTED_PROXY_IPS`; `push` sets the forwarded IP via `X-Real-IP`)
 
 ```python
 def test_create_key_returns_token_once_and_stores_hash(client, parent_headers, kid, db):
@@ -56,6 +58,14 @@ def test_local_key_cannot_unlock(client, local_key):
     r = push(client, local_key.token, [{"type": "device.unlock", "idempotency_key": "u"}], ip="192.168.1.50")
     assert r.json()["results"][0]["reason"] == "unknown action"
 
+def test_local_permissions_list(client, parent_headers):
+    r = client.get("/api/v1/integration-local/permissions", headers=parent_headers).json()
+    assert {p["id"] for p in r} == LOCAL_PERMS and all(p["text"] == PERMS[p["id"]].text for p in r)
+
+def test_rate_limited_after_60(client, local_key):
+    codes = [push(client, local_key.token, [], ip="192.168.1.50").status_code for _ in range(61)]
+    assert codes[-1] == 429 and codes[0] == 200
+
 def test_widget_permissions_not_offered(client, parent_headers, kid):
     assert client.post("/api/v1/integration-local/keys", headers=parent_headers,
                        json={"name": "x", "permissions": ["widgets.kid"], "kid_ids": [kid.id]}).status_code == 422
@@ -67,10 +77,15 @@ it('viaEdge is true only with the matching edge token', () => {
   expect(viaEdge({ 'x-edge-token': 'a'.repeat(64), 'x-real-ip': '1.2.3.4' })).toBe(true)
   expect(viaEdge({ 'x-edge-token': 'b'.repeat(64) })).toBe(false); expect(viaEdge({})).toBe(false)
 })
+it('proxied is true whenever Caddy or the edge touched the request', () => {
+  delete process.env.EDGE_TOKEN
+  expect(proxied({ 'x-real-ip': '127.0.0.1' })).toBe(true); expect(proxied({ 'x-edge-token': 'x' })).toBe(true)
+  expect(proxied({})).toBe(false)
+})
 ```
 
 - [ ] **Step 2: Run** `cd backend && python -m pytest tests/integrations/test_int_local_keys.py -v` and `cd frontend && npx jest tests/v2/clientIpEdge.test.ts`. Expected: FAIL.
-- [ ] **Step 3: Implement** the router, the dependency, `viaEdge`, and the proxy guard.
+- [ ] **Step 3: Implement** the router, the dependency, `PushIn`, `viaEdge`/`proxied`, and the proxy guard.
 - [ ] **Step 4: Run** both again, plus `npm run lint && npm run type-check`. Expected: PASS.
 - [ ] **Step 5: Commit** `feat(integrations): LAN-only local push keys`
 
@@ -80,22 +95,22 @@ it('viaEdge is true only with the matching edge token', () => {
 
 **Files:**
 - Create: `frontend/src/v2/integrations/LocalKeyForm.tsx`
-- Modify: `frontend/src/v2/integrations/IntegrationsPane.tsx` (a "Home network keys" section that lists `source === 'local'` installs, plus a "Create key" button), `frontend/src/v2/integrations/IntegrationDetail.tsx` (for local installs: hide developer/domain; show `"Home network key · {key_prefix}…"`), `frontend/src/v2/hooks/useIntegrations.ts` (`useCreateLocalKey()`), `backend/app/api/integrations.py` (`InstallOut` adds `key_prefix`)
+- Modify: `frontend/src/v2/integrations/IntegrationsPane.tsx` (a "Home network keys" section that lists `source === 'local'` installs, plus a "Create key" button), `frontend/src/v2/integrations/IntegrationDetail.tsx` (for local installs: hide developer/domain; show `"Home network key · {key_prefix}…"`), `frontend/src/v2/hooks/useIntegrations.ts` (`useCreateLocalKey()` via the exported `useInvalidating(fn, ['integrations'])`; `useLocalPermissions()` → `GET /integration-local/permissions`, key `['integrations','local-perms']`), `backend/app/schemas/integration.py` (`InstallOut` adds `key_prefix`), `frontend/src/v2/integrations/types.ts` (`InstallOut.key_prefix?: string | null`)
 - Test: `frontend/tests/v2/integrationLocalKeys.test.tsx`
 
 **Interfaces — Produces:**
-- `<LocalKeyForm onDone />` has: name; permission checkboxes for the four `LOCAL_PERMS`, using the `PermissionList` row style (high-risk in red); kids (min 1); chores (when `chores.complete` is ticked); the trust switch with the Task 14 consequence line. After create it shows the token in a read-only field with a Copy button and the text **"Copy this now. You won't see it again."** It also shows an example: `curl -X POST http://<box>:3000/api/proxy/integration-local/push -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"actions":[...]}'`.
+- `<LocalKeyForm onDone />` has: name; permission checkboxes for the four local permissions, whose texts and risk come from `useLocalPermissions()` (Task 25 `GET /integration-local/permissions`; nothing hard-coded), using the `PermissionList` row style (high-risk in red); kids (min 1); chores (when `chores.complete` is ticked); the trust switch with the Task 14 consequence line. After create it shows the token in a read-only field with a Copy button and the text **"Copy this now. You won't see it again."** It also shows an example: `curl -X POST http://<box>:3000/api/proxy/integration-local/push -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"actions":[...]}'`.
 
 - [ ] **Step 1: Write the failing tests**
 
 ```tsx
 it('shows the token once after create', async () => {
   apiMock.mockResolvedValueOnce({ id: 9, token: 'tsk_local_abc' })
-  /* fill name, tick Mark linked chores done, tick Sam, Create */
+  /* fill name, tick "Mark linked chores done (it sees their names)", tick Sam, Create */
   expect(screen.getByDisplayValue('tsk_local_abc')).toBeInTheDocument()
   expect(screen.getByText("Copy this now. You won't see it again.")).toBeInTheDocument()
 })
-it('offers only the four local permissions', () => {
+it('offers only the four local permissions, as served by the box', () => {  // mock GET /integration-local/permissions
   expect(screen.queryByLabelText("Show cards on your kids' screens")).toBeNull()
   expect(screen.getByLabelText('Approve or deny reward requests and chore check-offs').closest('[data-risk]')).toHaveAttribute('data-risk', 'high')
 })
@@ -115,7 +130,7 @@ it('offers only the four local permissions', () => {
 - Test: `backend/tests/integrations/test_int_schemas.py`
 
 **Interfaces — Produces:**
-- `export_schemas() -> dict[str, dict]` keys `manifest` (`Manifest.model_json_schema()`), `reply` (`Reply`), `actions` (`TypeAdapter(Action)`), `widgets` (`TypeAdapter(list[Widget])`), `local-push` (`PushIn`). `PushIn` moves into `app/integrations/protocol.py` so this module stays DB-free.
+- `export_schemas() -> dict[str, dict]` keys `manifest` (`Manifest.model_json_schema()`), `reply` (`Reply`), `actions` (`TypeAdapter(Action)`), `widgets` (`TypeAdapter(list[Widget])`), `local-push` (`protocol.PushIn`, defined there by Task 25, so this module stays DB-free).
 - CLI `python -m app.integrations.schemas <out_dir>` writes `<key>.schema.json` (`indent=2`, `sort_keys=True`, trailing newline).
 - `protocol-v1.md` (< 500 lines) has these sections:
   - Overview and trust model (pull only, signed catalog, permissions enforced on the box)
@@ -166,7 +181,7 @@ def test_signing_example_in_doc_is_correct():
   - `backend/app/integrations/client.py` (`last_request` plus `raw_post(path: str, body: bytes, headers: dict) -> GuardedResponse`, used for the replay check)
   - `.github/workflows/ci-cd.yml` (ruff lint/format paths add `examples`)
   - `docs/integrations/protocol-v1.md` (a "Test with the simulator" section)
-- Test: `backend/tests/integrations/test_int_simulator.py`
+- Test: `backend/tests/integrations/test_int_simulator.py`; `tests/integrations/conftest.py` gains `example_server` (runs `server.py` in a daemon thread on `127.0.0.1:0`; `.url`) and `lenient_server` (same, with the request-id replay check off; `.manifest`). Both call `resolve_to("127.0.0.1")` so the autouse default (`93.184.216.34`) does not redirect them; `DEMO_DEV_MANIFEST` (in `int_helpers.py`) uses `base_url` `http://127.0.0.1:8787`.
 
 **Interfaces — Produces:**
 - Example service on `127.0.0.1:8787` (`python examples/integration-hello/server.py --port 8787`). Manifest id **`hello-example`**, permissions `["chores.complete", "widgets.parent"]`, `poll_seconds` 60, one parent widget `hello`.

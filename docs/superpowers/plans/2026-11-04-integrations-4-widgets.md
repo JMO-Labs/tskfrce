@@ -14,8 +14,8 @@
 
 **Files:**
 - Create: `backend/app/integrations/widgets.py` (DB-free schema and sanitizer), `backend/app/integrations/widget_service.py` (fetch and cache), `backend/app/api/integration_widgets.py` (router `APIRouter(prefix="/api/v1/integration-widgets", tags=["integrations"])`)
-- Modify: `backend/app/main.py` (include router), `backend/app/api/integrations.py` (`DELETE` and `PATCH` call `widget_service.forget(install.id)`)
-- Test: `backend/tests/integrations/test_int_widgets.py`
+- Modify: `backend/app/main.py` (include router), `backend/app/integrations/store.py` (`retire` (Task 11) also calls `widget_service.forget(install.id)`, imported inside the function to avoid a cycle; so DELETE and catalog revocation both drop widgets), `backend/app/api/integrations.py` (`PATCH` calls `widget_service.forget(install.id)`)
+- Test: `backend/tests/integrations/test_int_widgets.py`; `tests/integrations/conftest.py` gains an **autouse** `clear_widget_caches` fixture (empties the `widget_service` cache after each test; module globals keyed by install id 1 would leak otherwise) and `widget_install` (the `install` fixture plus `widgets.parent`, `chores.complete`, and a DEMO manifest re-signed with parent widget `w1`); `fake_service.py` gains a settable `.widgets` (the `/v1/widgets` reply)
 
 **Interfaces — Produces:**
 - Blocks (pydantic, `extra="forbid"`, discriminated on `type`). Strings are plain text and are never parsed as markup.
@@ -30,7 +30,7 @@
 - `sanitize(raw: list[dict], decls: list[WidgetDecl], surface: Literal["parent","kid"], grant: Grant) -> tuple[list[dict], set[str]]` returns the clean widgets and the image URLs seen.
   - Drop any widget whose `id` is not declared for `surface`, or that fails validation (logged).
   - Drop any button whose action's permission is not granted.
-  - On `kid`, also drop `request.decide` buttons.
+  - On `kid`, also drop every button whose action ∉ `permissions.KID_BUTTON_ACTIONS` (Task 4: only `chore.complete` and `message.parents`; kids can only ask).
   - Raise `ProtocolError("bad widgets")` when the input is non-empty and **every** widget was dropped.
 - `widget_service.TTL = 60`.
 - `widget_service.get(db, install, surface, kid_id: int | None, now: float) -> list[dict]`. It caches per `(install.id, surface, kid_id)`. On a miss it runs `health.guarded_call(db, install, lambda c: c.widgets(surface, kid_id))` and then `sanitize`. A None or error result gives `[]`. Every `image.url` is rewritten to `/integration-widgets/{install.id}/image?u={quote(url, safe='')}`.
@@ -62,9 +62,16 @@ def test_depth_and_size_caps():
         sanitize([W("w1", card(card(card(card(text("deep"))))))], DECLS, "parent", GRANT)
 
 def test_kid_surface_never_has_decide_buttons():
-    out, _ = sanitize([W("kid_w", card(button("b", "request.decide"), button("c", "chore.complete")))],
+    out, _ = sanitize([W("kid_w", card(button("b", "request.decide"), button("r", "reward.upsert"),
+                                       button("c", "chore.complete"), button("m", "message.parents")))],
                       DECLS, "kid", GRANT_ALL)
-    assert [b["action"] for b in out[0]["root"]["children"]] == ["chore.complete"]
+    assert [b["action"] for b in out[0]["root"]["children"]] == ["chore.complete", "message.parents"]
+
+def test_delete_forgets_widgets(client, parent_headers, widget_install, svc):
+    svc.widgets = [W("w1", text("hi"))]
+    client.get("/api/v1/integration-widgets?surface=parent", headers=parent_headers)
+    client.delete(f"/api/v1/integrations/{widget_install.id}", headers=parent_headers)
+    assert client.get("/api/v1/integration-widgets?surface=parent", headers=parent_headers).json() == []
 
 def test_parent_endpoint_frames_with_name_and_proxies_images(client, parent_headers, widget_install, svc):
     svc.widgets = [W("w1", image("https://cdn.example/a.png"))]
@@ -93,7 +100,7 @@ def test_service_down_shows_nothing_not_500(client, parent_headers, widget_insta
 
 **Files:**
 - Modify: `backend/app/api/integration_widgets.py`, `backend/app/integrations/widget_service.py`
-- Test: `backend/tests/integrations/test_int_image_proxy.py`
+- Test: `backend/tests/integrations/test_int_image_proxy.py`; `tests/integrations/conftest.py`: the autouse `clear_widget_caches` (Task 20) also empties the image LRU; new fixtures `widget_with_image` (a `widget_install` whose cached parent widget holds one image URL) and `cdn` (a `MockTransport` image host: `.serve(body, ctype)`, `.last_headers`, patched into `fetch_image`); `int_helpers.py` gains `img_path(install) -> str`
 
 **Interfaces — Produces:**
 - `IMAGE_TYPES = {"image/png", "image/jpeg", "image/webp", "image/gif"}`, `IMAGE_MAX = 1_048_576`.
@@ -144,14 +151,14 @@ def test_kid_without_widgets_404(client, kid_headers, widget_with_image):
 
 **Files:**
 - Modify: `backend/app/api/integration_widgets.py`
-- Test: `backend/tests/integrations/test_int_buttons.py`
+- Test: `backend/tests/integrations/test_int_buttons.py`; `tests/integrations/conftest.py` gains `kid_widget_install` (`widget_install` plus `widgets.kid`, `kid` in `kid_widget_ids`, kid widget `kid_w` with button `done` → `chore.complete`) and `run_other` (today's run of a linked chore for `other_kid`); `int_helpers.py` gains `press_url(install) -> str`; `fake_service.py` gains a settable `.press_reply` (actions returned for `widget.pressed`)
 
 **Interfaces — Consumes:** `widget_service.button`, `health.guarded_call`, `apply_actions(..., origin, actor_kid_id)`.
 **Interfaces — Produces:**
 - `POST /api/v1/integration-widgets/{install_id}/press` with `PressIn{widget_id: str, button_id: str, kid_id: int | None}` (any active user).
   - A kid gets `surface="kid"` and `kid_id = self.id`, and needs `kid_widgets`.
-  - A parent gets `surface="parent"` and the body `kid_id`.
-  - The button must be in the cached widget for that surface/kid. Otherwise 404 `"That button is gone."`.
+  - A parent gets `surface="parent"`. The cache lookup always uses `kid_id=None` (parent widgets are cached that way); the body `kid_id` goes only into the event.
+  - The button must be in the cached widget for that surface/kid (`widget_service.button(install_id, surface, kid_id if kid else None, ...)`). Otherwise 404 `"That button is gone."`.
 - The box calls `c.events([{"kind": "widget.pressed", "widget_id", "button_id", "by": "parent"|"kid", "kid_id"}])` right away. If the reply is None → 502 `"{name} didn't answer."`.
 - Only reply actions with `type == button["action"]` are applied, via `apply_actions(db, install, kept, origin="parent_button"|"kid_button", actor_kid_id=kid.id if kid else None)`. Every other action is audited as rejected `"not this button's action"`.
 - The response is `[{result, reason}]`. A press clears that install's widget cache.
@@ -174,6 +181,10 @@ def test_reply_action_must_match_button(client, parent_headers, widget_install, 
     svc.press_reply = [msg("m1")]  # button action is chore.complete
     [r] = client.post(press_url(widget_install), headers=parent_headers, json={"widget_id": "w1", "button_id": "done"}).json()
     assert r["reason"] == "not this button's action"
+
+def test_parent_press_with_kid_id_finds_button(client, parent_headers, widget_install, svc, kid):
+    r = client.post(press_url(widget_install), headers=parent_headers, json={"widget_id": "w1", "button_id": "done", "kid_id": kid.id})
+    assert r.status_code == 200 and svc.last_body["events"][0]["kid_id"] == kid.id
 
 def test_unknown_button_404(client, parent_headers, widget_install):
     assert client.post(press_url(widget_install), headers=parent_headers,
@@ -243,11 +254,11 @@ it('source never uses dangerouslySetInnerHTML', () => {
   - `backend/app/integrations/client.py` (`widgets` takes an optional `grant_out` override)
   - `frontend/src/v2/kid/MePage.tsx` (render `<IntegrationWidgets surface="kid" />`; skip in preview)
   - `frontend/src/v2/integrations/IntegrationDetail.tsx` (per-kid "Show cards on {kid}'s screens" switches → `PATCH {kid_widget_ids}`; only when `widgets.kid` is granted)
-- Test: `backend/tests/integrations/test_int_kid_widgets.py`, `frontend/tests/v2/integrationKidWidgets.test.tsx`
+- Test: `backend/tests/integrations/test_int_kid_widgets.py`, `frontend/tests/v2/integrationKidWidgets.test.tsx`; `tests/integrations/conftest.py` gains `widget_install_not_enabled` (a second install granted `widgets.kid` but with no `kid_widget_ids`). (The PATCH-422 check lives in Task 12 `test_kid_toggle_requires_permission`.)
 
 **Interfaces — Produces:**
 - `GET /api/v1/integration-widgets/kid` → `[WidgetGroup]` covering active installs where the caller is in `kid_widget_ids` and `widgets.kid` is granted. The `widgets` request is sent with `surface="kid"`, `kid_id=self.id`, and a `grant_out` whose `kids` holds **only** this kid.
-- The kid-surface `sanitize` drops `request.decide` buttons (Task 20). Presses are `kid_button` (Task 22).
+- The kid-surface `sanitize` keeps only `KID_BUTTON_ACTIONS` buttons (`chore.complete`, `message.parents`; Task 20). Presses are `kid_button` (Task 22), and `check_action` rejects anything else with "kids can only ask".
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -262,10 +273,6 @@ def test_kid_widget_request_carries_only_that_kid(client, kid_headers, kid_widge
 
 def test_parent_cannot_call_kid_feed(client, parent_headers):
     assert client.get("/api/v1/integration-widgets/kid", headers=parent_headers).status_code == 403
-
-def test_kid_toggle_requires_permission(client, parent_headers, widget_install, kid):
-    r = client.patch(f"/api/v1/integrations/{widget_install.id}", headers=parent_headers, json={"kid_widget_ids": [kid.id]})
-    assert r.status_code == 422  # widget_install lacks widgets.kid
 ```
 
 ```tsx

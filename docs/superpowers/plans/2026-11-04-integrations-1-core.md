@@ -2,27 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** One secure contract that lets developer-run services mark chores done, hear
-app events, take a fixed set of actions and show declarative widgets, with every call
-checked against a parent-granted, per-kid permission set.
+**Goal:** One secure contract that lets developer-run services mark chores done, hear app events, take a fixed set of actions and show declarative widgets, with every call checked against a parent-granted, per-kid permission set.
 
 **Architecture:**
 - **Box-side protocol core** in `backend/app/integrations/`. The DB-free modules (`protocol`, `net`, `client`, `permissions`, `manifest`, `trust`, `widgets`) are shared by the box and the simulator CLI. The DB modules (`store`, `apply`, `audit`, `events`, `catalog`, `health`, `loop`) are box only.
 - **Pull model.** The box always calls out over a guarded HTTPS client (SSRF checks, IP pin, 443 only, no redirects, caps). Services reply with actions. `apply.py` checks each action against the stored grant, applies it through shared services, and writes an audit row keyed by an idempotency key.
 - **Trust root.** The registry Worker signs the catalog and each manifest with Ed25519. The public key is pinned in code. A background loop syncs the catalog, polls services and flushes events.
 
-**Tech Stack:** FastAPI, SQLAlchemy 2, alembic (SQLite), httpx 0.28 (sync), cryptography
-(Ed25519, Fernet), pydantic 2; Cloudflare Worker (TS, vitest); Next.js pages router,
-React Query, Mantine, jest.
+**Tech Stack:** FastAPI, SQLAlchemy 2, alembic (SQLite), httpx 0.28 (sync), cryptography (Ed25519, Fernet), pydantic 2; Cloudflare Worker (TS, vitest); Next.js pages router, React Query, Mantine, jest.
 
 **Spec:** `docs/superpowers/specs/2026-11-04-integrations-design.md` (binding).
 
-**Plan files (tasks numbered continuously):**
-1. `2026-11-04-integrations-1-core.md`: Tasks 1–8 (this file: header, constraints, review focus)
-2. `2026-11-04-integrations-2-install.md`: Tasks 9–14
-3. `2026-11-04-integrations-3-events-actions.md`: Tasks 15–19
-4. `2026-11-04-integrations-4-widgets.md`: Tasks 20–24
-5. `2026-11-04-integrations-5-local-devkit.md`: Tasks 25–28
+**Plan files (tasks numbered continuously, prefix `2026-11-04-integrations-`):** `1-core.md` Tasks 1–8 (this file: header, constraints, review focus) · `2-install.md` Tasks 9–14 · `3-events-actions.md` Tasks 15–19 · `4-widgets.md` Tasks 20–24 · `5-local-devkit.md` Tasks 25–28
 
 ## Global Constraints
 
@@ -41,19 +32,14 @@ React Query, Mantine, jest.
 - New models go in `app/models/__init__.py` **and** `app.core.database._import_all_models`. `tests/test_migrations.py` must pass.
 - Tests: `cd backend && python -m pytest tests -q`. New backend tests live in `backend/tests/integrations/test_int_*.py` (unique basenames, no `__init__.py`). Frontend: `cd frontend && npm run lint && npm run type-check && npx jest <file>`. Jest is not in CI, so run it locally anyway. Registry: `cd registry && npm run typecheck && npm test`.
 - UI copy: plain sentence case, no emojis. No mockup exists for these screens. Reuse the existing pane/card components and `parent-tokens.css` variables (high-risk uses `--p-red`/`--p-redbg`). Screenshot each new screen in light and dark for owner review before merge.
-- Commits: semantic (`feat(integrations): …`, `refactor(chores): …`), each ending with:
-  ```
-  Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
-  Claude-Session: https://claude.ai/code/session_011K7jrVbDK9XkJbLGVTb23M
-  ```
+- Commits: semantic (`feat(integrations): …`, `refactor(chores): …`), each ending with the two trailer lines `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` and `Claude-Session: https://claude.ai/code/session_011K7jrVbDK9XkJbLGVTb23M`.
 
 ## Review Focus
 
 1. **A service retries a reply after a timeout.** The box must not award points twice. The same `idempotency_key` returns the first result and does not apply again. → Task 8 `test_duplicate_key_applies_once`.
 2. **A hostname resolves to a public IP at check time and a LAN IP at connect time** (DNS rebinding), or a reply is a 302 to `http://192.168.1.1`. Nothing may reach the LAN. → Task 6 `test_connects_to_pinned_ip` and `test_redirect_is_failure`.
 3. **A kid is unlinked, or a chore is deleted, while the integration keeps sending actions for them.** Expect a rejected audit row, not a 500 or a silent apply. → Task 8 `test_unlinked_kid_rejected_after_unlink`.
-4. **The registry is down or returns a tampered catalog.** Installed integrations keep working, the old catalog stays, and nothing unsigned is accepted. → Task 11 `test_bad_signature_keeps_previous_catalog`.
-5. **An integration approves a screen-time redemption, or a parent decides a request at the same moment an integration does.** The first: rejected, no `Override` rows. The second: one decision wins, the other gets a rejected audit row "already answered". → Task 19 `test_screen_time_never_approvable` and `test_race_with_parent`.
+4–5. Registry down/tampered (Task 11) and screen-time / parent race on `request.decide` (Task 19): see the **Review focus** line in those tasks.
 
 ---
 
@@ -69,7 +55,7 @@ React Query, Mantine, jest.
 - `submit(run: ChoreRun, by_id: int | None, now: datetime) -> None`: status `"submitted"`, `submitted_at=now`, `submitted_by_id=by_id`.
 - `approve(db: Session, run: ChoreRun, by_id: int | None) -> int`: everything `approve` does now (status done, approved/completed_at, `clear_note`, `award_chore`, `chat.system("Approved · +N")`, badges, `kid_events.chore_decided(..., True)`). Returns points. Does **not** commit.
 - `send_back(db: Session, run: ChoreRun, note: str) -> None`: the current `send_back` body, without commit.
-- Callers keep their HTTP checks (`_waiting`, race rule, steps/photo checks) and `db.commit()`.
+- Callers keep their HTTP checks (`_waiting`, race rule, steps/photo checks) and `db.commit()`. `mark_done` = `tick_all(r, parent.id, now)` + `submit(r, None, now)` + `approve(db, r, parent.id)`, so `submitted_by_id` stays None as today.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -91,6 +77,10 @@ def test_send_back_bumps_attempt(db, parent, kid):
     run = make_run(db, parent, kid, status="submitted", submitted_by=kid)
     chore_actions.send_back(db, run, "Try again")
     assert run.status == "todo" and run.attempt == 2 and run.last_note == "Try again"
+
+def test_mark_done_leaves_submitted_by_empty(client, parent_headers, db, parent, kid):
+    run = make_run(db, parent, kid); client.post(f"/api/v1/chores/{run.id}/done", headers=parent_headers)
+    db.refresh(run); assert run.status == "done" and run.submitted_by_id is None
 ```
 
 - [ ] **Step 2: Run** `cd backend && python -m pytest tests/integrations/test_int_chore_actions.py -v`. Expected: FAIL (`ModuleNotFoundError: app.services.chore_actions`).
@@ -135,15 +125,15 @@ def test_default_purpose_unchanged():
 **Files:**
 - Create: `backend/app/models/integration.py`, `backend/alembic/versions/c1d2e3f4a5b6_integrations.py` (`down_revision = "b0c1d2e3f4a5"`)
 - Modify: `backend/app/models/reward.py` (two columns), `backend/app/models/__init__.py`, `backend/app/core/database.py` (`_import_all_models`)
-- Test: `backend/tests/integrations/test_int_models.py`; `tests/test_migrations.py`
+- Test: `backend/tests/integrations/test_int_models.py`; `tests/test_migrations.py`; `backend/tests/integrations/conftest.py` (fixtures `install`, `run_today`, `other_kid`); `backend/tests/integrations/int_helpers.py` (`TEST_KEY`: a fixed Ed25519 private key; `DEMO`: a valid manifest dict, id `demo`, `base_url` `https://svc.example`; `sign_env(obj) -> {payload, sig}` with `TEST_KEY`)
 
 **Interfaces — Produces:**
-- `IntegrationInstall` (`integration_installs`): `id`; `public_id String(32) unique` (uuid4 hex); `source String(8)` CHECK `'catalog'|'local'` (`ck_integration_source`); `integration_id String(40) NULL`; `name String(40)`; `icon String(40)`; `manifest Text NULL` (signed manifest envelope JSON); `settings Text NULL` (JSON, non-secret fields only); `permissions Text NOT NULL` (JSON list); `secret Text NULL` (sealed); `key_hash String(64) NULL unique`; `key_prefix String(12) NULL`; `trusted Boolean default False`; `status String(10)` CHECK `'active'|'paused'|'revoked'|'removed'` (`ck_integration_status`); `paused_reason String(200) NULL`; `failures Integer default 0`; `next_poll_at DateTime NULL`; `created_at`; `created_by_id FK users SET NULL`; `removed_at NULL`. Relationships `kids`, `chores`.
+- `IntegrationInstall` (`integration_installs`): `id`; `public_id String(32) unique` (uuid4 hex); `source String(8)` CHECK `'catalog'|'local'` (`ck_integration_source`); `integration_id String(40) NULL`; `name String(40)`; `icon String(40)`; `manifest Text NULL` (signed manifest envelope JSON); `settings Text NULL` (JSON, non-secret fields only); `permissions Text NOT NULL` (JSON list); `secret Text NULL` (sealed); `key_hash String(64) NULL unique`; `key_prefix String(16) NULL` (holds `token[:14]`); `trusted Boolean default False`; `status String(10)` CHECK `'active'|'paused'|'revoked'|'removed'` (`ck_integration_status`); `paused_reason String(200) NULL`; `failures Integer default 0`; `next_poll_at DateTime NULL`; `created_at`; `created_by_id FK users SET NULL`; `removed_at NULL`. Relationships `kids`, `chores`.
 - `IntegrationKid` (`integration_kids`): PK(`install_id` FK CASCADE, `kid_id` FK users CASCADE), `kid_widgets Boolean default False`.
 - `IntegrationChore` (`integration_chores`): PK(`install_id` FK CASCADE, `chore_id` FK chores CASCADE).
 - `IntegrationAction` (`integration_actions`, the audit log): `id`, `install_id FK CASCADE`, `kind String(24)`, `idempotency_key String(80)`, `result String(8)` CHECK `'applied'|'pending'|'rejected'` (`ck_integration_action_result`), `reason String(200) NULL`, `kid_id`/`chore_id`/`run_id`/`redemption_id` FKs `SET NULL`, `created_at`. `UniqueConstraint(install_id, idempotency_key, name="uq_integration_action_key")`, `Index(install_id, created_at)`.
 - `IntegrationEvent` (`integration_events`, the outbox): `id`, `install_id FK CASCADE`, `kind String(24)`, `payload Text`, `created_at`, `attempts Integer default 0`.
-- `Reward.integration_install_id` (FK `integration_installs.id` SET NULL, NULL) and `Reward.integration_ref String(64) NULL`, plus `UniqueConstraint(integration_install_id, integration_ref, name="uq_reward_integration_ref")` via `batch_alter_table`.
+- `Reward.integration_install_id` (FK `integration_installs.id` SET NULL, NULL) and `Reward.integration_ref String(64) NULL`, plus `UniqueConstraint(integration_install_id, integration_ref, name="uq_reward_integration_ref")` via `batch_alter_table`. The batch FK must be named: `b.create_foreign_key("fk_reward_integration_install", "integration_installs", ["integration_install_id"], ["id"], ondelete="SET NULL")`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -160,7 +150,7 @@ def test_idempotency_key_unique_per_install(db, install):
     with pytest.raises(IntegrityError):
         db.commit()
 ```
-(Fixtures go in `backend/tests/integrations/conftest.py` and later tasks reuse them. `install` is an active catalog install named "Demo" with icon "extension", a sealed secret, and permissions `["chores.complete"]`. Later tasks extend the list via `request.param` or by mutating the JSON. It is linked to `kid` and to one chore made with `make_chore`. `run_today` is today's `todo` run of that chore for `kid`. `other_kid` is a second, unlinked kid.)
+(Later tasks reuse these fixtures. `install` is an active catalog install, `integration_id="demo"`, named "Demo" with icon "extension", a sealed secret, `manifest=json.dumps(sign_env(DEMO))` (the pinned manifest Tasks 8/17 read), and permissions `["chores.complete"]`. Later tasks extend the list via `request.param` or by mutating the JSON. It is linked to `kid` and to one chore made with `make_chore`. `run_today` is today's `todo` run of that chore for `kid`. `other_kid` is a second, unlinked kid.)
 
 - [ ] **Step 2: Run** `python -m pytest tests/integrations/test_int_models.py -v`. Expected: FAIL (import error).
 - [ ] **Step 3: Implement** the models and migration (`op.create_table` ×5, `batch_alter_table("rewards")`; downgrade drops them).
@@ -184,7 +174,7 @@ def test_idempotency_key_unique_per_install(db, install):
 | `events.chore_completed` | When linked chores are done | no |
 | `events.request_created` | When linked kids ask for a reward or check off a linked chore | no |
 | `events.reward_redeemed` | When linked kids get a reward (name and cost) | no |
-| `chores.complete` | Mark linked chores done | no |
+| `chores.complete` | Mark linked chores done (it sees their names) | no |
 | `rewards.manage` | Add, change and remove its own rewards | no |
 | `messages.parents` | Send you messages | no |
 | `requests.decide` | Approve or deny reward requests and chore check-offs | **yes** |
@@ -194,10 +184,9 @@ def test_idempotency_key_unique_per_install(db, install):
 - Fixed line shown on every permission screen (not a permission): "Its own settings, and nothing else unless listed below."
 - `protocol.py` action models (pydantic, `extra="forbid"`; every one has `idempotency_key: str` matching `^[A-Za-z0-9._:-]{1,80}$`): `ChoreComplete(type="chore.complete", kid_id: int, chore_id: int)`; `RewardUpsert(type="reward.upsert", ref: str≤64, name: str≤100, price: int 1..100000, icon: str|None ≤40)`; `RewardRemove(type="reward.remove", ref)`; `MessageParents(type="message.parents", title: str≤100, body: str|None ≤300)`; `RequestDecide(type="request.decide", target: Literal["reward","chore"], id: int, approve: bool, note: str|None ≤200)`. `Action = Annotated[Union[...], Field(discriminator="type")]`. `parse_action(raw: dict) -> Action` raises `ValueError("unknown action")` for any other `type`, and `ValueError("bad action")` for validation errors.
 - `ACTION_PERM = {"chore.complete": "chores.complete", "reward.upsert": "rewards.manage", "reward.remove": "rewards.manage", "message.parents": "messages.parents", "request.decide": "requests.decide"}`.
-- `Origin = Literal["service", "parent_button", "kid_button", "local"]`.
-- `@dataclass(frozen=True) Grant(install_id: int, name: str, permissions: frozenset[str], kid_ids: frozenset[int], chore_ids: frozenset[int], kid_widget_ids: frozenset[int], trusted: bool, active: bool)`.
-- `class Denied(Exception)` with `.reason: str`.
-- `check_action(grant: Grant, action: Action, origin: Origin = "service", actor_kid_id: int | None = None) -> bool` raises `Denied`. It returns `needs_approval`: True iff `chore.complete` and (`not grant.trusted` or `origin == "kid_button"`). Checks run in order with these exact reasons: not active → `"integration is paused"`; permission missing → `"not allowed"`; kid not linked → `"kid not linked"`; chore not linked → `"chore not linked"`; `origin == "kid_button"` with `request.decide` → `"kids can only ask"`; `origin == "kid_button"` and `kid_id != actor_kid_id` → `"kid not linked"`.
+- `Origin = Literal["service", "parent_button", "kid_button", "local"]`. `KID_BUTTON_ACTIONS = frozenset({"chore.complete", "message.parents"})`: the only actions a kid press may carry (kids can only ask). Task 20 reuses it.
+- `@dataclass(frozen=True) Grant(install_id: int, name: str, permissions: frozenset[str], kid_ids: frozenset[int], chore_ids: frozenset[int], kid_widget_ids: frozenset[int], trusted: bool, active: bool)`. `class Denied(Exception)` with `.reason: str`.
+- `check_action(grant: Grant, action: Action, origin: Origin = "service", actor_kid_id: int | None = None) -> bool` raises `Denied`. It returns `needs_approval`: True iff `chore.complete` and (`not grant.trusted` or `origin == "kid_button"`). Checks run in order with these exact reasons: not active → `"integration is paused"`; permission missing → `"not allowed"`; kid not linked → `"kid not linked"`; chore not linked → `"chore not linked"`; `origin == "kid_button"` with a type ∉ `KID_BUTTON_ACTIONS` (`request.decide`, `reward.upsert`, `reward.remove`) → `"kids can only ask"`; `origin == "kid_button"` and `kid_id != actor_kid_id` → `"kid not linked"`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -213,6 +202,13 @@ def test_trusted_completion_applies():
 
 def test_kid_button_never_auto_applies():
     assert check_action(replace(G, trusted=True), parse_action(cc("k", 5, 9)), "kid_button", 5)
+
+@pytest.mark.parametrize("raw", [ru("k", ref="r"), {"type": "reward.remove", "idempotency_key": "k", "ref": "r"},
+                                 rd("k", "reward", 1, True)])
+def test_kid_button_can_only_ask(raw):
+    g = replace(G, permissions=frozenset(PERMS))
+    with pytest.raises(Denied, match="kids can only ask"):
+        check_action(g, parse_action(raw), "kid_button", 5)
 
 @pytest.mark.parametrize("kid,chore,reason", [(6, 9, "kid not linked"), (5, 8, "chore not linked")])
 def test_scope(kid, chore, reason):
@@ -253,7 +249,7 @@ def test_every_action_maps_to_a_permission():
 
 **Files:**
 - Create: `backend/app/integrations/manifest.py`, `backend/app/integrations/trust.py`
-- Test: `backend/tests/integrations/test_int_manifest.py` (+ a `keypair` fixture in `tests/integrations/conftest.py` that monkeypatches `trust.REGISTRY_PUBKEY` and returns a signer)
+- Test: `backend/tests/integrations/test_int_manifest.py` (+ an **autouse** `keypair` fixture in `tests/integrations/conftest.py` that monkeypatches `trust.REGISTRY_PUBKEY` to `TEST_KEY`'s public key (Task 3 `int_helpers`) and returns a `TEST_KEY` signer (`.sign(obj)`), so the `install` fixture's pinned manifest verifies in every later test; `other_signer()` in `int_helpers.py`)
 
 **Interfaces — Produces:**
 - `trust.REGISTRY_PUBKEY: str = ""`: base64 of the raw 32-byte public key. Owner fills it from Task 9's keygen output. It is a code constant only, with no env override. While it is empty, every envelope is `UntrustedError` (fail closed).
@@ -268,8 +264,9 @@ def test_every_action_maps_to_a_permission():
 - [ ] **Step 1: Write the failing tests**
 
 ```python
-def test_signed_manifest_loads(keypair):
+def test_signed_manifest_loads(keypair, install):
     assert load_manifest(keypair.sign(DEMO)).id == "demo"
+    assert load_manifest(json.loads(install.manifest)).base_url == DEMO["base_url"]  # pinned (Task 3)
 
 def test_tampered_payload_rejected(keypair):
     env = keypair.sign(DEMO); env["payload"] = b64(json.dumps({**DEMO, "name": "Evil"}))
@@ -306,7 +303,7 @@ def test_kid_widget_needs_permission():
 
 **Files:**
 - Create: `backend/app/integrations/net.py`
-- Test: `backend/tests/integrations/test_int_net.py`
+- Test: `backend/tests/integrations/test_int_net.py`; `tests/integrations/conftest.py` gains an **autouse** `resolve_to(*ips)` fixture (patches `net.socket.getaddrinfo`; default `93.184.216.34`, so no test does real DNS) and `seen` (a recording `MockTransport`: `.url .headers .extensions`); `int_helpers.py` gains `reply(status, headers=None, content=b"") -> MockTransport`
 
 **Interfaces — Produces:**
 - `@dataclass(frozen=True) OutboundPolicy(https_only=True, port_443_only=True, allow_private=False)`. `STRICT = OutboundPolicy()`. `DEV = OutboundPolicy(False, False, True)` is only for the simulator `--dev` flag.
@@ -316,7 +313,7 @@ def test_kid_widget_needs_permission():
 - `@dataclass GuardedResponse(status: int, content_type: str, body: bytes)`.
 - `fetch(method: str, url: str, *, body: bytes | None = None, headers: dict | None = None, policy: OutboundPolicy = STRICT, max_bytes: int = 262_144, timeout: float = 5.0, transport: httpx.BaseTransport | None = None) -> GuardedResponse`. Approach: validate scheme and port per policy, pin the IP with `resolve_pinned`, and rewrite the URL host to that IP (brackets for v6). Send `Host: <host>` and `extensions={"sni_hostname": host}` so TLS verifies the real name. Use `follow_redirects=False`, `httpx.Timeout(timeout)`, and a wall-clock deadline checked while streaming. Abort past `max_bytes`. Any 3xx raises `FetchError("redirect")`. Never send cookies. Send `User-Agent: t@sk4ce-box/1`.
 
-- [ ] **Step 1: Write the failing tests** (monkeypatch `net.socket.getaddrinfo`, inject `httpx.MockTransport`)
+- [ ] **Step 1: Write the failing tests** (`resolve_to` patches DNS; inject `httpx.MockTransport`)
 
 ```python
 @pytest.mark.parametrize("ip", ["127.0.0.1", "10.1.2.3", "192.168.1.1", "169.254.169.254",
@@ -376,7 +373,7 @@ def test_dev_policy_allows_loopback_http(resolve_to):
 - Request headers: `X-Tsk-Install` (public_id), `X-Tsk-Timestamp` (unix seconds), `X-Tsk-Request-Id` (uuid4 hex), `X-Tsk-Signature: v1=<hex HMAC-SHA256(secret, f"{ts}.{request_id}.".encode() + body)>`.
 - Reply: header `X-Tsk-Signature: v1=<hex HMAC-SHA256(secret, f"{request_id}.".encode() + body)>`, and a JSON body with `"request_id"` equal to the request's.
 - `sign_request(secret: str, ts: int, request_id: str, body: bytes) -> str`, `sign_reply(secret: str, request_id: str, body: bytes) -> str`, and `verify(sig_header: str, expected: str) -> bool` (`hmac.compare_digest`).
-- Request bodies always carry `{"protocol": "v1", "install_id", "request_id", "grant": GrantOut}`, where `GrantOut = {"permissions": [...], "kids": [{"id", "first_name"?}], "chores": [{"id", "title"}]}`. `first_name` appears only with `kid.name`. Extras: install `{"settings": {...}}`; events `{"events": [...]}`; widgets `{"surface", "kid_id"?}`.
+- Request bodies always carry `{"protocol": "v1", "install_id", "request_id", "grant": GrantOut}`, where `GrantOut = {"permissions": [...], "kids": [{"id", "first_name"?}], "chores": [{"id", "title"}]}`. `first_name` appears only with `kid.name`. `chores` is sent only when `chores.complete` is granted (else `[]`). Extras: install `{"settings": {...}}`; events `{"events": [...]}`; widgets `{"surface", "kid_id"?}`.
 - `Reply(request_id: str, actions: list[dict] = [] (max 20))`. `WidgetsReply(request_id, widgets: list[dict])`. Task 20 validates the widget list.
 - `@dataclass InstallCtx(public_id: str, base_url: str, secret: str, grant_out: dict)`.
 - `class ProtocolError(Exception)`: bad signature, `request_id` mismatch, non-JSON, schema, non-2xx.
@@ -407,10 +404,12 @@ def test_too_many_actions_is_protocol_error():
     with pytest.raises(ProtocolError):
         BoxClient(ctx("s"), policy=DEV, transport=svc.transport).poll()
 
-def test_first_name_only_with_permission():
+def test_names_and_chore_titles_only_with_permission():
     assert "first_name" not in grant_out_for(perms=[], kids=[KID])["kids"][0]
+    assert grant_out_for(perms=[], kids=[KID], chores=[(2, "Dishes")])["chores"] == []
+    assert grant_out_for(perms=["chores.complete"], kids=[KID], chores=[(2, "Dishes")])["chores"] == [{"id": 2, "title": "Dishes"}]
 ```
-(`grant_out_for` is the pure builder `protocol.grant_out(permissions, kids: list[tuple[int, str]], chores: list[tuple[int, str]]) -> dict`. Add it to Produces.)
+(`grant_out_for` is the pure builder `protocol.grant_out(permissions, kids: list[tuple[int, str]], chores: list[tuple[int, str]]) -> dict`. Add it to Produces. `ctx(secret)` (test-local) builds an `InstallCtx` with `base_url="http://127.0.0.1:8787"`; the DEV tests call `resolve_to("127.0.0.1")`. `FakeService(secret, actions=[], request_id_override=None)` exposes `.transport .last_path .last_signature_ok`; later tasks extend it.)
 
 - [ ] **Step 2: Run** `python -m pytest tests/integrations/test_int_client.py -v`. Expected: FAIL.
 - [ ] **Step 3: Implement** `protocol.py` additions and `client.py`.
@@ -429,21 +428,22 @@ def test_first_name_only_with_permission():
 **Interfaces — Produces:**
 - `store.load_grant(db, install: IntegrationInstall) -> Grant` (`active = install.status == "active"`).
 - `store.new_secret() -> str`, `store.seal_secret(s: str) -> str`, `store.secret_of(install) -> str` (purpose `"integrations"`).
-- `store.client_for(db, install) -> BoxClient` (always `STRICT`; uses `protocol.grant_out`).
+- `store._transport: httpx.BaseTransport | None = None`: the single test seam passed to every `BoxClient` (tests `monkeypatch.setattr(store, "_transport", svc.transport)`).
+- `store.client_for(db, install) -> BoxClient` (always `STRICT`, `transport=store._transport`; uses `protocol.grant_out`). `base_url` comes from the pinned manifest: `load_manifest(json.loads(install.manifest)).base_url`.
 - `audit.prior(db, install_id: int, key: str) -> IntegrationAction | None`.
 - `audit.record(db, install, kind: str, key: str, result: str, reason: str | None = None, **refs) -> IntegrationAction`.
 - `@dataclass ActionResult(key: str, result: Literal["applied","pending","rejected"], reason: str | None)`.
 - `apply.HANDLERS: dict[str, Handler]`, where `Handler = Callable[[Session, IntegrationInstall, Grant, Action, bool], Outcome]` and `Outcome = tuple[str, str | None, dict]` (result, reason, refs). Phases 3–4 register more handlers here.
-- `apply.apply_actions(db, install, raw: list[dict], origin: Origin = "service", actor_kid_id: int | None = None) -> list[ActionResult]`. For each raw action, in order: read the key. If `audit.prior` finds a row, return its result unchanged. Otherwise `parse_action` → `check_action` → handler. `ValueError`/`Denied`/`HTTPException` become a rejected row with the reason. Commit per action. On `IntegrityError` (race on the key), roll back and return the prior row.
+- `apply.apply_actions(db, install, raw: list[dict], origin: Origin = "service", actor_kid_id: int | None = None) -> list[ActionResult]`. For each raw action, in order: read the key. If `audit.prior` finds a row, return its result unchanged. Otherwise `parse_action` → `check_action` → handler. `ValueError`/`Denied`/`HTTPException` become a rejected row with the reason. A missing or invalid key is audited with key `f"invalid:{uuid4().hex}"` (never collides); every row uses `kind=str(raw.get("type"))[:24]`. Commit per action. On `IntegrityError` (race on the key), roll back and return the prior row.
 - `chore.complete` handler: find today's run for the chore and kid (`ChoreAssignment.chore_id`, `ChoreRun.day == chores.today(db)`, `kid_runs_filter(kid_id)`). Status ≠ `todo` or no run → rejected `"nothing to do today"`. Otherwise `tick_all(run, kid_id, now)` + `submit(run, kid_id, now)`. If `needs_approval`: `inbox.notify_parents(db, "chore_submitted", f"{grant.name}: {kid first name} finished {title}", "Take a look and approve it.", run_id=run.id)` → `pending` (Task 10 switches the kind). Else `chore_actions.approve(db, run, by_id=None)` → `applied`. Refs: `kid_id`, `chore_id`, `run_id`. The audit `created_at` equals the `now` used for `submitted_at` (Task 10 relies on this). Ruling: an integration completion skips the photo requirement. The signal is the proof.
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Write the failing tests** (the test file may import `Override` from `app.models.lock`; only `app/integrations/*` is banned from it)
 
 ```python
 def test_untrusted_completion_goes_to_needs_you(db, install, kid, run_today):
     [r] = apply_actions(db, install, [cc("k1", kid.id, run_today.chore_id)])
     assert r.result == "pending" and run_today.status == "submitted"
-    assert db.query(Notification).filter_by(kind="chore_submitted", run_id=run_today.id).count()
+    assert db.query(Notification).filter_by(kind="chore_submitted", run_id=run_today.id).count()  # Task 10 → integration_done
 
 def test_trusted_completion_awards(db, install, kid, run_today):
     install.trusted = True
@@ -474,6 +474,11 @@ def test_one_bad_action_does_not_block_others(db, install, kid, run_today):
                                      cc("b", kid.id, run_today.chore_id)])
     assert [r.result for r in rs] == ["rejected", "pending"]
 
+def test_bad_keys_and_long_types_are_audited(db, install):
+    rs = apply_actions(db, install, [{"type": "x" * 40}, {"type": "x" * 40, "idempotency_key": "bad key!"}])
+    assert [r.result for r in rs] == ["rejected"] * 2 and db.query(IntegrationAction).count() == 2
+    assert all(a.idempotency_key.startswith("invalid:") and len(a.kind) == 24 for a in db.query(IntegrationAction))
+
 def test_paused_install_rejects(db, install, kid, run_today):
     install.status = "paused"
     assert apply_actions(db, install, [cc("k", kid.id, run_today.chore_id)])[0].reason == "integration is paused"
@@ -481,8 +486,8 @@ def test_paused_install_rejects(db, install, kid, run_today):
 def test_secret_sealed_at_rest(db, install):
     s = store.new_secret(); install.secret = store.seal_secret(s)
     assert s not in install.secret and store.secret_of(install) == s and len(s) >= 43
+    assert store.client_for(db, install).ctx.base_url == DEMO["base_url"]  # pinned manifest
 ```
-(The test file may import `Override` from `app.models.lock`. Only `app/integrations/*` is banned from doing so.)
 
 - [ ] **Step 2: Run** `python -m pytest tests/integrations/test_int_apply.py -v`. Expected: FAIL.
 - [ ] **Step 3: Implement** `store.py`, `audit.py`, `apply.py` as specified.

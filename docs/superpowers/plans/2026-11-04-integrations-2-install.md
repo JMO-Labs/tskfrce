@@ -19,7 +19,7 @@
 - `GET /api/integrations/catalog` (public, no auth) → `200` with `signEnvelope({ v: 1, issued_at: new Date().toISOString(), integrations: [envelope per manifest], revoked: REVOKED })` and `Cache-Control: public, max-age=300`. With no key configured → `503 {"error":"catalog unavailable"}`.
 - `integrations-keygen.mjs`: `node scripts/integrations-keygen.mjs` prints `PRIVATE_PKCS8_B64=…` and `PUBLIC_RAW_B64=…` (raw 32-byte public key from `exportKey('raw')`).
 
-- [ ] **Step 1: Write the failing tests** (generate a key pair in `beforeAll` with `crypto.subtle.generateKey('Ed25519', true, ['sign','verify'])`)
+- [ ] **Step 1: Write the failing tests** (generate a key pair in `beforeAll` with `crypto.subtle.generateKey('Ed25519', true, ['sign','verify'])`. `vi.mock('../src/catalog', () => ({ CATALOG: [DEMO_MANIFEST], REVOKED: [] }))` so the per-manifest loop is not vacuous; the "never lists the example" test imports the real module via `vi.importActual`.)
 
 ```ts
 it('signs the catalog and every manifest', async () => {
@@ -28,14 +28,16 @@ it('signs the catalog and every manifest', async () => {
   expect(await verify(pub, outer)).toBe(true)
   const body = JSON.parse(atob(outer.payload))
   expect(body.v).toBe(1); expect(Array.isArray(body.revoked)).toBe(true)
+  expect(body.integrations).toHaveLength(1)
   for (const m of body.integrations) expect(await verify(pub, m)).toBe(true)
 })
 it('503 without a signing key', async () => {
   const res = await handle(new Request('https://x/api/integrations/catalog'), { ...env, INTEGRATIONS_SIGNING_KEY: '' }, fakeCf())
   expect(res.status).toBe(503)
 })
-it('never lists the example integration', () => {
-  expect(CATALOG.map((m: any) => m.id)).not.toContain('hello-example')
+it('never lists the example integration', async () => {
+  const real = await vi.importActual<typeof import('../src/catalog')>('../src/catalog')
+  expect(real.CATALOG.map((m: any) => m.id)).not.toContain('hello-example')
 })
 it('POST is 405', async () => {
   expect((await handle(new Request('https://x/api/integrations/catalog', { method: 'POST' }), env, fakeCf())).status).toBe(405)
@@ -54,7 +56,7 @@ it('POST is 405', async () => {
 **Files:**
 - Create: `backend/alembic/versions/c2d3e4f5a6b7_integration_kinds.py` (`down_revision = "c1d2e3f4a5b6"`; `OLD_KINDS` = current `KINDS`; `KINDS = (*OLD_KINDS, "integration_done", "integration_msg", "integration_paused")`; template `a8b9c0d1e2f3_device_hints.py`)
 - Modify: `backend/app/models/inbox.py` (`KINDS`), `backend/app/services/notify.py:54` (`KIND_EVENT["integration_done"] = "chore_ok"`; the other two stay bell-only), `backend/app/integrations/apply.py` (pending completion uses `integration_done`), `backend/app/integrations/store.py`, `backend/app/api/family.py:92-140` (`_needs_you`), `backend/app/api/inbox.py:103` (pending for `integration_done`)
-- Test: `backend/tests/integrations/test_int_needs_you.py`; `tests/test_migrations.py`, `tests/test_today_payload.py`, `tests/test_inbox.py`
+- Test: `backend/tests/integrations/test_int_needs_you.py`; `tests/test_migrations.py`, `tests/test_today_payload.py`, `tests/test_inbox.py`; `backend/tests/integrations/test_int_apply.py` (Task 8's `test_untrusted_completion_goes_to_needs_you` now asserts `kind="integration_done"`); `int_helpers.py` gains `bell_item(client, headers, kind) -> dict` (the newest `GET /api/v1/notifications` row of that kind)
 
 **Interfaces — Produces:**
 - `store.pending_by_run(db, runs: list[ChoreRun]) -> dict[int, dict]` maps `run_id` → `{"id": install.id, "name": install.name, "icon": install.icon}`. It covers submitted runs that have an `IntegrationAction(result="pending", kind="chore.complete", run_id=…)` with `created_at >= run.submitted_at`. One query.
@@ -96,17 +98,20 @@ def test_bell_item_pending_until_decided(client, parent_headers, db, install, ki
 
 **Files:**
 - Create: `backend/app/integrations/catalog.py`, `backend/app/integrations/loop.py`
-- Modify: `backend/app/main.py:273-315` (start `integrations_task` when `settings.INTEGRATIONS_LOOP_ENABLED`; cancel on shutdown, like `lock_task`)
-- Test: `backend/tests/integrations/test_int_catalog.py`
+- Modify: `backend/app/main.py:273-315` (start `integrations_task` when `settings.INTEGRATIONS_LOOP_ENABLED`; cancel on shutdown, like `lock_task`), `backend/app/integrations/store.py` (`retire`)
+- Test: `backend/tests/integrations/test_int_catalog.py`; `tests/integrations/conftest.py` gains `registry` (a `MockTransport` registry: `.serve(env)`, `.fail()`, `.transport`) and `keypair.catalog(...)`. The autouse `resolve_to` (Task 6) keeps `REGISTRY_URL` off real DNS.
+
+**Review focus:** the registry is down or returns a tampered catalog. Installed integrations keep working, the old catalog stays, and nothing unsigned is accepted. → `test_bad_signature_keeps_previous_catalog`.
 
 **Interfaces — Produces:**
 - `@dataclass(frozen=True) Catalog(issued_at: datetime, manifests: dict[str, tuple[Manifest, dict]], revoked: frozenset[str])`. The tuple holds the parsed manifest and its envelope.
 - `catalog_path() -> Path` = `settings.DATA_DIR / "integrations" / "catalog.json"` (raw outer envelope, mode 0600, atomic write via tmp + `os.replace`).
 - `parse_catalog(env: dict) -> Catalog`. It verifies the outer envelope (`UntrustedError` propagates). A single manifest that fails verification or validation is skipped and logged, and the rest still load.
 - `cached() -> Catalog | None`: re-verifies on every load. Returns None when missing or untrusted.
-- `sync(db, now: datetime, transport=None) -> bool`: GET `{settings.REGISTRY_URL}/api/integrations/catalog` via `net.fetch` (STRICT, `max_bytes=1_048_576`). On any error, or when the new `issued_at` is older than the cached one (rollback), keep the cache and return False. On success: write the cache, then for every install with `integration_id in revoked` and status `active|paused`, set status `revoked` and `secret=None` and notify parents `integration_paused`, title `f"{name} was turned off"`, body `"t@sk4ce turned it off for safety. Its history is kept."`. Return True.
+- `sync(db, now: datetime, transport=None) -> bool`: GET `{settings.REGISTRY_URL}/api/integrations/catalog` via `net.fetch` (STRICT, `max_bytes=1_048_576`). On any error, or when the new `issued_at` is older than the cached one (rollback), keep the cache and return False. On success: write the cache, then for every install with `integration_id in revoked` and status `active|paused`, call `store.retire(db, install, "revoked")` and notify parents `integration_paused`, title `f"{name} was turned off"`, body `"t@sk4ce turned it off for safety. Its history is kept."`. Return True.
+- `store.retire(db, install, status: str) -> None` (shared with Task 12 `remove`): sets `status`, `secret=None`, `Reward.active=False` for rewards with `integration_install_id == install.id`, and deletes its `IntegrationEvent` rows. Task 20 adds `widget_service.forget(install.id)` here. Audit rows are kept. The caller commits.
 - `class SyncSchedule`: `due(now) -> bool` and `mark(ok: bool, now)`. Every 6 h on success. On failure the delay starts at 60 s and doubles up to 6 h.
-- `loop.TICK_SECONDS = 15`. `loop._run_once(now: datetime) -> None` opens `SessionLocal()` and runs the steps in `STEPS: list[Callable[[Session, datetime], None]]` (catalog sync first; Tasks 15–16 append). Each step is wrapped like `lock/loop.py` (`OperationalError` "database is locked" → warn; others logged), and the session is closed in `finally`. `async def run_forever()` loops `await asyncio.to_thread(_run_once, now)` then `await asyncio.sleep(TICK_SECONDS)`.
+- `loop.TICK_SECONDS = 15`. `loop._run_once(now: datetime) -> None` opens `SessionLocal()` and runs the steps in `STEPS: list[Callable[[Session, datetime], None]]` (catalog sync first; Tasks 16–17 append). Each step is wrapped like `lock/loop.py` (`OperationalError` "database is locked" → warn; others logged), and the session is closed in `finally`. `async def run_forever()` loops `await asyncio.to_thread(_run_once, now)` then `await asyncio.sleep(TICK_SECONDS)`.
 
 - [ ] **Step 1: Write the failing tests** (use the `keypair` fixture and a `MockTransport` registry. `tmp_path` is monkeypatched as `DATA_DIR`.)
 
@@ -131,6 +136,13 @@ def test_revocation_disables_install_and_drops_secret(db, keypair, registry, ins
     db.refresh(install)
     assert install.status == "revoked" and install.secret is None
     assert db.query(Notification).filter_by(kind="integration_paused").count() >= 1
+
+def test_revocation_removes_rewards_and_events(db, keypair, registry, install):
+    db.add(Reward(name="Owned", price=5, integration_install_id=install.id, integration_ref="r1"))
+    db.add(IntegrationEvent(install_id=install.id, kind="chore.completed", payload="{}")); db.commit()
+    registry.serve(keypair.catalog([DEMO], revoked=["demo"])); sync(db, NOW, transport=registry.transport)
+    assert db.query(Reward).filter_by(integration_ref="r1").one().active is False
+    assert db.query(IntegrationEvent).count() == 0
 
 def test_older_catalog_is_ignored(db, keypair, registry):
     registry.serve(keypair.catalog([DEMO], issued_at=T2)); sync(db, NOW, transport=registry.transport)
@@ -158,7 +170,7 @@ def test_backoff_doubles_to_six_hours():
 **Files:**
 - Create: `backend/app/api/integrations.py` (router `APIRouter(prefix="/api/v1/integrations", tags=["integrations"], dependencies=[Depends(require_parent)])`), `backend/app/schemas/integration.py`
 - Modify: `backend/app/main.py` (include router), `backend/app/integrations/store.py` (`remove`)
-- Test: `backend/tests/integrations/test_int_install_api.py`
+- Test: `backend/tests/integrations/test_int_install_api.py`; `tests/integrations/conftest.py` gains `synced_catalog` (writes a `keypair`-signed cache holding `DEMO`) and `svc` (a `FakeService` patched in via `monkeypatch.setattr(store, "_transport", svc.transport)`; DNS via the autouse `resolve_to`); `int_helpers.py` gains `install_body(kid, **over) -> dict` and `db_install(id) -> IntegrationInstall`; `fake_service.py` gains `.fail()` (every call answers 500) and `.last_body` (parsed JSON of the last request)
 
 **Interfaces — Produces (HTTP):**
 - `GET /catalog` → `[CatalogItem]`: `{id, name, developer, description, icon, version, domain (host of base_url), settings: [SettingField], permissions: [{id, text, high_risk}], widgets: [WidgetDecl], installed: bool}`. Revoked entries are excluded. With no cache → `503 "We couldn't load the list yet. Try again in a minute."`.
@@ -168,16 +180,16 @@ def test_backoff_doubles_to_six_hours():
   3. `set(accepted_permissions) != set(manifest.permissions)` → 409 `"The permissions changed. Look them over again."`
   4. Settings checked against the fields → 422 `{"detail": "<label> is required" | "<label> must be a number" | "<label> isn't one of the choices"}`. Strings ≤ 200 chars.
   5. `kid_ids` must be kids. `chore_ids` must exist. `kid_widget_ids ⊆ kid_ids` and need `widgets.kid`. Otherwise 422.
-  6. Create the install (`public_id=uuid4().hex`, sealed `store.new_secret()`, non-secret settings JSON, permissions JSON, links), flush, then `client.install(all settings)`. Any `ProtocolError | FetchError | BlockedError` → rollback and 502 `"{name} didn't answer. Nothing was connected."`. On success set `next_poll_at = now` if `poll_seconds`, then commit.
+  6. Build `public_id=uuid4().hex`, `secret=store.new_secret()` and `grant_out` in memory, then call `BoxClient(InstallCtx(public_id, manifest.base_url, secret, grant_out), transport=store._transport).install(all settings)` **before** any `db.add`/flush, so no SQLite write lock is held during the 5 s call. Any `ProtocolError | FetchError | BlockedError` → 502 `"{name} didn't answer. Nothing was connected."` with nothing written. On success add the install (`manifest=json.dumps(envelope)`, the pinned signed envelope from the catalog; `integration_id`, `name`, `icon`; sealed secret, non-secret settings JSON, permissions JSON, links), set `next_poll_at = now` if `poll_seconds`, then commit.
   Ruling: actions in the install reply are ignored.
 - `GET ""` → `[InstallOut]` (status ≠ `removed`): `{id, source, integration_id, name, icon, status, paused_reason, trusted, kid_ids, created_at}`.
-- `GET /{id}` → `InstallDetail` = `InstallOut` + `{permissions: [{id,text,high_risk}], kids: [{id, name, kid_widgets}], chores: [{id, title}], settings: dict (non-secret), domain}`.
+- `GET /{id}` → `InstallDetail` = `InstallOut` + `{permissions: [{id,text,high_risk}], kids: [{id, name, kid_widgets}], chores: [{id, title}], settings: dict (non-secret), domain, developer}`. `domain` and `developer` come from the pinned `install.manifest`; both are None when `manifest is None` (local installs).
 - `PATCH /{id}` with `InstallPatch{trusted: bool | None, kid_widget_ids: list[int] | None, resume: bool | None}`. `resume` works only from `paused` (sets active and failures 0); from `revoked` → 409 `"t@sk4ce turned this one off."`. `kid_widget_ids` needs `widgets.kid` granted and must be ⊆ linked kids, else 422.
-- `DELETE /{id}` → 204 via `store.remove(db, install, now)`: best-effort `client.uninstall()` (errors logged, never raised), then `secret=None`, `status="removed"`, `removed_at=now`, `Reward.active=False` for its rewards, and its `IntegrationEvent` rows deleted. Audit rows are kept.
+- `DELETE /{id}` → 204 via `store.remove(db, install, now)`: best-effort `client.uninstall()` (errors logged, never raised), **skipped when `install.secret is None`** (local and revoked installs), then `store.retire(db, install, "removed")` (Task 11: secret dropped, rewards inactive, events deleted, audit kept) and `removed_at=now`.
 - `GET /{id}/log?limit=50` (max 200) → newest first `[{kind, result, reason, kid_name, chore_title, created_at}]`.
 - Kids and parents without the parent role → 403 (router dependency).
 
-- [ ] **Step 1: Write the failing tests** (`synced_catalog` fixture writes a signed cache. `svc` is a `FakeService` patched in via `monkeypatch.setattr(store, "_transport", svc.transport)` and resolves to a public IP.)
+- [ ] **Step 1: Write the failing tests** (fixtures as listed under Files)
 
 ```python
 def test_install_happy_path(client, parent_headers, synced_catalog, svc, kid):
@@ -186,6 +198,8 @@ def test_install_happy_path(client, parent_headers, synced_catalog, svc, kid):
     row = db_install(r.json()["id"])
     assert row.trusted is False and row.secret and svc.last_body["settings"]["username"] == "sam"
     assert "api_key" not in (row.settings or "")  # secret field never stored
+    assert (row.integration_id, row.name) == ("demo", "Demo") and load_manifest(json.loads(row.manifest)).id == "demo"
+    assert client.get(f"/api/v1/integrations/{row.id}", headers=parent_headers).json()["developer"] == DEMO["developer"]
 
 def test_permission_mismatch_409(client, parent_headers, synced_catalog, kid):
     body = install_body(kid, accepted_permissions=["chores.complete"])
@@ -211,6 +225,15 @@ def test_uninstall_when_service_down_still_removes(client, parent_headers, insta
     svc.fail()
     assert client.delete(f"/api/v1/integrations/{install.id}", headers=parent_headers).status_code == 204
 
+def test_remove_after_revoke_skips_uninstall(client, parent_headers, db, install, svc):
+    install.status, install.secret = "revoked", None; db.commit()
+    assert client.delete(f"/api/v1/integrations/{install.id}", headers=parent_headers).status_code == 204
+    assert svc.last_path is None  # no uninstall call without a secret
+
+def test_kid_toggle_requires_permission(client, parent_headers, install, kid):
+    r = client.patch(f"/api/v1/integrations/{install.id}", headers=parent_headers, json={"kid_widget_ids": [kid.id]})
+    assert r.status_code == 422  # install lacks widgets.kid
+
 def test_trust_toggle_and_resume(client, parent_headers, db, install):
     install.status = "paused"; db.commit()
     r = client.patch(f"/api/v1/integrations/{install.id}", headers=parent_headers, json={"trusted": True, "resume": True})
@@ -218,7 +241,7 @@ def test_trust_toggle_and_resume(client, parent_headers, db, install):
 ```
 
 - [ ] **Step 2: Run** `python -m pytest tests/integrations/test_int_install_api.py -v`. Expected: FAIL (404s).
-- [ ] **Step 3: Implement** the router, schemas, and `store.remove`. Keep `store._transport = None` as the single test seam passed to `BoxClient`.
+- [ ] **Step 3: Implement** the router, schemas, and `store.remove`. Use Task 8's `store._transport` seam for every `BoxClient`. Declare `GET /catalog` before `GET /{id}`.
 - [ ] **Step 4: Run** `python -m pytest tests/integrations -q && ruff check backend`. Expected: PASS.
 - [ ] **Step 5: Commit** `feat(integrations): install, settings, trust and uninstall API`
 
@@ -228,12 +251,12 @@ def test_trust_toggle_and_resume(client, parent_headers, db, install):
 
 **Files:**
 - Create: `frontend/src/v2/integrations/types.ts`, `frontend/src/v2/hooks/useIntegrations.ts`, `frontend/src/v2/integrations/IntegrationsPane.tsx`, `frontend/src/v2/integrations/InstallFlow.tsx`, `frontend/src/v2/integrations/PermissionList.tsx`, `frontend/src/v2/integrations/integrations.css`
-- Modify: `frontend/src/v2/manage/settingsSections.ts` (`S` adds `'integrations'`; entry `{ id: 'integrations', label: 'Integrations', description: 'Connect other apps', icon: 'extension' }`), `frontend/src/v2/manage/SettingsPage.tsx` (`{section === 'integrations' && <IntegrationsPane />}`)
+- Modify: `frontend/src/v2/manage/settingsSections.ts` (`S` adds `'integrations'`; entry `{ id: 'integrations', label: 'Integrations', description: 'Connect other apps', icon: 'extension' }`), `frontend/src/v2/manage/SettingsPage.tsx` (`{section === 'integrations' && <IntegrationsPane />}`), `frontend/src/v2/hooks/useRewards.ts` (`export` the private `useInvalidating(fn, keys: string[])`; behaviour unchanged)
 - Test: `frontend/tests/v2/integrationsInstall.test.tsx`; `frontend/tests/v2/SettingsList.test.tsx` still passes.
 
 **Interfaces — Produces:**
-- Types mirroring Task 12: `CatalogItem`, `PermissionOut {id; text; high_risk}`, `SettingFieldOut`, `InstallOut`, `InstallDetail`, `AuditRow`.
-- Hooks: `useCatalog()` (key `['integrations','catalog']`), `useInstalls()` (`['integrations']`), `useInstall(id)` (`['integrations', id]`), `useInstallIntegration()`, `usePatchIntegration(id)`, `useRemoveIntegration(id)`, `useIntegrationLog(id)`. Mutations use `useInvalidating(fn, [['integrations'], ['today'], ['rewards']])`.
+- Types mirroring Task 12: `CatalogItem`, `PermissionOut {id; text; high_risk}`, `SettingFieldOut`, `InstallOut`, `InstallDetail` (includes `domain: string | null`, `developer: string | null`), `AuditRow`.
+- Hooks: `useCatalog()` (key `['integrations','catalog']`), `useInstalls()` (`['integrations']`), `useInstall(id)` (`['integrations', id]`), `useInstallIntegration()`, `usePatchIntegration(id)`, `useRemoveIntegration(id)`, `useIntegrationLog(id)`. Mutations use `useInvalidating(fn, ['integrations', 'today', 'rewards'])` imported from `useRewards.ts` (it takes top-level key strings).
 - `<PermissionList perms={PermissionOut[]} />` renders the fixed line "Its own settings, and nothing else unless listed below." and then one row per permission. High-risk rows get `data-risk="high"`, the class using `--p-red`/`--p-redbg`, and a "High risk" tag.
 - `<InstallFlow item={CatalogItem} onDone />` has three steps:
   1. Settings form. A `secret` field renders `type="password"`, `number` renders a number input, `select` renders a Select.
@@ -276,7 +299,7 @@ it('settings list has an Integrations section', () => { expect(SETTINGS_SECTIONS
 
 **Interfaces — Produces:**
 - `<IntegrationDetail id={number} onClose />` contains:
-  - Header with name and icon. "By {developer} · Talks to {domain}".
+  - Header with name and icon. "By {developer} · Talks to {domain}" from `InstallDetail.developer` / `.domain` (Task 12; both null for local installs, which Task 26 handles).
   - `<PermissionList>`.
   - "Trust automatically" switch. When on, the line below reads exactly: **"Its chore check-offs will count right away, without your OK."** When off: "Its chore check-offs wait in Needs you."
   - Paused banner `"Paused: {paused_reason}"` with a "Try again" button (`PATCH {resume: true}`). Revoked banner: "t@sk4ce turned this one off."

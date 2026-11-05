@@ -12,14 +12,14 @@
 
 **Files:**
 - Create: `backend/app/integrations/health.py`
-- Test: `backend/tests/integrations/test_int_health.py`
+- Test: `backend/tests/integrations/test_int_health.py`; `int_helpers.py` gains `raising(exc) -> Callable[[BoxClient], NoReturn]`
 
 **Interfaces — Produces:**
 - `FAIL_LIMIT = 5`.
-- `class RateLimiter(per_minute: int)` with `allow(key: int, now: float) -> bool` (60 s sliding window, a `deque` per key). Singleton `OUTBOUND = RateLimiter(30)`.
+- `OUTBOUND_PER_MIN = 30`. No new limiter class: reuse `app.core.ratelimit` (its autouse reset in `tests/conftest.py` already clears state between tests). `_allowed(install) -> bool` = `ratelimit.check(f"int-out:{install.id}", OUTBOUND_PER_MIN, 60)` (catch the 429 `HTTPException` → False), then `ratelimit.hit(f"int-out:{install.id}", 60)`.
 - `ok(install) -> None` sets `failures = 0`.
 - `fail(db, install, reason: str) -> None`: `failures += 1`. At `FAIL_LIMIT` with status `active` → `status="paused"`, `paused_reason=reason[:200]`, and `inbox.notify_parents(db, "integration_paused", f"{install.name} is paused", "It stopped answering properly. Open it to try again.")`. The caller commits.
-- `guarded_call(db, install, fn: Callable[[BoxClient], T]) -> T | None`. Returns None without calling when the install is not active or `OUTBOUND.allow` is False (rate-limited calls are **not** failures). Otherwise it calls `fn(store.client_for(db, install))`, which yields `ok` or `fail`. Reason map: `BlockedError` → `"blocked address"`; `FetchError("timeout")` → `"timed out"`; other `FetchError` → `"not reachable"`; `ProtocolError` with "signature" → `"bad signature"`; other `ProtocolError` → `"bad reply"`. It never raises those errors.
+- `guarded_call(db, install, fn: Callable[[BoxClient], T]) -> T | None`. Returns None without calling when the install is not active or `_allowed` is False (rate-limited calls are **not** failures). Otherwise it calls `fn(store.client_for(db, install))`, which yields `ok` or `fail`. Reason map: `BlockedError` → `"blocked address"`; `FetchError("timeout")` → `"timed out"`; other `FetchError` → `"not reachable"`; `ProtocolError` with "signature" → `"bad signature"`; other `ProtocolError` → `"bad reply"`. It never raises those errors.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -41,13 +41,9 @@ def test_paused_install_is_not_called(db, install):
     assert called == []
 
 def test_rate_limit_skips_without_failing(db, install, monkeypatch):
-    monkeypatch.setattr(health, "OUTBOUND", RateLimiter(1))
+    monkeypatch.setattr(health, "OUTBOUND_PER_MIN", 1)
     guarded_call(db, install, lambda c: "a")
     assert guarded_call(db, install, lambda c: "b") is None and install.failures == 0
-
-def test_core_app_unaffected_when_service_down(client, parent_headers, install, svc):
-    svc.fail()
-    assert client.get("/api/v1/today", headers=parent_headers).status_code == 200
 ```
 
 - [ ] **Step 2: Run** `cd backend && python -m pytest tests/integrations/test_int_health.py -v`. Expected: FAIL.
@@ -62,24 +58,24 @@ def test_core_app_unaffected_when_service_down(client, parent_headers, install, 
 **Files:**
 - Create: `backend/app/integrations/events.py`
 - Modify:
-  - `backend/app/services/chore_actions.py` (`approve` emits `chore.completed`)
+  - `backend/app/services/chore_actions.py` (`approve` emits `chore.completed`; import `app.integrations.events` **inside** `approve` to avoid a cycle with `apply`, same as economy)
   - `backend/app/api/kid.py` (`done` emits `request.created` type chore)
   - `backend/app/integrations/apply.py` (a pending completion emits `request.created` with `skip_install_id`)
   - `backend/app/services/economy.py` (`_request` for kind `reward` emits `request.created`; `_decide` approve for kind `reward` emits `reward.redeemed`). Import `events` inside the function to avoid an import cycle with `apply`.
   - `backend/app/integrations/loop.py` (`STEPS.append(events.flush)`)
-- Test: `backend/tests/integrations/test_int_events.py`
+- Test: `backend/tests/integrations/test_int_events.py`; `tests/integrations/conftest.py` gains `reward_redemption` (pending `kind="reward"` redemption of a 20-point "Ice cream" for `kid`); `int_helpers.py` gains `add_events(db, install, n, created_at=None)`, `kid_requests_screen_time(client, kid_headers)` and `boom(*a, **k)` (raises `RuntimeError`)
 
 **Interfaces — Produces:**
 - `EVENT_PERM = {"chore.completed": "events.chore_completed", "request.created": "events.request_created", "reward.redeemed": "events.reward_redeemed"}`. Screen-time, homework and device events do not exist.
-- `trim(grant: Grant, kind: str, kid_id: int, kid_first_name: str, fields: dict) -> dict` (pure). Output: `{"kind", "at", "kid_id"}`, plus `"first_name"` only with `kid.name`, plus an allowlist per kind:
+- `trim(grant: Grant, kind: str, kid_id: int, kid_first_name: str, fields: dict, at: datetime) -> dict` (pure; `at` → ISO string). Output: `{"kind", "at", "kid_id"}`, plus `"first_name"` only with `kid.name`, plus an allowlist per kind:
   - `chore.completed`: `chore_id, title, points`
   - `request.created`: `type ('reward'|'chore'), id, title, cost`
   - `reward.redeemed`: `reward_name, cost`
   Every other key is dropped.
-- `emit(db, kind: str, kid_ids: list[int], *, chore_id: int | None = None, skip_install_id: int | None = None, **fields) -> None`. For each active catalog install with the event permission, for each of `kid_ids` linked to it, and (if `chore_id` is set) only when the chore is linked: add an `IntegrationEvent(payload=json.dumps(trim(...)))`. It runs inside `db.begin_nested()` and swallows and logs any exception, so the caller's action never fails because of integrations.
-- `flush(db, now: datetime) -> None` (loop step). Delete events older than 24 h. Then, per active install with events, send the oldest ≤ 50 via `health.guarded_call(db, install, lambda c: c.events(payloads))`. On a reply: delete the sent rows and `apply_actions(db, install, reply.actions)`. On None: `attempts += 1`. Commit.
+- `emit(db, kind: str, kid_ids: list[int], *, chore_id: int | None = None, skip_install_id: int | None = None, **fields) -> None`. For each active catalog install with the event permission, for each of `kid_ids` linked to it, and (if `chore_id` is set) only when the chore is linked: add an `IntegrationEvent(payload=json.dumps(trim(..., at=now)))`, where `now` is naive UTC (`datetime.now(UTC).replace(tzinfo=None)`). It runs inside `db.begin_nested()` and swallows and logs any exception, so the caller's action never fails because of integrations.
+- `flush(db, now: datetime) -> None` (loop step). Delete events older than 24 h and **commit immediately**, so no write lock is held during the sends. Then, per active install with events, send the oldest ≤ 50 via `health.guarded_call(db, install, lambda c: c.events(payloads))`. On a reply: delete the sent rows and `apply_actions(db, install, reply.actions)`. On None: `attempts += 1`. Commit.
 
-- [ ] **Step 1: Write the failing tests** (`install` granted `events.chore_completed` and `events.reward_redeemed`, without `kid.name`)
+- [ ] **Step 1: Write the failing tests** (`install` granted `events.chore_completed`, `events.request_created` and `events.reward_redeemed`, without `kid.name`, so the negative tests below are not vacuous)
 
 ```python
 def test_approval_emits_trimmed_event(db, install, kid, run_today, parent):
@@ -108,7 +104,7 @@ def test_reward_redeemed_has_name_and_cost_only(db, install, kid, reward_redempt
     p = json.loads(db.query(IntegrationEvent).one().payload)
     assert p["reward_name"] == "Ice cream" and p["cost"] == 20 and "balance" not in p
 
-def test_emit_failure_never_breaks_approval(db, run_today, parent, monkeypatch):
+def test_emit_failure_never_breaks_approval(db, install, run_today, parent, monkeypatch):
     monkeypatch.setattr(events, "trim", boom)
     chore_actions.approve(db, run_today, parent.id); db.commit()
     assert run_today.status == "done"
@@ -122,6 +118,10 @@ def test_old_events_dropped(db, install):
     add_events(db, install, 1, created_at=NOW - timedelta(hours=25))
     events.flush(db, NOW)
     assert db.query(IntegrationEvent).count() == 0
+
+def test_trim_uses_given_time(db, install, kid):
+    p = trim(store.load_grant(db, install), "chore.completed", kid.id, "Sam", {"chore_id": 9}, at=NOW)
+    assert p["at"] == NOW.isoformat()
 ```
 
 - [ ] **Step 2: Run** `python -m pytest tests/integrations/test_int_events.py -v`. Expected: FAIL.
@@ -136,7 +136,7 @@ def test_old_events_dropped(db, install):
 **Files:**
 - Create: `backend/app/integrations/poller.py`
 - Modify: `backend/app/integrations/loop.py` (`STEPS.append(poller.poll_due)`)
-- Test: `backend/tests/integrations/test_int_poller.py`
+- Test: `backend/tests/integrations/test_int_poller.py`; `fake_service.py` gains `.calls` (request count) and a settable `.actions` (used by later poll replies). The `install` fixture already pins a `TEST_KEY`-signed DEMO manifest (Task 3) that verifies under the autouse `keypair` (Task 5), so only the tampered test pauses with "bad manifest".
 
 **Interfaces — Produces:**
 - `MAX_PER_TICK = 10`.
@@ -187,7 +187,7 @@ def test_tampered_stored_manifest_pauses(db, install):
   - `backend/app/integrations/store.py` (`reward_visible_to`)
   - `backend/app/api/kid_rewards.py:29,87` (list and redeem honour `reward_visible_to`)
   - `backend/app/api/rewards.py` (`_out` adds `"integration": {"id","name"} | None`; `delete_reward` keeps `integration_ref`)
-- Test: `backend/tests/integrations/test_int_rewards_messages.py`
+- Test: `backend/tests/integrations/test_int_rewards_messages.py`; `tests/integrations/conftest.py` gains `other_kid_headers` (auth headers for `other_kid`)
 
 **Interfaces — Produces:**
 - `MAX_REWARDS = 50`, `MAX_MESSAGES_PER_DAY = 20`.
@@ -246,11 +246,13 @@ def test_message_daily_cap(db, install):
 
 **Files:**
 - Modify: `backend/app/integrations/apply.py` (register `request.decide`)
-- Test: `backend/tests/integrations/test_int_decide.py`
+- Test: `backend/tests/integrations/test_int_decide.py`; `tests/integrations/conftest.py` gains `run_submitted` (today's linked run for `kid`, status `submitted`), `screen_time_redemption` (pending `kind="screen_time"` for `kid`) and `other_kid_redemption` (pending reward redemption for `other_kid`)
+
+**Review focus:** an integration approves a screen-time redemption, or a parent decides a request at the same moment an integration does. The first: rejected, no `Override` rows. The second: one decision wins, the other gets a rejected audit row "already answered". → `test_screen_time_never_approvable` and `test_race_with_parent`.
 
 **Interfaces — Consumes:** `economy.decide(db, redemption, None, approve, note)` and `chore_actions.approve` / `send_back`.
 **Interfaces — Produces:** the `request.decide` handler. It is not gated by `trusted`, and `kid_button` origin is already denied by `check_action`.
-- `target == "reward"`: load the `Redemption`. Missing or not linked (`kid_id` ∉ grant) → rejected `"not found"`. **`kind != "reward"` → rejected `"only the t@sk4ce app can answer this"`.** Status ≠ pending → rejected `"already answered"`. Otherwise call `economy.decide(db, r, None, approve, note)`. The `HTTPException(409, detail)` it raises becomes rejected with `detail`. Refs: `redemption_id`, `kid_id`.
+- `target == "reward"`: load the `Redemption`. Missing or not linked (`kid_id` ∉ grant) → rejected `"not found"`. **`kind != "reward"` → rejected `"only the t@sk4ce app can answer this"`.** Status ≠ pending → rejected `"already answered"`. Otherwise call `economy.decide(db, r, None, approve, note)`, then set `r.auto = False` (economy marks parent-less decisions "automatic"; this one came from the integration) and commit. The `HTTPException(409, detail)` it raises becomes rejected with `detail`. Refs: `redemption_id`, `kid_id`.
 - `target == "chore"`: load the `ChoreRun`. Not linked (no linked kid in `run_kid_ids`, or its chore not linked) → rejected `"not found"`. Status ≠ `submitted` → rejected `"already answered"`. If approve: `chore_actions.approve(db, run, by_id=None)`. Else: `chore_actions.send_back(db, run, note or f"Sent back by {install.name}")`. Refs: `run_id`, `kid_id`, `chore_id`.
 - Homework, screen-time and device requests have no target value, so pydantic rejects them as `"bad action"`.
 
@@ -259,7 +261,7 @@ def test_message_daily_cap(db, install):
 ```python
 def test_approves_reward_redemption(db, install, reward_redemption):
     [r] = apply_actions(db, install, [rd("a", "reward", reward_redemption.id, True)])
-    assert r.result == "applied" and reward_redemption.status == "approved"
+    assert r.result == "applied" and reward_redemption.status == "approved" and reward_redemption.auto is False
 
 def test_screen_time_never_approvable(db, install, screen_time_redemption):
     before = db.query(Override).count()
