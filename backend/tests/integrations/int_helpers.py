@@ -98,3 +98,10 @@ class Signer:
 
 def other_signer() -> Signer:
     return Signer(Ed25519PrivateKey.from_private_bytes(bytes(range(32))))
+
+
+def reply(status, headers=None, content=b""):
+    """A MockTransport that answers every request with the given status, headers and body."""
+    import httpx
+
+    return httpx.MockTransport(lambda req: httpx.Response(status, headers=headers, content=content))

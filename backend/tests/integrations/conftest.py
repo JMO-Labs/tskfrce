@@ -3,6 +3,7 @@ import json
 import secrets
 from datetime import date
 
+import httpx
 import pytest
 from app.core.crypto import seal
 from app.models.chores import ChoreRun
@@ -70,3 +71,38 @@ def other_kid(db):
     from app.models.user import UserRole
 
     return _make_user(db, "sally", UserRole.KID)
+
+
+@pytest.fixture(autouse=True)
+def resolve_to(monkeypatch):
+    """Stub DNS for app.integrations.net: resolve_to(*ips) sets the answers (no real DNS)."""
+    from app.integrations import net
+
+    answers = ["93.184.216.34"]
+
+    def fake(host, port, *a, **kw):
+        return [(None, None, None, "", (ip, port)) for ip in answers]
+
+    monkeypatch.setattr(net.socket, "getaddrinfo", fake)
+
+    def set_answers(*ips):
+        answers[:] = ips
+
+    return set_answers
+
+
+class _Seen:
+    """Recording MockTransport: keeps the last request's url, headers and extensions."""
+
+    def __init__(self):
+        self.url = self.headers = self.extensions = None
+        self.transport = httpx.MockTransport(self._handle)
+
+    def _handle(self, req):
+        self.url, self.headers, self.extensions = req.url, req.headers, req.extensions
+        return httpx.Response(200, headers={"content-type": "application/json"}, content=b"{}")
+
+
+@pytest.fixture
+def seen():
+    return _Seen()
