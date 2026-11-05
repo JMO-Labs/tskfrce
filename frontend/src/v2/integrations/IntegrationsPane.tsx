@@ -5,7 +5,8 @@ import { EmptyState, ErrorPanel, Skeleton } from '@/v2/parent/states'
 import { PaneHead } from '../manage/PaneParts'
 import { InstallFlow } from './InstallFlow'
 import { IntegrationDetail } from './IntegrationDetail'
-import type { CatalogItem, InstallStatus } from './types'
+import { LocalKeyForm, PUSH_URL } from './LocalKeyForm'
+import type { CatalogItem, InstallOut, InstallStatus } from './types'
 
 const STATUS: Record<string, [string, string]> = {
   active: ['Active', 'acc'],
@@ -14,38 +15,45 @@ const STATUS: Record<string, [string, string]> = {
 
 const chip = (s: InstallStatus) => STATUS[s] ?? ['Turned off', 'grey']
 
+function InstallRow({ i, onOpen }: { i: InstallOut; onOpen: (id: number) => void }) {
+  const [label, tone] = chip(i.status)
+  return (
+    <button type="button" className="pn-par ig-row" aria-label={`Open ${i.name}`} onClick={() => onOpen(i.id)}>
+      <span className="ig-icon" aria-hidden="true"><Icon name={i.icon} size={20} /></span>
+      <div className="pn-t2">{i.name}{i.key_prefix && <small>{i.key_prefix}…</small>}</div>
+      <span className="p-chip" data-tone={tone}>{label}</span>
+      <Icon name="chevron_right" size={20} />
+    </button>
+  )
+}
+
 /** Settings → Integrations: what is connected, and what can be added. */
 export function IntegrationsPane() {
   const installs = useInstalls()
   const catalog = useCatalog()
   const [adding, setAdding] = useState<CatalogItem | null>(null)
   const [open, setOpen] = useState<number | null>(null)
+  const [making, setMaking] = useState(false)
+  const apps = installs.data?.filter((i) => i.source !== 'local') ?? []
+  const keys = installs.data?.filter((i) => i.source === 'local') ?? []
   const addable = catalog.data?.filter((c) => !c.installed) ?? []
   return (
     <div className="pn">
       <PaneHead title="Integrations" sub="Connect other apps to your family." />
       {open !== null ? (
         <IntegrationDetail key={open} id={open} onClose={() => setOpen(null)} />
+      ) : making ? (
+        <LocalKeyForm onDone={() => setMaking(false)} />
       ) : adding ? (
         <InstallFlow key={adding.id} item={adding} onDone={() => setAdding(null)} />
       ) : (
         <>
           {installs.isPending && <Skeleton rows={2} />}
           {installs.isError && <ErrorPanel kind="unreachable" error={installs.error} onRetry={() => installs.refetch()} />}
-          {!!installs.data?.length && (
+          {!!apps.length && (
             <section className="pn-card" aria-label="Connected">
               <h3 className="pn-cap ig-cap">Connected</h3>
-              {installs.data.map((i) => {
-                const [label, tone] = chip(i.status)
-                return (
-                  <button key={i.id} type="button" className="pn-par ig-row" aria-label={`Open ${i.name}`} onClick={() => setOpen(i.id)}>
-                    <span className="ig-icon" aria-hidden="true"><Icon name={i.icon} size={20} /></span>
-                    <div className="pn-t2">{i.name}</div>
-                    <span className="p-chip" data-tone={tone}>{label}</span>
-                    <Icon name="chevron_right" size={20} />
-                  </button>
-                )
-              })}
+              {apps.map((i) => <InstallRow key={i.id} i={i} onOpen={setOpen} />)}
             </section>
           )}
           {catalog.isPending && <Skeleton rows={2} />}
@@ -61,6 +69,22 @@ export function IntegrationsPane() {
                   <button type="button" className="p-btn" aria-label={`Add ${c.name}`} onClick={() => setAdding(c)}>Add</button>
                 </div>
               ))}
+            </section>
+          )}
+          {installs.isSuccess && (
+            <section className="pn-card" aria-label="Home network keys">
+              <div className="ig-cap-row">
+                <h3 className="pn-cap ig-cap">Home network keys</h3>
+                <button type="button" className="p-btn" onClick={() => setMaking(true)}>
+                  <Icon name="add" size={16} />
+                  Create key
+                </button>
+              </div>
+              <p className="pn-help ig-scope">
+                Let Home Assistant or a script on your home network send actions. Pushes only work from inside your home at
+                {' '}<code className="ig-code">{PUSH_URL}</code>.
+              </p>
+              {keys.map((i) => <InstallRow key={i.id} i={i} onOpen={setOpen} />)}
             </section>
           )}
         </>

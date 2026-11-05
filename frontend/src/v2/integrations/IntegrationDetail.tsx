@@ -6,7 +6,7 @@ import { ConfirmDelete } from '@/v2/manage/ConfirmDelete'
 import { toastFail, toastOk } from '@/v2/notify'
 import { Icon } from '@/v2/parent/Icon'
 import { ErrorPanel, Skeleton } from '@/v2/parent/states'
-import { PermissionList } from './PermissionList'
+import { PermissionList, trustLine } from './PermissionList'
 import type { AuditRow } from './types'
 
 const RESULT: Record<string, [string, string]> = {
@@ -60,6 +60,7 @@ export function IntegrationDetail({ id, onClose }: { id: number; onClose: () => 
 
   const on = trust && trust.was === d.trusted ? trust.val : d.trusted
   const live = d.status === 'active'
+  const local = d.source === 'local'
   const setTrusted = (trusted: boolean) => {
     setTrust({ was: d.trusted, val: trusted })
     patch.mutate({ trusted }, { onError: (e) => (setTrust(null), toastFail(errorText(e))) })
@@ -87,6 +88,7 @@ export function IntegrationDetail({ id, onClose }: { id: number; onClose: () => 
           <span className="ig-icon" aria-hidden="true"><Icon name={d.icon} size={22} /></span>
           <h3 className="ig-h">{d.name}</h3>
         </div>
+        {local && <p className="ig-meta"><Icon name="home" size={16} />Home network key · {d.key_prefix}…</p>}
         {d.developer && <p className="ig-meta"><Icon name="code" size={16} />By {d.developer}</p>}
         {d.domain && <p className="ig-meta"><Icon name="public" size={16} />Data goes to: {d.domain}</p>}
         {d.status === 'paused' && (
@@ -121,7 +123,7 @@ export function IntegrationDetail({ id, onClose }: { id: number; onClose: () => 
             aria-describedby="ig-trust-line"
           />
           <p id="ig-trust-line" className="pn-help" data-warn={on || undefined} aria-live="polite">
-            {on ? 'Its chore check-offs will count right away, without your OK.' : 'Its chore check-offs wait in Needs you.'}
+            {trustLine(on)}
           </p>
         </section>
       )}
@@ -174,16 +176,16 @@ export function IntegrationDetail({ id, onClose }: { id: number; onClose: () => 
       <div className="pn-row">
         <button type="button" className="p-btn" data-variant="red" disabled={remove.isPending} onClick={() => setAsking(true)}>
           <Icon name="delete" size={16} />
-          {remove.isPending ? 'Removing…' : 'Remove'}
+          {remove.isPending ? (local ? 'Revoking…' : 'Removing…') : local ? 'Revoke key' : 'Remove'}
         </button>
       </div>
       <ConfirmDelete
         opened={asking}
-        title="Remove integration"
-        body={`Remove ${d.name}? It stops right away. Its rewards and cards go away. Its history stays.`}
-        confirmLabel="Remove"
+        title={local ? 'Revoke key' : 'Remove integration'}
+        body={local ? `Revoke ${d.name}? Anything using this key stops working right away. Its history stays.` : `Remove ${d.name}? It stops right away. Its rewards and cards go away. Its history stays.`}
+        confirmLabel={local ? 'Revoke' : 'Remove'}
         onClose={() => setAsking(false)}
-        onConfirm={() => remove.mutate(undefined, { onSuccess: () => (toastOk(`${d.name} removed`), onClose()), onError: (e) => toastFail(errorText(e)) })}
+        onConfirm={() => remove.mutate(undefined, { onSuccess: () => (toastOk(local ? `${d.name} revoked` : `${d.name} removed`), onClose()), onError: (e) => toastFail(errorText(e)) })}
       />
     </div>
   )

@@ -185,6 +185,7 @@ def _out(i: IntegrationInstall) -> dict:
         "paused_reason": i.paused_reason,
         "trusted": bool(i.trusted),
         "kid_ids": sorted(k.kid_id for k in i.kids),
+        "key_prefix": i.key_prefix,
         "created_at": utc_z(i.created_at),
     }
 

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/v2/api'
 import { useInvalidating } from './useRewards'
-import type { AuditRow, CatalogItem, InstallBody, InstallDetail, InstallOut } from '@/v2/integrations/types'
+import type { AuditRow, LocalKeyBody, CatalogItem, InstallBody, InstallDetail, InstallOut, PermissionOut } from '@/v2/integrations/types'
 
 const KEYS = ['integrations', 'today', 'rewards']
 
@@ -28,3 +28,14 @@ export const useRemoveIntegration = (id: number) =>
 
 export const useIntegrationLog = (id: number) =>
   useQuery({ queryKey: ['integrations', id, 'log'], queryFn: () => api<AuditRow[]>(`/integrations/${id}/log`) })
+
+export const useLocalPermissions = () =>
+  useQuery({ queryKey: ['integrations', 'local-perms'], queryFn: () => api<PermissionOut[]>('/integration-local/permissions') })
+
+/** gcTime 0: the one-time token in the reply must not linger in the mutation cache. */
+export const useCreateLocalKey = () =>
+  useInvalidating(
+    (body: LocalKeyBody) => api<{ id: number; token: string }>('/integration-local/keys', { method: 'POST', body }),
+    ['integrations'],
+    0,
+  )

@@ -40,6 +40,7 @@ export interface InstallOut {
   paused_reason: string | null
   trusted: boolean
   kid_ids: number[]
+  key_prefix?: string | null
   created_at: string
 }
 
@@ -88,3 +89,11 @@ export interface WidgetGroup {
 }
 
 export type Surface = 'parent' | 'kid'
+
+export interface LocalKeyBody {
+  name: string
+  permissions: string[]
+  kid_ids: number[]
+  chore_ids: number[]
+  trusted: boolean
+}
