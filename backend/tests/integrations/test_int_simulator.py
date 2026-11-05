@@ -1,5 +1,5 @@
+import ast
 import json
-import re
 from pathlib import Path
 
 import pytest
@@ -80,6 +80,31 @@ def test_broken_service_is_reported(svc, steps, expected, capsys):
     assert expected in capsys.readouterr().out
 
 
+class _PastOnlySkew(FakeService):
+    """Refuses old timestamps but accepts ones from the future: half a skew check."""
+
+    def _handle(self, req):
+        import time
+
+        import httpx
+
+        if int(req.headers["x-tsk-timestamp"]) < time.time() - 300:
+            return httpx.Response(401)
+        return super()._handle(req)
+
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k)
+        import httpx
+
+        self.transport = httpx.MockTransport(self._handle)
+
+
+def test_skew_checks_future_timestamps_too(capsys):
+    svc = _PastOnlySkew("s")
+    assert run_simulation(WIDGET_MANIFEST, DEV, ["skew"], transport=svc.transport) is False
+    assert "FAIL skew future" in capsys.readouterr().out
+
+
 def test_one_sample_event_per_events_permission(capsys):
     perms = ["events.chore_completed", "events.reward_redeemed"]
     m = WIDGET_MANIFEST.model_copy(update={"permissions": perms, "widgets": []})
@@ -111,10 +136,52 @@ def test_example_never_in_production_catalog():
     assert "hello-example" not in catalog and "integration-hello" not in catalog
 
 
+def _dev_leaks(name: str, source: str) -> list[str]:
+    """Import-graph and constructor checks for one module: who imports the simulator, imports
+    net.DEV, or builds its own OutboundPolicy. Only net.py and simulator.py may do the last two."""
+    out = []
+    own = name in ("net.py", "simulator.py")
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            out += [a.name for a in node.names if a.name == "app.integrations.simulator"]
+        elif isinstance(node, ast.ImportFrom):
+            names = {a.name for a in node.names}
+            if node.module == "app.integrations.simulator" or (
+                node.module == "app.integrations" and "simulator" in names
+            ):
+                out.append("imports simulator")
+            if node.module == "app.integrations.net" and names & {"DEV", "*"} and not own:
+                out.append("imports DEV")
+        elif isinstance(node, ast.Call) and not own:
+            f = node.func
+            if (isinstance(f, ast.Name) and f.id == "OutboundPolicy") or (
+                isinstance(f, ast.Attribute) and f.attr in ("OutboundPolicy", "DEV")
+            ):
+                out.append("builds OutboundPolicy")
+        elif isinstance(node, ast.Attribute) and node.attr == "DEV" and not own:
+            out.append("uses net.DEV")
+    return out
+
+
+def test_dev_guard_catches_leaks():
+    assert _dev_leaks("x.py", "from app.integrations import simulator") == ["imports simulator"]
+    assert _dev_leaks("x.py", "import app.integrations.simulator")
+    assert _dev_leaks("x.py", "from app.integrations.net import DEV") == ["imports DEV"]
+    assert _dev_leaks("x.py", "from app.integrations import net\nnet.DEV") == ["uses net.DEV"]
+    assert _dev_leaks("x.py", "OutboundPolicy(False, False, True)") == ["builds OutboundPolicy"]
+    assert _dev_leaks("x.py", "net.OutboundPolicy(allow_private=True)")
+    assert _dev_leaks("net.py", "OutboundPolicy(False, False, True)") == []
+
+
 def test_dev_policy_used_only_by_simulator():
+    """No backend module imports the simulator, reaches net.DEV, or builds a permissive policy."""
     app = REPO / "backend/app"
-    users = {p.name for p in app.rglob("*.py") if re.search(r"\bDEV\b", p.read_text()) is not None}
-    assert users == {"net.py", "simulator.py"}
+    leaks = {
+        str(p.relative_to(app)): bad
+        for p in app.rglob("*.py")
+        if p.name != "simulator.py" and (bad := _dev_leaks(p.name, p.read_text()))
+    }
+    assert leaks == {}
 
 
 def test_cli_without_dev_needs_signed_manifest(capsys):

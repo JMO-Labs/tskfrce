@@ -199,18 +199,19 @@ class _Run:
         )
 
     def skew(self) -> None:
-        old = BoxClient(
-            self.client.ctx,
-            self.client.policy,
-            self.client.transport,
-            now=lambda: time.time() - SKEW - 60,
-        )
-        self.refused(
-            "skew",
-            old,
-            BoxClient.poll,
-            f"reject an X-Tsk-Timestamp over {SKEW} s from your clock with 401",
-        )
+        for name, shift in (("past", -SKEW - 60), ("future", SKEW + 60)):
+            off = BoxClient(
+                self.client.ctx,
+                self.client.policy,
+                self.client.transport,
+                now=lambda shift=shift: time.time() + shift,
+            )
+            self.refused(
+                f"skew {name}",
+                off,
+                BoxClient.poll,
+                f"reject an X-Tsk-Timestamp over {SKEW} s from your clock, either way, with 401",
+            )
 
     def forged(self) -> None:
         ctx = dataclasses.replace(self.client.ctx, secret=secrets.token_urlsafe(32))

@@ -388,7 +388,7 @@ It runs these steps in order (`install` always runs first) and prints `PASS`, `F
 | `widgets` | Each declared surface, through the box's widget sanitizer. Every dropped widget is a failure |
 | `press` | Presses the first button and checks your reply actions match its `action` |
 | `replay` | Re-sends the last request byte for byte. Your service must answer 4xx |
-| `skew` | A request signed 360 s in the past. Your service must answer 4xx |
+| `skew` | Requests signed 360 s in the past and 360 s in the future. Your service must answer 4xx to both |
 | `forged` | A request signed with the wrong secret. Your service must answer 4xx |
 | `uninstall` | Your reply is signed and echoes `request_id` |
 
