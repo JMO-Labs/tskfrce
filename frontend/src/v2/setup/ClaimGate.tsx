@@ -24,7 +24,9 @@ export function ClaimGate({ onClaimed }: { onClaimed: (code: string) => void }) 
       await api('/setup/claim', { method: 'POST', body: { code } })
       onClaimed(code)
     } catch (e) {
-      if (fromStore) clearClaim()
+      const wrong = e instanceof ApiError && e.status === 403
+      if (wrong) clearClaim() // 429 / network: keep the sticker code and prefill it for a retry
+      else if (fromStore) setValue(groupClaim(code))
       setAuto(false)
       setBusy(false)
       if (e instanceof ApiError && e.status === 409) setFull(true)
@@ -91,7 +93,7 @@ export function ClaimGate({ onClaimed }: { onClaimed: (code: string) => void }) 
                       onChange={(e) => setValue(groupClaim(e.currentTarget.value))}
                       placeholder="K7M2Q-XA9PB"
                       autoCapitalize="characters"
-                      autoComplete="off"
+                      autoComplete="one-time-code"
                       spellCheck={false}
                       inputMode="text"
                       aria-invalid={!!error}

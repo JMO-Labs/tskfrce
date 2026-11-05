@@ -51,6 +51,21 @@ describe('ClaimGate', () => {
     expect(screen.getByRole('alert').textContent).toContain('Wrong code. 4 tries left.')
     expect(readClaim()).toBeNull()
   })
+  test.each([
+    ['429', new ApiError(429, 'Too many tries. Wait 1 minute.'), 'Wait 1 minute'],
+    ['network', new Error('Check your connection.'), 'Check your connection'],
+  ])('stored code survives a %s and can be retried', async (_n, err, text) => {
+    sessionStorage.setItem(CLAIM_KEY, 'K7M2QXA9PB')
+    mockApi.mockRejectedValueOnce(err).mockResolvedValueOnce(undefined)
+    wrap()
+    expect((await screen.findByRole('alert')).textContent).toContain(text)
+    expect(readClaim()).toBe('K7M2QXA9PB')
+    const input = screen.getByLabelText('Box code') as HTMLInputElement
+    expect(input.value).toBe('K7M2Q-XA9PB')
+    expect(input.getAttribute('autocomplete')).toBe('one-time-code')
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    await waitFor(() => expect(onClaimed).toHaveBeenCalledWith('K7M2QXA9PB'))
+  })
   test('typing is grouped and uppercased; 429 shows the wait', async () => {
     mockApi.mockRejectedValue(new ApiError(429, 'Too many tries. Wait 2 minutes.'))
     wrap()
