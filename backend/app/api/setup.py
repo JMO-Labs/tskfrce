@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_parent
+from app.core import claim, lockout
 from app.core.auth import AuthService
 from app.core.client_ip import client_ip
 from app.core.config import settings
@@ -23,7 +24,8 @@ router = APIRouter(prefix="/api/v1/setup", tags=["setup"])
 
 DONE = "Setup is already done. Log in instead."
 RESUME_AFTER_ACCOUNT = 3  # the account exists from step 2 on; the wizard resumes at step 3
-LAST_STEP = 7
+LAST_STEP = 8
+CLAIM_WRONG = "That code doesn't match this box. Check the sticker and try again."
 
 
 class ParentIn(BaseModel):
@@ -36,6 +38,7 @@ class SetupIn(BaseModel):
     family_name: str = Field(min_length=1, max_length=100)
     timezone: str = "UTC"
     parent: ParentIn
+    claim_code: str | None = Field(None, max_length=32)
 
     @field_validator("timezone")
     @classmethod
@@ -58,7 +61,31 @@ def claim_owner(db: Session, user_id: int, name: str, tz: str) -> int:
 
 @router.get("")
 def setup_needed(db: Session = Depends(get_db)):
-    return {"needed": db.query(User.id).first() is None and not owner_set(db)}
+    return {
+        "needed": db.query(User.id).first() is None and not owner_set(db),
+        "claim": claim.required(db),
+    }
+
+
+class ClaimIn(BaseModel):
+    code: str = Field(max_length=32)
+
+
+def _check_claim(request: Request, code: str | None) -> None:
+    """Lockout check, then compare; a wrong code is a strike. Never echo the code."""
+    key = f"claim:{client_ip(request)}"
+    lockout.check(key)
+    if not claim.matches(code):
+        lockout.fail(key)
+        raise HTTPException(status.HTTP_403_FORBIDDEN, CLAIM_WRONG)
+
+
+@router.post("/claim", status_code=status.HTTP_204_NO_CONTENT)
+def check_claim(body: ClaimIn, request: Request, db: Session = Depends(get_db)):
+    if db.query(User.id).first() is not None or owner_set(db):
+        raise HTTPException(status.HTTP_409_CONFLICT, DONE)
+    if claim.required(db):
+        _check_claim(request, body.code)
 
 
 class StepIn(BaseModel):
@@ -83,9 +110,11 @@ def _limit_setup(request: Request) -> None:
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(_limit_setup)])
-def run_setup(body: SetupIn, db: Session = Depends(get_db)):
+def run_setup(body: SetupIn, request: Request, db: Session = Depends(get_db)):
     if db.query(User.id).first() is not None or owner_set(db):
         raise HTTPException(status.HTTP_409_CONFLICT, DONE)
+    if claim.required(db):
+        _check_claim(request, body.claim_code)
     auth = AuthService(db)
     try:
         try:
