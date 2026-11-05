@@ -4,10 +4,17 @@ import json
 from datetime import UTC, datetime, timedelta
 
 from app.integrations import loop, poller
+from app.integrations.manifest import load_manifest
 from app.integrations.poller import poll_due
 from tests.integrations.int_helpers import boom, cc
 
 NOW = datetime.now(UTC).replace(tzinfo=None)
+
+
+def _secret(install):
+    from app.core.crypto import unseal
+
+    return unseal(install.secret, purpose="integrations")
 
 
 def test_due_install_is_polled_and_actions_applied(db, install, svc, kid, run_today):
@@ -18,12 +25,6 @@ def test_due_install_is_polled_and_actions_applied(db, install, svc, kid, run_to
     poll_due(db, NOW)
     assert svc.last_path == "/v1/poll" and run_today.status == "submitted"
     assert install.next_poll_at == NOW + timedelta(seconds=60)
-
-
-def _secret(install):
-    from app.core.crypto import unseal
-
-    return unseal(install.secret, purpose="integrations")
 
 
 def test_not_due_not_polled(db, install, svc):
@@ -44,9 +45,8 @@ def test_paused_revoked_and_local_never_polled(db, install, svc):
     for status, source in [("paused", "catalog"), ("revoked", "catalog"), ("active", "local")]:
         install.status, install.source, install.next_poll_at = status, source, NOW
         db.commit()
-        db.commit()
-    poll_due(db, NOW)
-    assert svc.calls == 0
+        poll_due(db, NOW)
+        assert svc.calls == 0
 
 
 def test_failures_still_reschedule_and_pause_at_five(db, install, svc):
@@ -129,3 +129,32 @@ def test_at_most_max_per_tick(db, install, svc, monkeypatch):
 
 def test_registered_in_loop():
     assert poller.poll_due in loop.STEPS
+
+
+def test_apply_failure_reschedules_and_counts(db, install, svc, monkeypatch):
+    svc.secret = _secret(install)
+    n = {"i": 0}
+
+    def bad(*a, **k):
+        n["i"] += 1
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(poller, "apply_actions", bad)
+    install.next_poll_at = NOW
+    db.commit()
+    poll_due(db, NOW)
+    assert install.next_poll_at == NOW + timedelta(seconds=60)
+    assert install.failures >= 1 and n["i"] == 1
+    poll_due(db, NOW)
+    assert n["i"] == 1
+
+
+def test_poll_seconds_120_schedules_120(db, install, monkeypatch):
+    from tests.integrations.int_helpers import DEMO, sign_env
+
+    install.manifest = json.dumps(sign_env({**DEMO, "poll_seconds": 120}))
+    assert load_manifest(json.loads(install.manifest)).poll_seconds == 120
+    install.next_poll_at = NOW
+    db.commit()
+    poll_due(db, NOW)
+    assert install.next_poll_at == NOW + timedelta(seconds=120)

@@ -59,3 +59,17 @@ def poll_due(db: Session, now: datetime) -> None:
         except Exception:
             db.rollback()
             log.exception("Poll of integration %s failed", install_id)
+            _reschedule_failed(db, install_id, now)
+
+
+def _reschedule_failed(db: Session, install_id: int, now: datetime) -> None:
+    """The rollback dropped next_poll_at: restore the 60 s floor and count the failure."""
+    try:
+        install = db.get(IntegrationInstall, install_id)
+        if install is not None:
+            install.next_poll_at = now + timedelta(seconds=MIN_INTERVAL)
+            health.fail(db, install, "bad reply")
+            db.commit()
+    except Exception:
+        db.rollback()
+        log.exception("Could not reschedule integration %s", install_id)
