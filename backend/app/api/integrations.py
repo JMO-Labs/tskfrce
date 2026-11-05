@@ -236,6 +236,9 @@ def patch(install_id: int, body: InstallPatch, db: Session = Depends(get_db)):
     if body.resume and i.status == "paused":
         i.status, i.failures, i.paused_reason = "active", 0, None
     db.commit()
+    from app.integrations import widget_service  # grant or status may have changed
+
+    widget_service.forget(i.id)
     return _out(i)
 
 

@@ -245,3 +245,30 @@ def other_kid_redemption(db, other_kid):
     db.add(red)
     db.commit()
     return red
+
+
+@pytest.fixture(autouse=True)
+def clear_widget_caches():
+    """The widget cache is a module global keyed by install id; empty it after each test."""
+    yield
+    from app.integrations import widget_service
+
+    widget_service._cache.clear()
+
+
+@pytest.fixture
+def widget_install(db, install, svc):
+    """`install` with widgets.parent and a DEMO manifest declaring parent widget w1.
+    svc shares its secret."""
+    from app.integrations.store import secret_of
+
+    m = {
+        **DEMO,
+        "permissions": ["chores.complete", "widgets.parent"],
+        "widgets": [{"id": "w1", "surface": "parent", "title": "Demo card"}],
+    }
+    install.manifest = json.dumps(sign_env(m))
+    install.permissions = json.dumps(["widgets.parent", "chores.complete"])
+    db.commit()
+    svc.secret = secret_of(install)
+    return install

@@ -56,6 +56,9 @@ def _chore_ids(db: Session, install_id: int) -> frozenset[int]:
 def retire(db: Session, install: IntegrationInstall, status: str) -> None:
     """Stop an install for good: drop its secret, rewards and outbox. Audit rows are kept.
     The caller commits."""
+    from app.integrations import widget_service  # widget_service imports store
+
+    widget_service.forget(install.id)
     install.status = status
     install.secret = None
     for r in db.query(Reward).filter_by(integration_install_id=install.id, active=True):
