@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from '@jest/globals'
 import type { Mock } from 'jest-mock'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MantineProvider } from '@mantine/core'
@@ -45,7 +45,7 @@ describe('KidPhonesPanel', () => {
   test('rows show label and times', async () => {
     render(wrap(<KidPhonesPanel kid={kid} />))
     expect(await screen.findByText('iPhone')).toBeInTheDocument()
-    expect(screen.getByText(/last used today/)).toBeInTheDocument()
+    expect(screen.getByText(/^Added .+ · last used today$/)).toBeInTheDocument()
     expect(screen.getByText(/last used 3 days ago/)).toBeInTheDocument()
   })
 
@@ -60,10 +60,35 @@ describe('KidPhonesPanel', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Remove iPhone' }))
     const dlg = await screen.findByRole('dialog')
     expect(within(dlg).getByText("Remove Mia's iPhone?")).toBeInTheDocument()
+    expect(within(dlg).getByText("It signs out right away. Scan a new code to add it back. Mia's other phones will be asked to reconnect alerts.")).toBeInTheDocument()
     await userEvent.click(within(dlg).getByRole('button', { name: 'Remove' }))
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/kids/3/phones/7', { method: 'DELETE' }))
     await waitFor(() => expect(screen.queryByText('iPhone')).not.toBeInTheDocument())
     expect(notifications.show).toHaveBeenCalledWith(expect.objectContaining({ message: 'Phone removed' }))
+  })
+
+  test('a single phone: no mention of other phones', async () => {
+    phones = phones.slice(0, 1)
+    render(wrap(<KidPhonesPanel kid={kid} />))
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove iPhone' }))
+    const dlg = await screen.findByRole('dialog')
+    expect(within(dlg).getByText('It signs out right away. Scan a new code to add it back.')).toBeInTheDocument()
+  })
+
+  test('QR closes with a toast when the phone signs in', async () => {
+    jest.useFakeTimers({ advanceTimers: true })
+    try {
+      render(wrap(<KidPhonesPanel kid={kid} />))
+      await userEvent.click(await screen.findByRole('button', { name: /Add a phone/ }))
+      await screen.findByAltText('Sign-in code for Mia')
+      phones = [{ id: 9, label: 'Galaxy', created_at: new Date().toISOString(), last_seen_at: new Date().toISOString() }, ...phones]
+      await act(async () => { jest.advanceTimersByTime(5100) })
+      await waitFor(() => expect(screen.queryByAltText('Sign-in code for Mia')).not.toBeInTheDocument())
+      expect(await screen.findByText('Galaxy')).toBeInTheDocument()
+      expect(notifications.show).toHaveBeenCalledWith(expect.objectContaining({ message: 'Phone added' }))
+    } finally {
+      jest.useRealTimers()
+    }
   })
 
   test('Add a phone shows the QR', async () => {
