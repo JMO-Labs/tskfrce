@@ -233,3 +233,13 @@ def kid_requests_screen_time(client, kid_headers):
 
 def boom(*a, **k):
     raise RuntimeError("boom")
+
+
+IMG_URL = "https://cdn.example/pic.png"
+
+
+def img_path(install, url=IMG_URL) -> str:
+    """The box image-proxy path for url on this install."""
+    from urllib.parse import quote
+
+    return f"/api/v1/integration-widgets/{install.id}/image?u={quote(url, safe='')}"

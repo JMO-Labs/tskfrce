@@ -14,9 +14,13 @@ from tests.integrations.int_helpers import (
     DEMO,
     DEMO_FULL,
     GONE,
+    IMG_URL,
     KIDCARDS,
     TEST_KEY,
     Signer,
+    W,
+    card,
+    image,
     sign_env,
     streamed,
 )
@@ -254,6 +258,7 @@ def clear_widget_caches():
     from app.integrations import widget_service
 
     widget_service._cache.clear()
+    widget_service._images.clear()
 
 
 @pytest.fixture
@@ -272,3 +277,46 @@ def widget_install(db, install, svc):
     db.commit()
     svc.secret = secret_of(install)
     return install
+
+
+@pytest.fixture
+def widget_with_image(db, widget_install, svc):
+    """`widget_install` whose cached parent widget w1 shows one image, IMG_URL."""
+    import time
+
+    from app.integrations import widget_service
+
+    svc.widgets = [W("w1", card(image(IMG_URL)))]
+    widget_service.get(db, widget_install, "parent", None, time.time())
+    db.commit()
+    return widget_install
+
+
+class _Cdn:
+    """MockTransport image host: serve(body, ctype) sets the reply; keeps the last headers."""
+
+    def __init__(self):
+        self.body, self.ctype, self.last_headers, self.calls = b"", "image/png", None, 0
+        self.transport = httpx.MockTransport(self._handle)
+
+    def serve(self, body: bytes, ctype: str) -> None:
+        self.body, self.ctype = body, ctype
+
+    def _handle(self, req):
+        self.last_headers, self.calls = req.headers, self.calls + 1
+        hdrs = {"content-type": self.ctype, "set-cookie": "track=1", "x-upstream": "yes"}
+        return httpx.Response(200, headers=hdrs, stream=streamed(self.body))
+
+
+@pytest.fixture
+def cdn(monkeypatch):
+    """_Cdn patched into widget_service.fetch_image."""
+    from functools import partial
+
+    from app.integrations import widget_service
+
+    c = _Cdn()
+    monkeypatch.setattr(
+        widget_service, "fetch_image", partial(widget_service.fetch_image, transport=c.transport)
+    )
+    return c

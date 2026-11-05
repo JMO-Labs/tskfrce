@@ -3,20 +3,27 @@
 import json
 import threading
 import time
+from collections import OrderedDict
 from urllib.parse import quote
 
 from sqlalchemy.orm import Session
 
-from app.integrations import health, store
+from app.integrations import health, net, store
 from app.integrations.manifest import load_manifest
 from app.integrations.widgets import sanitize
 from app.models.integration import IntegrationInstall
 
 TTL = 60
+IMAGE_TYPES = {"image/png", "image/jpeg", "image/webp", "image/gif"}
+IMAGE_MAX = 1_048_576
+IMAGE_TTL = 300
+IMAGE_LRU_ENTRIES, IMAGE_LRU_BYTES = 32, 16 * 1_048_576
 
 # (install_id, surface, kid_id) -> (expires_at, widgets, original image URLs)
 _cache: dict[tuple[int, str, int | None], tuple[float, list[dict], set[str]]] = {}
 _lock = threading.Lock()  # sync routes run in a threadpool
+# url -> (expires_at, content type, body); bounded by IMAGE_LRU_ENTRIES and IMAGE_LRU_BYTES
+_images: OrderedDict[str, tuple[float, str, bytes]] = OrderedDict()
 
 
 def _proxy(install_id: int, b: dict) -> None:
@@ -61,11 +68,57 @@ def get(
     return widgets
 
 
-def image_allowed(install_id: int, url: str) -> bool:
-    """True when a live cache entry of the install shows this image URL."""
+def image_allowed(install_id: int, url: str, kid_id: int | None = None) -> bool:
+    """True when a live cache entry of the install shows this image URL. With kid_id, only that
+    kid's own kid-surface entry counts."""
     now = time.time()
     with _lock:
+        if kid_id is not None:
+            hit = _cache.get((install_id, "kid", kid_id))
+            return bool(hit and hit[0] > now and url in hit[2])
         return any(k[0] == install_id and v[0] > now and url in v[2] for k, v in _cache.items())
+
+
+def _sniff(body: bytes) -> str | None:
+    """The image type the magic bytes show, or None."""
+    if body.startswith(b"\x89PNG"):
+        return "image/png"
+    if body.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if body.startswith(b"GIF8"):
+        return "image/gif"
+    if body[:4] == b"RIFF" and body[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+def fetch_image(url: str, transport=None) -> tuple[str, bytes]:
+    """GET url (STRICT, no cookies or Referer). The header type must be allowed and match the
+    magic bytes, so SVG and mislabelled bodies are refused. Raises BlockedError or FetchError."""
+    r = net.fetch("GET", url, max_bytes=IMAGE_MAX, transport=transport)
+    ctype = r.content_type.split(";")[0].strip().lower()
+    if ctype not in IMAGE_TYPES or _sniff(r.body) != ctype:
+        raise net.FetchError("not an image")
+    return ctype, r.body
+
+
+def image(url: str) -> tuple[str, bytes]:
+    """fetch_image through a small in-memory LRU. Errors are not cached."""
+    now = time.time()
+    with _lock:
+        hit = _images.get(url)
+        if hit and hit[0] > now:
+            _images.move_to_end(url)
+            return hit[1], hit[2]
+    ctype, body = fetch_image(url)  # outside the lock: network
+    with _lock:
+        _images[url] = (now + IMAGE_TTL, ctype, body)
+        _images.move_to_end(url)
+        while len(_images) > IMAGE_LRU_ENTRIES or (
+            sum(len(v[2]) for v in _images.values()) > IMAGE_LRU_BYTES
+        ):
+            _images.popitem(last=False)
+    return ctype, body
 
 
 def _find(b: dict, button_id: str) -> dict | None:
