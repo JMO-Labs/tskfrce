@@ -84,6 +84,7 @@ class Settings(BaseSettings):
     def check_claim_code(cls, v: str | None) -> str | None:
         if not v:
             return None  # compose passes CLAIM_CODE= on IP-mode boxes
+        # Whitespace-only is not empty: it normalizes to "" and fails at boot on purpose.
         v = normalize_claim_code(v)
         if not CLAIM_CODE_RE.match(v):
             raise ValueError("CLAIM_CODE must be 10 Crockford base32 chars")

@@ -81,3 +81,29 @@ def test_reset_clears(clock):
     _fail("claim:a", 5)
     lockout.reset()
     lockout.check("claim:a")
+
+
+def test_map_is_capped(clock):
+    for i in range(20_000):
+        lockout.fail(f"claim:{i}")
+        assert len(lockout._state) <= lockout.MAX_KEYS
+
+
+def test_locked_key_survives_sweep(clock):
+    _fail("claim:a", 5)
+    clock[0] += 61
+    _fail("claim:a", 5)  # second lockout: 120 s
+    _fail("claim:b", 1)
+    clock[0] += 61  # claim:b's fail is stale, claim:a still locked
+    lockout._sweep(clock[0])
+    assert set(lockout._state) == {"claim:a"}
+    assert _detail("claim:a") == "Too many tries. Wait 1 minute and try again."
+
+
+def test_sweep_not_run_every_fail(clock, monkeypatch):
+    calls = []
+    real = lockout._sweep
+    monkeypatch.setattr(lockout, "_sweep", lambda now: (calls.append(now), real(now)))
+    for i in range(3 * lockout.SWEEP_ABOVE):
+        lockout.fail(f"claim:{i}")
+    assert 1 <= len(calls) <= 2

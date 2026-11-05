@@ -71,5 +71,6 @@ def get_family(db: Session) -> FamilySettings:
 
 
 def owner_set(db: Session) -> bool:
+    """True once the first parent owns the box (the one owner check for setup and claim)."""
     fam = db.get(FamilySettings, 1)
     return fam is not None and fam.owner_id is not None
