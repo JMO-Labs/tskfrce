@@ -129,9 +129,10 @@ def _send(db: Session, inst: IntegrationInstall) -> None:
     )
     grant = store.load_grant(db, inst)
     payloads, ids = [], [r.id for r in rows]
-    for r in rows:  # re-check: a kid or chore may have been unlinked since it was queued
+    for r in rows:  # re-check: the kid (or a completed chore) may have been unlinked since
         p = json.loads(r.payload)
-        if _wants(grant, r.kind, p.get("kid_id"), None):
+        chore_id = p.get("chore_id") if r.kind == "chore.completed" else None
+        if _wants(grant, r.kind, p.get("kid_id"), chore_id):
             payloads.append(p)
     if not payloads:
         db.query(IntegrationEvent).filter(IntegrationEvent.id.in_(ids)).delete()
@@ -160,5 +161,9 @@ def flush(db: Session, now: datetime) -> None:
         )
         .all()
     )
-    for inst in installs:
-        _send(db, inst)
+    for inst in installs:  # one broken install must not starve the others
+        try:
+            _send(db, inst)
+        except Exception:
+            db.rollback()
+            log.exception("Events for integration %s were not delivered", inst.id)

@@ -189,7 +189,7 @@ def test_emit_failure_never_breaks_approval(db, install, run_today, parent, monk
 
 
 @events_only
-def test_flush_delivers_batches_of_50_and_applies_reply(db, install, svc, kid):
+def test_flush_sends_oldest_50_and_keeps_the_rest(db, install, svc, kid):
     svc.secret = store.secret_of(install)
     add_events(db, install, 60)
     events.flush(db, NOW)
@@ -261,3 +261,44 @@ def test_trim_uses_given_time(db, install, kid):
 
 def test_flush_is_a_loop_step():
     assert events.flush in loop.STEPS
+
+
+@events_only
+def test_unlinked_chore_since_queued_is_dropped(db, install, run_today, parent, svc):
+    chore_actions.approve(db, run_today, parent.id)
+    db.commit()
+    db.query(IntegrationChore).filter_by(install_id=install.id).delete()
+    db.commit()
+    events.flush(db, NOW)
+    assert svc.last_body is None and db.query(IntegrationEvent).count() == 0
+
+
+@events_only
+def test_auto_approved_reward_emits_reward_redeemed(db, install, kid):
+    rw = Reward(name="Sticker", price=5, needs_approval=False)
+    db.add(rw)
+    db.add(Points(user_id=kid.id, points_type=PointsType.BONUS, amount=100, description="t"))
+    db.commit()
+    economy.request(db, kid, "reward", rw.id, None)
+    [p] = _payloads(db)
+    assert p["kind"] == "reward.redeemed" and p["reward_name"] == "Sticker" and p["cost"] == 5
+
+
+@events_only
+def test_one_broken_install_does_not_starve_others(db, install, parent, kid, svc, monkeypatch):
+    chore_id = install.chores[0].chore_id
+    other = _second_install(db, parent, kid, chore_id, EV)
+    svc.secret = store.secret_of(other)
+    add_events(db, install, 1)
+    add_events(db, other, 2)
+    real = store.client_for
+
+    def client_for(db_, inst):
+        if inst.id == install.id:
+            raise ValueError("cannot unseal")
+        return real(db_, inst)
+
+    monkeypatch.setattr(store, "client_for", client_for)
+    events.flush(db, NOW)
+    assert len(svc.last_body["events"]) == 2
+    assert [e.install_id for e in db.query(IntegrationEvent)] == [install.id]

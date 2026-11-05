@@ -191,15 +191,21 @@ def raising(exc):
 
 
 def add_events(db, install, n, created_at=None):
-    """n queued chore.completed events for the install's first linked kid."""
+    """n queued chore.completed events for the install's first linked kid and chore."""
     from datetime import UTC, datetime
 
     from app.models.integration import IntegrationEvent
 
     at = created_at or datetime.now(UTC).replace(tzinfo=None)
-    kid_id = install.kids[0].kid_id
+    kid_id, chore_id = install.kids[0].kid_id, install.chores[0].chore_id
     for i in range(n):
-        p = {"kind": "chore.completed", "at": at.isoformat(), "kid_id": kid_id, "chore_id": i}
+        p = {
+            "kind": "chore.completed",
+            "at": at.isoformat(),
+            "kid_id": kid_id,
+            "chore_id": chore_id,
+        }
+        p["seq"] = i
         db.add(
             IntegrationEvent(
                 install_id=install.id, kind="chore.completed", payload=json.dumps(p), created_at=at
