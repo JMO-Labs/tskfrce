@@ -188,3 +188,42 @@ def raising(exc):
         raise exc
 
     return _fn
+
+
+def add_events(db, install, n, created_at=None):
+    """n queued chore.completed events for the install's first linked kid."""
+    from datetime import UTC, datetime
+
+    from app.models.integration import IntegrationEvent
+
+    at = created_at or datetime.now(UTC).replace(tzinfo=None)
+    kid_id = install.kids[0].kid_id
+    for i in range(n):
+        p = {"kind": "chore.completed", "at": at.isoformat(), "kid_id": kid_id, "chore_id": i}
+        db.add(
+            IntegrationEvent(
+                install_id=install.id, kind="chore.completed", payload=json.dumps(p), created_at=at
+            )
+        )
+    db.commit()
+
+
+def kid_requests_screen_time(client, kid_headers):
+    """A real, successful screen-time request through the kid API."""
+    from app.api.deps import get_db
+    from app.main import fastapi_app
+    from app.models.user import User
+    from tests.test_screen_time import _setup
+
+    db = next(fastapi_app.dependency_overrides[get_db]())
+    me = client.get("/api/v1/auth/me", headers=kid_headers).json()
+    _setup(db, db.get(User, me["user_id"]))
+    r = client.post(
+        "/api/v1/kid/redeem", json={"kind": "screen_time", "minutes": 15}, headers=kid_headers
+    )
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def boom(*a, **k):
+    raise RuntimeError("boom")

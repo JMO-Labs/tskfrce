@@ -252,6 +252,12 @@ def _request(
         f"{kid.full_name} wants {label} ({cost} points)",
         redemption_id=red.id,
     )
+    if kind == "reward":
+        from app.integrations import events  # events -> apply -> this module
+
+        events.emit(
+            db, "request.created", [kid.id], type="reward", id=red.id, title=label, cost=cost
+        )
     db.commit()
     return red
 
@@ -334,6 +340,16 @@ def _decide(
         from app.services import badges  # badges imports this module
 
         badges.check_badges(db, db.get(User, redemption.kid_id), get_family(db))
+    if approve and redemption.kind == "reward":
+        from app.integrations import events  # events -> apply -> this module
+
+        events.emit(
+            db,
+            "reward.redeemed",
+            [redemption.kid_id],
+            reward_name=_what(db, redemption),
+            cost=redemption.cost,
+        )
     db.commit()
     if screen:
         from app.lock.loop import trigger

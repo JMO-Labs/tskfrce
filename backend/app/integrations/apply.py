@@ -71,6 +71,18 @@ def _chore_complete(
             "Take a look and approve it.",
             run_id=run.id,
         )
+        from app.integrations import events  # events imports this module
+
+        events.emit(
+            db,
+            "request.created",
+            [a.kid_id],
+            chore_id=a.chore_id,
+            skip_install_id=install.id,
+            type="chore",
+            id=run.id,
+            title=svc.chore_of(run).title,
+        )
         return "pending", None, refs
     chore_actions.approve(db, run, by_id=None)
     return "applied", None, refs

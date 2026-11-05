@@ -176,3 +176,19 @@ def svc(monkeypatch):
     s = FakeService(secret="unknown")
     monkeypatch.setattr(store, "_transport", s.transport)
     return s
+
+
+@pytest.fixture
+def reward_redemption(db, kid):
+    """A pending reward redemption of a 20-point "Ice cream" for `kid` (who can afford it)."""
+    from app.models.points import Points, PointsType
+    from app.models.reward import Redemption, Reward
+
+    rw = Reward(name="Ice cream", price=20)
+    db.add(rw)
+    db.add(Points(user_id=kid.id, points_type=PointsType.BONUS, amount=100, description="t"))
+    db.flush()
+    red = Redemption(kid_id=kid.id, kind="reward", reward_id=rw.id, cost=20)
+    db.add(red)
+    db.commit()
+    return red

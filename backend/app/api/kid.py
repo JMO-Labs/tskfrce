@@ -269,6 +269,11 @@ def done(chore_id: int, db: Session = Depends(get_db), kid: User = Depends(requi
         "Take a look and approve it.",
         run_id=r.id,
     )
+    from app.integrations import events
+
+    events.emit(
+        db, "request.created", [kid.id], chore_id=c.id, type="chore", id=r.id, title=c.title
+    )
     db.commit()
     trigger()
     return {

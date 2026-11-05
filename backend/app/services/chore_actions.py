@@ -8,7 +8,7 @@ from app.models.chores import ChoreRun, RunStepTick
 from app.models.family import get_family
 from app.services import badges, chat, kid_events
 from app.services import chores as svc
-from app.services.economy import award_chore
+from app.services.economy import _recipients, award_chore
 
 
 def tick_all(run: ChoreRun, by_id: int | None, now: datetime) -> None:
@@ -34,6 +34,10 @@ def approve(db: Session, run: ChoreRun, by_id: int | None) -> int:
     chat.system(db, run, f"Approved · +{pts}")
     badges.check_for_run(db, run, fam)
     kid_events.chore_decided(db, run, True)
+    from app.integrations import events  # events -> apply -> this module
+
+    c = svc.chore_of(run)
+    events.emit(db, "chore.completed", _recipients(run), chore_id=c.id, title=c.title, points=pts)
     return pts
 
 
