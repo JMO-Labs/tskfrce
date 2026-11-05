@@ -1,6 +1,8 @@
 """Kid phone enrollment. Parent: issue a one-time QR, list and remove phones.
 Kid: redeem the code for a device session, refresh it. Secrets travel in POST bodies only."""
 
+import secrets
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -62,6 +64,7 @@ def remove_phone(kid_id: int, phone_id: int, db: Session = Depends(get_db)):
     if d is None or d.kid_id != kid.id:
         raise HTTPException(404, "We couldn't find that phone.")
     db.delete(d)
+    kid.alert_topic = secrets.token_urlsafe(24)  # removed phone stops getting alerts
     db.commit()
     return Response(status_code=204)
 
