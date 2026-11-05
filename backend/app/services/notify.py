@@ -53,6 +53,7 @@ DEFAULT_EVENTS = (
 )
 KIND_EVENT = {
     "chore_submitted": "chore_ok",
+    "integration_done": "chore_ok",
     "chore_note": "kid_note",
     "redemption_request": "reward_request",
     "redemption_decided": "reward_request",  # parents only see this for auto approvals

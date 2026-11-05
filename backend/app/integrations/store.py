@@ -12,8 +12,13 @@ from app.integrations.manifest import load_manifest
 from app.integrations.net import STRICT
 from app.integrations.permissions import Grant
 from app.integrations.protocol import grant_out
-from app.models.chores import Chore
-from app.models.integration import IntegrationChore, IntegrationInstall, IntegrationKid
+from app.models.chores import Chore, ChoreRun
+from app.models.integration import (
+    IntegrationAction,
+    IntegrationChore,
+    IntegrationInstall,
+    IntegrationKid,
+)
 from app.models.user import User
 from app.services.chat_extras import first_name
 
@@ -74,3 +79,26 @@ def client_for(db: Session, install: IntegrationInstall) -> BoxClient:
         ),
     )
     return BoxClient(ctx, STRICT, transport=_transport)
+
+
+def pending_by_run(db: Session, runs: list[ChoreRun]) -> dict[int, dict]:
+    """run_id -> the install that completed it, for submitted runs still waiting on a parent."""
+    sub = {r.id: r for r in runs if r.status == "submitted"}
+    if not sub:
+        return {}
+    rows = (
+        db.query(IntegrationAction.run_id, IntegrationAction.created_at, IntegrationInstall)
+        .join(IntegrationInstall, IntegrationInstall.id == IntegrationAction.install_id)
+        .filter(
+            IntegrationAction.run_id.in_(sub),
+            IntegrationAction.result == "pending",
+            IntegrationAction.kind == "chore.complete",
+        )
+        .order_by(IntegrationAction.id)
+        .all()
+    )
+    return {
+        rid: {"id": i.id, "name": i.name, "icon": i.icon}
+        for rid, at, i in rows
+        if sub[rid].submitted_at is not None and at >= sub[rid].submitted_at
+    }

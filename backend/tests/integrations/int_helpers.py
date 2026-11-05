@@ -118,3 +118,9 @@ def reply(status, headers=None, content=b""):
     return httpx.MockTransport(
         lambda req: httpx.Response(status, headers=headers, stream=streamed(content))
     )
+
+
+def bell_item(client, headers, kind) -> dict:
+    """The newest bell row of this kind."""
+    items = client.get("/api/v1/notifications", headers=headers).json()["items"]
+    return max((i for i in items if i["kind"] == kind), key=lambda i: i["id"])

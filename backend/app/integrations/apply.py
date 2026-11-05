@@ -66,7 +66,7 @@ def _chore_complete(
         kid = db.get(User, a.kid_id)
         inbox.notify_parents(
             db,
-            "chore_submitted",
+            "integration_done",
             f"{grant.name}: {first_name(kid)} finished {svc.chore_of(run).title}",
             "Take a look and approve it.",
             run_id=run.id,

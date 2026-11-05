@@ -100,7 +100,7 @@ def _enrich(db: Session, rows: list[Notification]) -> list[dict]:
             c = svc.chore_of(r)
             o["glyph"], o["points"] = c.type.glyph, c.points
             o["kid_id"] = r.submitted_by_id or (svc.run_kid_ids(r) or [None])[0]
-            if n.kind == "chore_submitted":
+            if n.kind in ("chore_submitted", "integration_done"):
                 o["pending"] = r.status == "submitted"
             elif n.kind == "chore_note":
                 o["pending"] = inbox.is_pending_note(r)

@@ -16,7 +16,7 @@ from tests.integrations.int_helpers import DEMO, cc
 def test_untrusted_completion_goes_to_needs_you(db, install, kid, run_today):
     [r] = apply_actions(db, install, [cc("k1", kid.id, run_today.chore_id)])
     assert r.result == "pending" and run_today.status == "submitted"
-    assert db.query(Notification).filter_by(kind="chore_submitted", run_id=run_today.id).count()
+    assert db.query(Notification).filter_by(kind="integration_done", run_id=run_today.id).count()
     assert not db.query(Points).filter_by(run_id=run_today.id).count()
 
 

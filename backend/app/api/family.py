@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.api.deps import get_db, require_parent
 from app.api.devices import device_out
 from app.api.rewards import device_name, redemption_name
+from app.integrations import store as int_store
 from app.lock import hours
 from app.lock.loop import trigger
 from app.lock.schedule import local_now
@@ -110,6 +111,7 @@ def _needs_you(
         photos = {(p.run_id, p.attempt): p.id for p in rows}  # latest wins
         for p in rows:
             proofs.setdefault(p.run_id, []).append(p)
+    via = int_store.pending_by_run(db, sub)
     items = []
     for r in sub:
         kid_id = r.submitted_by_id or (svc.run_kid_ids(r) or [None])[0]
@@ -117,7 +119,7 @@ def _needs_you(
         steps = svc.steps_out(r, fam)
         items.append(
             {
-                "type": "redo" if r.attempt > 1 else "chore",
+                "type": "integration" if r.id in via else "redo" if r.attempt > 1 else "chore",
                 "id": r.id,
                 "kid_id": kid_id,
                 "kid_name": names.get(kid_id),
@@ -136,6 +138,7 @@ def _needs_you(
                 "subtasks_total": len(steps),
                 "submitted_at": utc_z(r.submitted_at),
                 "mode": svc.mode_of(r),
+                **({"integration": via[r.id]} if r.id in via else {}),
             }
         )
     reds = db.query(Redemption).filter(Redemption.status == "pending").all()
