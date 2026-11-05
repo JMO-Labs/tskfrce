@@ -16,7 +16,7 @@ const env = () => ({
 })
 
 /** Add-to-home-screen help for this phone. Kid look in the kid gate, parent look in setup. */
-export function InstallHint({ who }: { who: 'kid' | 'parent' }) {
+export function InstallHint({ who, handoff }: { who: 'kid' | 'parent'; handoff?: string | null }) {
   const [e, setE] = useState<ReturnType<typeof env> | null>(null) // browser-only: null while rendering on the server
   const [prompt, setPrompt] = useState(installPrompt)
   // eslint-disable-next-line react-hooks/set-state-in-effect -- reading the browser after hydration
@@ -45,7 +45,25 @@ export function InstallHint({ who }: { who: 'kid' | 'parent' }) {
     <Button onClick={() => void prompt?.prompt()}>Add to home screen</Button>
   )
   const body =
-    p === 'ios' ? (
+    p === 'ios' && kid && handoff ? (
+      <>
+        <ol>
+          <li>
+            Tap Share <Icon name="ios_share" size={18} /> at the bottom of the screen.
+          </li>
+          <li>
+            Tap <b>Add to Home Screen</b>, then <b>Add</b>.
+          </li>
+          <li>
+            Open <b>t@sk4ce</b> from your home screen and type this code:
+          </li>
+        </ol>
+        <p className="k-code" aria-label={`Code ${handoff.split('').join(' ')}`}>
+          {handoff}
+        </p>
+        <p className="k-code-note">Works once, for 15 minutes.</p>
+      </>
+    ) : p === 'ios' ? (
       <ol>
         <li>
           Tap Share <Icon name="ios_share" size={18} /> at the bottom of the screen.

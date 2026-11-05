@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_parent
 from app.api.kids import _kid
+from app.core import lockout
 from app.core.auth import AuthService
 from app.core.client_ip import client_ip
 from app.core.config import settings
@@ -16,10 +17,11 @@ from app.core.ratelimit import check, hit
 from app.models.kid_device import KidDevice
 from app.models.user import User
 from app.schemas.lock import utc_z
-from app.services import kid_enroll
+from app.services import kid_enroll, kid_handoff
 from app.services.qr import qr_svg
 
 ENROLL_GONE = "This code has expired or was already used. Ask a parent for a new code."
+HANDOFF_GONE = ENROLL_GONE
 PHONE_REMOVED = "This phone was removed. Ask a parent for a new code."
 
 parent_router = APIRouter(
@@ -76,6 +78,10 @@ class EnrollIn(BaseModel):
     token: str = Field(max_length=64)
 
 
+class HandoffIn(BaseModel):
+    code: str = Field(max_length=32)
+
+
 class SessionIn(BaseModel):
     device_token: str = Field(max_length=64)
 
@@ -99,6 +105,24 @@ def redeem_enroll(body: EnrollIn, request: Request, db: Session = Depends(get_db
     if got is None:
         hit(key, 60)
         raise HTTPException(410, ENROLL_GONE)
+    kid, dev, secret = got
+    return {
+        "access_token": kid_enroll.access_for(AuthService(db), kid, dev),
+        "device_token": secret,
+        "kid": _kid_out(kid),
+        "alert": alert_for(kid),
+        "handoff": kid_handoff.issue(dev.id),
+    }
+
+
+@kid_router.post("/handoff")
+def redeem_handoff(body: HandoffIn, request: Request, db: Session = Depends(get_db)):
+    key = f"handoff:{client_ip(request)}"
+    lockout.check(key)
+    got = kid_handoff.redeem(db, body.code)
+    if got is None:
+        lockout.fail(key)
+        raise HTTPException(410, HANDOFF_GONE)
     kid, dev, secret = got
     return {
         "access_token": kid_enroll.access_for(AuthService(db), kid, dev),

@@ -75,3 +75,12 @@
   .k-keys { gap: 10px; }
 }
 @media (prefers-reduced-motion: reduce) { .k-pick, .k-key { transition: none; } }
+/* hand-off code: shown big after enrolling (InstallHint), typed in at the gate (CodeEntry) */
+.k-install .k-code { text-align: center; font-family: var(--font-display), 'Space Grotesk', sans-serif; font-weight: 700; font-size: 44px; line-height: 1.1; letter-spacing: 0.06em; padding: 14px 8px; background: var(--k-sun); color: var(--k-navy); border: 3px solid var(--k-ink); border-radius: 16px; user-select: all; }
+.k-install .k-code-note { text-align: center; font-size: 14px; }
+.k-code-form { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.k-code-form label { font-family: var(--font-display), 'Space Grotesk', sans-serif; font-weight: 700; font-size: 20px; color: var(--k-ink); }
+.k-code-in { width: 100%; max-width: 320px; box-sizing: border-box; padding: 14px 12px; text-align: center; text-transform: uppercase; font-family: var(--font-display), 'Space Grotesk', sans-serif; font-weight: 700; font-size: 32px; letter-spacing: 0.06em; color: var(--k-ink); background: var(--k-card); border: 2px solid var(--k-ink); border-radius: 16px; box-shadow: var(--k-shadow); }
+.k-code-in::placeholder { color: var(--k-ink); opacity: 0.35; }
+.k-code-in:focus-visible { outline: 3px solid var(--k-sun); outline-offset: 2px; }
+@media (max-width: 599px) { .k-install .k-code { font-size: 38px; } .k-code-in { font-size: 28px; } }

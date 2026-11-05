@@ -8,14 +8,14 @@ const STORES = [
 ]
 
 /** First screen after scanning a parent's code: welcome, home-screen help, alerts setup. */
-export function KidWelcome({ name, avatar, alert, onStart }: { name: string; avatar: string | null; alert: KidAlert | null; onStart: () => void }) {
+export function KidWelcome({ name, avatar, alert, handoff, onStart }: { name: string; avatar: string | null; alert: KidAlert | null; handoff?: string; onStart: () => void }) {
   return (
     <>
       <span aria-hidden className="k-welcome-av">
         {avatar || '🙂'}
       </span>
       <h1 className="k-disp">You&apos;re in, {name}!</h1>
-      <InstallHint who="kid" />
+      <InstallHint who="kid" handoff={handoff} />
       {alert && (
         <section className="k-install" aria-label="Alerts">
           <h2>Get alerts on this phone</h2>

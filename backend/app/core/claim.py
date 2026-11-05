@@ -9,7 +9,9 @@ from app.core.config import settings
 from app.models.family import owner_set
 from app.models.user import User
 
-__all__ = ["matches", "normalize", "required"]
+ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"  # Crockford base32
+
+__all__ = ["ALPHABET", "matches", "normalize", "required"]
 
 
 def matches(raw: str | None) -> bool:

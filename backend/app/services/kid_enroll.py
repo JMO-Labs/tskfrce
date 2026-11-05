@@ -99,6 +99,12 @@ def redeem(db: Session, raw: str, ua: str) -> tuple[User, KidDevice, str] | None
     return kid, dev, secret
 
 
+def kid_of(db: Session, dev: KidDevice) -> User | None:
+    """The device's kid, only while that kid is active and still a kid."""
+    kid = db.get(User, dev.kid_id)
+    return kid if kid and kid.is_active and kid.role == UserRole.KID else None
+
+
 def refresh(db: Session, raw_device: str) -> tuple[User, KidDevice] | None:
     """Device secret -> (kid, device). Idle past SESSION_IDLE deletes the session."""
     th = hash_token(raw_device)
@@ -110,8 +116,8 @@ def refresh(db: Session, raw_device: str) -> tuple[User, KidDevice] | None:
         db.delete(dev)
         db.commit()
         return None
-    kid = db.get(User, dev.kid_id)
-    if kid is None or not kid.is_active or kid.role != UserRole.KID:
+    kid = kid_of(db, dev)
+    if kid is None:
         return None
     if now - dev.last_seen_at >= ACTIVE_EVERY:
         dev.last_seen_at = now

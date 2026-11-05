@@ -6,7 +6,7 @@ import { KID_ID_KEY, KID_TOKEN_KEY, writeToken } from '../kid/tokenStore'
 import { blocked, kidInit, useAsKid } from './usePreview'
 import { retryIfOffline, toastFail, toastOk } from '../notify'
 import type { KidToday, KidWhoami } from '../types'
-import type { KidAlert, KidIdentity } from '../types/enroll'
+import type { KidEnrolled } from '../types/enroll'
 import { clearDevice, deviceKid, saveAlert, saveDevice, saveKid } from '../kid/kidDevice'
 
 export { writeToken }
@@ -46,7 +46,7 @@ export function useKidSession(enrolling = false) {
 
   const enroll = useMutation({
     mutationFn: (token: string) =>
-      api<{ access_token: string; device_token: string; kid: KidIdentity; alert: KidAlert | null }>('/kid/enroll', {
+      api<KidEnrolled>('/kid/enroll', {
         method: 'POST',
         body: { token },
       }),

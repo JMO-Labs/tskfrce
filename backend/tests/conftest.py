@@ -26,6 +26,9 @@ def _reset_rate_limits():
 
     reset()
     lockout.reset()
+    from app.services import kid_handoff
+
+    kid_handoff._store.clear()
 
 
 @pytest.fixture
