@@ -199,3 +199,49 @@ def reward_redemption(db, kid):
     db.add(red)
     db.commit()
     return red
+
+
+@pytest.fixture
+def run_submitted(db, run_today):
+    """Today's linked run for `kid`, checked off and waiting on a parent."""
+    from datetime import datetime
+
+    run_today.status = "submitted"
+    run_today.submitted_at = datetime.utcnow()
+    run_today.submitted_by_id = run_today.kid_id
+    db.commit()
+    return run_today
+
+
+@pytest.fixture
+def screen_time_redemption(db, kid):
+    """A pending 15-minute screen-time request for `kid`, who owns a device and can afford it."""
+    from app.models.lock import Device
+    from app.models.points import Points, PointsType
+    from app.models.reward import Redemption
+
+    d = Device(mac="aa:bb:cc:dd:ee:19", name="Phone", status="assigned")
+    d.owners.append(kid)
+    db.add(d)
+    db.add(Points(user_id=kid.id, points_type=PointsType.BONUS, amount=100, description="t"))
+    db.flush()
+    red = Redemption(kid_id=kid.id, kind="screen_time", minutes=15, cost=20)
+    db.add(red)
+    db.commit()
+    return red
+
+
+@pytest.fixture
+def other_kid_redemption(db, other_kid):
+    """A pending reward redemption for `other_kid`, who is not linked to `install`."""
+    from app.models.points import Points, PointsType
+    from app.models.reward import Redemption, Reward
+
+    rw = Reward(name="Movie", price=10)
+    db.add(rw)
+    db.add(Points(user_id=other_kid.id, points_type=PointsType.BONUS, amount=50, description="t"))
+    db.flush()
+    red = Redemption(kid_id=other_kid.id, kind="reward", reward_id=rw.id, cost=10)
+    db.add(red)
+    db.commit()
+    return red

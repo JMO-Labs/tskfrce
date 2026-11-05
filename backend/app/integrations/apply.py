@@ -154,11 +154,63 @@ def _message_parents(db, install, grant, a, needs_approval) -> Outcome:
     return "applied", None, {}
 
 
+def _decide_reward(db, install, grant, a) -> Outcome:
+    r = db.get(Redemption, a.id)
+    if r is None or r.kid_id not in grant.kid_ids:
+        return "rejected", "not found", {}
+    refs = {"redemption_id": r.id, "kid_id": r.kid_id}
+    # Anti-goal: screen time (and anything else that unlocks a device) needs the app.
+    if r.kind != "reward":
+        return "rejected", "only the t@sk4ce app can answer this", refs
+    if r.status != "pending":
+        return "rejected", "already answered", refs
+    try:
+        economy.decide(db, r, None, a.approve, a.note)
+    except HTTPException as e:
+        db.refresh(r)  # a parent may have answered after we loaded it
+        return "rejected", "already answered" if r.status != "pending" else str(e.detail), refs
+    r.auto = False  # economy marks parent-less decisions automatic; this one is the parent's
+    db.commit()
+    return "applied", None, refs
+
+
+def _claim_decision(db: Session, run: ChoreRun, status: str) -> bool:
+    """Compare-and-set submitted -> status, so two deciders cannot both act."""
+    n = (
+        db.query(ChoreRun)
+        .filter(ChoreRun.id == run.id, ChoreRun.status == "submitted")
+        .update({"status": status}, synchronize_session=False)
+    )
+    return n == 1
+
+
+def _decide_chore(db, install, grant, a) -> Outcome:
+    run = db.get(ChoreRun, a.id)
+    kids = [k for k in svc.run_kid_ids(run) if k in grant.kid_ids] if run else []
+    if not kids or svc.chore_of(run).id not in grant.chore_ids:
+        return "rejected", "not found", {}
+    refs = {"run_id": run.id, "kid_id": kids[0], "chore_id": svc.chore_of(run).id}
+    if run.status != "submitted" or not _claim_decision(db, run, "done" if a.approve else "todo"):
+        return "rejected", "already answered", refs
+    if a.approve:
+        chore_actions.approve(db, run, by_id=None)
+    else:
+        chore_actions.send_back(db, run, a.note or f"Sent back by {install.name}")
+    return "applied", None, refs
+
+
+def _request_decide(db, install, grant, a, needs_approval) -> Outcome:
+    """The parent acting through the integration: not gated by the trust switch.
+    Only reward redemptions and chore check-offs; the target vocabulary is closed."""
+    return (_decide_reward if a.target == "reward" else _decide_chore)(db, install, grant, a)
+
+
 HANDLERS: dict[str, Handler] = {
     "chore.complete": _chore_complete,
     "reward.upsert": _reward_upsert,
     "reward.remove": _reward_remove,
     "message.parents": _message_parents,
+    "request.decide": _request_decide,
 }
 
 
@@ -176,9 +228,15 @@ def _refs_of(db: Session, action: Action | None) -> dict:
     }
 
 
+def _commits_itself(action: Action) -> bool:
+    """economy.decide commits under its spend lock, so it cannot run in a savepoint."""
+    return action.type == "request.decide" and action.target == "reward"
+
+
 def _outcome(db, install, grant, raw, origin, actor_kid_id) -> Outcome:
     """Checks are change-free. The handler runs in a savepoint, so a failure undoes only
-    its own writes, never the caller's pending work or earlier actions."""
+    its own writes, never the caller's pending work or earlier actions. A reward decision
+    commits itself instead (see _commits_itself)."""
     action = None
     try:
         action = parse_action(raw)
@@ -186,6 +244,13 @@ def _outcome(db, install, grant, raw, origin, actor_kid_id) -> Outcome:
         handler = HANDLERS.get(action.type)
         if handler is None:
             raise ValueError("unknown action")
+        if _commits_itself(action):
+            db.commit()  # settle the audit claim; the handler then owns the transaction
+            try:
+                return handler(db, install, grant, action, needs_approval)
+            except Exception:
+                db.rollback()
+                raise
         with db.begin_nested():
             return handler(db, install, grant, action, needs_approval)
     except HTTPException as e:
