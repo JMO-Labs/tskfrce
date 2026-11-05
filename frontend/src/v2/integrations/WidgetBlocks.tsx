@@ -6,6 +6,8 @@ interface Props {
   block: Block
   onPress: (buttonId: string) => void
   pending?: boolean
+  /** Kid surface: buttons only ask, and read that way. */
+  kid?: boolean
 }
 
 function host(link: string): string | null {
@@ -24,14 +26,14 @@ function Img({ url, alt }: { url: string; alt: string }) {
 }
 
 /** Renders the closed set of widget blocks. Everything is plain text; unknown types render nothing. */
-export function WidgetBlocks({ block, onPress, pending }: Props) {
+export function WidgetBlocks({ block, onPress, pending, kid }: Props) {
   switch (block.type) {
     case 'card':
       return (
         <div className="iw-card">
           {block.title && <h3 className="iw-title">{block.title}</h3>}
           {block.children?.map((c, i) => (
-            <WidgetBlocks key={i} block={c} onPress={onPress} pending={pending} />
+            <WidgetBlocks key={i} block={c} onPress={onPress} pending={pending} kid={kid} />
           ))}
         </div>
       )
@@ -90,6 +92,13 @@ export function WidgetBlocks({ block, onPress, pending }: Props) {
     case 'image':
       return <Img url={block.url} alt={block.alt} />
     case 'button':
+      if (kid)
+        return (
+          <button type="button" className="r-btn iw-btn iw-ask" data-tone="plain" disabled={pending} onClick={() => onPress(block.id)}>
+            <span className="iw-ask-tag">Ask</span>
+            <span className="iw-ask-label">{block.label}</span>
+          </button>
+        )
       return (
         <button type="button" className="p-btn iw-btn" disabled={pending} onClick={() => onPress(block.id)}>
           {block.label}

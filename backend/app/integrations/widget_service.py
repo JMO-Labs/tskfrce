@@ -40,10 +40,16 @@ def _fetch(db: Session, install: IntegrationInstall, surface: str, kid_id: int |
     if surface == "kid" and kid_id not in grant.kid_widget_ids:
         return [], set()
     decls = load_manifest(json.loads(install.manifest)).widgets
+
     # sanitize runs inside the guarded call so junk replies count as failures
-    got = health.guarded_call(
-        db, install, lambda c: sanitize(c.widgets(surface, kid_id).widgets, decls, surface, grant)
-    )
+    def call(c):
+        out = None
+        if surface == "kid":  # the service sees only this kid
+            kids = [k for k in c.ctx.grant_out["kids"] if k["id"] == kid_id]
+            out = {**c.ctx.grant_out, "kids": kids}
+        return sanitize(c.widgets(surface, kid_id, out).widgets, decls, surface, grant)
+
+    got = health.guarded_call(db, install, call)
     if got is None:
         return [], set()
     widgets, images = got

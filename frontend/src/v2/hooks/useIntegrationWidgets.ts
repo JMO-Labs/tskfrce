@@ -8,7 +8,9 @@ const KEY = 'integration-widgets'
 export const useIntegrationWidgets = (surface: Surface) =>
   useQuery({
     queryKey: [KEY, surface],
-    queryFn: () => api<WidgetGroup[]>(`/integration-widgets?surface=${surface}`, { kid: surface === 'kid' }),
+    queryFn: () => surface === 'kid'
+      ? api<WidgetGroup[]>('/integration-widgets/kid', { kid: true })
+      : api<WidgetGroup[]>('/integration-widgets?surface=parent'),
     staleTime: 60_000,
   })
 

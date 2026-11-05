@@ -45,6 +45,7 @@ export function IntegrationDetail({ id, onClose }: { id: number; onClose: () => 
   const patch = usePatchIntegration(id)
   const remove = useRemoveIntegration(id)
   const [asking, setAsking] = useState(false)
+  const [cards, setCards] = useState<Record<number, boolean>>({}) // per-kid switch shown until the server answers
   const [trust, setTrust] = useState<{ was: boolean; val: boolean } | null>(null) // shown until the server answers
   const d = q.data
 
@@ -62,6 +63,20 @@ export function IntegrationDetail({ id, onClose }: { id: number; onClose: () => 
   const setTrusted = (trusted: boolean) => {
     setTrust({ was: d.trusted, val: trusted })
     patch.mutate({ trusted }, { onError: (e) => (setTrust(null), toastFail(errorText(e))) })
+  }
+
+  const canKidCards = live && d.kids.length > 0 && d.permissions.some((p) => p.id === 'widgets.kid')
+  const cardsOn = (k: { id: number; kid_widgets: boolean }) => cards[k.id] ?? k.kid_widgets
+  const setCard = (k: { id: number; kid_widgets: boolean }, show: boolean) => {
+    setCards((c) => ({ ...c, [k.id]: show }))
+    const ids = d.kids.filter((x) => (x.id === k.id ? show : cardsOn(x))).map((x) => x.id)
+    patch.mutate(
+      { kid_widget_ids: ids },
+      {
+        onError: (e) => toastFail(errorText(e)),
+        onSettled: () => setCards(({ [k.id]: _, ...rest }) => rest),
+      },
+    )
   }
 
   return (
@@ -108,6 +123,25 @@ export function IntegrationDetail({ id, onClose }: { id: number; onClose: () => 
           <p id="ig-trust-line" className="pn-help" data-warn={on || undefined} aria-live="polite">
             {on ? 'Its chore check-offs will count right away, without your OK.' : 'Its chore check-offs wait in Needs you.'}
           </p>
+        </section>
+      )}
+
+      {canKidCards && (
+        <section className="pn-card ig-kidcards" aria-label="Cards for kids">
+          <h3 className="pn-cap ig-cap">Cards on kid screens</h3>
+          <p className="pn-help">
+            When this is on, the kid sees {d.name}&apos;s cards on the Me tab of their own app. Each card is labeled with
+            {' '}{d.name}, and its buttons only ask you. They never do anything on their own.
+          </p>
+          {d.kids.map((k) => (
+            <Switch
+              key={k.id}
+              className="pn-sw"
+              label={`Show cards on ${k.name}'s screens`}
+              checked={cardsOn(k)}
+              onChange={(e) => setCard(k, e.currentTarget.checked)}
+            />
+          ))}
         </section>
       )}
 

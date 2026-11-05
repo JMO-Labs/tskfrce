@@ -23,6 +23,8 @@
 [data-look='parent'] .ig-banner > span:not(.ms) { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 [data-look='parent'] .ig-banner[data-tone='amb'] { background: var(--p-amb); color: var(--p-ambink); }
 [data-look='parent'] .ig-banner[data-tone='red'] { background: var(--p-redbg); color: var(--p-red); }
+[data-look='parent'] .ig-kidcards { display: grid; gap: 12px; }
+[data-look='parent'] .ig-kidcards .pn-help, [data-look='parent'] .ig-kidcards .ig-cap { margin: 0; }
 [data-look='parent'] .ig-trust .pn-help { margin: 8px 0 0; }
 [data-look='parent'] .ig-tags { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 [data-look='parent'] .ig-logs { list-style: none; margin: 0; padding: 0; }

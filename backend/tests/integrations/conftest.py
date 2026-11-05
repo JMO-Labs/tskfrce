@@ -366,3 +366,31 @@ def run_other(db, install, other_kid):
     db.commit()
     run.chore_id = chore_id  # unmapped convenience attribute for tests
     return run
+
+
+@pytest.fixture
+def widget_install_not_enabled(db, parent, kid, svc):
+    """A second install granted widgets.kid, linked to `kid`, but with no kid_widget_ids."""
+
+    m = {
+        **DEMO,
+        "permissions": ["widgets.kid"],
+        "widgets": [{"id": "kid_w", "surface": "kid", "title": "Kid card"}],
+    }
+    inst = IntegrationInstall(
+        public_id=secrets.token_hex(16),
+        source="catalog",
+        integration_id="demo",
+        name="Quiet",
+        icon="extension",
+        manifest=json.dumps(sign_env(m)),
+        permissions=json.dumps(["widgets.kid"]),
+        secret=seal(secrets.token_urlsafe(32), purpose="integrations"),
+        status="active",
+        created_by_id=parent.id,
+    )
+    db.add(inst)
+    db.flush()
+    db.add(IntegrationKid(install_id=inst.id, kid_id=kid.id))
+    db.commit()
+    return inst

@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user, get_db, require_parent
+from app.api.kid import require_kid
 from app.integrations import audit, health, widget_service
 from app.integrations.apply import apply_actions
 from app.integrations.net import BlockedError, FetchError
@@ -35,6 +36,27 @@ def parent_widgets(surface: Literal["parent"] = "parent", db: Session = Depends(
         if "widgets.parent" not in json.loads(i.permissions):
             continue
         widgets = widget_service.get(db, i, surface, None, now)
+        if widgets:
+            out.append({"install_id": i.id, "name": i.name, "icon": i.icon, "widgets": widgets})
+    db.commit()  # health counters
+    return out
+
+
+@router.get("/kid")
+def kid_widgets(user: User = Depends(require_kid), db: Session = Depends(get_db)):
+    """Cards for the calling kid: only active installs that granted widgets.kid and that the
+    parent turned on for this kid. Each service sees only this kid."""
+    ids = [
+        r.install_id for r in db.query(IntegrationKid).filter_by(kid_id=user.id, kid_widgets=True)
+    ]
+    rows = db.query(IntegrationInstall).filter(
+        IntegrationInstall.id.in_(ids), IntegrationInstall.status == "active"
+    )
+    now, out = time.time(), []
+    for i in rows.order_by(IntegrationInstall.id).all():
+        if "widgets.kid" not in json.loads(i.permissions):
+            continue
+        widgets = widget_service.get(db, i, "kid", user.id, now)
         if widgets:
             out.append({"install_id": i.id, "name": i.name, "icon": i.icon, "widgets": widgets})
     db.commit()  # health counters

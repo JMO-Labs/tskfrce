@@ -42,14 +42,14 @@ class BoxClient:
     ):
         self.ctx, self.policy, self.transport, self.now = ctx, policy, transport, now
 
-    def _call(self, name: str, extra: dict) -> dict:
+    def _call(self, name: str, extra: dict, grant: dict | None = None) -> dict:
         rid = uuid.uuid4().hex
         body = json.dumps(
             {
                 "protocol": PROTOCOL_VERSION,
                 "install_id": self.ctx.public_id,
                 "request_id": rid,
-                "grant": self.ctx.grant_out,
+                "grant": grant or self.ctx.grant_out,
                 **extra,
             },
             separators=(",", ":"),
@@ -108,9 +108,15 @@ class BoxClient:
     def poll(self) -> Reply:
         return self._parse(Reply, self._call("poll", {}))
 
-    def widgets(self, surface: str, kid_id: int | None) -> WidgetsReply:
+    def widgets(
+        self, surface: str, kid_id: int | None, grant_out: dict | None = None
+    ) -> WidgetsReply:
+        """grant_out overrides the stored grant the service sees (kid cards show one kid)."""
         extra = {"surface": surface, **({"kid_id": kid_id} if kid_id is not None else {})}
-        return self._parse(WidgetsReply, self._call("widgets", extra))
+        call = (
+            self._call("widgets", extra, grant_out) if grant_out else self._call("widgets", extra)
+        )
+        return self._parse(WidgetsReply, call)
 
     def uninstall(self) -> None:
         self._call("uninstall", {})

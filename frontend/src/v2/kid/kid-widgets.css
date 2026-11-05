@@ -1,0 +1,71 @@
+/* Integration cards on the kid Me tab, in each age mode's card style (see kid-rewards.css .me-card).
+   Always a dashed, labelled frame so they can't pass as t@sk4ce's own cards. Buttons are "Ask" pills.
+   Tokens: kid-app.css --k-*. No new colors. */
+.k-app .iw-list { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.k-app .iw-frame { background: var(--k-soft); color: var(--k-ink); border: 2px dashed var(--k-sub); border-radius: 22px; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.k-app .iw-head { display: flex; align-items: center; gap: 10px; padding: 0 4px; }
+.k-app .iw-icon { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: var(--k-card); color: var(--k-ink); border: 2px solid var(--k-line); }
+.k-app .iw-icon .ms { font-size: 22px; }
+.k-app .iw-name { flex: 1; min-width: 0; font-family: var(--font-display), 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 700; overflow-wrap: anywhere; }
+.k-app .iw-body { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.k-app .iw-card { display: flex; flex-direction: column; gap: 12px; background: var(--k-card); color: var(--k-ink); border: 2px solid var(--k-line); border-radius: 16px; padding: 16px; min-width: 0; }
+.k-app .iw-card .iw-card { background: var(--k-soft); }
+.k-app .iw-title { margin: 0; font-family: var(--font-display), 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 700; overflow-wrap: anywhere; }
+.k-app .iw-text { margin: 0; font-size: 16px; line-height: 1.4; font-weight: 600; overflow-wrap: anywhere; }
+.k-app .iw-text[data-tone='muted'] { color: var(--k-sub); font-weight: 500; }
+.k-app .iw-text[data-tone='good'] { color: var(--k-ink); background: color-mix(in srgb, var(--k-green) 22%, var(--k-card)); border-radius: 10px; padding: 6px 10px; }
+.k-app .iw-text[data-tone='warn'] { color: var(--k-ink); background: color-mix(in srgb, var(--k-amber) 26%, var(--k-card)); border-radius: 10px; padding: 6px 10px; }
+.k-app .iw-link { display: inline-flex; align-items: center; gap: 3px; margin-left: 8px; padding: 1px 8px; border-radius: 999px; border: 1.5px solid var(--k-line); color: var(--k-ink); font-size: 13px; font-weight: 700; text-decoration: none; vertical-align: baseline; }
+.k-app .iw-link:hover { border-color: var(--k-ink); }
+.k-app .iw-list-items { margin: 0; padding: 0 0 0 20px; display: grid; gap: 4px; font-size: 16px; font-weight: 600; }
+.k-app .iw-list-items li { overflow-wrap: anywhere; }
+.k-app .iw-list-items li::marker { color: var(--k-sub); }
+.k-app .iw-stat { display: grid; gap: 2px; }
+.k-app .iw-stat-v { font-family: var(--font-display), 'Space Grotesk', sans-serif; font-size: 34px; font-weight: 700; line-height: 1.1; overflow-wrap: anywhere; }
+.k-app .iw-stat-l { font-size: 14px; font-weight: 700; color: var(--k-sub); }
+.k-app .iw-prog { display: grid; gap: 6px; font-size: 15px; font-weight: 700; }
+.k-app .iw-prog-row { display: flex; justify-content: space-between; gap: 8px; }
+.k-app .iw-prog-n { color: var(--k-sub); font-variant-numeric: tabular-nums; }
+.k-app .iw-track { height: 12px; border-radius: 6px; overflow: hidden; background: var(--k-soft); }
+.k-app .iw-card .iw-card .iw-track { background: var(--k-card); }
+.k-app .iw-meter { height: 100%; border-radius: 6px; background: var(--k-green); }
+.k-app .iw-img { display: block; width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px; border: 2px solid var(--k-line); background: var(--k-soft); }
+.k-app .iw-img-wait { height: 120px; }
+
+/* Ask buttons: outlined, never the sun-yellow primary of core actions */
+.k-app .iw-btn { justify-self: start; width: 100%; height: auto; min-height: 52px; padding: 8px 18px; font-size: 17px; text-align: left; justify-content: flex-start; flex-wrap: wrap; row-gap: 4px; }
+.k-app .iw-ask-tag { flex: none; background: var(--k-lav); color: var(--k-ink); border: 1.5px solid var(--k-sub); border-radius: 999px; padding: 2px 10px; font-size: 13px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.k-app .iw-ask-label { flex: 1 1 8ch; min-width: 0; overflow-wrap: anywhere; }
+.k-app .iw-btn:disabled { opacity: 0.6; }
+
+/* Little: chunky, the 09 giant-tile look */
+.k-app[data-mode='little'] .iw-frame { border: 4px dashed var(--k-ink); border-radius: 32px; padding: 16px; gap: 14px; }
+.k-app[data-mode='little'] .iw-icon { width: 44px; height: 44px; border-radius: 16px; border: 3px solid var(--k-ink); background: var(--k-sun); color: var(--k-navy); }
+.k-app[data-mode='little'] .iw-icon .ms { font-size: 28px; }
+.k-app[data-mode='little'] .iw-name { font-size: 22px; line-height: 1.15; }
+.k-app[data-mode='little'] .iw-card { border: 4px solid var(--k-ink); border-radius: 28px; box-shadow: 5px 5px 0 var(--k-ink); padding: 20px; gap: 16px; }
+[data-mantine-color-scheme='dark'] .k-app[data-mode='little'] .iw-card { box-shadow: 5px 5px 0 #000; }
+.k-app[data-mode='little'] .iw-title { font-size: 28px; }
+.k-app[data-mode='little'] .iw-text, .k-app[data-mode='little'] .iw-list-items { font-size: 20px; }
+.k-app[data-mode='little'] .iw-stat-v { font-size: 48px; }
+.k-app[data-mode='little'] .iw-stat-l, .k-app[data-mode='little'] .iw-prog { font-size: 18px; }
+.k-app[data-mode='little'] .iw-track { height: 20px; border-radius: 10px; }
+.k-app[data-mode='little'] .iw-meter { border-radius: 10px; }
+.k-app[data-mode='little'] .iw-btn { min-height: 72px; border-radius: 28px; border-width: 4px; font-size: 22px; padding: 10px 20px; gap: 12px; }
+.k-app[data-mode='little'] .iw-ask-tag { font-size: 16px; padding: 4px 14px; border-width: 2px; }
+
+/* Teen: dense, hairline (11 rows) */
+.k-app[data-mode='teen'] .iw-frame { border: 1px dashed var(--k-sub); border-radius: 14px; padding: 10px; }
+.k-app[data-mode='teen'] .iw-icon { width: 30px; height: 30px; border-radius: 8px; border-width: 1px; }
+.k-app[data-mode='teen'] .iw-icon .ms { font-size: 18px; }
+.k-app[data-mode='teen'] .iw-name { font-size: 14px; }
+.k-app[data-mode='teen'] .iw-card { border: 1px solid var(--k-line); border-radius: 10px; padding: 12px; gap: 10px; }
+.k-app[data-mode='teen'] .iw-title { font-size: 15px; }
+.k-app[data-mode='teen'] .iw-text, .k-app[data-mode='teen'] .iw-list-items { font-size: 14px; font-weight: 500; }
+.k-app[data-mode='teen'] .iw-stat-v { font-size: 26px; }
+.k-app[data-mode='teen'] .iw-stat-l, .k-app[data-mode='teen'] .iw-prog { font-size: 12.5px; }
+.k-app[data-mode='teen'] .iw-track { height: 6px; }
+.k-app[data-mode='teen'] .iw-btn { min-height: 40px; border-radius: 10px; border-width: 1px; border-color: var(--k-sun); font-size: 14px; padding: 6px 12px; }
+.k-app[data-mode='teen'] .iw-ask-tag { font-size: 11px; padding: 1px 8px; }
+
+@container k-main (min-width: 720px) { .me-view .iw-list { grid-column: 1 / -1; } }
