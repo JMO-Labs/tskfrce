@@ -8,8 +8,11 @@ from tests.integrations.int_helpers import streamed
 
 
 class FakeService:
-    def __init__(self, secret, actions=(), request_id_override=None, widgets=()):
+    def __init__(
+        self, secret, actions=(), request_id_override=None, widgets=(), learns_secret=True
+    ):
         self.secret, self.actions, self.widgets = secret, list(actions), list(widgets)
+        self.learns_secret = learns_secret
         self.request_id_override = request_id_override
         self.last_path = self.last_body = None
         self.last_signature_ok = False
@@ -25,7 +28,7 @@ class FakeService:
         self.last_path, self.last_body = req.url.path, json.loads(body)
         if self.failing:
             return httpx.Response(500, stream=streamed(b"{}"))
-        if self.last_path == "/v1/install" and "secret" in self.last_body:
+        if self.learns_secret and self.last_path == "/v1/install" and "secret" in self.last_body:
             self.secret = self.last_body["secret"]  # a real service learns it from install
         want = sign_request(self.secret, int(h["x-tsk-timestamp"]), rid, body)
         self.last_signature_ok = verify(h["x-tsk-signature"], want)

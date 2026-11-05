@@ -24,6 +24,17 @@ DEMO = {
 }
 
 
+def _dev_manifest():
+    from app.integrations.manifest import Manifest
+
+    return Manifest.model_validate(
+        {**DEMO, "base_url": "http://127.0.0.1:8787"}, context={"dev": True}
+    )
+
+
+DEMO_DEV_MANIFEST = _dev_manifest()  # DEMO on a local http service, for the simulator
+
+
 def sign_env(obj, key=TEST_KEY) -> dict:
     """Sign obj as a registry envelope: base64 JSON payload plus base64 Ed25519 signature."""
     raw = json.dumps(obj).encode()

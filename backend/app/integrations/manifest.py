@@ -1,11 +1,13 @@
-"""Integration manifest model (loaded only from a verified envelope)."""
+"""Integration manifest model (loaded only from a verified envelope, or by the simulator in dev)."""
 
 import ipaddress
+import json
 import socket
+from pathlib import Path
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 from app.integrations.permissions import PERMS
 from app.integrations.trust import verify_envelope
@@ -64,19 +66,23 @@ class Manifest(BaseModel):
 
     @field_validator("base_url")
     @classmethod
-    def _base_url(cls, v: str) -> str:
+    def _base_url(cls, v: str, info: ValidationInfo) -> str:
+        dev = info.context == {"dev": True}  # simulator only: http, any host and port
         u = urlsplit(v)
-        if u.scheme != "https" or "@" in u.netloc or u.query or u.fragment or "?" in v or "#" in v:
+        ok = ("https", "http") if dev else ("https",)
+        if u.scheme not in ok or "@" in u.netloc or u.query or u.fragment or "?" in v or "#" in v:
             raise ValueError("base_url must be plain https without userinfo, query or fragment")
         try:
             port = u.port
         except ValueError as e:
             raise ValueError("bad port") from e
-        if port not in (None, 443):
-            raise ValueError("base_url port must be 443")
         host = u.hostname
         if not host:
             raise ValueError("base_url needs a host")
+        if dev:
+            return v
+        if port not in (None, 443):
+            raise ValueError("base_url port must be 443")
         last = host.rsplit(".", 1)[-1].lower()
         if last.isdigit() or last.startswith("0x") or _is_ip(host):
             raise ValueError("base_url host must not be an IP literal")
@@ -99,3 +105,8 @@ class Manifest(BaseModel):
 
 def load_manifest(env: dict) -> Manifest:
     return Manifest.model_validate(verify_envelope(env))
+
+
+def load_dev_manifest(path: Path) -> Manifest:
+    """An unsigned local manifest for the simulator's --dev mode. The box never calls this."""
+    return Manifest.model_validate(json.loads(path.read_text()), context={"dev": True})

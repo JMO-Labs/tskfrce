@@ -360,6 +360,40 @@ Call it with `action: rest_command.tskfrce_message` and `data: {title: "Front do
 
 `v1` only grows by optional fields. Ignore fields you do not know. A breaking change becomes `/v2/...` with a new `protocol` value, and `v1` keeps working.
 
+## Test with the simulator
+
+The dev kit has a reference service, [`examples/integration-hello`](https://github.com/JMO-Labs/tskfrce/tree/main/examples/integration-hello) (one stdlib-only file to copy), and a box simulator that drives your service with the box's own client and checks. From the repo root, start the example:
+
+```bash
+python examples/integration-hello/server.py --port 8787
+```
+
+In a second terminal, with the backend's Python environment, point the simulator at a manifest:
+
+```bash
+cd backend
+python -m app.integrations.simulator --manifest ../examples/integration-hello/manifest.json --dev
+python -m app.integrations.simulator --manifest ../examples/integration-hello/manifest.json --dev --steps poll,widgets
+```
+
+For your own service, copy `manifest.json`, set `base_url` to where your service runs (for example `http://127.0.0.1:8000`) and pass that file. `--dev` allows plain HTTP, local addresses and any port. It exists only in the simulator: the box always requires HTTPS on port 443 and a public address, and it rejects a manifest with an `http` `base_url`. Without `--dev` the simulator applies the box's rules and needs a registry-signed manifest envelope.
+
+It runs these steps in order (`install` always runs first) and prints `PASS`, `FAIL <step>: <reason>` or `SKIP` for each. The exit code is 0 only if nothing failed.
+
+| Step | Checks |
+|---|---|
+| `install` | Your reply to `install` (sent with `settings` and `secret`) is signed and echoes `request_id` |
+| `poll` | Each action parses and passes the grant check (skipped without `poll_seconds`) |
+| `events` | One sample event per `events.*` permission, and the actions you reply |
+| `widgets` | Each declared surface, through the box's widget sanitizer. Every dropped widget is a failure |
+| `press` | Presses the first button and checks your reply actions match its `action` |
+| `replay` | Re-sends the last request byte for byte. Your service must answer 4xx |
+| `skew` | A request signed 360 s in the past. Your service must answer 4xx |
+| `forged` | A request signed with the wrong secret. Your service must answer 4xx |
+| `uninstall` | Your reply is signed and echoes `request_id` |
+
+The simulator's fake grant is one kid (`1`, "Sam"), one chore (`1`, "Practice"), every permission in the manifest, and the trust switch on.
+
 ## Getting listed
 
 Only the registry owner can list an integration. Open a pull request that adds your manifest object to `registry/src/catalog.ts`. The owner reviews it, and the registry Worker signs the manifest (Ed25519) when it serves the catalog. Boxes verify it against the pinned registry key and sync every 6 h. Revoking is a PR that adds your `id` to `REVOKED`. The example integration in the dev kit is never listed.

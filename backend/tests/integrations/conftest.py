@@ -1,6 +1,7 @@
 import base64
 import json
 import secrets
+from contextlib import contextmanager
 
 import httpx
 import pytest
@@ -425,3 +426,44 @@ def frontend_client(client, monkeypatch):
 
     monkeypatch.setattr(settings, "TRUSTED_PROXY_IPS", f"127.0.0.1,::1,{FRONTEND_IP}")
     return TestClient(app, base_url="http://localhost", client=(FRONTEND_IP, 50000))
+
+
+@pytest.fixture
+def example_server(resolve_to):
+    """examples/integration-hello/server.py on 127.0.0.1:<free port>, in a daemon thread."""
+    with _hello_server(resolve_to, check_replay=True) as s:
+        yield s
+
+
+@pytest.fixture
+def lenient_server(resolve_to):
+    """The example server with its request-id replay check off. .manifest points at it."""
+    with _hello_server(resolve_to, check_replay=False) as s:
+        yield s
+
+
+@contextmanager
+def _hello_server(resolve_to, check_replay: bool):
+    import importlib.util
+    import threading
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    from app.integrations.manifest import load_dev_manifest
+
+    example = Path(__file__).resolve().parents[3] / "examples/integration-hello"
+    spec = importlib.util.spec_from_file_location("hello_server", example / "server.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    resolve_to("127.0.0.1")  # the autouse default would send the call to a public test IP
+    server = mod.make_server(0, check_replay=check_replay, quiet=True)
+    url = f"http://127.0.0.1:{server.server_address[1]}"
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        manifest = load_dev_manifest(example / "manifest.json")
+        yield SimpleNamespace(url=url, manifest=manifest.model_copy(update={"base_url": url}))
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
