@@ -12,15 +12,17 @@ const motionCss = fs.readFileSync(
   'utf8'
 )
 
-// Inject styles into document head
-const style = document.createElement('style')
-style.textContent = parentTokensCss + '\n' + motionCss
-document.head.appendChild(style)
+// Inject styles into document head (skipped in @jest-environment node tests)
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style')
+  style.textContent = parentTokensCss + '\n' + motionCss
+  document.head.appendChild(style)
 
-// Also set CSS custom properties directly on the root element for getComputedStyle to work
-document.documentElement.style.setProperty('--dur-1', '150ms')
-document.documentElement.style.setProperty('--dur-2', '250ms')
-document.documentElement.style.setProperty('--ease-out', 'cubic-bezier(0.25, 0.46, 0.45, 0.94)')
+  // Also set CSS custom properties directly on the root element for getComputedStyle to work
+  document.documentElement.style.setProperty('--dur-1', '150ms')
+  document.documentElement.style.setProperty('--dur-2', '250ms')
+  document.documentElement.style.setProperty('--ease-out', 'cubic-bezier(0.25, 0.46, 0.45, 0.94)')
+}
 
 // Mock Next.js router
 jest.mock('next/router', () => ({

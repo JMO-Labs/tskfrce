@@ -5,10 +5,11 @@ This module contains all configuration settings for the t@sk4ce application,
 including database, authentication, and external service configurations.
 """
 
+import ipaddress
 from pathlib import Path
 from typing import Any
 
-from pydantic import ConfigDict, model_validator, validator
+from pydantic import ConfigDict, field_validator, model_validator, validator
 from pydantic_settings import BaseSettings
 
 from app.core.secrets import load_or_create_secrets
@@ -86,6 +87,20 @@ class Settings(BaseSettings):
         elif isinstance(v, (list, str)):
             return v
         raise ValueError(v)
+
+    @field_validator("LOCAL_PUSH_CIDRS", "LOCAL_PUSH_EXCLUDE_CIDRS")
+    @classmethod
+    def _cidrs(cls, v: str, info) -> str:
+        """Fail at startup on a bad range rather than 500 on every push."""
+        parts = [p.strip() for p in v.split(",")]
+        if info.field_name == "LOCAL_PUSH_CIDRS" and not any(parts):
+            raise ValueError("LOCAL_PUSH_CIDRS must list at least one range")
+        for p in parts:
+            try:
+                ipaddress.ip_network(p, strict=False)
+            except ValueError as e:
+                raise ValueError(f"{info.field_name}: {p!r} is not a CIDR range ({e})") from e
+        return ",".join(parts)
 
     # Email settings
 

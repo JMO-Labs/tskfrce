@@ -19,9 +19,21 @@ function viaEdge(headers) {
 const RELAY = new Set(['x-forwarded-for', 'forwarded', 'x-forwarded-host', 'x-forwarded-proto',
   'x-real-ip', 'x-edge-token', 'cf-connecting-ip', 'true-client-ip', 'x-client-ip', 'cf-ray'])
 
-// True if any forwarding header is present at all (any case, even empty).
+// Private marker set by server.js from the raw wire headers. Next injects x-forwarded-* into
+// req.headers before API routes run, so req.headers can't tell us what the client sent.
+const MARK = 'x-tsk-relayed'
+
+// server.js: judge from req.rawHeaders (any case, even empty) and overwrite any client copy.
+function markRelayed(req) {
+  const raw = req.rawHeaders || []
+  let relayed = false
+  for (let i = 0; i < raw.length; i += 2) if (RELAY.has(String(raw[i]).toLowerCase())) relayed = true
+  req.headers[MARK] = relayed ? '1' : '0'
+}
+
+// Fail closed: relayed unless server.js vouched '0' (e.g. `next start` without server.js).
 function proxied(headers) {
-  return Object.keys(headers || {}).some((k) => RELAY.has(k.toLowerCase()))
+  return (headers || {})[MARK] !== '0'
 }
 
 function clientIp(headers, remoteAddress) {
@@ -31,4 +43,4 @@ function clientIp(headers, remoteAddress) {
   return isIP(real.trim()) ? real.trim() : peer
 }
 
-module.exports = { clientIp, viaEdge, proxied }
+module.exports = { clientIp, viaEdge, proxied, markRelayed }

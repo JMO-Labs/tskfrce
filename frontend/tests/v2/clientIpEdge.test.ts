@@ -1,11 +1,23 @@
 import { describe, it, expect, afterEach, beforeEach } from '@jest/globals'
 import handler from '../../pages/api/proxy/[...path]'
-const { viaEdge, proxied, clientIp } = require('../../clientIp')
+const { viaEdge, proxied, clientIp, markRelayed } = require('../../clientIp')
 
 const RELAY = ['x-forwarded-for', 'forwarded', 'x-forwarded-host', 'x-forwarded-proto', 'x-real-ip',
   'x-edge-token', 'cf-connecting-ip', 'true-client-ip', 'x-client-ip', 'cf-ray']
 
 afterEach(() => { delete process.env.EDGE_TOKEN })
+
+// What server.js sees: raw wire headers (original case) plus Node's lowercased req.headers.
+function wire(h: Record<string, string>): any {
+  const headers: Record<string, string> = {}
+  for (const [k, v] of Object.entries(h)) headers[k.toLowerCase()] = v
+  return { rawHeaders: Object.entries(h).flat(), headers }
+}
+function relayedOnWire(h: Record<string, string>): boolean {
+  const r = wire(h)
+  markRelayed(r)
+  return proxied(r.headers)
+}
 
 describe('edge detection', () => {
   it('viaEdge is true only with the matching edge token', () => {
@@ -16,19 +28,32 @@ describe('edge detection', () => {
   it('viaEdge is false with EDGE_TOKEN unset', () => {
     expect(viaEdge({ 'x-edge-token': '' })).toBe(false)
   })
-  it('proxied is true whenever Caddy or the edge touched the request', () => {
-    delete process.env.EDGE_TOKEN
-    expect(proxied({ 'x-real-ip': '127.0.0.1' })).toBe(true); expect(proxied({ 'x-edge-token': 'x' })).toBe(true)
-    expect(proxied({ 'x-edge-token': '' })).toBe(true)
-    expect(proxied({})).toBe(false)
+  it('a request is relayed whenever Caddy or the edge touched it', () => {
+    expect(relayedOnWire({ 'X-Real-IP': '127.0.0.1' })).toBe(true)
+    expect(relayedOnWire({ 'X-Edge-Token': 'x' })).toBe(true)
+    expect(relayedOnWire({ 'x-edge-token': '' })).toBe(true)
+    expect(relayedOnWire({})).toBe(false)
   })
   const cases = RELAY.flatMap((h) => [h, h.toUpperCase(), h.replace(/(^|-)./g, (m) => m.toUpperCase())]
     .flatMap((k) => [[k, ''], [k, '192.168.1.5']]))
-  it.each(cases)('proxied is true for any forwarding header (%s=%p)', (k, v) => {
-    expect(proxied({ [k]: v })).toBe(true)
+  it.each(cases)('any forwarding header on the wire marks it relayed (%s=%p)', (k, v) => {
+    expect(relayedOnWire({ [k]: v })).toBe(true)
   })
-  it('proxied is false for ordinary headers', () => {
-    expect(proxied({ authorization: 'Bearer x', 'content-type': 'application/json', 'user-agent': 'HA' })).toBe(false)
+  it('ordinary headers are not relayed', () => {
+    expect(relayedOnWire({ Authorization: 'Bearer x', 'Content-Type': 'application/json', 'User-Agent': 'HA' })).toBe(false)
+  })
+  it('a client-sent marker is overwritten', () => {
+    const r = wire({ 'x-tsk-relayed': '0', 'X-Forwarded-For': '1.2.3.4' })
+    markRelayed(r)
+    expect(r.headers['x-tsk-relayed']).toBe('1')
+    const q = wire({ 'x-tsk-relayed': '1' })
+    markRelayed(q)
+    expect(q.headers['x-tsk-relayed']).toBe('0')
+  })
+  it('proxied fails closed without the server.js marker', () => {
+    expect(proxied({})).toBe(true)
+    expect(proxied({ 'x-tsk-relayed': '1' })).toBe(true)
+    expect(proxied({ 'x-tsk-relayed': '0' })).toBe(false)
   })
   it('clientIp still honours a vouched x-real-ip', () => {
     process.env.EDGE_TOKEN = 'tok'
@@ -45,9 +70,15 @@ describe('proxy guard for local push keys', () => {
     }))
     ;(global as any).fetch = fetch
   })
+  // As server.js hands it on: marked from the wire, then Next adds its own x-forwarded-*.
   function req(url: string, headers: Record<string, string>): any {
+    const w = wire(headers)
+    markRelayed(w)
+    w.headers['x-forwarded-for'] ??= '127.0.0.1'
+    w.headers['x-forwarded-host'] ??= 'box:3000'
+    w.headers['x-forwarded-proto'] ??= 'http'
     return {
-      method: 'POST', url, headers, socket: { remoteAddress: '127.0.0.1' }, destroy: jest.fn(),
+      method: 'POST', url, headers: w.headers, socket: { remoteAddress: '127.0.0.1' }, destroy: jest.fn(),
       async *[Symbol.asyncIterator]() { yield Buffer.from('{"actions":[]}') },
     }
   }

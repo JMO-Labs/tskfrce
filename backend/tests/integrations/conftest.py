@@ -410,3 +410,18 @@ def local_key(client, parent_headers, kid, install):
     r = client.post("/api/v1/integration-local/keys", headers=parent_headers, json=body)
     assert r.status_code == 201, r.text
     return SimpleNamespace(**r.json())
+
+
+FRONTEND_IP = "172.29.40.10"
+
+
+@pytest.fixture
+def frontend_client(client, monkeypatch):
+    """Requests from the frontend container's fixed IP, the only peer whose X-Real-IP
+    integration-local trusts (loopback is trusted elsewhere but not for local pushes)."""
+    from app.core.config import settings
+    from app.main import app
+    from fastapi.testclient import TestClient
+
+    monkeypatch.setattr(settings, "TRUSTED_PROXY_IPS", f"127.0.0.1,::1,{FRONTEND_IP}")
+    return TestClient(app, base_url="http://localhost", client=(FRONTEND_IP, 50000))

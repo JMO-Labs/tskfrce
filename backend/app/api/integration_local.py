@@ -1,9 +1,9 @@
 """Local push keys: Home Assistant and scripts on the home network push actions to the box.
 
 Fail closed. Our frontend proxy sends only X-Real-IP (its own socket peer) and 404s these
-routes whenever any forwarding header arrives. Here a push is refused (403) if any
-forwarding header other than X-Real-IP is present, or X-Real-IP comes from a peer outside
-TRUSTED_PROXY_IPS or isn't a single valid IP. A tunnel or reverse proxy on the LAN or Docker
+routes whenever any forwarding header arrives on the wire. Here a push is refused (403) if
+any forwarding header other than X-Real-IP is present, or X-Real-IP comes from a peer that
+isn't the frontend container (TRUSTED_PROXY_IPS minus loopback) or isn't a single valid IP. A tunnel or reverse proxy on the LAN or Docker
 network therefore can't make outside traffic look local. The client IP must then fall in
 LOCAL_PUSH_CIDRS and outside LOCAL_PUSH_EXCLUDE_CIDRS (loopback, link-local, Docker bridges).
 LAN sources use the box's LAN address (http://<box>:3000/api/proxy/integration-local/push).
@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, require_parent
 from app.api.integrations import _chores, _kids, _perms
 from app.core import ratelimit
-from app.core.client_ip import client_ip, from_trusted_proxy, norm_ip
+from app.core.client_ip import client_ip, from_frontend, norm_ip
 from app.core.config import settings
 from app.integrations.apply import apply_actions
 from app.integrations.protocol import PushIn
@@ -72,7 +72,7 @@ def relayed(request: Request) -> bool:
     if any(h in request.headers for h in RELAY_HEADERS):
         return True
     real = request.headers.get("x-real-ip")
-    return real is not None and (not from_trusted_proxy(request) or norm_ip(real) is None)
+    return real is not None and (not from_frontend(request) or norm_ip(real) is None)
 
 
 def _hash(token: str) -> str:

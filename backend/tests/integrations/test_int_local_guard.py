@@ -27,9 +27,9 @@ def peer(ip):
 
 
 @pytest.fixture
-def client(client):
-    """Loopback peer: trusted proxy, so the frontend's X-Real-IP is honoured."""
-    return peer("127.0.0.1")
+def client(frontend_client):
+    """Frontend container peer: its X-Real-IP is honoured."""
+    return frontend_client
 
 
 def post(c, token, headers):
@@ -75,7 +75,14 @@ def test_loopback_and_link_local_refused(client, local_key, ip):
 
 def test_loopback_peer_without_headers_refused(client, local_key):
     """A tunnel on the box itself (cloudflared -> localhost) arrives as loopback."""
-    assert post(client, local_key.token, {}).status_code == 403
+    assert post(peer("127.0.0.1"), local_key.token, {}).status_code == 403
+
+
+@pytest.mark.parametrize("lo", ["127.0.0.1", "::1"])
+def test_loopback_peer_with_x_real_ip_refused(client, local_key, lo):
+    """A host relay (ssh -R, socat) to 127.0.0.1:8000 can't vouch for a LAN address, even
+    though loopback is in TRUSTED_PROXY_IPS for other routes."""
+    assert push(peer(lo), local_key.token, [], ip=LAN).status_code == 403
 
 
 @pytest.mark.parametrize(

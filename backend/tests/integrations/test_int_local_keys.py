@@ -15,9 +15,9 @@ LAN = "192.168.1.50"
 
 
 @pytest.fixture
-def client(client):
-    """Peer is loopback, which is in TRUSTED_PROXY_IPS, so X-Real-IP is honoured (F27)."""
-    return TestClient(app, base_url="http://localhost", client=("127.0.0.1", 50000))
+def client(frontend_client):
+    """Peer is the frontend container's fixed IP, so X-Real-IP is honoured (F27)."""
+    return frontend_client
 
 
 def test_create_key_returns_token_once_and_stores_hash(client, parent_headers, kid, db):
