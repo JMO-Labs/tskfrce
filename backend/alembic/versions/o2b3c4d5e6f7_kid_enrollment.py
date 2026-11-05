@@ -55,6 +55,8 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(), nullable=False),
         sa.Column("last_seen_at", sa.DateTime(), nullable=False),
         sa.UniqueConstraint("secret_hash", name="uq_kid_devices_secret_hash"),
+        # ids are never reused: session tokens and hand-off codes reference the row id
+        sqlite_autoincrement=True,
     )
     op.create_index("ix_kid_devices_kid_id", "kid_devices", ["kid_id"])
     with op.batch_alter_table("users") as b:

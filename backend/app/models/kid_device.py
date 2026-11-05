@@ -29,7 +29,11 @@ class KidEnrollToken(Base):
 
 class KidDevice(Base):
     __tablename__ = "kid_devices"
-    __table_args__ = (UniqueConstraint("secret_hash", name="uq_kid_devices_secret_hash"),)
+    # AUTOINCREMENT: a removed phone's id is never handed to a new phone (tokens carry the id)
+    __table_args__ = (
+        UniqueConstraint("secret_hash", name="uq_kid_devices_secret_hash"),
+        {"sqlite_autoincrement": True},
+    )
 
     id = Column(Integer, primary_key=True)
     kid_id = Column(

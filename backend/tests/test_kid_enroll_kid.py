@@ -199,6 +199,18 @@ def test_removed_phone_access_token_401(client, kid, db, parent_headers):
     assert r.status_code == 401 and r.json()["detail"] == PHONE_REMOVED
 
 
+def test_removed_phone_token_stays_dead_after_new_phone(client, kid, db, parent_headers):
+    old = _enroll(client, _code(db, kid)).json()
+    pid = db.query(KidDevice).one().id
+    assert (
+        client.delete(f"/api/v1/kids/{kid.id}/phones/{pid}", headers=parent_headers).status_code
+        == 204
+    )
+    _enroll(client, _code(db, kid))
+    assert db.query(KidDevice).one().id != pid  # AUTOINCREMENT: ids never reused
+    assert client.get(f"{KID}/today", headers=_bearer(old["access_token"])).status_code == 401
+
+
 def test_sid_of_other_kid_401(client, kid, db):
     _enroll(client, _code(db, kid))
     dev = db.query(KidDevice).one()
