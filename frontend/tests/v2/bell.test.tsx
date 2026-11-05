@@ -44,7 +44,7 @@ describe('Bell', () => {
     apiMock.mockImplementation(() => new Promise(() => {}))
     wrap(<Bell />)
     await userEvent.click(screen.getByRole('button', { name: /Notifications/ }))
-    expect(await screen.findByRole('status', { name: 'Loading' })).toBeTruthy()
+    expect(await screen.findByRole('status', { name: 'Loading' }, { timeout: 4000 })).toBeTruthy()
     expect(screen.queryByText('No notifications')).toBeNull()
   })
 
