@@ -14,7 +14,7 @@ from app.core.auth import AuthService
 from app.core.client_ip import client_ip
 from app.core.config import settings
 from app.core.ratelimit import limit
-from app.models.family import FamilySettings, get_family
+from app.models.family import FamilySettings, get_family, owner_set
 from app.models.user import User, UserRole
 from app.schemas.password import Password
 from app.services.chore_types import seed as seed_chore_types
@@ -47,11 +47,6 @@ class SetupIn(BaseModel):
         return v
 
 
-def _owner_set(db: Session) -> bool:
-    fam = db.get(FamilySettings, 1)
-    return fam is not None and fam.owner_id is not None
-
-
 def claim_owner(db: Session, user_id: int, name: str, tz: str) -> int:
     """Compare-and-set on owner_id is the lock: only one setup can win (returns 1)."""
     return db.execute(
@@ -63,7 +58,7 @@ def claim_owner(db: Session, user_id: int, name: str, tz: str) -> int:
 
 @router.get("")
 def setup_needed(db: Session = Depends(get_db)):
-    return {"needed": db.query(User.id).first() is None and not _owner_set(db)}
+    return {"needed": db.query(User.id).first() is None and not owner_set(db)}
 
 
 class StepIn(BaseModel):
@@ -89,7 +84,7 @@ def _limit_setup(request: Request) -> None:
 
 @router.post("", status_code=status.HTTP_201_CREATED, dependencies=[Depends(_limit_setup)])
 def run_setup(body: SetupIn, db: Session = Depends(get_db)):
-    if db.query(User.id).first() is not None or _owner_set(db):
+    if db.query(User.id).first() is not None or owner_set(db):
         raise HTTPException(status.HTTP_409_CONFLICT, DONE)
     auth = AuthService(db)
     try:

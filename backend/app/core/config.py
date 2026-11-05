@@ -5,13 +5,22 @@ This module contains all configuration settings for the t@sk4ce application,
 including database, authentication, and external service configurations.
 """
 
+import re
 from pathlib import Path
 from typing import Any
 
-from pydantic import ConfigDict, model_validator, validator
+from pydantic import ConfigDict, field_validator, model_validator, validator
 from pydantic_settings import BaseSettings
 
 from app.core.secrets import load_or_create_secrets
+
+CLAIM_CODE_RE = re.compile(r"^[0-9A-HJKMNP-TV-Z]{10}$")  # Crockford base32, 50 bits
+_LOOKALIKES = str.maketrans({"O": "0", "I": "1", "L": "1", "-": None})
+
+
+def normalize_claim_code(raw: str) -> str:
+    """Forgive typing: case, spaces, dashes and O/I/L lookalikes."""
+    return "".join(raw.split()).upper().translate(_LOOKALIKES)
 
 
 class Settings(BaseSettings):
@@ -30,6 +39,7 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str | None = None
     INTERNAL_TOKEN: str | None = None
     BOX_URL: str | None = None  # e.g. http://192.168.1.20:3000, used in reset links
+    CLAIM_CODE: str | None = None  # sticker code; claims the box until the owner exists
     NTFY_URL: str | None = None  # internal backend -> ntfy, e.g. http://ntfy:80
     NTFY_PUBLIC_URL: str | None = None  # what phones use
     NTFY_PORT: str = "2586"  # host port mapping ("2586" or "0.0.0.0:2586"); builds the phone URL
@@ -68,6 +78,16 @@ class Settings(BaseSettings):
             if not getattr(self, name):
                 setattr(self, name, value)
         return self
+
+    @field_validator("CLAIM_CODE")
+    @classmethod
+    def check_claim_code(cls, v: str | None) -> str | None:
+        if not v:
+            return None  # compose passes CLAIM_CODE= on IP-mode boxes
+        v = normalize_claim_code(v)
+        if not CLAIM_CODE_RE.match(v):
+            raise ValueError("CLAIM_CODE must be 10 Crockford base32 chars")
+        return v
 
     @validator("BACKEND_CORS_ORIGINS", pre=True)
     def assemble_cors_origins(cls, v: str | list[str]) -> list[str] | str:

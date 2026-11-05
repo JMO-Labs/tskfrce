@@ -68,3 +68,8 @@ def get_family(db: Session) -> FamilySettings:
 
     db.info["family"] = fam  # strong ref: the identity map is weak, so repeat calls re-query
     return fam
+
+
+def owner_set(db: Session) -> bool:
+    fam = db.get(FamilySettings, 1)
+    return fam is not None and fam.owner_id is not None

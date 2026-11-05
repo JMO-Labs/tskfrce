@@ -7,7 +7,7 @@ def test_locked_database_maps_to_503(client, monkeypatch):
     def boom(*a, **k):
         raise OperationalError("x", {}, Exception("database is locked"))
 
-    monkeypatch.setattr("app.api.setup._owner_set", boom)
+    monkeypatch.setattr("app.api.setup.owner_set", boom)
     r = client.get("/api/v1/setup")
     assert r.status_code == 503 and r.json()["detail"] == "Busy, try again."
 
