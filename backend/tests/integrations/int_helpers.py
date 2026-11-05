@@ -86,3 +86,15 @@ def card(*children, title=None) -> dict:
 
 def W(id, root) -> dict:
     return {"id": id, "root": root}
+
+
+class Signer:
+    def __init__(self, key):
+        self.key = key
+
+    def sign(self, obj) -> dict:
+        return sign_env(obj, self.key)
+
+
+def other_signer() -> Signer:
+    return Signer(Ed25519PrivateKey.from_private_bytes(bytes(range(32))))

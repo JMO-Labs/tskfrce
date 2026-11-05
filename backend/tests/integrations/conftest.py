@@ -1,3 +1,4 @@
+import base64
 import json
 import secrets
 from datetime import date
@@ -8,7 +9,18 @@ from app.models.chores import ChoreRun
 from app.models.integration import IntegrationChore, IntegrationInstall, IntegrationKid
 from tests.conftest import _make_user
 from tests.factories import make_chore
-from tests.integrations.int_helpers import DEMO, sign_env
+from tests.integrations.int_helpers import DEMO, TEST_KEY, Signer, sign_env
+
+
+@pytest.fixture(autouse=True)
+def keypair(monkeypatch):
+    """Pin TEST_KEY's public key as the registry key; returns a signer."""
+    from app.integrations import trust
+    from cryptography.hazmat.primitives import serialization as ser
+
+    raw = TEST_KEY.public_key().public_bytes(ser.Encoding.Raw, ser.PublicFormat.Raw)
+    monkeypatch.setattr(trust, "REGISTRY_PUBKEY", base64.b64encode(raw).decode())
+    return Signer(TEST_KEY)
 
 
 @pytest.fixture
