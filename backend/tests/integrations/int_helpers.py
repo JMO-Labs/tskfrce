@@ -179,3 +179,12 @@ def db_install(id):
     db = next(fastapi_app.dependency_overrides[get_db]())
     db.expire_all()
     return db.get(IntegrationInstall, id)
+
+
+def raising(exc):
+    """A client callback that raises exc."""
+
+    def _fn(client):
+        raise exc
+
+    return _fn
