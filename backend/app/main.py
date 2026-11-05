@@ -298,6 +298,13 @@ async def startup_event():
 
         fastapi_app.state.lock_task = asyncio.create_task(run_forever())
 
+    if settings.INTEGRATIONS_LOOP_ENABLED:
+        import asyncio
+
+        from app.integrations import loop as integrations_loop
+
+        fastapi_app.state.integrations_task = asyncio.create_task(integrations_loop.run_forever())
+
     logger.info("t@sk4ce API startup complete")
 
 
@@ -307,9 +314,10 @@ async def shutdown_event():
     """Application shutdown event."""
     logger.info("t@sk4ce API shutting down")
 
-    task = getattr(fastapi_app.state, "lock_task", None)
-    if task:
-        task.cancel()
+    for name in ("lock_task", "integrations_task"):
+        task = getattr(fastapi_app.state, name, None)
+        if task:
+            task.cancel()
     # await cleanup_database()
 
     logger.info("t@sk4ce API shutdown complete")

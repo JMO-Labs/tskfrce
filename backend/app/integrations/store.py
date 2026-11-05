@@ -16,9 +16,11 @@ from app.models.chores import Chore, ChoreRun
 from app.models.integration import (
     IntegrationAction,
     IntegrationChore,
+    IntegrationEvent,
     IntegrationInstall,
     IntegrationKid,
 )
+from app.models.reward import Reward
 from app.models.user import User
 from app.services.chat_extras import first_name
 
@@ -45,6 +47,15 @@ def _kids(db: Session, install_id: int) -> list[IntegrationKid]:
 def _chore_ids(db: Session, install_id: int) -> frozenset[int]:
     rows = db.query(IntegrationChore.chore_id).filter_by(install_id=install_id)
     return frozenset(c for (c,) in rows)
+
+
+def retire(db: Session, install: IntegrationInstall, status: str) -> None:
+    """Stop an install for good: drop its secret, rewards and outbox. Audit rows are kept.
+    The caller commits."""
+    install.status = status
+    install.secret = None
+    db.query(Reward).filter_by(integration_install_id=install.id).update({"active": False})
+    db.query(IntegrationEvent).filter_by(install_id=install.id).delete()
 
 
 def load_grant(db: Session, install: IntegrationInstall) -> Grant:

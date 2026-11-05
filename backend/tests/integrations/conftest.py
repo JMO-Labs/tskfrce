@@ -116,3 +116,32 @@ class _Seen:
 @pytest.fixture
 def seen():
     return _Seen()
+
+
+class _Registry:
+    """MockTransport registry: serve(env) answers with that envelope; fail() answers 503."""
+
+    def __init__(self):
+        self.env: dict | None = None
+        self.path: str | None = None
+        self.transport = httpx.MockTransport(self._handle)
+
+    def serve(self, env: dict) -> None:
+        self.env = env
+
+    def fail(self) -> None:
+        self.env = None
+
+    def _handle(self, req):
+        self.path = req.url.path
+        if self.env is None:
+            return httpx.Response(503, stream=streamed(b"{}"))
+        body = json.dumps(self.env).encode()
+        return httpx.Response(
+            200, headers={"content-type": "application/json"}, stream=streamed(body)
+        )
+
+
+@pytest.fixture
+def registry():
+    return _Registry()

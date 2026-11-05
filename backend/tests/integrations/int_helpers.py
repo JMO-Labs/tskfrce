@@ -95,6 +95,19 @@ class Signer:
     def sign(self, obj) -> dict:
         return sign_env(obj, self.key)
 
+    def catalog(self, manifests, revoked=(), issued_at=None) -> dict:
+        """Outer catalog envelope as the registry Worker builds it (registry/src/index.ts)."""
+        from datetime import UTC, datetime
+
+        at = issued_at or datetime.now(UTC).replace(tzinfo=None)
+        body = {
+            "v": 1,
+            "issued_at": at.isoformat(timespec="milliseconds") + "Z",
+            "integrations": [self.sign(m) for m in manifests],
+            "revoked": list(revoked),
+        }
+        return self.sign(body)
+
 
 def other_signer() -> Signer:
     return Signer(Ed25519PrivateKey.from_private_bytes(bytes(range(32))))
