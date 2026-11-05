@@ -71,7 +71,7 @@ describe('kid enrollment', () => {
 
   test('an expired code shows the server message and no picker', async () => {
     window.history.replaceState(null, '', '/kid#enroll=old')
-    routes({ 'POST /kid/enroll': () => reply(410, { detail: 'This code has expired or was already used. Ask a parent for a new one.' }) })
+    routes({ 'POST /kid/enroll': () => reply(410, { detail: 'This code has expired or was already used. Ask a parent for a new code.' }) })
     renderKid()
     expect(await screen.findByText(/expired or was already used/)).toBeInTheDocument()
     expect(screen.queryByText('Who is this?')).toBeNull()

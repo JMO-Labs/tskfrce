@@ -58,8 +58,10 @@ export function ClaimGate({ onClaimed }: { onClaimed: (code: string) => void }) 
       <div className="p-auth-form-side">
         {auto ? (
           <div className="p-auth-form" role="status" aria-live="polite">
-            <h1>Checking your box…</h1>
-            <Icon name="progress_activity" size={28} className="p-auth-spin" />
+            <h1 className="p-auth-checking">
+              <Icon name="progress_activity" size={28} className="p-auth-spin" />
+              Checking your box…
+            </h1>
           </div>
         ) : (
           <form className="p-auth-form" onSubmit={submit} noValidate>
@@ -91,7 +93,7 @@ export function ClaimGate({ onClaimed }: { onClaimed: (code: string) => void }) 
                       ref={input}
                       value={value}
                       onChange={(e) => setValue(groupClaim(e.currentTarget.value))}
-                      placeholder="K7M2Q-XA9PB"
+                      placeholder="XXXXX-XXXXX"
                       autoCapitalize="characters"
                       autoComplete="one-time-code"
                       spellCheck={false}

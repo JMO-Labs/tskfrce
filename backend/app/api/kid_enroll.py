@@ -19,7 +19,7 @@ from app.schemas.lock import utc_z
 from app.services import kid_enroll
 from app.services.qr import qr_svg
 
-ENROLL_GONE = "This code has expired or was already used. Ask a parent for a new one."
+ENROLL_GONE = "This code has expired or was already used. Ask a parent for a new code."
 PHONE_REMOVED = "This phone was removed. Ask a parent for a new code."
 
 parent_router = APIRouter(

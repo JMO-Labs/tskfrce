@@ -19,19 +19,17 @@ export function KidWelcome({ name, avatar, alert, onStart }: { name: string; ava
       {alert && (
         <section className="k-install" aria-label="Alerts">
           <h2>Get alerts on this phone</h2>
-          <ol>
-            <li>
-              Get the free <b>ntfy</b> app:{' '}
-              {STORES.map(([label, href], i) => (
-                <span key={label}>
-                  {i > 0 && ' · '}
-                  <a href={href} target="_blank" rel="noreferrer">
-                    {label}
-                  </a>
-                </span>
-              ))}
-            </li>
-          </ol>
+          <p>
+            Get the free <b>ntfy</b> app:{' '}
+            {STORES.map(([label, href], i) => (
+              <span key={label}>
+                {i > 0 && ' · '}
+                <a href={href} target="_blank" rel="noreferrer">
+                  {label}
+                </a>
+              </span>
+            ))}
+          </p>
           <a className="r-btn" data-tone="plain" href={alertLink(alert)}>
             Add my alerts
           </a>

@@ -471,3 +471,7 @@
   font-size: 13px;
 }
 [data-look='parent'] .p-auth-note .ms { font-size: 18px; }
+
+/* Box-code gate: spinner before the text, fixed gap, never wraps; wrong code outlines the field in the error red */
+[data-look='parent'] .p-auth-checking { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+[data-look='parent'] .p-auth-input:has(input[aria-invalid='true']) { border-color: var(--p-red); }

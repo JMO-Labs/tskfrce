@@ -85,6 +85,12 @@ async function toFamily(user: ReturnType<typeof userEvent.setup>) {
   await user.type(await screen.findByLabelText('Family name'), 'The Sams')
 }
 
+/** Skip the current step; step 4 has no Skip without kids (Next does the same). */
+const skipStep = async (user: ReturnType<typeof userEvent.setup>) => {
+  const [b] = await screen.findAllByRole('button', { name: /^(Skip|Next)$/ }).then((all) => [all.find((x) => x.textContent === 'Skip') ?? all[0]])
+  await user.click(b)
+}
+
 describe('setup wizard', () => {
   test('step 1 renders parent account form', () => {
     wrap()
@@ -128,7 +134,7 @@ describe('setup wizard', () => {
     await toFamily(user)
     await user.click(screen.getByRole('button', { name: 'Next' }))
     await waitFor(() => expect(loginWithToken).toHaveBeenCalledWith('t', 'r', 1800))
-    for (let i = 0; i < 6; i++) await user.click(await screen.findByRole('button', { name: 'Skip' }))
+    for (let i = 0; i < 6; i++) await skipStep(user)
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Finish' })).toBeNull()
     await user.click(await screen.findByRole('button', { name: 'Go to Today' }))
@@ -215,7 +221,7 @@ describe('setup wizard', () => {
 
   const toHours = async (user: ReturnType<typeof userEvent.setup>) => {
     await finishAccount(user)
-    for (let i = 0; i < 4; i++) await user.click(screen.getByRole('button', { name: 'Skip' }))
+    for (let i = 0; i < 4; i++) await skipStep(user)
     await screen.findByText('Allowed hours')
   }
   const rowText = (name: string) => screen.getByRole('button', { name: `Edit ${name}` }).parentElement!.textContent
@@ -303,10 +309,10 @@ describe('setup wizard', () => {
     wrap()
     await finishAccount(user)
     const puts = () => apiMock.mock.calls.filter((c) => c[0] === '/setup/step').map((c) => (c[1] as { body: unknown }).body)
-    await user.click(await screen.findByRole('button', { name: 'Skip' })) // 3 → 4
-    await user.click(await screen.findByRole('button', { name: 'Skip' })) // 4 → 5
+    await skipStep(user) // 3 → 4
+    await skipStep(user) // 4 → 5
     await waitFor(() => expect(puts()).toEqual([{ step: 4 }, { step: 5 }]))
-    for (let i = 0; i < 3; i++) await user.click(await screen.findByRole('button', { name: 'Skip' })) // → 8
+    for (let i = 0; i < 3; i++) await skipStep(user) // → 8
     await user.click(await screen.findByRole('button', { name: 'Finish' }))
     await waitFor(() => expect(puts().at(-1)).toEqual({ step: null }))
   })

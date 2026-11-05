@@ -9,7 +9,9 @@ export function AlertsMoved() {
   if (!a || !deviceKid()) return null
   return (
     <a className="k-moved" href={alertLink(a)} onClick={() => setAlertsMoved(false)}>
+      <span className="ms" aria-hidden="true">notifications</span>
       Your alerts moved. Tap to reconnect.
+      <span className="ms" aria-hidden="true">chevron_right</span>
     </a>
   )
 }

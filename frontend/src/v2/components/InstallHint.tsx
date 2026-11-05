@@ -48,7 +48,7 @@ export function InstallHint({ who }: { who: 'kid' | 'parent' }) {
     p === 'ios' ? (
       <ol>
         <li>
-          Tap Share <Icon name="ios_share" /> at the bottom of the screen.
+          Tap Share <Icon name="ios_share" size={18} /> at the bottom of the screen.
         </li>
         <li>
           Tap <b>Add to Home Screen</b>.
@@ -61,7 +61,7 @@ export function InstallHint({ who }: { who: 'kid' | 'parent' }) {
       add
     ) : p === 'android' ? (
       <p>
-        Tap the menu <Icon name="more_vert" />, then <b>Add to Home screen</b> or <b>Install app</b>.
+        Tap the menu <Icon name="more_vert" size={18} />, then <b>Add to Home screen</b> or <b>Install app</b>.
       </p>
     ) : (
       <p>
@@ -70,7 +70,14 @@ export function InstallHint({ who }: { who: 'kid' | 'parent' }) {
     )
   return (
     <section className={kid ? 'k-install' : styles.card} aria-label="Add to home screen">
-      {kid ? <h2>{TITLE}</h2> : <p><b>{TITLE}</b></p>}
+      {kid ? (
+        <h2>{TITLE}</h2>
+      ) : (
+        <h3>
+          <Icon name="install_mobile" />
+          {TITLE}
+        </h3>
+      )}
       {body}
     </section>
   )
