@@ -20,6 +20,11 @@ def _trusted() -> set[str]:
     return {n for p in settings.TRUSTED_PROXY_IPS.split(",") if (n := norm_ip(p))}
 
 
+def from_trusted_proxy(request: Request) -> bool:
+    """True when the socket peer is one of TRUSTED_PROXY_IPS (our frontend proxy)."""
+    return norm_ip(request.client.host if request.client else None) in _trusted()
+
+
 def client_ip(request: Request) -> str:
     """Normalized socket peer; X-Real-IP is trusted only from TRUSTED_PROXY_IPS (our proxy)."""
     raw = request.client.host if request.client else "unknown"

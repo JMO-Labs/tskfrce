@@ -41,6 +41,14 @@ class Settings(BaseSettings):
     REGISTRY_URL: str = "https://taskfrce.jmolabs.dev"
     # Peers allowed to set X-Real-IP (our frontend proxy); comma list
     TRUSTED_PROXY_IPS: str = "127.0.0.1,::1,::ffff:127.0.0.1"
+    # Local push keys (integration-local): client IPs allowed, minus the exclude list.
+    # Exclude wins; it covers loopback, link-local and our Docker bridges (host tunnels via
+    # docker-proxy arrive from the bridge gateway, so they must not count as the LAN).
+    LOCAL_PUSH_CIDRS: str = "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fd00::/8"
+    LOCAL_PUSH_EXCLUDE_CIDRS: str = (
+        "127.0.0.0/8,::1/128,169.254.0.0/16,fe80::/10,"
+        "172.17.0.0/16,172.29.40.0/24,172.29.50.0/24,fd00:4ce::/64"
+    )
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7

@@ -74,7 +74,7 @@ def test_push_from_outside_lan_refused(client, local_key, kid, run_today, ip):
     assert r.json()["detail"] == "Local keys only work on your home network."
 
 
-@pytest.mark.parametrize("ip", ["127.0.0.1", "10.1.2.3", "172.16.0.9", "fd00::5", "fe80::1"])
+@pytest.mark.parametrize("ip", ["10.1.2.3", "172.16.0.9", "fd00::5"])
 def test_lan_ranges_allowed(client, local_key, ip):
     assert push(client, local_key.token, [], ip=ip).status_code == 200
 

@@ -72,6 +72,13 @@ Copper, silver, gold, platinum and mega-diamond. Doing more moves a badge up a l
 
 Yes, with a free service called Tailscale. See [Remote access](../remote-access.md) for the steps.
 
+## Home network keys: keeping them safe
+
+Home network keys let Home Assistant or a script at home tick off chores. They only work from devices on your home Wi-Fi or network, and t@sk4ce refuses them from anywhere else.
+
+- **Don't port-forward the box's port 3000 on your router.** It's not needed, and it would put the box on the open internet.
+- **If you put the box behind your own tunnel or proxy** (for example Cloudflare Tunnel, nginx or Tailscale Funnel), home network keys will stop working through it. That's on purpose. Point Home Assistant at the box's home address instead, like `http://192.168.1.50:3000`.
+
 ## How do I update?
 
 Run the install line again (see [Install](02-install.md)). Your family, chores and settings are kept. The app saves a copy of your data before it changes anything.

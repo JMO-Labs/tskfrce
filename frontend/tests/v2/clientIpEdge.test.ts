@@ -2,6 +2,9 @@ import { describe, it, expect, afterEach, beforeEach } from '@jest/globals'
 import handler from '../../pages/api/proxy/[...path]'
 const { viaEdge, proxied, clientIp } = require('../../clientIp')
 
+const RELAY = ['x-forwarded-for', 'forwarded', 'x-forwarded-host', 'x-forwarded-proto', 'x-real-ip',
+  'x-edge-token', 'cf-connecting-ip', 'true-client-ip', 'x-client-ip', 'cf-ray']
+
 afterEach(() => { delete process.env.EDGE_TOKEN })
 
 describe('edge detection', () => {
@@ -18,6 +21,14 @@ describe('edge detection', () => {
     expect(proxied({ 'x-real-ip': '127.0.0.1' })).toBe(true); expect(proxied({ 'x-edge-token': 'x' })).toBe(true)
     expect(proxied({ 'x-edge-token': '' })).toBe(true)
     expect(proxied({})).toBe(false)
+  })
+  const cases = RELAY.flatMap((h) => [h, h.toUpperCase(), h.replace(/(^|-)./g, (m) => m.toUpperCase())]
+    .flatMap((k) => [[k, ''], [k, '192.168.1.5']]))
+  it.each(cases)('proxied is true for any forwarding header (%s=%p)', (k, v) => {
+    expect(proxied({ [k]: v })).toBe(true)
+  })
+  it('proxied is false for ordinary headers', () => {
+    expect(proxied({ authorization: 'Bearer x', 'content-type': 'application/json', 'user-agent': 'HA' })).toBe(false)
   })
   it('clientIp still honours a vouched x-real-ip', () => {
     process.env.EDGE_TOKEN = 'tok'
@@ -66,9 +77,25 @@ describe('proxy guard for local push keys', () => {
       expect(r.status).toHaveBeenCalledWith(404)
       expect(fetch).not.toHaveBeenCalled()
     })
+  it.each(RELAY.flatMap((h) => [[h, ''], [h.toUpperCase(), '192.168.1.5']]))(
+    '404s a LAN push carrying %s=%p (tunnel or proxy on the LAN)', async (k, v) => {
+      const r = res()
+      const q = req(url, { authorization: 'Bearer tsk_local_x', [k]: v })
+      q.socket.remoteAddress = '::ffff:192.168.1.50'
+      await handler(q, r)
+      expect(r.status).toHaveBeenCalledWith(404)
+      expect(fetch).not.toHaveBeenCalled()
+    })
+  it.each(['127.0.0.1', '::1', '172.29.40.1'])('passes a header-free push from %s on as X-Real-IP (backend refuses it)',
+    async (peer) => {
+      const q = req(url, { authorization: 'Bearer tsk_local_x' })
+      q.socket.remoteAddress = peer
+      await handler(q, res())
+      expect(fetch.mock.calls[0][1].headers['X-Real-IP']).toBe(peer)
+    })
   it('forwards direct LAN pushes with the socket peer as X-Real-IP', async () => {
     const r = res()
-    const q = req(url, { authorization: 'Bearer tsk_local_x', 'x-forwarded-for': '192.168.1.5' })
+    const q = req(url, { authorization: 'Bearer tsk_local_x' })
     q.socket.remoteAddress = '::ffff:192.168.1.50'
     await handler(q, r)
     const [target, init] = fetch.mock.calls[0]

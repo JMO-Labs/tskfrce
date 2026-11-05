@@ -13,11 +13,15 @@ function viaEdge(headers) {
   return a.length === b.length && timingSafeEqual(a, b)
 }
 
-// True whenever Caddy or the edge touched the request (either header present at all).
-// Caddy always sets X-Real-IP and connects from loopback, so with EDGE_TOKEN unset viaEdge
-// alone would let edge traffic through as a LAN request.
+// Any of these means a proxy or tunnel relayed the request (Caddy, the edge, cloudflared,
+// nginx, Tailscale Funnel...). Such a proxy sits on the LAN or Docker network, so its
+// requests look local; local push keys must refuse them.
+const RELAY = new Set(['x-forwarded-for', 'forwarded', 'x-forwarded-host', 'x-forwarded-proto',
+  'x-real-ip', 'x-edge-token', 'cf-connecting-ip', 'true-client-ip', 'x-client-ip', 'cf-ray'])
+
+// True if any forwarding header is present at all (any case, even empty).
 function proxied(headers) {
-  return headers['x-real-ip'] !== undefined || headers['x-edge-token'] !== undefined
+  return Object.keys(headers || {}).some((k) => RELAY.has(k.toLowerCase()))
 }
 
 function clientIp(headers, remoteAddress) {

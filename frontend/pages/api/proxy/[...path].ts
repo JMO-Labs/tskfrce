@@ -50,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.status(400).json({ detail: 'Bad request.' })
     return
   }
-  // Local push keys are LAN only: refuse anything Caddy or the public edge relayed.
+  // Local push keys are LAN only: refuse anything any proxy or tunnel relayed.
   // Match on the decoded path: the backend decodes %2D etc. before routing.
   if (proxied(req.headers) && isLocalPush(rest)) {
     res.status(404).json({ detail: 'Not found.' })

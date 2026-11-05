@@ -1,11 +1,12 @@
 """Local push keys: Home Assistant and scripts on the home network push actions to the box.
 
-Who is the client? `client_ip` trusts X-Real-IP only from TRUSTED_PROXY_IPS (the frontend
-proxy's fixed address and loopback); otherwise it is the socket peer. The frontend proxy
-404s these routes whenever Caddy or the edge set X-Real-IP / X-Edge-Token, so the X-Real-IP
-it sends here is always its own socket peer, never a forwarded one. X-Forwarded-For and
-Forwarded are never read. Pushes through the public hostname are therefore refused; LAN
-sources use the box's LAN address (http://<box>:3000/api/proxy/integration-local/push).
+Fail closed. Our frontend proxy sends only X-Real-IP (its own socket peer) and 404s these
+routes whenever any forwarding header arrives. Here a push is refused (403) if any
+forwarding header other than X-Real-IP is present, or X-Real-IP comes from a peer outside
+TRUSTED_PROXY_IPS or isn't a single valid IP. A tunnel or reverse proxy on the LAN or Docker
+network therefore can't make outside traffic look local. The client IP must then fall in
+LOCAL_PUSH_CIDRS and outside LOCAL_PUSH_EXCLUDE_CIDRS (loopback, link-local, Docker bridges).
+LAN sources use the box's LAN address (http://<box>:3000/api/proxy/integration-local/push).
 """
 
 import hashlib
@@ -23,7 +24,8 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, require_parent
 from app.api.integrations import _chores, _kids, _perms
 from app.core import ratelimit
-from app.core.client_ip import client_ip
+from app.core.client_ip import client_ip, from_trusted_proxy, norm_ip
+from app.core.config import settings
 from app.integrations.apply import apply_actions
 from app.integrations.protocol import PushIn
 from app.models.integration import IntegrationChore, IntegrationInstall, IntegrationKid
@@ -36,18 +38,41 @@ LOCAL_PERMS = frozenset(
     {"chores.complete", "rewards.manage", "messages.parents", "requests.decide"}
 )
 PREFIX = "tsk_local_"
-_LAN = [
-    ipaddress.ip_network(n) for n in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7")
-]
+# Any of these means a proxy or tunnel relayed the request. X-Real-IP is checked apart:
+# our own frontend sets it.
+RELAY_HEADERS = (
+    "x-forwarded-for",
+    "forwarded",
+    "x-forwarded-host",
+    "x-forwarded-proto",
+    "x-edge-token",
+    "cf-connecting-ip",
+    "true-client-ip",
+    "x-client-ip",
+    "cf-ray",
+)
+
+
+def _in(a: ipaddress.IPv4Address | ipaddress.IPv6Address, cidrs: str) -> bool:
+    nets = (ipaddress.ip_network(n.strip(), strict=False) for n in cidrs.split(",") if n.strip())
+    return any(a in n for n in nets if n.version == a.version)
 
 
 def is_lan(ip: str) -> bool:
-    """Loopback, RFC 1918, IPv6 ULA or link-local. Not CGNAT, not public."""
+    """In LOCAL_PUSH_CIDRS and not in LOCAL_PUSH_EXCLUDE_CIDRS."""
     try:
         a = ipaddress.ip_address(ip)
     except ValueError:
         return False
-    return a.is_loopback or a.is_link_local or any(a in n for n in _LAN if n.version == a.version)
+    return _in(a, settings.LOCAL_PUSH_CIDRS) and not _in(a, settings.LOCAL_PUSH_EXCLUDE_CIDRS)
+
+
+def relayed(request: Request) -> bool:
+    """True if anything but our own frontend proxy forwarded this request."""
+    if any(h in request.headers for h in RELAY_HEADERS):
+        return True
+    real = request.headers.get("x-real-ip")
+    return real is not None and (not from_trusted_proxy(request) or norm_ip(real) is None)
 
 
 def _hash(token: str) -> str:
@@ -103,7 +128,7 @@ def create_key(
 def require_local_key(
     request: Request, authorization: str = Header(""), db: Session = Depends(get_db)
 ) -> IntegrationInstall:
-    if request.headers.get("x-edge-token") is not None or not is_lan(client_ip(request)):
+    if relayed(request) or not is_lan(client_ip(request)):
         raise HTTPException(403, "Local keys only work on your home network.")
     scheme, _, token = authorization.partition(" ")
     bad = HTTPException(401, "That key isn't valid.")
