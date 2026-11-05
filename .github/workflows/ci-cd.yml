@@ -74,7 +74,7 @@ jobs:
       run: cd frontend && npm ci && npm test -- --ci
 
   standalone:
-    runs-on: ubuntu-latest  # forks never touch the home runner
+    runs-on: ubuntu-latest  # needs no secrets; next build is too heavy for the home runner
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
