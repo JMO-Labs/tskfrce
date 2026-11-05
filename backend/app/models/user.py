@@ -68,6 +68,7 @@ class User(Base):
     celebrated_level = Column(Integer, nullable=False, default=1, server_default="1")
     age_group = Column(String(6), nullable=False, default="kid", server_default="kid")
     push_topic = Column(String(40), nullable=True, unique=True)
+    alert_topic = Column(String(64), nullable=True, unique=True)  # upstream ntfy topic, 192-bit
     last_active_at = Column(DateTime, nullable=True)  # naive UTC; touched at most every 5 min
 
     # Relationships
