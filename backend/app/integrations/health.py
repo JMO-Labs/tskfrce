@@ -1,5 +1,6 @@
 """Per-integration health: count failures, auto-pause, and cap outbound calls."""
 
+import logging
 from collections.abc import Callable
 from typing import TypeVar
 
@@ -14,6 +15,7 @@ from app.models.integration import IntegrationInstall
 from app.services import inbox
 
 T = TypeVar("T")
+log = logging.getLogger(__name__)
 
 FAIL_LIMIT = 5
 OUTBOUND_PER_MIN = 30
@@ -36,18 +38,25 @@ def ok(install: IntegrationInstall) -> None:
 def fail(db: Session, install: IntegrationInstall, reason: str) -> None:
     """Count a failure; at the limit pause once and tell parents. Caller commits."""
     install.failures = (install.failures or 0) + 1
-    if install.failures >= FAIL_LIMIT and install.status == "active":
-        install.status = "paused"
-        install.paused_reason = reason[:200]
-        from app.integrations import widget_service  # widget_service imports health
+    if install.failures >= FAIL_LIMIT:
+        pause(db, install, reason)
 
-        widget_service.forget(install.id)
-        inbox.notify_parents(
-            db,
-            "integration_paused",
-            f"{install.name} is paused",
-            "It stopped answering properly. Open it to try again.",
-        )
+
+def pause(db: Session, install: IntegrationInstall, reason: str) -> None:
+    """Pause an active install, drop its cached widgets and tell parents once. Caller commits."""
+    if install.status != "active":
+        return
+    install.status = "paused"
+    install.paused_reason = reason[:200]
+    from app.integrations import widget_service  # widget_service imports health
+
+    widget_service.forget(install.id)
+    inbox.notify_parents(
+        db,
+        "integration_paused",
+        f"{install.name} is paused",
+        "It stopped answering properly. Open it to try again.",
+    )
 
 
 def _reason(e: Exception) -> str:
@@ -62,13 +71,19 @@ def _reason(e: Exception) -> str:
 def guarded_call(
     db: Session, install: IntegrationInstall, fn: Callable[[BoxClient], T]
 ) -> T | None:
-    """Run fn on the install's client. None if paused, rate-limited or failed."""
+    """Run fn on the install's client. None if paused, rate-limited or failed. Nothing raises:
+    a bad stored manifest or an unreadable secret counts as an "internal error" failure, so one
+    broken install never breaks a feed that lists the others."""
     if install.status != "active" or not _allowed(install):
         return None
     try:
         out = fn(store.client_for(db, install))
     except (BlockedError, FetchError, ProtocolError) as e:
         fail(db, install, _reason(e))
+        return None
+    except Exception:
+        log.exception("Integration %s call failed", install.id)
+        fail(db, install, "internal error")
         return None
     ok(install)
     return out

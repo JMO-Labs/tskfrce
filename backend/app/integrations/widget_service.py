@@ -39,10 +39,11 @@ def _fetch(db: Session, install: IntegrationInstall, surface: str, kid_id: int |
         return [], set()
     if surface == "kid" and kid_id not in grant.kid_widget_ids:
         return [], set()
-    decls = load_manifest(json.loads(install.manifest)).widgets
 
-    # sanitize runs inside the guarded call so junk replies count as failures
+    # the manifest load and sanitize run inside the guarded call so a manifest that no longer
+    # verifies, or a junk reply, counts as a failure instead of raising
     def call(c):
+        decls = load_manifest(json.loads(install.manifest)).widgets
         out = None
         if surface == "kid":  # the service sees only this kid
             kids = [k for k in c.ctx.grant_out["kids"] if k["id"] == kid_id]
