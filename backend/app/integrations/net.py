@@ -30,7 +30,9 @@ V4_BLOCKED = [
 V6_GLOBAL_UNICAST = _net("2000::/3")  # excludes ::/8, fc00::/7, fe80::/10, fec0::/10, ff00::/8
 V6_BLOCKED = [_net(n) for n in ("2001:db8::/32", "3fff::/20", "2001:2::/48", "2001:10::/28")]
 V4_COMPAT = _net("::/96")
-NAT64 = [_net("64:ff9b::/96"), _net("64:ff9b:1::/48")]
+# Only the well-known /96 is unwrapped. Local-use 64:ff9b:1::/48 (RFC 8215) may use a /48-/64
+# translator prefix that puts the IPv4 elsewhere (RFC 6052), so it is refused by the 2000::/3 rule.
+NAT64 = _net("64:ff9b::/96")
 
 
 @dataclass(frozen=True)
@@ -63,7 +65,7 @@ def _embedded_v4(ip: ipaddress.IPv6Address) -> ipaddress.IPv4Address | None:
     """The IPv4 address a v6 address carries (mapped, compat, NAT64, 6to4, Teredo client)."""
     if ip.ipv4_mapped:
         return ip.ipv4_mapped
-    if ip in V4_COMPAT or any(ip in n for n in NAT64):
+    if ip in V4_COMPAT or ip in NAT64:
         return ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)
     if ip.sixtofour:
         return ip.sixtofour

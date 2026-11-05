@@ -44,6 +44,8 @@ def test_private_targets_blocked(resolve_to, ip):
         "::",  # unspecified
         "64:ff9b::c0a8:101",  # NAT64 of 192.168.1.1
         "64:ff9b:1::c0a8:101",  # local-use NAT64 of 192.168.1.1
+        "64:ff9b:1:7f00:0:100:808:808",  # local-use NAT64 /48: 127.0.0.1, not 8.8.8.8
+        "64:ff9b:1::5db8:d822",  # local-use NAT64 is refused even for a public address
         "::127.0.0.1",  # IPv4-compatible loopback
         "::a00:1",  # IPv4-compatible 10.0.0.1
         "fec0::1",  # IPv6 site-local
