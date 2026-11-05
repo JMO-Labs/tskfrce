@@ -71,7 +71,7 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
   if (res.status === 401 && !init.kid && tokenManager.getRefreshToken()) {
     const r = await tokenManager.refreshTokens()
     if (r.success) res = await send(path, init)
-  }
+  } else if (res.status === 401 && init.kid && (await import('./kid/kidDevice').then((m) => m.refreshKid()))) res = await send(path, init)
   const text = await res.text()
   let data: unknown = undefined
   try {

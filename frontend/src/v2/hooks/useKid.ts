@@ -5,6 +5,8 @@ import { api, ApiError, AuthError, KID_TOKEN_KEY } from '../api'
 import { blocked, kidInit, useAsKid } from './usePreview'
 import { retryIfOffline, toastFail, toastOk } from '../notify'
 import type { KidToday, KidWhoami } from '../types'
+import type { KidAlert, KidIdentity } from '../types/enroll'
+import { clearDevice, saveAlert, saveDevice, saveKid } from '../kid/kidDevice'
 
 const readToken = (): string | null => {
   try {
@@ -22,7 +24,7 @@ const readId = (): number | null => {
     return null
   }
 }
-const writeToken = (t: string | null, kidId?: number) => {
+export const writeToken = (t: string | null, kidId?: number) => {
   try {
     if (t) {
       localStorage.setItem(KID_TOKEN_KEY, t)
@@ -44,7 +46,7 @@ export const loginMessage = (e: unknown): string =>
       : 'Something went wrong. Try again.'
 
 /** Kid session: token in localStorage, whoami, login, logout. */
-export function useKidSession() {
+export function useKidSession(enrolling = false) {
   const qc = useQueryClient()
   // localStorage is client-only: the server render and hydration see "not ready"; login/logout override it
   const ready = useClientValue(() => true, false)
@@ -57,6 +59,7 @@ export function useKidSession() {
   const whoami = useQuery({
     queryKey: ['kid', 'whoami'],
     queryFn: () => api<KidWhoami>('/kid/whoami'),
+    enabled: !enrolling, // a scanned code signs in first; whoami would be wasted
   })
   const login = useMutation({
     mutationFn: (v: { kid_id: number; pin?: string }) =>
@@ -66,15 +69,30 @@ export function useKidSession() {
       setSession({ authed: true, kidId: v.kid_id })
     },
   })
-  /** Clear the token and start again at whoami. */
+  const enroll = useMutation({
+    mutationFn: (token: string) =>
+      api<{ access_token: string; device_token: string; kid: KidIdentity; alert: KidAlert | null }>('/kid/enroll', {
+        method: 'POST',
+        body: { token },
+      }),
+    onSuccess: (r) => {
+      writeToken(r.access_token, r.kid.id)
+      saveDevice(r.device_token)
+      saveKid(r.kid)
+      saveAlert(r.alert)
+      setSession({ authed: true, kidId: r.kid.id })
+    },
+  })
+  /** Clear the token (and this phone's device sign-in) and start again at whoami. */
   const logout = () => {
     writeToken(null)
+    clearDevice()
     setSession({ authed: false, kidId: null })
     login.reset()
     qc.removeQueries({ queryKey: ['kid', 'today'] })
     qc.invalidateQueries({ queryKey: ['kid', 'whoami'] })
   }
-  return { ready, authed, kidId, whoami, login, logout }
+  return { ready, authed, kidId, whoami, login, enroll, logout }
 }
 
 /** Kid's chores and lock state, refetched every 10 s. A 401 calls onExpired. */
