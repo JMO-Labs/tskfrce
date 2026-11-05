@@ -48,12 +48,23 @@ describe('edge detection', () => {
     expect(r.headers['x-tsk-relayed']).toBe('1')
     const q = wire({ 'x-tsk-relayed': '1' })
     markRelayed(q)
-    expect(q.headers['x-tsk-relayed']).toBe('0')
+    expect(proxied(q.headers)).toBe(false)
   })
-  it('proxied fails closed without the server.js marker', () => {
+  it('proxied fails closed on a missing or forged marker', () => {
+    markRelayed(wire({}))
     expect(proxied({})).toBe(true)
     expect(proxied({ 'x-tsk-relayed': '1' })).toBe(true)
-    expect(proxied({ 'x-tsk-relayed': '0' })).toBe(false)
+    expect(proxied({ 'x-tsk-relayed': '0' })).toBe(true)
+    expect(proxied({ 'x-tsk-relayed': 'a'.repeat(32) })).toBe(true)
+  })
+  it('proxied fails closed when the preload never ran (no nonce)', () => {
+    const key = Symbol.for('tsk4ce.relayNonce')
+    const saved = (globalThis as any)[key]
+    delete (globalThis as any)[key]
+    try {
+      expect(proxied({ 'x-tsk-relayed': '0' })).toBe(true)
+      expect(proxied({})).toBe(true)
+    } finally { (globalThis as any)[key] = saved }
   })
   it('clientIp still honours a vouched x-real-ip', () => {
     process.env.EDGE_TOKEN = 'tok'

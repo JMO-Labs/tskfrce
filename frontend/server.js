@@ -7,7 +7,8 @@
 const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
-const { clientIp, markRelayed } = require('./clientIp');
+require('./relay-preload'); // marks wire-relayed requests before Next adds x-forwarded-*
+const { clientIp } = require('./clientIp');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const dev = process.env.NODE_ENV !== 'production';
@@ -53,8 +54,6 @@ app.prepare()
           return;
         }
         
-        // Record whether any proxy/tunnel header arrived on the wire, before Next adds its own
-        markRelayed(req);
         // Handle all other requests with Next.js
         handle(req, res, parsedUrl);
       } catch (error) {

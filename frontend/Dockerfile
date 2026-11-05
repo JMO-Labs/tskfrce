@@ -26,8 +26,10 @@ ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 HOSTNAME=0.0.0.0 PORT=3000
 COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
 COPY --from=build --chown=node:node /app/public ./public
+# Local push LAN guard: marks wire-relayed requests before Next adds its own x-forwarded-*
+COPY --from=build --chown=node:node /app/relay-preload.js /app/clientIp.js ./
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
-CMD ["node", "server.js"]
+CMD ["node", "-r", "./relay-preload.js", "server.js"]

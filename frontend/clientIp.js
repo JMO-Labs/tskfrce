@@ -1,7 +1,7 @@
 // Real client IP: socket peer, unless the edge proxy vouches for x-real-ip with
 // x-edge-token === EDGE_TOKEN and x-real-ip is a single valid IP.
 const { isIP } = require('net')
-const { timingSafeEqual } = require('crypto')
+const { randomBytes, timingSafeEqual } = require('crypto')
 
 // True only when x-edge-token matches EDGE_TOKEN (constant time).
 function viaEdge(headers) {
@@ -19,21 +19,27 @@ function viaEdge(headers) {
 const RELAY = new Set(['x-forwarded-for', 'forwarded', 'x-forwarded-host', 'x-forwarded-proto',
   'x-real-ip', 'x-edge-token', 'cf-connecting-ip', 'true-client-ip', 'x-client-ip', 'cf-ray'])
 
-// Private marker set by server.js from the raw wire headers. Next injects x-forwarded-* into
-// req.headers before API routes run, so req.headers can't tell us what the client sent.
+// Private marker set by relay-preload.js from the raw wire headers, before Next runs. Next
+// injects x-forwarded-* into req.headers itself, so req.headers can't tell what the client
+// sent. "Not relayed" is a per-process random nonce (shared via globalThis because the API
+// route bundle gets its own copy of this module), so a client can't forge it.
 const MARK = 'x-tsk-relayed'
+const KEY = Symbol.for('tsk4ce.relayNonce')
 
-// server.js: judge from req.rawHeaders (any case, even empty) and overwrite any client copy.
 function markRelayed(req) {
   const raw = req.rawHeaders || []
   let relayed = false
   for (let i = 0; i < raw.length; i += 2) if (RELAY.has(String(raw[i]).toLowerCase())) relayed = true
-  req.headers[MARK] = relayed ? '1' : '0'
+  globalThis[KEY] ??= randomBytes(16).toString('hex')
+  req.headers[MARK] = relayed ? '1' : globalThis[KEY]
 }
 
-// Fail closed: relayed unless server.js vouched '0' (e.g. `next start` without server.js).
+// Fail closed: relayed unless relay-preload.js vouched for this request (no preload = relayed).
 function proxied(headers) {
-  return (headers || {})[MARK] !== '0'
+  const nonce = globalThis[KEY]
+  const got = (headers || {})[MARK]
+  if (!nonce || typeof got !== 'string' || got.length !== nonce.length) return true
+  return !timingSafeEqual(Buffer.from(got), Buffer.from(nonce))
 }
 
 function clientIp(headers, remoteAddress) {
