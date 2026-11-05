@@ -137,3 +137,45 @@ def bell_item(client, headers, kind) -> dict:
     """The newest bell row of this kind."""
     items = client.get("/api/v1/notifications", headers=headers).json()["items"]
     return max((i for i in items if i["kind"] == kind), key=lambda i: i["id"])
+
+
+DEMO_SETTINGS = [
+    {"key": "username", "label": "Username", "type": "username"},
+    {"key": "api_key", "label": "API key", "type": "text", "secret": True},
+    {"key": "level", "label": "Level", "type": "number", "required": False},
+    {"key": "mode", "label": "Mode", "type": "select", "options": ["easy", "hard"]},
+]
+DEMO_FULL = {**DEMO, "settings": DEMO_SETTINGS}  # DEMO as the synced catalog lists it
+KIDCARDS = {
+    **DEMO,
+    "id": "kidcards",
+    "name": "Kid cards",
+    "permissions": ["chores.complete", "widgets.kid"],
+    "widgets": [{"id": "k", "surface": "kid", "title": "Cards"}],
+    "poll_seconds": 300,
+}
+GONE = {**DEMO, "id": "gone", "name": "Gone"}  # listed, but also revoked
+
+
+def install_body(kid, **over) -> dict:
+    """A valid POST /api/v1/integrations body for DEMO_FULL, linked to `kid`."""
+    return {
+        "integration_id": "demo",
+        "settings": {"username": "sam", "api_key": "k-123", "mode": "easy"},
+        "kid_ids": [kid.id],
+        "chore_ids": [],
+        "kid_widget_ids": [],
+        "accepted_permissions": ["chores.complete"],
+        **over,
+    }
+
+
+def db_install(id):
+    """The install row, read through the test session the API client uses."""
+    from app.api.deps import get_db
+    from app.main import fastapi_app
+    from app.models.integration import IntegrationInstall
+
+    db = next(fastapi_app.dependency_overrides[get_db]())
+    db.expire_all()
+    return db.get(IntegrationInstall, id)

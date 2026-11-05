@@ -98,7 +98,9 @@ class BoxClient:
             raise ProtocolError("schema") from e
 
     def install(self, settings: dict) -> Reply:
-        return self._parse(Reply, self._call("install", {"settings": settings}))
+        """The only call that carries the box-generated secret, so the service can verify."""
+        extra = {"settings": settings, "secret": self.ctx.secret}
+        return self._parse(Reply, self._call("install", extra))
 
     def events(self, events: list[dict]) -> Reply:
         return self._parse(Reply, self._call("events", {"events": events}))

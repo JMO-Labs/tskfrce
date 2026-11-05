@@ -1,7 +1,9 @@
 """Install persistence: the grant stored on the box, the sealed secret and a client for it."""
 
 import json
+import logging
 import secrets
+from datetime import datetime
 
 import httpx
 from sqlalchemy.orm import Session
@@ -24,6 +26,7 @@ from app.models.reward import Reward
 from app.models.user import User
 from app.services.chat_extras import first_name
 
+log = logging.getLogger(__name__)
 PURPOSE = "integrations"
 _transport: httpx.BaseTransport | None = None  # the single test seam for every BoxClient
 
@@ -56,6 +59,18 @@ def retire(db: Session, install: IntegrationInstall, status: str) -> None:
     install.secret = None
     db.query(Reward).filter_by(integration_install_id=install.id).update({"active": False})
     db.query(IntegrationEvent).filter_by(install_id=install.id).delete()
+
+
+def remove(db: Session, install: IntegrationInstall, now: datetime) -> None:
+    """Parent removal: tell the service (best effort, only with a secret), then retire.
+    The caller commits."""
+    if install.secret is not None:
+        try:
+            client_for(db, install).uninstall()
+        except Exception as e:  # never blocks removal
+            log.warning("Uninstall call to %s failed: %s", install.name, type(e).__name__)
+    retire(db, install, "removed")
+    install.removed_at = now
 
 
 def load_grant(db: Session, install: IntegrationInstall) -> Grant:

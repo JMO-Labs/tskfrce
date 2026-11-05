@@ -9,7 +9,17 @@ from app.models.chores import ChoreRun
 from app.models.integration import IntegrationChore, IntegrationInstall, IntegrationKid
 from tests.conftest import _make_user
 from tests.factories import make_chore
-from tests.integrations.int_helpers import DEMO, TEST_KEY, Signer, sign_env, streamed
+from tests.integrations.fake_service import FakeService
+from tests.integrations.int_helpers import (
+    DEMO,
+    DEMO_FULL,
+    GONE,
+    KIDCARDS,
+    TEST_KEY,
+    Signer,
+    sign_env,
+    streamed,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -145,3 +155,24 @@ class _Registry:
 @pytest.fixture
 def registry():
     return _Registry()
+
+
+@pytest.fixture
+def synced_catalog(monkeypatch, tmp_path, keypair):
+    """A verified catalog cache in a temp DATA_DIR: DEMO_FULL, KIDCARDS, and GONE (revoked)."""
+    from app.core.config import settings
+    from app.integrations.catalog import _write
+
+    monkeypatch.setattr(settings, "DATA_DIR", tmp_path)
+    _write(keypair.catalog([DEMO_FULL, KIDCARDS, GONE], revoked=["gone"]))
+
+
+@pytest.fixture
+def svc(monkeypatch):
+    """FakeService behind every BoxClient (store._transport). It learns the secret on install;
+    set .secret to talk to a fixture-made install."""
+    from app.integrations import store
+
+    s = FakeService(secret="unknown")
+    monkeypatch.setattr(store, "_transport", s.transport)
+    return s
