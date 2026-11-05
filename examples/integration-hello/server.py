@@ -83,7 +83,9 @@ class Hello:
                 raise Unauthorized("replayed request id")
             self.seen[rid] = now
             if path == "install":
-                self.secrets[iid] = secret
+                # recheck under the lock: a concurrent first install may have won meanwhile
+                if self.secrets.setdefault(iid, secret) != secret:
+                    raise Unauthorized("already installed")
                 self.polls.setdefault(iid, 0)
         return req, secret
 
@@ -143,6 +145,14 @@ def card(polls: int) -> list[dict]:
 ROUTES = {"install", "events", "poll", "widgets", "uninstall"}
 
 
+def body_size(header: str | None) -> int | None:
+    """The Content-Length as a size we accept (plain digits, at most MAX_BODY), else None."""
+    if header is None or not (header.isascii() and header.isdigit()):
+        return None
+    size = int(header)
+    return size if size <= MAX_BODY else None
+
+
 def make_server(
     port: int, host: str = "127.0.0.1", check_replay: bool = True, quiet: bool = False
 ) -> ThreadingHTTPServer:
@@ -153,9 +163,9 @@ def make_server(
             path = self.path.removeprefix("/v1/")
             if path not in ROUTES:
                 return self.send_error(404)
-            size = int(self.headers.get("Content-Length") or 0)
-            if size > MAX_BODY:
-                return self.send_error(413)
+            size = body_size(self.headers.get("Content-Length"))
+            if size is None:  # never read an unchecked length: a bad one hangs or floods us
+                return self.send_error(400, "bad Content-Length")
             body = self.rfile.read(size)
             try:
                 req, secret = app.verify(path, self.headers, body)
@@ -183,7 +193,7 @@ def make_server(
 
 
 if __name__ == "__main__":
-    p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    p = argparse.ArgumentParser(description="t@sk4ce hello example integration")  # -OO: no __doc__
     p.add_argument("--port", type=int, default=8787)
     p.add_argument("--host", default="127.0.0.1")
     a = p.parse_args()

@@ -11,7 +11,7 @@ What it does:
 - `events`: a press of "Mark done" completes that kid's chores.
 - `uninstall`: forgets the install.
 
-Secrets are kept in memory only. A real service stores them encrypted and serves HTTPS on port 443.
+Secrets are kept in memory only, in an unbounded dict, so this server is for local development only. A real service stores them encrypted, limits installs, and serves HTTPS on port 443.
 
 ## Run it
 
