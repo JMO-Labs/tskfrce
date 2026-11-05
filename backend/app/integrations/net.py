@@ -59,6 +59,7 @@ class GuardedResponse:
     status: int
     content_type: str
     body: bytes
+    headers: dict | None = None
 
 
 def _embedded_v4(ip: ipaddress.IPv6Address) -> ipaddress.IPv4Address | None:
@@ -192,7 +193,7 @@ def fetch(
                         raise FetchError("too large")
                     _left(deadline)
                 ctype = resp.headers.get("content-type", "")
-                return GuardedResponse(resp.status_code, ctype, bytes(data))
+                return GuardedResponse(resp.status_code, ctype, bytes(data), dict(resp.headers))
             finally:
                 resp.close()
     except httpx.TimeoutException as e:

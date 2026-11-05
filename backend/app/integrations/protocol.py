@@ -1,5 +1,7 @@
-"""Integration wire protocol: the closed action vocabulary (extra fields are rejected)."""
+"""Integration wire protocol: closed action vocabulary, v1 wire models and HMAC signing."""
 
+import hmac
+from hashlib import sha256
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -62,3 +64,50 @@ def parse_action(raw: dict) -> Action:
         return model.model_validate(raw)
     except ValidationError as e:
         raise ValueError("bad action") from e
+
+
+PROTOCOL_VERSION = "v1"
+_SIG_PREFIX = PROTOCOL_VERSION + "="
+
+
+def _mac(secret: str, prefix: str, body: bytes) -> str:
+    mac = hmac.new(secret.encode(), prefix.encode() + body, sha256).hexdigest()
+    return _SIG_PREFIX + mac
+
+
+def sign_request(secret: str, ts: int, request_id: str, body: bytes) -> str:
+    return _mac(secret, f"{ts}.{request_id}.", body)
+
+
+def sign_reply(secret: str, request_id: str, body: bytes) -> str:
+    return _mac(secret, f"{request_id}.", body)
+
+
+def verify(sig_header: str, expected: str) -> bool:
+    return hmac.compare_digest(str(sig_header).encode(), expected.encode())
+
+
+def grant_out(
+    permissions: list[str], kids: list[tuple[int, str]], chores: list[tuple[int, str]]
+) -> dict:
+    """What the box tells the service about a grant. Names only with their permission."""
+    names = "kid.name" in permissions
+    return {
+        "permissions": list(permissions),
+        "kids": [{"id": i, **({"first_name": n} if names else {})} for i, n in kids],
+        "chores": (
+            [{"id": i, "title": t} for i, t in chores] if "chores.complete" in permissions else []
+        ),
+    }
+
+
+class Reply(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    request_id: str
+    actions: list[dict] = Field(default=[], max_length=20)
+
+
+class WidgetsReply(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    request_id: str
+    widgets: list[dict]
