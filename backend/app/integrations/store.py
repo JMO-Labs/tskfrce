@@ -61,6 +61,19 @@ def retire(db: Session, install: IntegrationInstall, status: str) -> None:
     db.query(IntegrationEvent).filter_by(install_id=install.id).delete()
 
 
+def reward_visible_to(db: Session, reward: Reward, kid_id: int) -> bool:
+    """Core rewards are for everyone. An integration's reward needs a live install the kid is
+    linked to."""
+    if reward.integration_install_id is None:
+        return True
+    inst = db.get(IntegrationInstall, reward.integration_install_id)
+    return (
+        inst is not None
+        and inst.status in ("active", "paused")
+        and db.get(IntegrationKid, (inst.id, kid_id)) is not None
+    )
+
+
 def remove(db: Session, install: IntegrationInstall, now: datetime) -> None:
     """Parent removal: tell the service (best effort, only with a secret), then retire.
     The caller commits."""

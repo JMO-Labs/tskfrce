@@ -3,7 +3,7 @@
 import logging
 import re
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -15,7 +15,8 @@ from app.integrations.audit import ActionResult
 from app.integrations.permissions import Denied, Grant, Origin, check_action
 from app.integrations.protocol import KEY_PATTERN, Action, parse_action
 from app.models.chores import Chore, ChoreAssignment, ChoreRun
-from app.models.integration import IntegrationInstall
+from app.models.integration import IntegrationAction, IntegrationInstall
+from app.models.reward import Reward
 from app.models.user import User
 from app.services import chore_actions, inbox
 from app.services import chores as svc
@@ -88,7 +89,73 @@ def _chore_complete(
     return "applied", None, refs
 
 
-HANDLERS: dict[str, Handler] = {"chore.complete": _chore_complete}
+MAX_REWARDS = 50
+MAX_MESSAGES_PER_DAY = 20
+_CTRL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")  # keeps \n and \t
+
+
+def _reward_upsert(db, install, grant, a, needs_approval) -> Outcome:
+    r = db.query(Reward).filter_by(integration_install_id=install.id, integration_ref=a.ref).first()
+    if r is None:
+        n = db.query(Reward).filter_by(integration_install_id=install.id, active=True).count()
+        if n >= MAX_REWARDS:
+            return "rejected", "too many rewards", {}
+        db.add(
+            Reward(
+                name=a.name,
+                price=a.price,
+                icon=a.icon,
+                needs_approval=True,
+                visible=True,
+                integration_install_id=install.id,
+                integration_ref=a.ref,
+            )
+        )
+    elif not r.active:
+        return "rejected", "a parent removed this reward", {}
+    else:
+        r.name, r.price, r.icon = a.name, a.price, a.icon
+    return "applied", None, {}
+
+
+def _reward_remove(db, install, grant, a, needs_approval) -> Outcome:
+    r = (
+        db.query(Reward)
+        .filter_by(integration_install_id=install.id, integration_ref=a.ref, active=True)
+        .first()
+    )
+    if r is None:
+        return "rejected", "no such reward", {}
+    r.active, r.integration_ref = False, None  # frees the ref for a fresh reward
+    return "applied", None, {}
+
+
+def _message_parents(db, install, grant, a, needs_approval) -> Outcome:
+    since = datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=24)
+    sent = (
+        db.query(IntegrationAction)
+        .filter(
+            IntegrationAction.install_id == install.id,
+            IntegrationAction.kind == "message.parents",
+            IntegrationAction.result == "applied",
+            IntegrationAction.created_at >= since,
+        )
+        .count()
+    )
+    if sent >= MAX_MESSAGES_PER_DAY:
+        return "rejected", "too many messages today", {}
+    title = _CTRL.sub("", f"{install.name}: {a.title}".replace("\n", " "))[:120]
+    body = _CTRL.sub("", a.body) if a.body else None
+    inbox.notify_parents(db, "integration_msg", title, body)
+    return "applied", None, {}
+
+
+HANDLERS: dict[str, Handler] = {
+    "chore.complete": _chore_complete,
+    "reward.upsert": _reward_upsert,
+    "reward.remove": _reward_remove,
+    "message.parents": _message_parents,
+}
 
 
 def _key_of(raw: dict) -> str | None:

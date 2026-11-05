@@ -84,6 +84,13 @@ def other_kid(db):
     return _make_user(db, "sally", UserRole.KID)
 
 
+@pytest.fixture
+def other_kid_headers(db, other_kid):
+    from tests.conftest import _headers
+
+    return _headers(db, other_kid)
+
+
 @pytest.fixture(autouse=True)
 def resolve_to(monkeypatch):
     """Stub net's resolver: resolve_to(*ips) sets the answers; IP literals resolve to

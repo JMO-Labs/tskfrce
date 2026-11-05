@@ -4,9 +4,10 @@ from datetime import datetime, timedelta
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from app.api.deps import get_db, require_parent
+from app.models.integration import IntegrationInstall
 from app.models.lock import Device
 from app.models.reward import Redemption, Reward
 from app.models.user import User
@@ -20,7 +21,13 @@ router = APIRouter(
 
 
 def _out(r: Reward) -> dict:
+    inst = (
+        object_session(r).get(IntegrationInstall, r.integration_install_id)
+        if r.integration_install_id
+        else None
+    )
     return {
+        "integration": {"id": inst.id, "name": inst.name} if inst else None,
         "id": r.id,
         "name": r.name,
         "price": r.price,

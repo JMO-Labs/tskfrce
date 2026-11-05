@@ -18,6 +18,7 @@ def test_create_list_patch(client, parent_headers):
         "icon": "local_pizza",
         "visible": True,
         "needs_approval": True,
+        "integration": None,
     }
     lst = client.get("/api/v1/rewards", headers=parent_headers).json()
     assert [x["id"] for x in lst] == [rid]
