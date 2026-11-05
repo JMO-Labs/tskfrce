@@ -38,7 +38,7 @@ Every kid starts with the **Kid (9–12)** look. You can switch a kid to **Littl
 
 This step puts t@sk4ce on your kids' own phones. Each kid on the list has a **Show code** button. Tap it and a square code appears. On the kid's phone, open the camera and point it at the code. The phone opens a welcome page. The code **works once, for 24 hours**. If it runs out, or you want a fresh one, tap **New code**.
 
-![Kids' phones: a code for each kid](img/setup-phones.jpg)
+![Kids' phones: a code for each kid (example; the code shown can't be scanned)](img/setup-phones.jpg)
 
 No kids yet? The step says "Add a kid first, or skip this step." You can also skip it and do it later from the kid's page. See [For kids](05-for-kids.md).
 

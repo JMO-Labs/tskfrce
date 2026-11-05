@@ -205,7 +205,7 @@ At home, alerts come straight from your box, as before.
 
 Away from home they go through a free public alert service, ntfy.sh. It only sees short, generic lines like "You have a new chore" and when they were sent. It never sees names, chores, messages or rewards.
 
-Want no outside service? Your box's installer can point it at your own ntfy server (`NTFY_UPSTREAM_URL`, and optionally `NTFY_UPSTREAM_TOKEN`) or turn it off (set it to an empty value). Your server must let anyone read, because phones subscribe without a login. The token is for writing.
+Want no outside service? Your box's installer can point it at your own ntfy server (`NTFY_UPSTREAM_URL`, and optionally `NTFY_UPSTREAM_TOKEN`) or turn it off (set it to an empty value). Your server must let anyone read, because phones subscribe without a login. The optional access key is only for sending alerts.
 
 At home a kid may get each alert twice: once from the box and once from the alert service. That is expected.
 
