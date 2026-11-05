@@ -2,7 +2,7 @@
 # Regenerates the PWA icons from the brand mark. Needs ImageMagick. Run from frontend/.
 set -e
 SRC=public/logo_short_med_light.png
-BG='#E6EFF1' # the light theme-color in pages/_document.tsx
+BG='#1D2B53' # fridge ink (--f-ink), so the white mark reads
 OUT=public/icons
 mkdir -p "$OUT"
 # icon SIZE MARK_PERCENT FILE: the mark centred on a flat square, MARK_PERCENT of the side
