@@ -102,7 +102,7 @@ def test_missing_widgets_field_is_protocol_error(resolve_to):
     svc = FakeService(secret="s")
     c = client(svc)
     orig = c._call
-    c._call = lambda n, e: {k: v for k, v in orig(n, e).items() if k != "widgets"}
+    c._call = lambda n, e, g=None: {k: v for k, v in orig(n, e, g).items() if k != "widgets"}
     with pytest.raises(ProtocolError, match="schema"):
         c.widgets("home", None)
     assert json.dumps(svc.last_body)  # request still went out

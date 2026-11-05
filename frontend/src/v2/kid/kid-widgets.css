@@ -1,7 +1,7 @@
 /* Integration cards on the kid Me tab, in each age mode's card style (see kid-rewards.css .me-card).
-   Always a dashed, labelled frame so they can't pass as t@sk4ce's own cards. Buttons are "Ask" pills.
+   Always a dashed, labeled frame so they can't pass as t@sk4ce's own cards. Buttons are "Ask" pills.
    Tokens: kid-app.css --k-*. No new colors. */
-.k-app .iw-list { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.k-app .iw-list { scroll-margin-bottom: calc(var(--k-navh, 72px) + 24px); padding-bottom: 8px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 .k-app .iw-frame { background: var(--k-soft); color: var(--k-ink); border: 2px dashed var(--k-sub); border-radius: 22px; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .k-app .iw-head { display: flex; align-items: center; gap: 10px; padding: 0 4px; }
 .k-app .iw-icon { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: var(--k-card); color: var(--k-ink); border: 2px solid var(--k-line); }
@@ -40,7 +40,7 @@
 
 /* Little: chunky, the 09 giant-tile look */
 .k-app[data-mode='little'] .iw-frame { border: 4px dashed var(--k-ink); border-radius: 32px; padding: 16px; gap: 14px; }
-.k-app[data-mode='little'] .iw-icon { width: 44px; height: 44px; border-radius: 16px; border: 3px solid var(--k-ink); background: var(--k-sun); color: var(--k-navy); }
+.k-app[data-mode='little'] .iw-icon { width: 44px; height: 44px; border-radius: 16px; border: 3px solid var(--k-line); background: var(--k-card); color: var(--k-ink); }
 .k-app[data-mode='little'] .iw-icon .ms { font-size: 28px; }
 .k-app[data-mode='little'] .iw-name { font-size: 22px; line-height: 1.15; }
 .k-app[data-mode='little'] .iw-card { border: 4px solid var(--k-ink); border-radius: 28px; box-shadow: 5px 5px 0 var(--k-ink); padding: 20px; gap: 16px; }
@@ -65,7 +65,7 @@
 .k-app[data-mode='teen'] .iw-stat-v { font-size: 26px; }
 .k-app[data-mode='teen'] .iw-stat-l, .k-app[data-mode='teen'] .iw-prog { font-size: 12.5px; }
 .k-app[data-mode='teen'] .iw-track { height: 6px; }
-.k-app[data-mode='teen'] .iw-btn { min-height: 40px; border-radius: 10px; border-width: 1px; border-color: var(--k-sun); font-size: 14px; padding: 6px 12px; }
+.k-app[data-mode='teen'] .iw-btn { min-height: 40px; border-radius: 10px; border-width: 1px; border-color: var(--k-line); font-size: 14px; padding: 6px 12px; }
 .k-app[data-mode='teen'] .iw-ask-tag { font-size: 11px; padding: 1px 8px; }
 
 @container k-main (min-width: 720px) { .me-view .iw-list { grid-column: 1 / -1; } }

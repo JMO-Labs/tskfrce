@@ -65,7 +65,7 @@ export function IntegrationDetail({ id, onClose }: { id: number; onClose: () => 
     patch.mutate({ trusted }, { onError: (e) => (setTrust(null), toastFail(errorText(e))) })
   }
 
-  const canKidCards = live && d.kids.length > 0 && d.permissions.some((p) => p.id === 'widgets.kid')
+  const canKidCards = (live || d.status === 'paused') && d.kids.length > 0 && d.permissions.some((p) => p.id === 'widgets.kid')
   const cardsOn = (k: { id: number; kid_widgets: boolean }) => cards[k.id] ?? k.kid_widgets
   const setCard = (k: { id: number; kid_widgets: boolean }, show: boolean) => {
     setCards((c) => ({ ...c, [k.id]: show }))
@@ -139,6 +139,7 @@ export function IntegrationDetail({ id, onClose }: { id: number; onClose: () => 
               className="pn-sw"
               label={`Show cards on ${k.name}'s screens`}
               checked={cardsOn(k)}
+              disabled={!live && !cardsOn(k)} // paused: cards can be turned off, not on
               onChange={(e) => setCard(k, e.currentTarget.checked)}
             />
           ))}
