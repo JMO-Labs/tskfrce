@@ -6,7 +6,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-_Key = Annotated[str, Field(pattern=r"^[A-Za-z0-9._:-]{1,80}$")]
+KEY_PATTERN = r"^[A-Za-z0-9._:-]{1,80}$"
+_Key = Annotated[str, Field(pattern=KEY_PATTERN)]
 
 
 class _Base(BaseModel):

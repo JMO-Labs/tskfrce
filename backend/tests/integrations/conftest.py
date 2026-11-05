@@ -1,7 +1,6 @@
 import base64
 import json
 import secrets
-from datetime import date
 
 import httpx
 import pytest
@@ -58,11 +57,13 @@ def run_today(db, install):
     """Today's todo run of the install's linked chore for `kid`."""
     chore_id = install.chores[0].chore_id
     from app.models.chores import ChoreAssignment
+    from app.services.chores import today
 
     a = db.query(ChoreAssignment).filter_by(chore_id=chore_id).one()
-    run = ChoreRun(assignment=a, day=date.today(), kid_id=install.kids[0].kid_id, status="todo")
+    run = ChoreRun(assignment=a, day=today(db), kid_id=install.kids[0].kid_id, status="todo")
     db.add(run)
     db.commit()
+    run.chore_id = chore_id  # unmapped convenience attribute for tests
     return run
 
 
