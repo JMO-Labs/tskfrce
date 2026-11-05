@@ -3,6 +3,7 @@ import type { PermissionOut } from './types'
 
 const CONSEQUENCE: Record<string, string> = {
   'requests.decide': 'It can approve or deny on your behalf.',
+  'widgets.kid': 'It can show its own cards to your kids.',
 }
 
 /** Phone-style permission list: the fixed baseline, then one row per extra thing the app can do. */
@@ -18,7 +19,7 @@ export function PermissionList({ perms }: { perms: PermissionOut[] }) {
           <Icon name={p.high_risk ? 'warning' : 'check_circle'} size={20} />
           <span className="ig-ptext">
             {p.text}
-            {p.high_risk && CONSEQUENCE[p.id] && <small>{CONSEQUENCE[p.id]}</small>}
+            {p.high_risk && <small>{CONSEQUENCE[p.id] ?? 'Think twice before allowing this.'}</small>}
           </span>
           {p.high_risk && <span className="p-chip ig-risk">High risk</span>}
         </li>

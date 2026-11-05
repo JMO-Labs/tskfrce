@@ -19,6 +19,7 @@ const item: CatalogItem = {
   permissions: [
     { id: 'chores.complete', text: 'Check off chores', high_risk: false },
     { id: 'requests.decide', text: 'Approve or deny reward requests and chore check-offs', high_risk: true },
+    { id: 'widgets.kid', text: "Show cards on your kids' screens", high_risk: true },
   ],
   widgets: [], installed: false,
 }
@@ -28,7 +29,7 @@ const wrap = (ui: React.ReactNode) =>
 
 beforeEach(() => {
   apiMock.mockReset().mockImplementation(async (p: string) => {
-    if (p === '/kids') return [{ id: 3, full_name: 'Sam', username: 'sam', avatar: null, has_pin: false, age_group: 'kid' }]
+    if (p === '/kids') return [{ id: 3, full_name: 'Sam', username: 'sam', avatar: null, has_pin: false, age_group: 'kid' }, { id: 4, full_name: 'Max', username: 'max', avatar: null, has_pin: false, age_group: 'kid' }]
     if (p === '/chores/') return [{ id: 7, title: 'Dishes' }]
     return {}
   })
@@ -40,6 +41,33 @@ describe('integrations install', () => {
     const row = screen.getByText(/Approve or deny/).closest('[data-risk]')
     expect(row).toHaveAttribute('data-risk', 'high')
     expect(within(row as HTMLElement).getByText('High risk')).toBeInTheDocument()
+  })
+
+  test('every high-risk permission shows a consequence line', () => {
+    wrap(<PermissionList perms={item.permissions} />)
+    for (const p of item.permissions.filter((x) => x.high_risk)) {
+      const row = screen.getByText(p.text).closest('[data-risk]') as HTMLElement
+      expect(row.querySelector('small')?.textContent).toBeTruthy()
+    }
+  })
+
+  test('unticked kids are not sent as widget kids', async () => {
+    const u = userEvent.setup()
+    wrap(<InstallFlow item={item} onDone={() => {}} />)
+    await u.type(screen.getByLabelText(/API key/), 'abc')
+    await u.click(screen.getByRole('button', { name: 'Next' }))
+    await u.click(await screen.findByLabelText('Sam'))
+    await u.click(screen.getByLabelText('Max'))
+    await u.click(screen.getByLabelText("Show cards on Max's screens"))
+    await u.click(screen.getByLabelText('Max'))
+    await u.click(screen.getByLabelText('Dishes'))
+    await u.click(screen.getByRole('button', { name: 'Next' }))
+    await u.click(screen.getByRole('button', { name: /connect/i }))
+    await waitFor(() =>
+      expect(apiMock).toHaveBeenCalledWith('/integrations', expect.objectContaining({
+        body: expect.objectContaining({ kid_ids: [3], kid_widget_ids: [] }),
+      })),
+    )
   })
 
   test('secret settings are password inputs', () => {
@@ -56,12 +84,12 @@ describe('integrations install', () => {
     await u.click(await screen.findByLabelText('Sam'))
     await u.click(await screen.findByLabelText('Dishes'))
     await u.click(screen.getByRole('button', { name: 'Next' }))
-    expect(screen.getByText('Talks to svc.example.com')).toBeInTheDocument()
+    expect(screen.getByText('Data goes to: svc.example.com')).toBeInTheDocument()
     await u.click(screen.getByRole('button', { name: /connect/i }))
     await waitFor(() =>
       expect(apiMock).toHaveBeenCalledWith('/integrations', expect.objectContaining({
         method: 'POST',
-        body: expect.objectContaining({ kid_ids: [3], chore_ids: [7], accepted_permissions: ['chores.complete', 'requests.decide'] }),
+        body: expect.objectContaining({ kid_ids: [3], chore_ids: [7], accepted_permissions: ['chores.complete', 'requests.decide', 'widgets.kid'] }),
       })),
     )
   })

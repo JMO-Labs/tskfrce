@@ -5,6 +5,7 @@ import { useLibrary } from '@/v2/hooks/useChores'
 import { useInstallIntegration } from '@/v2/hooks/useIntegrations'
 import { useKids } from '@/v2/hooks/useKids'
 import { Icon } from '@/v2/parent/Icon'
+import { Skeleton } from '@/v2/parent/states'
 import { toastFail } from '@/v2/notify'
 import { PermissionList } from './PermissionList'
 import type { CatalogItem, SettingFieldOut } from './types'
@@ -31,7 +32,8 @@ export function InstallFlow({ item, onDone }: { item: CatalogItem; onDone: () =>
   const [kidIds, setKidIds] = useState<number[]>([])
   const [choreIds, setChoreIds] = useState<number[]>([])
   const [widgetIds, setWidgetIds] = useState<number[]>([])
-  const kids = useKids().data ?? []
+  const kidsQ = useKids()
+  const kids = kidsQ.data ?? []
   const chores = useLibrary().data ?? []
   const install = useInstallIntegration()
   const head = useRef<HTMLHeadingElement>(null)
@@ -54,7 +56,7 @@ export function InstallFlow({ item, onDone }: { item: CatalogItem; onDone: () =>
         settings,
         kid_ids: kidIds,
         chore_ids: wantsChores ? choreIds : [],
-        kid_widget_ids: wantsWidgets ? widgetIds : [],
+        kid_widget_ids: wantsWidgets ? widgetIds.filter((id) => kidIds.includes(id)) : [],
         accepted_permissions: ids,
       },
       { onSuccess: onDone, onError: (e) => toastFail(errorText(e)) },
@@ -82,6 +84,8 @@ export function InstallFlow({ item, onDone }: { item: CatalogItem; onDone: () =>
       {step === 2 && (
         <form className="pn-form" onSubmit={(e) => { e.preventDefault(); if (kidIds.length) setStep(3) }}>
           <h3 className="ig-h" tabIndex={-1} ref={head}>Who is this for?</h3>
+          {kidsQ.isPending && <Skeleton rows={2} />}
+          {kidsQ.isSuccess && !kids.length && <p className="pn-help">Add a kid first.</p>}
           <Checkbox.Group value={kidIds.map(String)} onChange={(v) => setKidIds(v.map(Number))}>
             <div className="ig-list">{kids.map((k) => <Checkbox key={k.id} value={String(k.id)} label={name(k)} />)}</div>
           </Checkbox.Group>
@@ -103,7 +107,7 @@ export function InstallFlow({ item, onDone }: { item: CatalogItem; onDone: () =>
         <div className="pn-form">
           <h3 className="ig-h" tabIndex={-1} ref={head}>{item.name} will be able to:</h3>
           <PermissionList perms={item.permissions} />
-          <p className="ig-meta"><Icon name="public" size={16} />Talks to {item.domain}</p>
+          <p className="ig-meta"><Icon name="public" size={16} />Data goes to: {item.domain}</p>
           <p className="ig-meta"><Icon name="code" size={16} />By {item.developer}</p>
           <div className="pn-row">
             <button type="button" className="p-btn" onClick={back} disabled={install.isPending}>Back</button>
