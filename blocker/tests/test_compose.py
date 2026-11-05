@@ -79,3 +79,8 @@ def test_prod_backend_passes_claim_code():
     env = yaml.safe_load(PROD.read_text())["services"]["backend"]["environment"]
     assert "CLAIM_CODE" in env and "NTFY_UPSTREAM_TOKEN" in env
     assert env["NTFY_UPSTREAM_URL"] == "${NTFY_UPSTREAM_URL-https://ntfy.sh}"
+
+
+def test_no_service_has_ntfy_upstream():
+    for name, svc in yaml.safe_load(PROD.read_text())["services"].items():
+        assert "NTFY_UPSTREAM" not in (svc.get("environment") or {}), name

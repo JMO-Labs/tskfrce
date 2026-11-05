@@ -72,4 +72,5 @@ out=$(EDGE_TOKEN='' run next_backoff 30 2>&1)
 r=0; echo "$out" | grep -q "EDGE_TOKEN not set" || r=1; ok "warns without EDGE_TOKEN" $r
 out=$(EDGE_TOKEN=x run next_backoff 30 2>&1)
 r=0; echo "$out" | grep -q "EDGE_TOKEN" && r=1; ok "no warning with EDGE_TOKEN" $r
+r=0; ! grep -q 2443 "$HERE/Caddyfile" || r=1; ok "Caddyfile has no public ntfy port" $r
 exit $fail

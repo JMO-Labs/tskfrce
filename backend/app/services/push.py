@@ -20,9 +20,11 @@ URGENT = {"due_soon", "missed_deadline", "lock_warning"}
 def public_url() -> str | None:
     if settings.NTFY_PUBLIC_URL:
         return settings.NTFY_PUBLIC_URL
-    host = urlparse(settings.BOX_URL or "").hostname
+    u = urlparse(settings.BOX_URL or "")
+    if u.scheme != "http" or not u.hostname:
+        return None  # never build the LAN ntfy URL from an https hostname
     port = settings.NTFY_PORT.rsplit(":", 1)[-1] or "2586"
-    return f"http://{host}:{port}" if host else None
+    return f"http://{u.hostname}:{port}"
 
 
 def enabled() -> bool:

@@ -136,6 +136,12 @@ def test_public_url_from_box_url(monkeypatch):
     assert push.public_url() == "http://192.168.1.20:2586"
 
 
+def test_public_url_never_http_on_hostname(monkeypatch):
+    monkeypatch.setattr(settings, "NTFY_PUBLIC_URL", None)
+    monkeypatch.setattr(settings, "BOX_URL", "https://abc123.taskfrce.jmolabs.dev")
+    assert push.public_url() is None
+
+
 def test_public_url_follows_ntfy_port(monkeypatch):
     monkeypatch.setattr(settings, "NTFY_PUBLIC_URL", None)
     monkeypatch.setattr(settings, "BOX_URL", "http://192.168.1.20:3000")
