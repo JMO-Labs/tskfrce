@@ -22,6 +22,8 @@ import { StepChores } from '@/v2/setup/StepChores'
 import { starter } from '@/v2/setup/starterChores'
 import { DEFAULT_DRAFTS, StepHours } from '@/v2/setup/StepHours'
 import { StepRemote } from '@/v2/setup/StepRemote'
+import { ClaimGate } from '@/v2/setup/ClaimGate'
+import { clearClaim, settleClaim } from '@/v2/setup/claim'
 import { finishSummary, StepFinish } from '@/v2/setup/StepFinish'
 
 export default function SetupPage() {
@@ -30,6 +32,7 @@ export default function SetupPage() {
   const qc = useQueryClient()
   const { loginWithToken, isInitialized, isAuthenticated } = useUnifiedAuth()
   const [step, setStep] = useState(1)
+  const [claim, setClaim] = useState<string | null>(null)
   const [tried, setTried] = useState(false)
   const [conflict, setConflict] = useState(false)
   const [accountDone, setAccountDone] = useState(false)
@@ -52,6 +55,7 @@ export default function SetupPage() {
 
   // Already set up (and not by us a moment ago): a parent who never reached Finish resumes; anyone else logs in.
   const status = useQuery({ queryKey: ['setup'], queryFn: () => api<SetupStatus>('/setup'), staleTime: Infinity })
+  useEffect(() => settleClaim(status.data), [status.data])
   const returning = status.data?.needed === false && !justCreated
   const resume = useQuery({
     queryKey: STEP_KEY,
@@ -86,6 +90,7 @@ export default function SetupPage() {
       const r = await api<{ access_token: string; refresh_token: string; expires_in: number }>('/setup', {
         method: 'POST',
         body: {
+          ...(claim ? { claim_code: claim } : {}),
           family_name: family.name.trim(),
           timezone: family.tz,
           parent: { username: parent.username, password: parent.password, full_name: parent.fullName.trim() },
@@ -95,6 +100,7 @@ export default function SetupPage() {
       setJustCreated(true)
       setAccountDone(true)
       markSetupDone(qc)
+      clearClaim()
       try {
         await loginWithToken(r.access_token, r.refresh_token, r.expires_in)
         return true
@@ -109,6 +115,10 @@ export default function SetupPage() {
     },
     onError: (e) => {
       if (e instanceof ApiError && e.status === 409) setConflict(true)
+      if (e instanceof ApiError && e.status === 403) {
+        setClaim(null)
+        clearClaim()
+      }
     },
   })
 
@@ -232,6 +242,8 @@ export default function SetupPage() {
     retry: false,
   })
   const devices = (qc.getQueryData<Device[]>(['setup-devices']) ?? []).filter((d) => d.status !== 'unassigned').length
+
+  if (status.data?.claim && !claim && !accountDone) return <ClaimGate onClaimed={setClaim} />
 
   if (returning && !accountDone)
     return (
