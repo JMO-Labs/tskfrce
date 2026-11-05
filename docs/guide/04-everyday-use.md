@@ -186,7 +186,7 @@ These pings leave your home: they go to the service you chose.
 
 ### Alerts on a kid's phone
 
-**Settings → Notifications** also shows a code for each kid. Install the free **ntfy** app on the kid's phone and scan the code with the phone's camera. Alerts then arrive even when t@sk4ce is closed: a chore due soon, approved or sent back, points taken, new chores, messages, a badge or level-up, and a warning in the 10 minutes before the internet goes off. **New code** makes a fresh code; the old one stops working.
+**Settings → Notifications** also shows a code for each kid. Install the free **ntfy** app on the kid's phone and scan the code with the phone's camera. Alerts then arrive even when t@sk4ce is closed: a chore due soon, approved or sent back, points taken, new chores, messages, a badge or level-up, and a warning in the 10 minutes before the internet goes off. **New code** makes a fresh code; the old one stops working. A kid's page also has a **Phones and tablets** panel with **Add a phone** and **Remove**.
 
 iPhones get these alerts late unless you turn on **Instant alerts on iPhones**. That asks the public ntfy.sh service to wake the phone. Only a wake-up goes out; the alert text stays in your home.
 
@@ -198,6 +198,16 @@ iPhones get these alerts late unless you turn on **Instant alerts on iPhones**. 
     NTFY_AUTH_DEFAULT_ACCESS: write-only
 
 Then `docker compose -f docker-compose.prod.yml up -d ntfy`, and on the box run `docker compose -f docker-compose.prod.yml exec ntfy ntfy user add pat` and `... exec ntfy ntfy access pat <topic> read-only` for each kid. In the ntfy app, add the box's server with that user's name and password. `write-only` keeps the box able to send without a password; reading needs a login. Details: [ntfy access control](https://docs.ntfy.sh/config/#access-control).
+
+### Kid alerts away from home
+
+At home, alerts come straight from your box, as before.
+
+Away from home they go through a free public alert service, ntfy.sh. It only sees short, generic lines like "You have a new chore" and when they were sent. It never sees names, chores, messages or rewards.
+
+Want no outside service? Your box's installer can point it at your own ntfy server (`NTFY_UPSTREAM_URL`, and optionally `NTFY_UPSTREAM_TOKEN`) or turn it off (set it to an empty value). Your server must let anyone read, because phones subscribe without a login. The token is for writing.
+
+At home a kid may get each alert twice: once from the box and once from the alert service. That is expected.
 
 ## Add another parent
 

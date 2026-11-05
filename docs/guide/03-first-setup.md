@@ -2,11 +2,11 @@
 
 "Open t@sk4ce" means: in a web browser on your phone or computer, type the address from the install step (like `http://192.168.1.50:3000`) into the address bar. Not working? See [Troubleshooting](06-troubleshooting.md).
 
-The first time you open t@sk4ce, a short wizard asks a few questions. It has seven steps: **You**, **Family**, **Kids**, **Chores**, **Devices**, **Hours** and **Remote access**. The last one is optional. It takes about 7 minutes, and you can change every answer later.
+The first time you open t@sk4ce, a short wizard asks a few questions. It has eight steps: **You**, **Family**, **Kids**, **Kids' phones**, **Chores**, **Devices**, **Hours** and **Remote access**. The last one is optional. It takes about 7 minutes, and you can change every answer later.
 
 If you stop partway, just open t@sk4ce again and log in. It picks up where you left off.
 
-![Step 1 of the setup wizard, with all seven steps listed on the left](img/setup-account.jpg)
+![Step 1 of the setup wizard, with all the steps listed on the left](img/setup-account.jpg)
 
 ## Step 1. You
 
@@ -34,13 +34,23 @@ You should see: each kid in the list, marked "Added".
 
 Every kid starts with the **Kid (9–12)** look. You can switch a kid to **Little (5–8)** or **Teen (13+)** later, in **Kids & chores**. See [For kids](05-for-kids.md).
 
-## Step 4. Chores
+## Step 4. Kids' phones
+
+This step puts t@sk4ce on your kids' own phones. Each kid on the list has a **Show code** button. Tap it and a square code appears. On the kid's phone, open the camera and point it at the code. The phone opens a welcome page. The code **works once, for 24 hours**. If it runs out, or you want a fresh one, tap **New code**.
+
+![Kids' phones: a code for each kid](img/setup-phones.jpg)
+
+No kids yet? The step says "Add a kid first, or skip this step." You can also skip it and do it later from the kid's page. See [For kids](05-for-kids.md).
+
+You should see: the phone shows "You're in" and the kid's name.
+
+## Step 5. Chores
 
 Tap the starter chores you like, such as **Make bed**, **Homework** or **Feed the pet**. Each one becomes a daily chore for every kid you added, with points. They are only a start. You can change them later.
 
 You should see: a tick on each chore you picked, and "4 picked" (or however many) next to **Next**.
 
-## Step 5. Devices
+## Step 6. Devices
 
 The page asks "Whose devices are these?" Devices show up here once the home box sees them on your Wi-Fi. This can take a minute or two. Ask each kid to unlock their phone, tablet or console and open a web page.
 
@@ -52,7 +62,7 @@ You should see: the kid's name highlighted on each device. Devices you skip wait
 
 Not seeing a device? iPhones and iPads use a "Private Wi-Fi Address". Turn it off for your home Wi-Fi in the device's Wi-Fi settings. If nothing shows up after a few minutes, skip this step and see [Troubleshooting](06-troubleshooting.md).
 
-## Step 6. Hours
+## Step 7. Hours
 
 The page asks "When can devices be online?" It starts you with two schedules for everyone:
 
@@ -61,17 +71,24 @@ The page asks "When can devices be online?" It starts you with two schedules for
 
 Change the bedtimes if you like. Tap the pencil on a row to change it, or **Add hours** for more.
 
-![Step 6: the starting schedule on a timeline](img/setup-hours.jpg)
+![Step 7: the starting schedule on a timeline](img/setup-hours.jpg)
 
 **Lock until today's chores are done** is on. That means devices stay paused, even inside these hours, until the day's chores are approved. Turn it off if you only want the schedule.
 
 You should see: the hours as bars on the timeline.
 
-## Step 7. Remote access (optional)
+## Step 8. Remote access (optional)
 
 This step explains how to check in from outside the house with Tailscale, a free app. You can do it later: the full steps are in [Remote access](../remote-access.md). Tap **Finish**.
 
 You should see: "You're all set", with how many kids, chores, devices and schedules you made. Tap **Go to Today**.
+
+### Add t@sk4ce to your home screen
+
+You can put t@sk4ce on your own phone like an app. This works once your box has its secure address (the `https` one from [Install](02-install.md)).
+
+- **iPhone:** open it in Safari, tap the Share button at the bottom of the screen, then tap **Add to Home Screen**, then **Add**.
+- **Android:** open it in Chrome, tap the menu (three dots), then tap **Add to Home screen** or **Install app**.
 
 ![Today for one kid: seven chores, none done yet](img/today-kid.jpg)
 
