@@ -12,7 +12,7 @@ export interface RewardBody {
 
 export const useRewards = () => useQuery({ queryKey: ['rewards'], queryFn: () => api<Reward[]>('/rewards') })
 
-function useInvalidating<V>(fn: (v: V) => Promise<unknown>, keys: string[]) {
+export function useInvalidating<V>(fn: (v: V) => Promise<unknown>, keys: string[]) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: fn,

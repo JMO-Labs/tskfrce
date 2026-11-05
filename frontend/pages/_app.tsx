@@ -42,6 +42,7 @@ import '../src/v2/flair/rings.css';
 import '../src/v2/flair/names.css';
 import '../src/v2/flair/titles.css';
 import '../src/v2/manage/manage.css';
+import '../src/v2/integrations/integrations.css';
 import '../src/v2/components/progression.css';
 import '../src/v2/kid/award.css';
 import '../src/v2/kid/kid-intro.css';
