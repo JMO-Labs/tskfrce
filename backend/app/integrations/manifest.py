@@ -1,6 +1,7 @@
 """Integration manifest model (loaded only from a verified envelope)."""
 
 import ipaddress
+import socket
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
 
@@ -8,6 +9,17 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from app.integrations.permissions import PERMS
 from app.integrations.trust import verify_envelope
+
+
+def _is_ip(host: str) -> bool:
+    """True for any form libc may resolve as an IP (dotted, short, decimal, hex, IPv6)."""
+    for f in (ipaddress.ip_address, socket.inet_aton):
+        try:
+            f(host)
+            return True
+        except (ValueError, OSError):
+            pass
+    return False
 
 
 class SettingField(BaseModel):
@@ -65,11 +77,10 @@ class Manifest(BaseModel):
         host = u.hostname
         if not host:
             raise ValueError("base_url needs a host")
-        try:
-            ipaddress.ip_address(host)
-        except ValueError:
-            return v
-        raise ValueError("base_url host must not be an IP literal")
+        last = host.rsplit(".", 1)[-1].lower()
+        if last.isdigit() or last.startswith("0x") or _is_ip(host):
+            raise ValueError("base_url host must not be an IP literal")
+        return v
 
     @field_validator("permissions")
     @classmethod
