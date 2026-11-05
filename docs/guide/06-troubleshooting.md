@@ -109,6 +109,10 @@ A kid's code works once and only for 24 hours. The phone says "Ask a parent for 
 
 Adding to the home screen needs the box's secure address (starts with `https`). A box opened by its number address (an IP address such as `http://192.168.1.50:3000`) can't do it. Open it with the **Open my box** code on the sticker instead. See [Install](02-install.md).
 
+## The iPhone icon asks me to sign in
+
+An iPhone or iPad keeps the home-screen icon apart from Safari, so the icon starts empty. Open the icon, tap **I have a code**, and type the short code (like `AB3D-7KMN`) the welcome page showed after you scanned. The code works once and runs out after 15 minutes. If it ran out, a parent makes a new QR code (see above) and you scan it again.
+
 ## A lost phone
 
 Open the kid's page, find **Phones and tablets**, and tap **Remove** next to the phone. It signs out right away. The phone shows "This phone was removed. Ask a parent for a new code." To add a phone back, scan a new code.

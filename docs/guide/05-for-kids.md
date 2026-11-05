@@ -31,7 +31,9 @@ If you have your own phone, your parent shows you a square code. Do this:
 
 ![The welcome page on a kid's phone](img/kid-welcome.jpg)
 
-The code works once and runs out after a day. If it says it expired, ask a parent for a new code.
+**On an iPhone or iPad**, the icon on your home screen starts empty, so it needs a short code. After you scan, the welcome page shows a code like `AB3D-7KMN`. Add t@sk4ce to your home screen, open it from there, tap **I have a code**, type the code and tap **Go**. The code works once and runs out after 15 minutes. If it ran out, ask a parent for a new QR code and scan it again.
+
+The QR code works once and runs out after a day. If it says it expired, ask a parent for a new code.
 
 ## Your screen
 
