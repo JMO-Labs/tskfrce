@@ -68,22 +68,21 @@ def rd(key, target, id_, approve, note=None) -> dict:
     }
 
 
-def text(value) -> dict:
-    return {"type": "text", "text": value}
+def text(t, tone="normal", link=None) -> dict:
+    return {"type": "text", "text": t, "tone": tone, "link": link}
 
 
 def image(url, alt="") -> dict:
     return {"type": "image", "url": url, "alt": alt}
 
 
-def button(label, action) -> dict:
-    return {"type": "button", "label": label, "action": action}
+def button(id, action, label=None) -> dict:
+    return {"type": "button", "id": id, "label": label or id, "action": action}
 
 
-def card(title, *blocks) -> dict:
-    return {"type": "card", "title": title, "blocks": list(blocks)}
+def card(*children, title=None) -> dict:
+    return {"type": "card", "title": title, "children": list(children)}
 
 
-def W(*blocks, title="Demo") -> dict:
-    """A widget reply: one card holding the given blocks."""
-    return {"widget": card(title, *blocks)}
+def W(id, root) -> dict:
+    return {"id": id, "root": root}
