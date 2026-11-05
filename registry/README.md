@@ -43,3 +43,13 @@ docker compose -f docker-compose.prod.yml up -d
 ## Develop
 
 `npm run typecheck` and `npm test` (also run in CI).
+
+## Integrations catalog signing
+
+The Worker serves a signed integrations catalog at `GET /api/integrations/catalog` (edit `src/catalog.ts` via PR).
+
+1. `node scripts/integrations-keygen.mjs` prints `PRIVATE_PKCS8_B64=` and `PUBLIC_RAW_B64=`.
+2. `wrangler secret put INTEGRATIONS_SIGNING_KEY` and paste the private value. Never commit it. Without it the endpoint returns 503.
+3. Paste the public value into `REGISTRY_PUBKEY` in `backend/app/integrations/trust.py`.
+
+`test/fixtures/envelope.json` is the cross-language fixture checked by `backend/tests/integrations/test_int_registry_interop.py`. Regenerate it with `WRITE_FIXTURE=1 npm test` if `sign.ts` changes.
