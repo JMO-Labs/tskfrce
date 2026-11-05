@@ -25,6 +25,8 @@ if [ -n "${CLAIM_CODE:-}" ]; then
   [ ${#CLAIM} -eq 10 ] || { echo "CLAIM_CODE must be 10 chars (0-9, A-Z without I L O U)" >&2; exit 1; }
 fi
 
+[ -n "$CLAIM" ] || echo "warning: no CLAIM_CODE set; the first person on your home network can run setup. Finish setup right after installing." >&2
+
 HOST="$ID.taskfrce.jmolabs.dev"
 [ -f "$ENVF" ] || : >"$ENVF"
 

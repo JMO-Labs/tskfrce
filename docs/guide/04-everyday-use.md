@@ -201,13 +201,11 @@ Then `docker compose -f docker-compose.prod.yml up -d ntfy`, and on the box run 
 
 ### Kid alerts away from home
 
-At home, alerts come straight from your box, as before.
+Alerts to your kids' phones go through a free public service, ntfy.sh, at home and away. It only sees short, generic lines like "You have a new chore", when they were sent, and your home's internet address. It never sees names, chores, messages or rewards.
 
-Away from home they go through a free public alert service, ntfy.sh. It only sees short, generic lines like "You have a new chore" and when they were sent. It never sees names, chores, messages or rewards.
+Want no outside service? Your box's installer can point it at your own ntfy server (`NTFY_UPSTREAM_URL`, and optionally `NTFY_UPSTREAM_TOKEN`) or turn it off (set it to an empty value). Your server must let anyone read, because phones subscribe without a login. The optional access key is only for sending alerts. A self-hosted ntfy server needs its `upstream-base-url` set for instant iPhone alerts.
 
-Want no outside service? Your box's installer can point it at your own ntfy server (`NTFY_UPSTREAM_URL`, and optionally `NTFY_UPSTREAM_TOKEN`) or turn it off (set it to an empty value). Your server must let anyone read, because phones subscribe without a login. The optional access key is only for sending alerts.
-
-At home a kid may get each alert twice: once from the box and once from the alert service. That is expected.
+A kid whose phone also follows your box's own ntfy topic (the older way) can get the same alert twice, once from each. Phones set up with a code only get it once.
 
 ## Add another parent
 

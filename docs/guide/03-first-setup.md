@@ -40,7 +40,7 @@ This step puts t@sk4ce on your kids' own phones. Each kid on the list has a **Sh
 
 ![Kids' phones: a code for each kid (example; the code shown can't be scanned)](img/setup-phones.jpg)
 
-No kids yet? The step says "Add a kid first, or skip this step." You can also skip it and do it later from the kid's page. See [For kids](05-for-kids.md).
+No kids yet? The step says "Add a kid first, or tap Next to go on." You can also do it later from the kid's page. See [For kids](05-for-kids.md).
 
 You should see: the phone shows "You're in" and the kid's name.
 

@@ -47,6 +47,8 @@ If your box came prepared with a sticker, scan the code on it with your phone's 
 
 If the scan does not work, open `https://<box-id>.taskfrce.jmolabs.dev` instead (the box-id is the 6-character code on the sticker), or go to `https://taskfrce.jmolabs.dev/find` and type the code from the sticker.
 
+Boxes set up without a box code (no sticker) let the first person on your home network run setup, so finish setup right after installing.
+
 Tip: bookmark this page. On a phone, you can also choose **Add to Home Screen** in the browser's share or menu button, to get an icon. Write the address on a sticky note near the router. The box's address can change if the router is restarted; if the page stops opening, run `hostname -I` on the box again.
 
 ## Keeping it running
