@@ -8,14 +8,14 @@ from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_db, require_parent
-from app.models.chores import ChoreRun, RunStepTick
+from app.models.chores import ChoreRun
 from app.models.family import get_family
 from app.models.points import Points
 from app.models.user import User
 from app.schemas.lock import utc_z
-from app.services import badges, chat, economy, kid_events
+from app.services import chat, economy
+from app.services import chore_actions as actions
 from app.services import chores as svc
-from app.services.economy import award_chore
 
 router = APIRouter(prefix="/api/v1/chores", tags=["chores"])
 
@@ -84,17 +84,9 @@ def run_detail(run_id: int, db: Session = Depends(get_db), _: User = Depends(req
 @router.post("/{run_id}/approve")
 def approve(run_id: int, db: Session = Depends(get_db), parent: User = Depends(require_parent)):
     r = _waiting(db, run_id)
-    r.status = "done"
-    r.approved_at = r.completed_at = datetime.utcnow()
-    r.approved_by_id = parent.id
-    svc.clear_note(r)
-    fam = get_family(db)
-    pts = award_chore(db, r, fam)
-    chat.system(db, r, f"Approved · +{pts}")
-    badges.check_for_run(db, r, fam)
-    kid_events.chore_decided(db, r, True)
+    actions.approve(db, r, parent.id)
     db.commit()
-    return svc.chore_out(r, fam)
+    return svc.chore_out(r, get_family(db))
 
 
 @router.post("/{run_id}/done")
@@ -108,12 +100,11 @@ def mark_done(run_id: int, db: Session = Depends(get_db), parent: User = Depends
     if r.kid_id is None and r.assignment.mode == "race":
         raise HTTPException(409, "Race chores go to the kid who finishes first.")
     now = datetime.utcnow()
-    have = {t.step_id for t in r.ticks}
-    for s in svc.chore_of(r).steps:
-        if s.id not in have:
-            r.ticks.append(RunStepTick(step_id=s.id, done_by_id=parent.id, done_at=now))
-    r.status, r.submitted_at = "submitted", now
-    return approve(run_id, db, parent)
+    actions.tick_all(r, parent.id, now)
+    actions.submit(r, None, now)
+    actions.approve(db, r, parent.id)
+    db.commit()
+    return svc.chore_out(r, get_family(db))
 
 
 @router.post("/{run_id}/undo")
@@ -212,12 +203,6 @@ def send_back(
     _: User = Depends(require_parent),
 ):
     r = _waiting(db, run_id)
-    r.status = "todo"
-    r.attempt = (r.attempt or 1) + 1
-    r.last_note = body.note
-    submitter = r.submitted_by_id
-    r.submitted_at = r.submitted_by_id = None
-    chat.system(db, r, f"Sent back: {body.note}")
-    kid_events.chore_decided(db, r, False, body.note, submitter)
+    actions.send_back(db, r, body.note)
     db.commit()
     return svc.chore_out(r, get_family(db))
