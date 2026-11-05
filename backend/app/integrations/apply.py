@@ -13,12 +13,12 @@ from sqlalchemy.orm import Session
 from app.integrations import audit, store
 from app.integrations.audit import ActionResult
 from app.integrations.permissions import Denied, Grant, Origin, check_action
-from app.integrations.protocol import KEY_PATTERN, Action, parse_action
+from app.integrations.protocol import CTRL, KEY_PATTERN, Action, parse_action
 from app.models.chores import Chore, ChoreAssignment, ChoreRun
 from app.models.integration import IntegrationAction, IntegrationInstall
-from app.models.reward import Reward
+from app.models.reward import Redemption, Reward
 from app.models.user import User
-from app.services import chore_actions, inbox
+from app.services import chore_actions, economy, inbox
 from app.services import chores as svc
 from app.services.chat_extras import first_name
 
@@ -91,7 +91,6 @@ def _chore_complete(
 
 MAX_REWARDS = 50
 MAX_MESSAGES_PER_DAY = 20
-_CTRL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")  # keeps \n and \t
 
 
 def _reward_upsert(db, install, grant, a, needs_approval) -> Outcome:
@@ -113,7 +112,11 @@ def _reward_upsert(db, install, grant, a, needs_approval) -> Outcome:
         )
     elif not r.active:
         return "rejected", "a parent removed this reward", {}
-    else:
+    elif (r.name, r.price, r.icon) != (a.name, a.price, a.icon):
+        # What a parent sees must be what they approve: no edits mid-request.
+        pending = db.query(Redemption).filter_by(reward_id=r.id, status="pending").count()
+        if pending:
+            return "rejected", "has pending requests", {}
         r.name, r.price, r.icon = a.name, a.price, a.icon
     return "applied", None, {}
 
@@ -126,7 +129,8 @@ def _reward_remove(db, install, grant, a, needs_approval) -> Outcome:
     )
     if r is None:
         return "rejected", "no such reward", {}
-    r.active, r.integration_ref = False, None  # frees the ref for a fresh reward
+    economy.deactivate_reward(r)
+    r.integration_ref = None  # frees the ref for a fresh reward
     return "applied", None, {}
 
 
@@ -144,8 +148,8 @@ def _message_parents(db, install, grant, a, needs_approval) -> Outcome:
     )
     if sent >= MAX_MESSAGES_PER_DAY:
         return "rejected", "too many messages today", {}
-    title = _CTRL.sub("", f"{install.name}: {a.title}".replace("\n", " "))[:120]
-    body = _CTRL.sub("", a.body) if a.body else None
+    title = CTRL.sub("", f"{install.name}: {a.title}".replace("\n", " "))[:120]
+    body = CTRL.sub("", a.body) if a.body else None
     inbox.notify_parents(db, "integration_msg", title, body)
     return "applied", None, {}
 

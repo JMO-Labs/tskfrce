@@ -1,13 +1,19 @@
 """Integration wire protocol: closed action vocabulary, v1 wire models and HMAC signing."""
 
 import hmac
+import re
 from hashlib import sha256
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+
+from app.schemas.glyph import Glyph
 
 KEY_PATTERN = r"^[A-Za-z0-9._:-]{1,80}$"
 _Key = Annotated[str, Field(pattern=KEY_PATTERN)]
+
+
+CTRL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f]")  # control chars; keeps \n and \t
 
 
 class _Base(BaseModel):
@@ -26,7 +32,15 @@ class RewardUpsert(_Base):
     ref: str = Field(max_length=64)
     name: str = Field(max_length=100)
     price: int = Field(ge=1, le=100000)
-    icon: str | None = Field(default=None, max_length=40)
+    icon: Glyph | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _clean_name(cls, v: str) -> str:
+        v = CTRL.sub("", v).strip()
+        if not v:
+            raise ValueError("name is empty")
+        return v
 
 
 class RewardRemove(_Base):

@@ -70,13 +70,8 @@ def patch_reward(reward_id: int, body: RewardPatch, db: Session = Depends(get_db
 @router.delete("/{reward_id}", status_code=204)
 def delete_reward(reward_id: int, db: Session = Depends(get_db)):
     r = _get(db, reward_id)
-    with economy.SPEND_LOCK:  # same lock as decide, so a request isn't answered twice
-        r.active = False
-        pending = db.query(Redemption).filter(
-            Redemption.reward_id == r.id, Redemption.status == "pending"
-        )
-        for p in pending:
-            p.status, p.decided_at = "denied", datetime.utcnow()
+    with economy.SPEND_LOCK:
+        economy.deactivate_reward(r)
         db.commit()
     return Response(status_code=204)
 

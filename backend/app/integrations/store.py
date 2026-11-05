@@ -24,6 +24,7 @@ from app.models.integration import (
 )
 from app.models.reward import Reward
 from app.models.user import User
+from app.services import economy
 from app.services.chat_extras import first_name
 
 log = logging.getLogger(__name__)
@@ -57,7 +58,8 @@ def retire(db: Session, install: IntegrationInstall, status: str) -> None:
     The caller commits."""
     install.status = status
     install.secret = None
-    db.query(Reward).filter_by(integration_install_id=install.id).update({"active": False})
+    for r in db.query(Reward).filter_by(integration_install_id=install.id, active=True):
+        economy.deactivate_reward(r)  # also denies pending requests
     db.query(IntegrationEvent).filter_by(install_id=install.id).delete()
 
 
