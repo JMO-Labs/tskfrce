@@ -69,3 +69,22 @@ export interface InstallBody {
   kid_widget_ids: number[]
   accepted_permissions: string[]
 }
+
+/** Mirrors backend/app/integrations/widgets.py (already sanitized by the box). */
+export type Block =
+  | { type: 'card'; title?: string | null; children: Block[] }
+  | { type: 'text'; text: string; tone?: 'normal' | 'muted' | 'good' | 'warn'; link?: string | null }
+  | { type: 'list'; items: string[] }
+  | { type: 'stat'; label: string; value: string }
+  | { type: 'progress'; label: string; value: number; max: number }
+  | { type: 'image'; url: string; alt: string }
+  | { type: 'button'; id: string; label: string; action: string }
+
+export interface WidgetGroup {
+  install_id: number
+  name: string
+  icon: string
+  widgets: { id: string; root: Block }[]
+}
+
+export type Surface = 'parent' | 'kid'
