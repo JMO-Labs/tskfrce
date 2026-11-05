@@ -126,3 +126,10 @@ class WidgetsReply(BaseModel):
     model_config = ConfigDict(extra="ignore")
     request_id: str
     widgets: list[dict]
+
+
+class PushIn(BaseModel):
+    """A local push: actions from a LAN source holding a local key."""
+
+    model_config = ConfigDict(extra="forbid")
+    actions: list[dict] = Field(max_length=20)

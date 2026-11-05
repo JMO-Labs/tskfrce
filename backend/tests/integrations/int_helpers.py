@@ -248,3 +248,12 @@ def img_path(install, url=IMG_URL) -> str:
 def press_url(install) -> str:
     """The box widget-button press path for this install."""
     return f"/api/v1/integration-widgets/{install.id}/press"
+
+
+def push(client, token, actions, ip):
+    """POST a local push as if the frontend proxy forwarded it from `ip` (X-Real-IP)."""
+    return client.post(
+        "/api/v1/integration-local/push",
+        headers={"Authorization": f"Bearer {token}", "X-Real-IP": ip},
+        json={"actions": actions},
+    )

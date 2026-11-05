@@ -394,3 +394,19 @@ def widget_install_not_enabled(db, parent, kid, svc):
     db.add(IntegrationKid(install_id=inst.id, kid_id=kid.id))
     db.commit()
     return inst
+
+
+@pytest.fixture
+def local_key(client, parent_headers, kid, install):
+    """A local push key granted chores.complete for `kid` and `install`'s linked chore."""
+    from types import SimpleNamespace
+
+    body = {
+        "name": "Home Assistant",
+        "permissions": ["chores.complete"],
+        "kid_ids": [kid.id],
+        "chore_ids": [c.chore_id for c in install.chores],
+    }
+    r = client.post("/api/v1/integration-local/keys", headers=parent_headers, json=body)
+    assert r.status_code == 201, r.text
+    return SimpleNamespace(**r.json())
