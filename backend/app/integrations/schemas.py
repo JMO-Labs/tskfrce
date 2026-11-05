@@ -14,11 +14,19 @@ from app.integrations.protocol import Action, PushIn, Reply
 from app.integrations.widgets import Widget
 
 
+def _actions_schema() -> dict:
+    """The models default `type` so code can build them, but on the wire it is required."""
+    schema = TypeAdapter(Action).json_schema()
+    for d in schema["$defs"].values():
+        d["required"] = sorted({*d.get("required", []), "type"})
+    return schema
+
+
 def export_schemas() -> dict[str, dict]:
     return {
         "manifest": Manifest.model_json_schema(),
         "reply": Reply.model_json_schema(),
-        "actions": TypeAdapter(Action).json_schema(),
+        "actions": _actions_schema(),
         "widgets": TypeAdapter(list[Widget]).json_schema(),
         "local-push": PushIn.model_json_schema(),
     }

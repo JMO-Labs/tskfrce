@@ -60,7 +60,7 @@ Parents see this exact copy when installing. Every integration also always shows
 | `widgets.parent` | Show cards on your screens | |
 | `widgets.kid` | Show cards on your kids' screens | yes |
 
-Every grant is per kid. Chore actions work only on linked chores. Events go out only for linked kids.
+Permissions are granted per install. Kid links and kid widgets are chosen per kid. Chore actions work only on linked chores. Events go out only for linked kids.
 
 ## Endpoints
 
@@ -85,7 +85,7 @@ X-Tsk-Request-Id: <request_id>
 X-Tsk-Signature: v1=<hex>
 ```
 
-Every reply must be a 2xx (use `200`), JSON, carry `X-Tsk-Signature`, and echo `request_id`. Replies to `install`, `events` and `poll` may add `actions` (max 20, see [Actions](#actions)). Unknown reply fields are ignored.
+Every reply must be a 2xx (use `200`), JSON, carry `X-Tsk-Signature`, and echo `request_id`. Replies to `events` and `poll` may add `actions` (max 20, see [Actions](#actions)); `install` replies may carry them but the box ignores them. Unknown reply fields are ignored.
 
 ### `POST /v1/install`
 
@@ -95,7 +95,7 @@ The box generates the per-install secret and sends it here, once. Store it.
 {"protocol":"v1","install_id":"9f2c...","request_id":"0b1d...","grant":{"permissions":["messages.parents"],"kids":[{"id":7}],"chores":[]},"settings":{"city":"Austin"},"secret":"kJ3...43 chars"}
 ```
 
-Reply: `{"request_id":"0b1d...","actions":[]}`. A non-200, a bad signature or a bad shape fails the install and nothing is connected. Actions in this reply are ignored.
+Reply: `{"request_id":"0b1d...","actions":[]}`. A non-2xx status, a bad signature or a bad shape fails the install and nothing is connected. Actions in this reply are ignored.
 
 The `install` call is signed with the new secret, so you can verify it as soon as you read `secret` from the body.
 
@@ -104,7 +104,7 @@ The `install` call is signed with the new secret, so you can verify it as soon a
 A batch of up to 50 [events](#events), oldest first.
 
 ```json
-{"protocol":"v1","install_id":"9f2c...","request_id":"6a7e...","grant":{...},"events":[{"kind":"chore.completed","at":"2026-11-04T18:02:11","kid_id":7,"chore_id":3,"title":"Dishes","points":5}]}
+{"protocol":"v1","install_id":"9f2c...","request_id":"6a7e...","grant":{...},"events":[{"kind":"chore.completed","at":"2026-11-04T18:02:11.482913","kid_id":7,"chore_id":3,"title":"Dishes","points":5}]}
 ```
 
 Reply: `{"request_id":"6a7e...","actions":[]}`. Events are removed from the box queue once you answer successfully.
@@ -112,6 +112,12 @@ Reply: `{"request_id":"6a7e...","actions":[]}`. Events are removed from the box 
 ### `POST /v1/poll`
 
 Sent every `poll_seconds` (never under 60) when the manifest sets it. Body is only the common fields. Reply with any `actions` you want applied.
+
+```json
+{"protocol":"v1","install_id":"9f2c...","request_id":"e81a...","grant":{...}}
+```
+
+Reply: `{"request_id":"e81a...","actions":[{"type":"message.parents","idempotency_key":"daily-2026-11-04","title":"Good morning"}]}`.
 
 ### `POST /v1/widgets`
 
@@ -126,6 +132,12 @@ Reply: `{"request_id":"c4d1...","widgets":[{"id":"today","root":{"type":"card","
 ### `POST /v1/uninstall`
 
 Sent when a parent removes the integration (best effort, once). Body is only the common fields. Reply with `{"request_id": "..."}`. Delete the secret and forget the install.
+
+```json
+{"protocol":"v1","install_id":"9f2c...","request_id":"3b90...","grant":{...}}
+```
+
+Reply: `{"request_id":"3b90..."}` (signed like any reply).
 
 ## Signing
 
@@ -215,6 +227,7 @@ Results are `applied`, `pending` or `rejected` with a `reason`. Rejection reason
 | `not found` | `request.decide` for a request outside the grant |
 | `already answered` | `request.decide` for a request already decided |
 | `only the t@sk4ce app can answer this` | The request is not a plain reward (for example screen time) |
+| `not this button's action` | A `widget.pressed` reply action whose `type` differs from the pressed button's `action` |
 | `internal error` | Unexpected failure on the box |
 
 Notes:
@@ -226,16 +239,16 @@ Notes:
 
 ## Events
 
-Events arrive in `events` calls. Each has `kind`, `at` (UTC ISO time), `kid_id`, plus the trimmed fields below. `first_name` is added only with `kid.name`. Chore `title` is dropped without `chores.complete`. Events go out only for linked kids (and linked chores).
+Events arrive in `events` calls. Each has `kind`, `at` (UTC ISO time, microseconds), `kid_id`, plus the trimmed fields below. `widget.pressed` is the exception: it has no `at`, and its `kid_id` is `null` when a parent presses a button without choosing a kid. `first_name` is added only with `kid.name`. Chore `title` is dropped without `chores.complete`. Events go out only for linked kids (and linked chores).
 
 | Kind | Needs | Fields |
 |---|---|---|
 | `chore.completed` | `events.chore_completed` | `chore_id`, `title`, `points` |
 | `request.created` | `events.request_created` | `type`, `id`, `title`, `cost` |
 | `reward.redeemed` | `events.reward_redeemed` | `reward_name`, `cost` |
-| `widget.pressed` | `widgets.parent` or `widgets.kid` | `widget_id`, `button_id`, `by`, `kid_id` |
+| `widget.pressed` | `widgets.parent` or `widgets.kid` | `widget_id`, `button_id`, `by` (`parent` or `kid`), `kid_id` |
 
-`widget.pressed` is sent immediately when someone presses a button. Only reply actions whose `type` equals that button's `action` are applied, as that button's origin; others are rejected. A `request.created` caused by your own `chore.complete` is not sent back to you.
+`widget.pressed` is sent immediately when someone presses a button. Only reply actions whose `type` equals that button's `action` are applied, as that button's origin; others are rejected. A `request.created` caused by your own `chore.complete` is not sent back to you, but your own `chore.complete` is echoed as `chore.completed` when it applies at once (trust switch on) or when a parent later approves it.
 
 Delivery: batches of up to 50 per call. Undelivered events expire after 24 h, and each install queues at most 500.
 
@@ -314,7 +327,7 @@ For something on the home network (Home Assistant, a script) that cannot host a 
 Allowed permissions: `chores.complete`, `rewards.manage`, `messages.parents`, `requests.decide`. No events and no widgets.
 
 - URL: `http://<box>:3000/api/proxy/integration-local/push` (the box's LAN address).
-- It never works through the public hostname or a tunnel. The box refuses any request that carries forwarding headers or comes from outside the LAN with `403`.
+- It never works through the public hostname or a tunnel. A request that a proxy or tunnel relayed to the box's frontend gets `404` from the frontend proxy. One that reaches the backend with forwarding headers, or from outside the LAN, gets `403`.
 - Auth: `Authorization: Bearer tsk_local_...`. Wrong key is `401`. Over 60 pushes per minute per key is `429`.
 - Body: `{"actions": [...]}`, max 20, same [actions](#actions) and rules as above (schema: `local-push.schema.json`).
 - Reply: `{"results": [{"key": "...", "result": "applied|pending|rejected", "reason": null}]}`.
@@ -337,11 +350,11 @@ rest_command:
       Content-Type: application/json
     payload: >-
       {"actions":[{"type":"message.parents",
-      "idempotency_key":"{{ now().timestamp() | int }}-{{ title | urlencode }}",
+      "idempotency_key":"ha-{{ now().timestamp() | int }}-{{ title | slugify }}",
       "title":"{{ title }}"}]}
 ```
 
-Call it with `action: rest_command.tskfrce_message` and `data: {title: "Front door opened"}`. Always use a fresh `idempotency_key` for each real event, and reuse it when retrying.
+Call it with `action: rest_command.tskfrce_message` and `data: {title: "Front door opened"}`. Always use a fresh `idempotency_key` for each real event, and reuse it when retrying. Keys are 1 to 80 characters from `A-Za-z0-9._:-`, so keep titles short.
 
 ## Versioning
 

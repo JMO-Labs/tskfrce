@@ -24,9 +24,10 @@
         }
       },
       "required": [
+        "chore_id",
         "idempotency_key",
         "kid_id",
-        "chore_id"
+        "type"
       ],
       "title": "ChoreComplete",
       "type": "object"
@@ -66,7 +67,8 @@
       },
       "required": [
         "idempotency_key",
-        "title"
+        "title",
+        "type"
       ],
       "title": "MessageParents",
       "type": "object"
@@ -116,10 +118,11 @@
         }
       },
       "required": [
+        "approve",
+        "id",
         "idempotency_key",
         "target",
-        "id",
-        "approve"
+        "type"
       ],
       "title": "RequestDecide",
       "type": "object"
@@ -146,7 +149,8 @@
       },
       "required": [
         "idempotency_key",
-        "ref"
+        "ref",
+        "type"
       ],
       "title": "RewardRemove",
       "type": "object"
@@ -197,9 +201,10 @@
       },
       "required": [
         "idempotency_key",
-        "ref",
         "name",
-        "price"
+        "price",
+        "ref",
+        "type"
       ],
       "title": "RewardUpsert",
       "type": "object"
