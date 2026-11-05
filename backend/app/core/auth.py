@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.models.kid_device import KidDevice
 from app.models.user import User
 from app.schemas.password import BCRYPT_MAX_BYTES
 from app.services.user_service import UserService
@@ -207,4 +208,15 @@ class AuthService:
         if user is None or not user.is_active:
             return None
 
+        sid = payload.get("sid")
+        if sid is not None and not self._device_alive(sid, user.id):
+            return None  # enrolled phone removed (or idle-expired): revoked at once
         return user
+
+    def _device_alive(self, sid: int, kid_id: int) -> bool:
+        return (
+            self.db.query(KidDevice.id)
+            .filter(KidDevice.id == sid, KidDevice.kid_id == kid_id)
+            .first()
+            is not None
+        )

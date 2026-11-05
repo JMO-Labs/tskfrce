@@ -38,6 +38,7 @@ from app.api.hours import router as hours_router
 from app.api.inbox import router as notifications_router
 from app.api.internal import router as internal_router
 from app.api.kid import router as kid_router
+from app.api.kid_enroll import kid_router as kid_enroll_kid_router
 from app.api.kid_enroll import parent_router as kid_enroll_parent_router
 from app.api.kid_push import router as kid_push_router
 from app.api.kid_rewards import router as kid_rewards_router
@@ -156,6 +157,7 @@ fastapi_app.include_router(hours_router)
 fastapi_app.include_router(kids_router)
 fastapi_app.include_router(kid_push_router)
 fastapi_app.include_router(kid_enroll_parent_router)
+fastapi_app.include_router(kid_enroll_kid_router)
 fastapi_app.include_router(kid_router)
 fastapi_app.include_router(kid_rewards_router)
 fastapi_app.include_router(family_router)
