@@ -14,6 +14,13 @@ from .family import FamilySettings, get_family
 from .flair import KidFlair
 from .hours import HourRule, HourRuleTarget, HourRuleTime
 from .inbox import Notification
+from .integration import (
+    IntegrationAction,
+    IntegrationChore,
+    IntegrationEvent,
+    IntegrationInstall,
+    IntegrationKid,
+)
 from .lock import Device, DeviceGroup, DeviceHintRejection, Override, Vlan
 from .notify import NotifyHeld, NotifyPlace
 from .password_reset import PasswordReset
@@ -60,6 +67,11 @@ __all__ = [
     "DevicePresence",
     "Override",
     "Notification",
+    "IntegrationInstall",
+    "IntegrationKid",
+    "IntegrationChore",
+    "IntegrationAction",
+    "IntegrationEvent",
     "NotifyPlace",
     "NotifyHeld",
     "Reward",
