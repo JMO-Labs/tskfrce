@@ -14,6 +14,8 @@ import { useChoreTypes } from '@/v2/hooks/useChoreTypes'
 import { threadGlyph } from '@/v2/today/choreIcon'
 import type { Kid } from '@/v2/types'
 import { AGE_LABEL } from './ageGroups'
+import { HappyHourButton } from '@/v2/today/HappyHourButton'
+import { KidCelebrations } from './KidCelebrations'
 import { KidEditor } from './KidEditor'
 import { KidPhonesPanel } from './KidPhonesPanel'
 import { PointsForm } from './PointsForm'
@@ -67,6 +69,7 @@ export function KidDetail({ kid, focusPin, onDeleted }: Props) {
             <Icon name="visibility" />
             View as kid
           </Link>
+          <HappyHourButton kidId={kid.id} />
           <button type="button" id="kid-act-bonus" className="p-btn" aria-pressed={mode === 'bonus'} onClick={() => toggle('bonus')}>
             <Icon name="add_circle" />
             Bonus
@@ -122,6 +125,8 @@ export function KidDetail({ kid, focusPin, onDeleted }: Props) {
         </section>
 
         <KidPhonesPanel kid={kid} />
+
+        <KidCelebrations kid={kid} />
 
         <section className="pk-panel pk-span" aria-label="Chores assigned">
           <h3>

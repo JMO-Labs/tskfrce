@@ -17,6 +17,7 @@ import { KidStrip } from "./KidStrip";
 import { NeedsYouList } from "./NeedsYouList";
 import { IntegrationWidgets } from "../integrations/WidgetFrame";
 import { SegmentedControl } from "../parent/SegmentedControl";
+import { HappyHourButton } from "./HappyHourButton";
 import { KidFacts } from "./KidFacts";
 import { ChoreRow } from "./ChoreRow";
 import { useClock } from "./useClock";
@@ -113,6 +114,7 @@ export function TodayPage() {
           <div className="pt-head">
             <h2>{kid.name}&apos;s day</h2>
             <div className="pt-head-acts">
+              <HappyHourButton />
               <Link href={viewAs(kid.id, router.asPath)} className="p-btn">
                 <Icon name="visibility" size={17} />
                 View as kid

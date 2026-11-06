@@ -58,6 +58,7 @@ export function BellActions({ n, busy, sending, note, onNote, onApprove, onSendB
       </>
     )
   else if (n.kind === 'password_guess') body = <Btn icon="password" label="Change password" onClick={() => go('/settings?section=parents#password')} />
+  else if (n.kind === 'boost') body = <Btn icon="bolt" label="See Happy Hour" onClick={() => go('/')} />
   else if (n.kind === 'box_offline') body = <Btn icon="devices" label="View" onClick={() => go('/devices')} />
   return <div className="p-bell-actions">{body}</div>
 }

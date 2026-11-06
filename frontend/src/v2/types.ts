@@ -100,6 +100,8 @@ export interface Kid {
   avatar: string | null
   has_pin: boolean
   age_group: AgeGroup
+  /** effective celebration level (the server fills in the mode default) */
+  celebrate?: CelebrateLevel
 }
 
 /** GET/PATCH /family */
@@ -120,6 +122,22 @@ export interface Family {
   ntfy_upstream_relay: boolean
   chores_lock: boolean
   quick_replies: string[]
+  hh_default_mult_x10: 15 | 20 | 30
+  hh_default_minutes: 30 | 60 | 90
+  hh_weekly_surprise: boolean
+  hh_auto_boost: boolean
+  streak_freeze: boolean
+}
+
+/** GET/POST /happy-hour item */
+export interface HappyHour {
+  id: number
+  starts_at: string
+  ends_at: string
+  multiplier: number
+  mult_x10: 15 | 20 | 30
+  source: 'parent' | 'schedule' | 'auto'
+  kid_ids: number[] | null
 }
 
 /** GET /chore-types item */
