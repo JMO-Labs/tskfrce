@@ -13,9 +13,9 @@ jest.mock('@/v2/manage/CelebratePreview', () => ({ CelebratePreview: ({ label }:
 
 const apiMock = api as unknown as Mock<(p: string, o?: { method?: string; body?: unknown }) => Promise<unknown>>
 const TODAY = new Date().toLocaleDateString('en-CA')
-const fam = { hh_auto_boost: true, streak_freeze: true }
+const fam = { hh_auto_boost: true, streak_freeze: true, hh_default_mult_x10: 20, hh_default_minutes: 60 }
 const mia = { id: 1, full_name: 'Mia', username: 'mia', age_group: 'kid', celebrate: null }
-let s: { dismissed: string[]; fam: Record<string, boolean>; kids: unknown[]; active: unknown[]; quiet: boolean }
+let s: { dismissed: string[]; fam: Record<string, unknown>; kids: unknown[]; active: unknown[]; quiet: boolean }
 
 beforeEach(() => {
   localStorage.clear()
@@ -70,6 +70,19 @@ test('a new day brings the next card in order', async () => {
   expect(await screen.findByText(/Double points/)).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Start one now' })).toBeInTheDocument()
   expect(JSON.parse(localStorage.getItem('tskfrce.try')!)).toEqual({ day: TODAY, key: 'try.happyhour' })
+})
+
+test.each([
+  [15, 30, '×1.5 points for 30 minutes gets chores moving.'],
+  [30, 60, '×3 points for an hour gets chores moving.'],
+  [20, 90, 'Double points for 90 minutes gets chores moving.'],
+  [20, 60, 'Double points for an hour gets chores moving.'],
+])('Happy Hour card copy uses the family defaults (x10 %i, %i min)', async (mult, minutes, text) => {
+  localStorage.setItem('tskfrce.try', JSON.stringify({ day: '2000-01-01', key: 'try.celebrate' }))
+  s.dismissed = ['try.celebrate']
+  s.fam = { ...fam, hh_default_mult_x10: mult, hh_default_minutes: minutes }
+  show()
+  expect(await screen.findByText(text)).toBeInTheDocument()
 })
 
 test.each([

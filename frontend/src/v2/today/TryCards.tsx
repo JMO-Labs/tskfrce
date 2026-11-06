@@ -17,6 +17,12 @@ const TEXT: Record<(typeof TRY_ORDER)[number], { icon: string; text: string }> =
   'try.streakfreeze': { icon: 'ac_unit', text: 'Kids earn a freeze every 7 days in a row, so one missed day doesn\'t break their streak.' },
 }
 
+/** "Double points for an hour…", or the family's own defaults ("×1.5 points for 30 minutes…"). */
+export function hhCopy(multX10 = 20, minutes = 60) {
+  const pts = multX10 === 20 ? 'Double points' : `×${multX10 / 10} points`
+  return `${pts} for ${minutes === 60 ? 'an hour' : `${minutes} minutes`} gets chores moving.`
+}
+
 /** One "Try this" card at a time (Today). Dismissals are per parent (tips API); pacing is per device. */
 export function TryCards() {
   const tips = useTips().data
@@ -60,7 +66,8 @@ export function TryCards() {
       </>
     )
   } else if (key === 'try.happyhour') {
-    ;({ icon, text } = TEXT[key])
+    icon = TEXT[key].icon
+    text = hhCopy(fam!.hh_default_mult_x10, fam!.hh_default_minutes)
     actions = (
       <>
         <HappyHourButton allKids label="Start one now" />
