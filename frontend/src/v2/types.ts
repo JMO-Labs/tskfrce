@@ -230,6 +230,8 @@ export interface TodayKid {
   name: string | null
   avatar: string | null
   online_all: boolean
+  /** assigned on its last 2 run days and submitted none (same as the auto boost) */
+  quiet?: boolean
   done?: number
   total?: number
   needs_you_count?: number

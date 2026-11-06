@@ -18,6 +18,7 @@ import { NeedsYouList } from "./NeedsYouList";
 import { IntegrationWidgets } from "../integrations/WidgetFrame";
 import { SegmentedControl } from "../parent/SegmentedControl";
 import { HappyHourButton } from "./HappyHourButton";
+import { TryCards } from "./TryCards";
 import { KidFacts } from "./KidFacts";
 import { ChoreRow } from "./ChoreRow";
 import { useClock } from "./useClock";
@@ -137,6 +138,7 @@ export function TodayPage() {
             <KidFacts kid={kid} />
           </div>
 
+          <TryCards />
           <TipsContainer tips={PARENT_TIPS} maxTips={1} />
 
           {kid.chores.length === 0 && (

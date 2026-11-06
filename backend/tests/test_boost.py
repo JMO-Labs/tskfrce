@@ -9,6 +9,7 @@ from app.models.happy_hour import HappyHour
 from app.models.inbox import Notification
 from app.models.user import UserRole
 from app.services import boost, happy_hour, notify, notify_jobs
+from app.services import chores as svc
 
 from tests.conftest import _make_user
 from tests.factories import make_run
@@ -247,3 +248,15 @@ def test_surprise_missed_by_downtime_is_dropped(db, kid):
     planned = get_family(db).hh_surprise_at.replace(tzinfo=UTC)
     _surprise(db, planned + timedelta(hours=3))
     assert _sched(db) == [] and get_family(db).hh_surprise_at is None
+
+
+def test_parent_today_flags_quiet_kids(client, db, parent, kid, parent_headers):
+    """The Today cards need `quiet` per kid, same meaning as quiet_kids."""
+    today = svc.today(db, datetime.now(UTC))
+    for n in (1, 2):
+        make_run(db, parent, kid, day=today - timedelta(days=n), title=f"q{n}")
+    kids = client.get("/api/v1/today", headers=parent_headers).json()["kids"]
+    assert [k["quiet"] for k in kids if k["id"] == kid.id] == [True]
+    make_run(db, parent, kid, day=today - timedelta(days=1), title="did", status="done")
+    kids = client.get("/api/v1/today", headers=parent_headers).json()["kids"]
+    assert [k["quiet"] for k in kids if k["id"] == kid.id] == [False]

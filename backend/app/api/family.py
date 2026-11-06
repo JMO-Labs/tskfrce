@@ -22,8 +22,8 @@ from app.models.lock import Device
 from app.models.reward import Redemption, Reward
 from app.models.user import User, UserRole
 from app.schemas.lock import FamilyPatch, utc_z
+from app.services import boost, inbox, progression, push
 from app.services import chores as svc
-from app.services import inbox, progression, push
 
 router = APIRouter(prefix="/api/v1", tags=["family"], dependencies=[Depends(require_parent)])
 
@@ -265,6 +265,7 @@ def today(db: Session = Depends(get_db)):
     needs = _needs_you(db, tasks, names, fam, balances)
     prices = sorted(p for (p,) in db.query(Reward.price).filter(Reward.active.is_(True)))
     now_local = local_now(fam.timezone, now)
+    quiet = set(boost.quiet_kids(db, day))
     kids = []
     for k in kid_rows:
         devs = [device_out(db, d, fam, now, pre) for d in kid_devs[k.id]]
@@ -275,6 +276,7 @@ def today(db: Session = Depends(get_db)):
                 "id": k.id,
                 "name": k.full_name,
                 "avatar": k.avatar,
+                "quiet": k.id in quiet,
                 "online_all": bool(devs) and all(d["online"] for d in devs),
                 "done": sum(svc.state(t) == "done" for t in mine),
                 "total": len(mine),
