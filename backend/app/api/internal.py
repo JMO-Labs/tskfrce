@@ -16,6 +16,7 @@ from app.api.deps import get_db
 from app.core.config import settings
 from app.lock import activity
 from app.lock.hints import apply_hint
+from app.lock.identity import note_identity_change
 from app.lock.loop import trigger
 from app.lock.rules import block_reason
 from app.lock.schedule import local_now
@@ -166,6 +167,7 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
         _apply(dev, body, now)
         if old_ip is not None and body.ip is not None and old_ip != body.ip:
             activity.log(db, dev.id, "address_change", now, detail=f"{old_ip} → {body.ip}")
+        note_identity_change(db, dev, before[1], before[2], now)
         changed = before != (dev.mdns_name, dev.model, dev.dhcp_fp)
         hinted = changed and dev.status == "unassigned" and apply_hint(db, dev)
     if new and dev.hostname:
