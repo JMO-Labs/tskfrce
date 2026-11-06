@@ -1,6 +1,6 @@
 # Bypass alerts — design
 
-Roadmap item 4. Status: draft for owner approval.
+Roadmap item 4. Status: approved by owner 2026-11-05.
 
 ## Why
 
@@ -91,7 +91,7 @@ paused. No work in this design beyond docs (row 1 of the blocker table).
   adding L4 parsing is a bigger change for little gain. Documented as a limit. (my call)
 - Backend: event `workaround_try` with the category. Dedupe once per device per category per pause, where a
   pause is the device's current `blocked_since` value.
-- Notification: see owner question Q1. If alerted: new inbox kind `workaround_try`, normal priority (respects
+- Notification (owner: alert once per pause): new inbox kind `workaround_try`, normal priority (respects
   quiet hours), mapped to a push event that is on by default and not in `SECURITY` (builder picks or adds one):
   "**<device> tried a VPN**" / "It didn't work — the pause is still on."
 - Homework mode (when merged) keeps DNS on the portal resolver, so the same check covers it.
@@ -123,7 +123,7 @@ paused. No work in this design beyond docs (row 1 of the blocker table).
 - Where the score function lives (suggest `backend/app/services/bypass.py`, ≤150 lines).
 - Test shapes, following existing `test_internal*.py` and blocker `tests/`.
 
-## Open questions for the owner
+## Owner decisions (2026-11-05)
 
-- **Q1.** "Tried a workaround" attempts fail anyway. Alert parents (once per pause), or only log them in the
-  device's activity (and the future weekly recap)?
+- Design approved.
+- "Tried a workaround": **alert once per device per category per pause**, normal priority, respects quiet hours.
