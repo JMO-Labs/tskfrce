@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import pytest
 from app.core.config import settings
 from app.lock import identity
@@ -70,9 +72,7 @@ def test_same_report_twice_once(client, db, parent):
     assert len(ev) == 1 and len(nt) == 1
 
 
-def test_flip_flop_notifies_once_per_day(client, db, parent, monkeypatch):
-    from datetime import timedelta
-
+def test_flip_flop_notifies_once_per_day(client, db, parent):
     _setup(db, parent)
     _seen(client, model="iPad")
     _seen(client, model="MacBookPro18,1")
@@ -87,11 +87,34 @@ def test_flip_flop_notifies_once_per_day(client, db, parent, monkeypatch):
     assert len(ev) == 3 and len(nt) == 2
 
 
-@pytest.mark.parametrize("bad", ["Pad\nTap http://x.co", "http://evil.example/x?a=<b>", "A" * 60])
-def test_unsafe_model_gets_generic_body(client, db, parent, bad):
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "Pad\nTap http://x.co",
+        "http://evil.example/x?a=<b>",
+        "A" * 60,
+        "iPad. Fix it at evil.co",
+        "MacBookPro18,1",
+    ],
+)
+def test_model_never_echoed(client, db, parent, bad):
     _setup(db, parent)
     _seen(client, model="iPad")
     _seen(client, model=bad)
     ev, nt = _counts(db)
-    assert len(nt) == 1 and nt[0].body == identity.GENERIC
+    assert len(nt) == 1 and nt[0].body == identity.BODY and bad not in nt[0].body
     assert len(ev[0].detail) <= 120
+
+
+def test_changes_under_24h_apart_still_realert(client, db, parent):
+    _setup(db, parent)
+    _seen(client, model="iPad")
+    _seen(client, model="Pixel 8")  # t=0: alert
+    for model in ("iPad", "Pixel 8"):  # +20 h, +40 h
+        ev, _ = _counts(db)
+        for e in ev:
+            e.at -= timedelta(hours=20)
+        db.commit()
+        _seen(client, model=model)
+    ev, nt = _counts(db)
+    assert len(ev) == 3 and len(nt) == 2  # +20 h quiet, +40 h alerts again
