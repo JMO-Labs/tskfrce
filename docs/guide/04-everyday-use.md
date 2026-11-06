@@ -131,20 +131,21 @@ The **Groups** tab puts several devices together, like "Game consoles", so you c
 
 ### Screen time prices for groups
 
-Some screen time is worth more than other screen time. A group can have its own price, so consoles cost more and a speaker costs nothing.
+This is optional, for parents who want it. Some screen time can be worth more than other screen time, so consoles can cost more than a tablet. It is off by default: every device costs the family price.
 
-1. Open **Devices**, tap the **Groups** tab, then tap the group.
-2. Type a number in **Screen time price**. It is points for 15 minutes, from 1 to 1000.
-3. Save.
+1. Open **Kids & chores → Rewards → Screen time** and turn on **Different prices for device groups**. Tap **Save**.
+2. Tap **Set group prices**. It opens **Devices → Groups**. Tap the group.
+3. Type a number in **Screen time price**. It is points for 15 minutes, from 1 to 1000. It saves when you leave the box.
 
 ![A device group with its Screen time price filled in](img/group-price.jpg)
 
-You should see: the price on the group. Leave it empty and the group uses the family price. **Settings → Screen time** says "Groups can have their own price." and links to the groups.
+You should see: the price on the group. Leave it empty and the group uses the family price. Turn the switch off again and everything goes back to the family price. The group prices are kept for next time.
 
-- **Free:** turn off **Lock with the kids' chores** on a group. Its devices never cost points, and kids can't buy time for them.
-- **What kids see:** when prices differ, the rewards card asks "What for?" and the kid picks a group. **All my devices** costs the highest price among their groups.
-- **What it unlocks:** an approved request unlocks only the devices in that group. A device in several groups counts at its highest group price. Buying a cheaper group won't unlock it. The kid buys the pricier group or **All my devices**.
-- **Price is fixed when the kid asks.** If you change a price later, requests already waiting keep their old cost. If the group is deleted before you approve, the kid's devices at or below the price they paid unlock.
+- **Free groups:** turn off **Lock with the kids' chores** on a group. Its devices are never locked by chores, so they never cost points and are never offered. They don't count toward any price, and the price box is hidden on that group.
+- **What kids see:** when prices differ, the rewards card asks "What for?" and the kid picks one. **All my devices** costs the highest price among their devices. **Other devices** covers their devices that are in no group, at the family price. It shows up only when it is cheaper than **All my devices**.
+- **What it unlocks:** **All my devices** unlocks every device the kid has. **Other devices** unlocks only their devices that are in no group. A group unlocks only its own devices. A device in several groups counts at its highest group price, so buying a cheaper group won't unlock it. The kid buys the pricier group or **All my devices**.
+- **Price is fixed when the kid asks.** If you change a price later, requests already waiting keep their old cost. If a device has left the group by the time you approve, approving says so; deny the request to give the points back.
+- **Deleting a group** cancels the requests still waiting for it. The kid gets their points back.
 - **One daily limit:** **Max per day** counts all purchases together.
 - **In your inbox:** requests and alerts read like "30 min on Consoles".
 

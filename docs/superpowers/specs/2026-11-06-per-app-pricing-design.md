@@ -94,6 +94,27 @@ Shipped as 2.3.0. Deviations from the design above:
   for a request paid at that rate or more. Buying a cheaper group does not unlock it; the kid buys the pricier group or "All my
   devices". This came from a security fix (otherwise the cheapest group would unlock a pricey device) and replaces the plan's
   earlier expectation.
-- **Deleted-group fallback is capped.** If the group is deleted before approval, the unlock covers all of the kid's devices
-  whose price is at or below the rate paid, not every device.
+- **Opt-in (owner change).** `FamilySettings.group_pricing`, off by default. Off: `options()` is just "All my devices" at
+  the family price, `screen_price` is ignored (but kept), and a request with scope `group` or `other` gets 400 "Pick one of
+  your options.". Parents turn it on in **Kids & chores → Rewards → Screen time** with the switch "Different prices for
+  device groups" (hint "Charge more for some devices, like game consoles."); "Set group prices" shows under it when on.
+  The parent `GET/PATCH /screen-time` carries `group_pricing`. Requests made while it was on still approve under the rules
+  below after it is turned off. The group "Screen time price" field shows only when it is on and the group locks with chores.
+- **Scope column.** `redemptions.screen_scope` (`'all' | 'other' | 'group'`, CHECK, NULL for rewards) records what was
+  bought, so a deleted group (FK set to NULL) is never mistaken for "all". `RedeemIn.scope` is optional: without it,
+  `group_id` means `group`, else `all` (old clients keep working).
+- **Options.** At `screen.options` in `GET /kid/rewards` (not a top-level `screen_options`), each `{group_id, scope, name,
+  icon, price}`. Order: All, then **Other devices** (the kid's devices in no group, at the family price; shown only when
+  All costs more than the family price), then chore-locked groups by id. Free-only devices (only in groups with the chore
+  lock off) are never priced; All still unlocks them. If every option costs the same as All, only All is returned.
+  `screen.price` and `screen_time_price` report the All price for old clients.
+- **Approval.** `all` unlocks every kid device. `other` unlocks the kid's devices in no chore-locked group. `group` unlocks
+  the group's kid devices whose price is at or below `max(rate paid, the group's current price)`, so a raised price no
+  longer blocks and a pricier shared device stays locked. If the group is gone or none of its devices are left, approval
+  is refused with 409 "None of those devices belong to {kid} anymore. Deny the request to give the points back." before
+  any points move.
+- **Deleting a group denies its pending requests (owner change).** `delete_group` denies them under `SPEND_LOCK`, which
+  releases the held points. This replaces the earlier deleted-group fallback.
+- **Labels.** All reads "N min of screen time"; a group reads "N min on Consoles"; Other reads "N min on other devices".
+- **Nav path.** The family price lives at **Kids & chores → Rewards → Screen time** (Settings → Screen time no longer exists).
 - **Family price field** is wider so its placeholder text fits.
