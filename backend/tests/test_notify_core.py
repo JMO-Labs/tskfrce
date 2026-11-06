@@ -61,11 +61,12 @@ def test_quiet_hours_cross_midnight_family_tz(db):
 def test_quiet_holds_drops_and_lets_security_through(db, pings, monkeypatch):
     monkeypatch.setattr(notify, "in_quiet", lambda fam, now: True)
     p = _place(db, events=tuple(notify.EVENTS))
-    for ev in ("chore_ok", "badge", "resisting"):
+    for ev in ("chore_ok", "badge", "resisting", "workaround"):
         notify.ping(db, ev, ev)
     db.commit()
     assert [t for _, t, _ in pings] == ["resisting"]
-    assert [h.title for h in db.query(NotifyHeld).filter_by(place_id=p.id)] == ["chore_ok"]
+    held = [h.title for h in db.query(NotifyHeld).filter_by(place_id=p.id)]
+    assert held == ["chore_ok", "workaround"]
 
 
 def test_quiet_security_off_drops_security(db, pings, monkeypatch):

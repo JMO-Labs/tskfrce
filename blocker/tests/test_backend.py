@@ -178,3 +178,18 @@ def test_report_hits_posts_body(make_stub):
 
 def test_report_hits_false_on_unreachable():
     assert backend.report_hits(_cfg("http://127.0.0.1:1"), {"aa:aa:aa:aa:aa:01": 1}) is False
+
+
+def test_report_workarounds_posts_body(make_stub):
+    s = make_stub(body=b"{}")
+    assert backend.report_workarounds(_cfg(s.url), {"aa:aa:aa:aa:aa:01": ["vpn"]}) is True
+    method, path, _h, raw = s.requests[0]
+    assert (method, path) == ("POST", "/api/v1/internal/devices/workarounds")
+    assert json.loads(raw) == {"found": {"aa:aa:aa:aa:aa:01": ["vpn"]}}
+
+
+def test_report_workarounds_false_on_unreachable():
+    assert (
+        backend.report_workarounds(_cfg("http://127.0.0.1:1"), {"aa:aa:aa:aa:aa:01": ["vpn"]})
+        is False
+    )

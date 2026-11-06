@@ -77,6 +77,18 @@ describe('device Activity', () => {
     expect(rows[0].textContent).toContain('wrong PIN')
   })
 
+  test('Bypass filter includes identity and workaround rows; detail stays plain text', async () => {
+    data.events.push(ev({ id: 14, kind: 'identity_change', detail: '<b>x</b>' }), ev({ id: 15, kind: 'workaround_try', reason: 'tor' }))
+    show()
+    const f = await feed()
+    await waitFor(() => expect(within(f).getAllByRole('listitem')).toHaveLength(5))
+    await userEvent.click(within(f).getByRole('button', { name: 'Bypass' }))
+    expect(within(f).getAllByRole('listitem')).toHaveLength(3)
+    expect(within(f).getByText('May be a different device (<b>x</b>)')).toBeTruthy()
+    expect(within(f).getByText('Tried Tor — blocked')).toBeTruthy()
+    expect(f.querySelector('b')).toBeNull()
+  })
+
   test('Same device, merge posts the merge endpoint', async () => {
     show()
     await userEvent.click(await screen.findByRole('button', { name: /Same device, merge/ }))

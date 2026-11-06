@@ -61,8 +61,8 @@ def test_password_change_requires_current_password(client, db: Session, parent_a
         },
         headers=headers,
     )
-    assert response.status_code == 401
-    assert "incorrect" in response.json()["detail"].lower()
+    assert response.status_code == 400
+    assert response.json()["detail"] == "That's not your current password."
 
     # Try to change password with correct current password
     response = client.post(

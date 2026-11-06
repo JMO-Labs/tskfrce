@@ -16,7 +16,13 @@ from dataclasses import replace
 from blocker import firewall as fw
 from blocker.api import make_api
 from blocker.arp import RedirectionManager, TargetAddrs
-from blocker.backend import Seen, fetch_state, report_hits, report_resisting
+from blocker.backend import (
+    Seen,
+    fetch_state,
+    report_hits,
+    report_resisting,
+    report_workarounds,
+)
 from blocker.config import Config
 from blocker.discovery import run_discovery
 from blocker.hits import HitCounter
@@ -26,6 +32,7 @@ from blocker.signals import Signals
 from blocker.sites import SiteManager
 from blocker.state_store import MAC_RE, StateStore
 from blocker.vlan import VlanDetector
+from blocker.workaround import WorkaroundCounter
 
 log = logging.getLogger(__name__)
 
@@ -83,6 +90,7 @@ class Service:
         watch: ResistanceWatch | None = None,
         report: Callable[[Config, set[str]], bool] = report_resisting,
         report_hits: Callable[[Config, dict[str, int]], bool] = report_hits,
+        report_workarounds: Callable[[Config, dict[str, list[str]]], bool] = report_workarounds,
     ) -> None:
         self.cfg = cfg
         self._fw = firewall
@@ -101,8 +109,10 @@ class Service:
         self._watch = watch
         self._report = report
         self._report_hits = report_hits
+        self._report_workarounds = report_workarounds
         self._ip_mac: dict[str, str] = {}
         self.hits = HitCounter(self._mac_for_ip)
+        self.workarounds = WorkaroundCounter(self._mac_for_ip)
         self.store = StateStore()
         self._devices: dict[str, TargetAddrs] = {}
         self._seen_at: dict[str, float] = {}
@@ -276,6 +286,9 @@ class Service:
         h = self.hits.drain()
         if h:
             self._report_hits(self.cfg, h)
+        w = self.workarounds.drain()
+        if w:
+            self._report_workarounds(self.cfg, w)
 
     def _resist_loop(self) -> None:
         while not self._stop.wait(self.cfg.resist_interval):
@@ -353,7 +366,11 @@ class Service:
             self._spawn(lambda: self._vlan.run(self._stop))
         self._spawn(lambda: self.signals.run_dhcp(self._stop))
         self._spawn(lambda: self.signals.run_mdns(self._stop))
-        self._spawn(lambda: run_dns(self.cfg, self._portal_ip or "", self._stop))
+        self._spawn(
+            lambda: run_dns(
+                self.cfg, self._portal_ip or "", self._stop, on_query=self.workarounds.add
+            )
+        )
         self._spawn(lambda: run_http(self.cfg, self._stop, on_hit=self.hits.add))
         self._api = make_api(
             self.store,

@@ -2,7 +2,7 @@ import type { InboxItem } from '../hooks/useInbox'
 import { daysAgo } from '../clockText'
 
 /** Security alerts: the bell's Alerts tab. */
-export const ALERT_KINDS = ['device_resisting', 'device_bypass', 'box_offline']
+export const ALERT_KINDS = ['device_resisting', 'device_bypass', 'box_offline', 'password_guess', 'workaround_try']
 const NEEDS_KINDS = ['chore_submitted', 'integration_done', 'redemption_request', 'chore_note']
 
 /** Still waiting on a parent; the server decides (`pending`), so a stale item gets no buttons. */
@@ -17,6 +17,8 @@ export const severity = (n: InboxItem): { name: string; tone: Tone } => {
   switch (n.kind) {
     case 'device_resisting':
     case 'device_bypass':
+    case 'password_guess':
+    case 'workaround_try':
       return { name: 'gpp_maybe', tone: 'hi' }
     case 'box_offline':
       return { name: 'router', tone: 'hi' }

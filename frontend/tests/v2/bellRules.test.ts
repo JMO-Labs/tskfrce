@@ -19,6 +19,8 @@ describe('bellRules', () => {
     expect(isAlert(n({ kind: 'new_device' }))).toBe(false)
     expect(isAlert(n({ kind: 'device_bypass' }))).toBe(true)
     expect(isAlert(n({ kind: 'box_offline' }))).toBe(true)
+    expect(isAlert(n({ kind: 'password_guess' }))).toBe(true)
+    expect(isAlert(n({ kind: 'workaround_try' }))).toBe(true)
   })
 
   test('severity uses the chore glyph', () => {

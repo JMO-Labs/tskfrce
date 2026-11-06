@@ -29,6 +29,8 @@ export interface HoursPayload {
 export type EventKind =
   | 'bypass'
   | 'new_address'
+  | 'identity_change'
+  | 'workaround_try'
   | 'outside_hours'
   | 'locked_try'
   | 'left_wifi'
