@@ -201,7 +201,7 @@ const stFull = {
 }
 
 describe('rewards: screen time', () => {
-  test('group pricing switch: off hides the link; on shows it and saves', async () => {
+  test('group pricing switch: the link waits for Save', async () => {
     data({ '/screen-time': { ...stFull, group_pricing: false } })
     mockRoute.query = { section: 'rewards', item: 'screen' }
     render(wrap(<KidsPage />))
@@ -211,9 +211,16 @@ describe('rewards: screen time', () => {
     expect(within(detail()).queryByRole('link', { name: 'Set group prices' })).toBeNull()
     await userEvent.click(sw)
     expect(sw).toHaveAttribute('aria-checked', 'true')
-    expect(within(detail()).getByRole('link', { name: 'Set group prices' })).toHaveAttribute('href', '/devices?tab=groups')
+    expect(within(detail()).queryByRole('link', { name: 'Set group prices' })).toBeNull() // not saved yet
     await userEvent.click(within(detail()).getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(calls('PATCH')[0]).toEqual(['/screen-time', { method: 'PATCH', body: { group_pricing: true } }]))
+  })
+
+  test('saved group pricing shows the Set group prices link', async () => {
+    data({ '/screen-time': stFull })
+    mockRoute.query = { section: 'rewards', item: 'screen' }
+    render(wrap(<KidsPage />))
+    expect(await within(detail()).findByRole('link', { name: 'Set group prices' })).toHaveAttribute('href', '/devices?tab=groups')
   })
 
   test('Approve automatically + Save PATCHes only auto_approve', async () => {

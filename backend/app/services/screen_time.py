@@ -106,6 +106,12 @@ def options(db: Session, fam: FamilySettings, kid: User) -> list[dict]:
     devs = [d for d in kid.devices if not d.exempt]
     groups = {g.id: g for d in devs for g in d.groups if g.chore_lock}
     prices = {gid: g.screen_price or fam_price for gid, g in groups.items()}
+    # offer a group only if some device in it opens at its price (not a dearer shared one)
+    prices = {
+        gid: p
+        for gid, p in prices.items()
+        if any(device_price(fam, d) <= p for d in devs if groups[gid] in d.groups)
+    }
     other = any(not d.groups for d in devs)
     top = max([fam_price] * other + list(prices.values()), default=fam_price)
     out = [_opt("all", None, "All my devices", "devices", top)]

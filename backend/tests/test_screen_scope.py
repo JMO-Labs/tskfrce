@@ -239,3 +239,27 @@ def test_kid_rewards_price_is_all_price(client, db, kid, kid_headers, parent):
     out = client.get("/api/v1/kid/rewards", headers=kid_headers).json()
     assert out["screen"]["price"] == 40 == out["screen_time_price"]
     assert out["screen"]["options"][0]["price"] == 40
+
+
+def test_group_with_no_unlockable_device_not_offered(db, kid, parent):
+    _setup_prices(db, kid)
+    t, c = _grp(db, "Tablets"), _grp(db, "Consoles", 40)
+    _dev(db, kid, 1, [t, c])  # its device_price is 40, above Tablets' 20
+    _dev(db, kid, 2)
+    opts = screen_time.options(db, get_family(db), kid)
+    assert [(o["scope"], o["group_id"], o["price"]) for o in opts] == [
+        ("all", None, 40),
+        ("other", None, 20),
+        ("group", c.id, 40),
+    ]
+    with pytest.raises(HTTPException) as e:
+        _req(db, kid, t.id)
+    assert e.value.status_code == 400
+
+
+def test_unsellable_group_dropped_then_collapses(db, kid):
+    _setup_prices(db, kid)
+    t, c = _grp(db, "Tablets"), _grp(db, "Consoles", 40)
+    _dev(db, kid, 1, [t, c])
+    _dev(db, kid, 2, [c])
+    assert [o["scope"] for o in screen_time.options(db, get_family(db), kid)] == ["all"]

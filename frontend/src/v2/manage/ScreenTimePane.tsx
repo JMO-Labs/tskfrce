@@ -58,7 +58,7 @@ function HowItWorks({ st }: { st: ScreenTime }) {
       <Switch id="st-groups" label="Different prices for device groups" on={val('group_pricing')} onChange={(v) => set({ group_pricing: v })} />
       <span className="pk-hint pk-hint-tight">
         Charge more for some devices, like game consoles.
-        {val('group_pricing') && (
+        {st.group_pricing && ( // saved value: the link is useless until Save
           <>
             {' '}
             <Link href="/devices?tab=groups">Set group prices</Link>
