@@ -59,14 +59,15 @@ def handle_query(
     """Per-packet work: report the qname to on_query (errors swallowed), return the reply."""
     if addr[1] == 53:
         return None
-    if on_query is not None:
+    out = dns_response(data, box_ip)
+    if out is not None and on_query is not None:
         try:
             name = qname_of(data)
             if name:
                 on_query(addr[0], name)
         except Exception:
             log.debug("on_query failed", exc_info=True)
-    return dns_response(data, box_ip)
+    return out
 
 
 def run_dns(cfg, box_ip: str, stop, on_query: Callable[[str, str], None] | None = None) -> None:

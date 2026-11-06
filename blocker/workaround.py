@@ -19,9 +19,9 @@ def _entries() -> tuple[tuple[str, str], ...]:
         line = line.split("#", 1)[0].strip()
         if not line:
             continue
-        cat, _, domain = line.partition(" ")
-        if cat in CATEGORIES and domain.strip():
-            out.append((cat, domain.strip().lower()))
+        parts = line.split(None, 1)
+        if len(parts) == 2 and parts[0] in CATEGORIES:
+            out.append((parts[0], parts[1].strip().lower()))
     return tuple(out)
 
 

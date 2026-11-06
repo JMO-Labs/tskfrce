@@ -27,7 +27,6 @@ vpn tunnelbear.com
 vpn polargrizzly.com
 vpn hotspotshield.com
 vpn hsselite.com
-vpn anchorfree.com
 vpn northghost.com
 vpn psiphon.ca
 vpn psiphon3.com
@@ -52,7 +51,6 @@ vpn ultrasurf.us
 vpn betternet.co
 vpn hola.org
 vpn vpnunlimited.com
-vpn keepsolid.com
 vpn zenmate.com
 vpn atlasvpn.com
 vpn privadovpn.com
@@ -84,15 +82,12 @@ vpn kaspersky-vpn.com
 vpn fastestvpn.com
 vpn panda-vpn.com
 vpn vpnmaster.com
-vpn proxyrack.com
 
 # private_dns
 private_dns dns.google
 private_dns dns.google.com
 private_dns cloudflare-dns.com
 private_dns one.one.one.one
-private_dns 1dot1dot1dot1.cloudflare-dns.com
-private_dns mozilla.cloudflare-dns.com
 private_dns dns.quad9.net
 private_dns dns9.quad9.net
 private_dns dns10.quad9.net
@@ -103,9 +98,6 @@ private_dns dns-family.adguard.com
 private_dns doh.opendns.com
 private_dns dns.opendns.com
 private_dns dns.nextdns.io
-private_dns mask.icloud.com
-private_dns mask-h2.icloud.com
-private_dns mask-api.icloud.com
 private_dns doh.cleanbrowsing.org
 private_dns dns.controld.com
 private_dns freedns.controld.com
@@ -117,7 +109,6 @@ private_dns dns.twnic.tw
 private_dns dns.alidns.com
 private_dns doh.pub
 private_dns dns.pub
-private_dns doh.dns.sb
 private_dns dns.digitale-gesellschaft.ch
 private_dns doh.applied-privacy.net
 private_dns doh.li
@@ -125,8 +116,6 @@ private_dns dnsforge.de
 private_dns dns.switch.ch
 private_dns doh.centraleu.pi-dns.com
 private_dns dns-unfiltered.adguard.com
-private_dns chrome.cloudflare-dns.com
-private_dns use-application-dns.net
 
 # proxy
 proxy croxyproxy.com
@@ -144,9 +133,6 @@ proxy hidemy.name
 proxy hidemy.io
 proxy zalmos.com
 proxy croxy.network
-proxy smartproxy.com
-proxy oxylabs.io
-proxy brightdata.com
 proxy luminati.io
 proxy proxyscrape.com
 proxy free-proxy-list.net
@@ -169,9 +155,6 @@ proxy hideip.me
 # tor
 tor torproject.org
 tor tor.eff.org
-tor bridges.torproject.org
-tor snowflake.torproject.net
-tor onionoo.torproject.org
 tor tor2web.org
 tor onion.ly
 tor onion.pet
@@ -180,4 +163,3 @@ tor tor.exit.re
 tor onionland.io
 tor torbrowser.org
 tor torproject.net
-tor check.torproject.org

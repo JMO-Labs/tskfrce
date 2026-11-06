@@ -165,3 +165,14 @@ def test_handle_query_swallows_on_query_error():
 
     assert handle_query(_query("A"), ("10.0.0.7", 5000), "192.168.1.5", boom) is not None
     assert handle_query(_query("A"), ("10.0.0.7", 53), "192.168.1.5", boom) is None
+
+
+def test_handle_query_skips_on_query_for_invalid_packet():
+    from blocker.portal import handle_query
+
+    seen = []
+    assert (
+        handle_query(b"\x00garbage", ("10.0.0.7", 5000), "1.1.1.1", lambda *a: seen.append(a))
+        is None
+    )
+    assert seen == []

@@ -47,3 +47,10 @@ def test_qname_of():
 
     assert qname_of(bytes(DNS(rd=1, qd=DNSQR(qname="example.com")))) == "example.com."
     assert qname_of(b"\x00garbage") is None
+
+
+@pytest.mark.parametrize(
+    "name", ["google.com", "icloud.com", "mask.icloud.com", "use-application-dns.net"]
+)
+def test_background_names_not_flagged(name):
+    assert categorize(name) is None
