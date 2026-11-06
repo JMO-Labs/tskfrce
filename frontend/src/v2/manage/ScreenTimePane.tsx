@@ -115,53 +115,59 @@ export function ScreenTimePane() {
           </div>
         </div>
       </header>
-      <div className="rw-g2">
-        <HowItWorks key={JSON.stringify([st.enabled, st.price, st.max_minutes_per_day, st.auto_approve, st.only_in_allowed_hours])} st={st} />
-        <section className="pk-panel rw-rows" aria-label="What points buy">
-          <h3>
-            <Icon name="calculate" size={18} className="rw-h3i" />
-            What points buy
-          </h3>
-          <div className="rw-kv">
-            <span>Average chore ({st.avg_chore_points} pts)</span>
-            {fmtMin(Math.round((st.avg_chore_points * 15) / st.price))}
+      {st.enabled ? (
+        <>
+          <div className="rw-g2">
+            <HowItWorks key={JSON.stringify([st.enabled, st.price, st.max_minutes_per_day, st.auto_approve, st.only_in_allowed_hours])} st={st} />
+            <section className="pk-panel rw-rows" aria-label="What points buy">
+              <h3>
+                <Icon name="calculate" size={18} className="rw-h3i" />
+                What points buy
+              </h3>
+              <div className="rw-kv">
+                <span>Average chore ({st.avg_chore_points} pts)</span>
+                {fmtMin(Math.round((st.avg_chore_points * 15) / st.price))}
+              </div>
+              {st.kids.map((k) => (
+                <div key={k.kid_id} className="rw-kv">
+                  <span>
+                    {k.name ?? 'Kid'} · {k.balance} pts
+                  </span>
+                  up to {buys(k.balance)}
+                </div>
+              ))}
+            </section>
           </div>
-          {st.kids.map((k) => (
-            <div key={k.kid_id} className="rw-kv">
-              <span>
-                {k.name ?? 'Kid'} · {k.balance} pts
-              </span>
-              up to {buys(k.balance)}
-            </div>
-          ))}
-        </section>
-      </div>
-      <section className="pk-panel rw-rows" aria-label="Bought today">
-        <h3>
-          <Icon name="timer" size={18} className="rw-h3i" />
-          <span className="rw-grow">Bought today</span>
-          <span className="rw-aside">resets {wallTime(st.reset_time)}</span>
-        </h3>
-        {st.kids.map((k) => (
-          <div key={k.kid_id} className="rw-kv">
-            <span className="rw-who">
-              <span className="rw-avx" aria-hidden="true">
-                {initial(k.name ?? 'Kid')}
-              </span>
-              {k.name ?? 'Kid'}
-            </span>
-            <span className="pt-prog rw-prog">
-              {k.max_minutes ? (
-                <span className="pt-bar">
-                  <i style={{ width: `${Math.min(100, (k.bought_today / k.max_minutes) * 100)}%` }} />
+          <section className="pk-panel rw-rows" aria-label="Bought today">
+            <h3>
+              <Icon name="timer" size={18} className="rw-h3i" />
+              <span className="rw-grow">Bought today</span>
+              <span className="rw-aside">resets {wallTime(st.reset_time)}</span>
+            </h3>
+            {st.kids.map((k) => (
+              <div key={k.kid_id} className="rw-kv">
+                <span className="rw-who">
+                  <span className="rw-avx" aria-hidden="true">
+                    {initial(k.name ?? 'Kid')}
+                  </span>
+                  {k.name ?? 'Kid'}
                 </span>
-              ) : null}
-              <b>{k.max_minutes ? `${k.bought_today} / ${k.max_minutes} min` : `${k.bought_today} min`}</b>
-            </span>
-          </div>
-        ))}
-      </section>
-      {st.enabled && <ScreenLimits kids={st.kids} />}
+                <span className="pt-prog rw-prog">
+                  {k.max_minutes ? (
+                    <span className="pt-bar">
+                      <i style={{ width: `${Math.min(100, (k.bought_today / k.max_minutes) * 100)}%` }} />
+                    </span>
+                  ) : null}
+                  <b>{k.max_minutes ? `${k.bought_today} / ${k.max_minutes} min` : `${k.bought_today} min`}</b>
+                </span>
+              </div>
+            ))}
+          </section>
+          <ScreenLimits kids={st.kids} />
+        </>
+      ) : (
+        <HowItWorks key={JSON.stringify([st.enabled, st.price, st.max_minutes_per_day, st.auto_approve, st.only_in_allowed_hours])} st={st} />
+      )}
     </div>
   )
 }

@@ -2,6 +2,7 @@
 
 import pytest
 from app.core.config import settings
+from app.models.family import get_family
 from app.models.user import User
 
 from tests.test_setup import BODY
@@ -68,7 +69,9 @@ def test_no_claim_code_setting_no_gate(client):
     assert client.post(URL, json=BODY).status_code == 201
 
 
-def test_step_7_accepted_8_rejected(client, parent_headers):
+def test_step_7_accepted_8_rejected(client, db, parent_headers):
+    get_family(db).setup_step = 3  # an open wizard
+    db.commit()
     assert client.put(f"{URL}/step", json={"step": 7}, headers=parent_headers).status_code == 200
     assert client.put(f"{URL}/step", json={"step": 8}, headers=parent_headers).status_code == 422
 

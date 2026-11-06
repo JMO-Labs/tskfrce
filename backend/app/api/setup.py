@@ -24,6 +24,7 @@ from app.services.chore_types import seed as seed_chore_types
 router = APIRouter(prefix="/api/v1/setup", tags=["setup"])
 
 DONE = "Setup is already done. Log in instead."
+FINISHED = "Setup is already finished."
 RESUME_AFTER_ACCOUNT = 3  # the account exists from step 2 on; the wizard resumes at step 3
 LAST_STEP = 7
 CLAIM_WRONG = "That code doesn't match this box. Check the sticker and try again."
@@ -119,6 +120,8 @@ def get_step(db: Session = Depends(get_db), _: User = Depends(require_parent)):
 @router.put("/step")
 def put_step(body: StepIn, db: Session = Depends(get_db), _: User = Depends(require_parent)):
     fam = get_family(db)
+    if body.step is not None and fam.setup_step is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, FINISHED)  # no reopening: runs would stop
     if body.step is None and fam.setup_step is not None:
         _start_chore_day(fam)  # Finish: wizard chores start at the next reset, not tonight
     fam.setup_step = body.step

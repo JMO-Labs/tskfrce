@@ -112,3 +112,12 @@ def test_stored_step_above_last_reads_as_finished(client, db):
     get_family(db).setup_step = 8  # saved by the old 8-step wizard
     db.commit()
     assert client.get("/api/v1/setup/step", headers=h).json() == {"step": None}
+
+
+def test_finished_setup_step_is_locked(client, db):
+    h = _tok(client)
+    assert client.put("/api/v1/setup/step", json={"step": None}, headers=h).status_code == 200
+    r = client.put("/api/v1/setup/step", json={"step": 5}, headers=h)
+    assert r.status_code == 409 and r.json()["detail"] == "Setup is already finished."
+    assert get_family(db).setup_step is None
+    assert client.put("/api/v1/setup/step", json={"step": None}, headers=h).status_code == 200
