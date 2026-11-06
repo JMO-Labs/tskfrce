@@ -144,3 +144,24 @@ def test_dns_response_drops_qdcount_not_one():
 def test_dns_response_drops_garbage():
     pytest.importorskip("scapy")
     assert dns_response(b"\xff\x00garbage", "192.168.1.5") is None
+
+
+def test_handle_query_calls_on_query_and_answers():
+    from blocker.portal import handle_query
+
+    seen = []
+    out = handle_query(
+        _query("A"), ("10.0.0.7", 5000), "192.168.1.5", lambda ip, q: seen.append((ip, q))
+    )
+    assert out is not None
+    assert seen == [("10.0.0.7", "example.com.")]
+
+
+def test_handle_query_swallows_on_query_error():
+    from blocker.portal import handle_query
+
+    def boom(ip, q):
+        raise RuntimeError
+
+    assert handle_query(_query("A"), ("10.0.0.7", 5000), "192.168.1.5", boom) is not None
+    assert handle_query(_query("A"), ("10.0.0.7", 53), "192.168.1.5", boom) is None

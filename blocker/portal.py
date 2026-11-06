@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import socket
 import threading
+from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 log = logging.getLogger(__name__)
@@ -35,7 +36,40 @@ def dns_response(query_wire: bytes, answer_ip: str) -> bytes | None:
     return bytes(resp)
 
 
-def run_dns(cfg, box_ip: str, stop) -> None:
+def qname_of(wire: bytes) -> str | None:
+    """First question name of a DNS packet (e.g. "example.com."), or None if unparsable."""
+    from scapy.layers.dns import DNS
+
+    try:
+        q = DNS(wire)
+        qd = q.qd
+        first = qd[0] if isinstance(qd, list) else qd
+        name = first.qname
+        return name.decode() if isinstance(name, bytes) else str(name)
+    except Exception:  # noqa: BLE001 - any parse failure just means "no name"
+        return None
+
+
+def handle_query(
+    data: bytes,
+    addr: tuple[str, int],
+    box_ip: str,
+    on_query: Callable[[str, str], None] | None = None,
+) -> bytes | None:
+    """Per-packet work: report the qname to on_query (errors swallowed), return the reply."""
+    if addr[1] == 53:
+        return None
+    if on_query is not None:
+        try:
+            name = qname_of(data)
+            if name:
+                on_query(addr[0], name)
+        except Exception:
+            log.debug("on_query failed", exc_info=True)
+    return dns_response(data, box_ip)
+
+
+def run_dns(cfg, box_ip: str, stop, on_query: Callable[[str, str], None] | None = None) -> None:
     """Serve dns_response over UDP :53 until stop (threading.Event) is set."""
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(("0.0.0.0", 53))
@@ -46,10 +80,8 @@ def run_dns(cfg, box_ip: str, stop) -> None:
                 data, addr = sock.recvfrom(512)
             except TimeoutError:
                 continue
-            if addr[1] == 53:
-                continue
             try:
-                out = dns_response(data, box_ip)
+                out = handle_query(data, addr, box_ip, on_query)
                 if out is not None:
                     sock.sendto(out, addr)
             except Exception:

@@ -23,4 +23,4 @@ addopts = "-m 'not integration'"
 
 [tool.hatch.build.targets.wheel]
 packages = ["."]
-include = ["*.py", "data/oui.csv"]
+include = ["*.py", "data/oui.csv", "data/workaround_domains.txt"]

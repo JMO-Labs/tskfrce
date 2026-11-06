@@ -448,3 +448,18 @@ def test_sighting_on_another_vlan_keeps_base_block():
     svc._reconcile_once()
     assert redir.targets[MAC].ip == "192.168.1.50"  # base block not lifted
     assert sites.targets[20][MAC].ip == "192.168.20.9"
+
+
+def test_resist_once_reports_workarounds_only_when_found():
+    watch = Mock(set_watched=Mock(), stop=Mock(), counter=Mock(resisting=Mock(return_value=set())))
+    sent = []
+    svc, _, _ = _svc(
+        watch=watch, report=lambda c, m: True, report_workarounds=lambda c, f: sent.append(f)
+    )
+    svc._resist_once()
+    assert sent == []
+    svc._on_seen(Seen(mac=MAC, ip="192.168.1.42", ipv6=[], hostname=None, vendor=None))
+    svc.store.set_blocked([MAC])
+    svc.workarounds.add("192.168.1.42", "nordvpn.com.")
+    svc._resist_once()
+    assert sent == [{MAC: ["vpn"]}]
