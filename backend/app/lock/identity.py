@@ -31,9 +31,7 @@ def _differs(old: str | None, new: str | None) -> bool:
     return bool(old and new and old.lower() != new.lower())
 
 
-def note_identity_change(
-    db: Session, dev: Device, old_model: str | None, _old_fp: str | None, now: datetime
-) -> None:
+def note_identity_change(db: Session, dev: Device, old_model: str | None, now: datetime) -> None:
     if dev.status != "assigned":
         return
     if _differs(old_model, dev.model):

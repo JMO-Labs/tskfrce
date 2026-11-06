@@ -33,7 +33,11 @@ export function PasswordCard() {
       setError(e instanceof ApiError ? e.detail : 'Something went wrong. Try again.')
     }
   }
-  const eye = { visibilityToggleIcon: PasswordEye }
+  const eye = {
+    visibilityToggleIcon: PasswordEye,
+    'aria-describedby': error ? 'pw-err' : undefined,
+    'aria-invalid': error ? true : undefined,
+  }
   return (
     <div id="password" ref={ref}>
       <PaneCard icon="password" title="Your password">
@@ -48,7 +52,7 @@ export function PasswordCard() {
           <PasswordInput {...eye} label="New password" value={next} onChange={(e) => setNext(e.currentTarget.value)} autoComplete="new-password" />
           <PasswordInput {...eye} label="Confirm new password" value={again} onChange={(e) => setAgain(e.currentTarget.value)} autoComplete="new-password" />
           {error && (
-            <p className="pn-help" role="alert">
+            <p id="pw-err" className="pn-help" role="alert">
               {error}
             </p>
           )}
