@@ -217,7 +217,9 @@
 .root[data-card='explode'] .word { --d: 0.36s; animation-duration: 1.14s; }
 .root[data-burst='sneeze'] .word { --d: 0.45s; animation-duration: 1.05s; }
 
-/* --- confetti --- */
+/* --- confetti and beams stay in the content column (not over the desktop rail) --- */
+.confetti,
+.col { position: absolute; left: var(--cl, 0px); width: var(--cw, 100vw); top: 0; bottom: 0; overflow: hidden; }
 .confetti i {
   position: absolute;
   top: -20px;
@@ -435,7 +437,6 @@
   left: var(--cl, 0px);
   width: var(--cw, 100vw);
   bottom: 6%;
-  overflow: hidden;
   display: flex;
   justify-content: center;
   gap: 2vw;

@@ -20,14 +20,18 @@ export interface Track {
 const MILESTONES = [3, 7, 14, 30]
 export const isMilestone = (n: number) => MILESTONES.includes(n) || (n > 30 && n % 30 === 0)
 
-/** Compare today's payload with what this device saw last. First ever look seeds quietly. */
-export function detect(prev: Track | null, d: KidToday, now = Date.now()): { events: CelebrateEvent[]; next: Track } {
+/**
+ * Compare today's payload with what this device saw last. First ever look seeds quietly.
+ * inflight: runs whose done request has not answered yet (they keep their 'mine' mark).
+ */
+export function detect(prev: Track | null, d: KidToday, now = Date.now(), inflight: ReadonlySet<number> = new Set()): { events: CelebrateEvent[]; next: Track } {
   const events: CelebrateEvent[] = []
   const runs: Record<string, string> = {}
   const approved: KidChore[] = []
   for (const c of d.chores) {
     const was = prev?.runs[c.id]
-    runs[c.id] = was === 'mine' && c.state === 'todo' ? 'mine' : c.state // a poll before the tap's request lands
+    // a poll before the tap's request lands keeps 'mine'; back at todo with nothing in flight (rejected) clears it
+    runs[c.id] = was === 'mine' && c.state === 'todo' && inflight.has(c.id) ? 'mine' : c.state
     if (prev && c.state === 'done' && was !== 'done' && was !== 'mine' && !c.taken_by) approved.push(c)
   }
   if (approved.length)
@@ -51,11 +55,11 @@ export function detect(prev: Track | null, d: KidToday, now = Date.now()): { eve
 }
 
 /** The kid's own "I'm done" tap. The first chore of a Happy Hour is a big moment. */
-export function submitEvent(t: Track, c: KidChore, d: KidToday): { event: CelebrateEvent; next: Track } {
+export function submitEvent(t: Track, c: KidChore, d: KidToday, now = Date.now()): { event: CelebrateEvent; next: Track } {
   const hh = d.happy_hour?.ends_at ?? null
   const big = !!hh && t.hhFirst !== hh
   return {
-    event: { kind: 'submit', key: `s:${c.id}:${c.attempt ?? 1}`, title: c.title, points: c.points_now ?? c.points, big, runId: c.id },
+    event: { kind: 'submit', key: `s:${c.id}:${now}`, title: c.title, points: c.points_now ?? c.points, big, runId: c.id },
     next: { ...t, runs: { ...t.runs, [c.id]: 'mine' }, hhFirst: hh ?? t.hhFirst },
   }
 }
@@ -78,8 +82,8 @@ function save(kidId: number | null | undefined, t: Track) {
 }
 
 export interface SubmitHandlers {
-  /** the tap, before the request goes out: marks the run as the kid's own */
-  tap: (c: KidChore) => void
+  /** the tap, before the request goes out: marks the run as the kid's own. false = a duplicate, send nothing */
+  tap: (c: KidChore) => boolean
   /** the request went through: play it (once) */
   sent: (c: KidChore) => void
   /** the request failed: forget the mark */
@@ -96,20 +100,21 @@ export function useCelebrationTriggers(d: KidToday, kidId: number | null | undef
   useEffect(() => {
     if (!enabled) return
     if (track.current === undefined) track.current = load(kidId)
-    const { events, next } = detect(track.current, d)
+    const { events, next } = detect(track.current, d, Date.now(), new Set(pending.current.keys()))
     track.current = next
     save(kidId, next)
     events.forEach(fire)
   }, [d, kidId, enabled, fire])
   const tap = useCallback(
     (c: KidChore) => {
-      if (!enabled) return
+      if (!enabled) return true
+      if (pending.current.has(c.id)) return false // a double tap
       const t = track.current ?? load(kidId) ?? detect(null, d).next
-      if (pending.current.has(c.id) || t.runs[c.id] === 'mine') return // a double tap
       const { event, next } = submitEvent(t, c, d)
       pending.current.set(c.id, { event, was: t.runs[c.id], hhFirst: t.hhFirst })
       track.current = next
       save(kidId, next)
+      return true
     },
     [d, kidId, enabled],
   )

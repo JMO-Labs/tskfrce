@@ -227,4 +227,30 @@ describe('KidApp celebrations', () => {
     await userEvent.click(screen.getByRole('button', { name: /I'm done!/ }))
     expect(document.querySelector('[data-celebrate]')).toBeNull()
   })
+
+  test('a double tap sends one request; the duplicate never errors away the first celebration', async () => {
+    localStorage.clear()
+    let calls = 0
+    const done = {
+      mutate: jest.fn((_id: number, o?: { onSuccess?: () => void; onError?: () => void }) => {
+        calls++
+        if (calls === 1) setTimeout(() => o?.onSuccess?.(), 20)
+        else o?.onError?.() // a 409 for the duplicate
+      }),
+      isPending: false,
+      variables: undefined,
+    }
+    render(
+      <QueryClientProvider client={client()}>
+        <MantineProvider theme={fridgeTheme}>
+          <KidApp d={today('kid')} name="Leo" avatar="🦁" kidId={3} preview={false} onExit={() => {}} onLocker={() => {}} canSwitch={false} done={done} />
+        </MantineProvider>
+      </QueryClientProvider>,
+    )
+    await userEvent.click(screen.getByRole('button', { name: /^Open Dishes/ }))
+    const btn = screen.getByRole('button', { name: /I'm done!/ })
+    await userEvent.dblClick(btn)
+    expect(done.mutate).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(document.querySelector('[data-celebrate]')).not.toBeNull())
+  })
 })

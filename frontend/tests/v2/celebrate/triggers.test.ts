@@ -41,6 +41,13 @@ describe('detect', () => {
     expect(detect(next, today([chore(1, 'done')])).events).toEqual([])
   })
 
+  test('a mine run back at todo with no request in flight (rejected) is cleared, so the retry celebrates', () => {
+    const t0 = detect(null, today([chore(1, 'todo')])).next
+    const { next } = submitEvent(t0, chore(1, 'todo'), today([chore(1, 'todo')]))
+    expect(detect(next, today([chore(1, 'todo')]), Date.now(), new Set([1])).next.runs[1]).toBe('mine') // still in flight
+    expect(detect(next, today([chore(1, 'todo')])).next.runs[1]).toBe('todo') // rejected
+  })
+
   test('a race chore a sibling took is not ours to celebrate', () => {
     const a = detect(null, today([chore(1, 'needs_you')]))
     expect(detect(a.next, today([chore(1, 'done', { taken_by: 'Mia' })])).events).toEqual([])
@@ -159,6 +166,19 @@ describe('useCelebrationTriggers', () => {
     rerender({ d: today([chore(1, 'done')]) })
     expect(fire).toHaveBeenCalledTimes(1)
     expect((fire.mock.calls[0][0] as { kind: string }).kind).toBe('approve')
+  })
+
+  test('tap reports a duplicate while the first is in flight; a rejected submit can be retried and celebrates', () => {
+    const fire = jest.fn()
+    const d = today([chore(1, 'todo')])
+    const { result, rerender } = renderHook(({ d }) => useCelebrationTriggers(d, 3, fire, true), { initialProps: { d } })
+    expect(result.current.tap(d.chores[0])).toBe(true)
+    expect(result.current.tap(d.chores[0])).toBe(false)
+    result.current.failed(d.chores[0])
+    rerender({ d: today([chore(1, 'todo')]) })
+    expect(result.current.tap(d.chores[0])).toBe(true)
+    result.current.sent(d.chores[0])
+    expect(fire).toHaveBeenCalledTimes(1)
   })
 
   test('disabled (parent preview) never fires', () => {

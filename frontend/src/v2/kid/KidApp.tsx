@@ -73,7 +73,8 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
   const submit = useCelebrationTriggers(d, kidId, cel.fire, !preview)
   const onDone = (id: number) => {
     const c = d.chores.find((x) => x.id === id)
-    if (c) submit.tap(c) // marked before the request goes out (double taps, polls racing an auto-approve)
+    // marked before the request goes out (polls racing an auto-approve); a double tap sends nothing
+    if (c && !submit.tap(c)) return
     done.mutate(id, { onSuccess: () => c && submit.sent(c), onError: () => c && submit.failed(c) })
   }
   const Mode = MODES[mode]

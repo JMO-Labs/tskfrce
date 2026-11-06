@@ -85,7 +85,9 @@ export function Burst({ fx, balance }: { fx: BurstFx; balance?: number }) {
   if (fx === 'disco')
     return (
       <div data-burst="disco">
-        <i className={s.beams} />
+        <span className={s.col}>
+          <i className={s.beams} />
+        </span>
         <i className={s.ball} />
       </div>
     )
@@ -121,7 +123,9 @@ export function MascotPop({ id, say, prop }: { id: string; say: string; prop?: s
 export function Legendary({ fx, cast }: { fx: LegendaryFx; cast: string[] }) {
   return (
     <div className={s.legend} data-burst={fx} data-legendary={fx}>
-      <i className={s.beams} />
+      <span className={s.col}>
+        <i className={s.beams} />
+      </span>
       {fx === 'party' && <i className={s.ball} />}
       <div className={s.cast}>
         {cast.map((id, i) => (
