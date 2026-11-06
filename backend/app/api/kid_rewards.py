@@ -24,6 +24,7 @@ class RedeemIn(BaseModel):
     reward_id: int | None = None
     minutes: int | None = None
     device_id: int | None = None
+    group_id: int | None = None
 
 
 @router.get("/rewards")
@@ -47,6 +48,7 @@ def rewards(db: Session = Depends(get_db), kid: User = Depends(view_kid)):
         "in_hours": screen_time.in_allowed_hours(db, kid, now),
         # bought minutes never open an off window (bedtime), even when allowed outside hours
         "off_now": screen_time.all_in_off_window(db, kid, now),
+        "options": screen_time.options(db, fam, kid),
     }
     return {
         "balance": economy.balance(db, kid.id),
@@ -99,7 +101,7 @@ def redeem(
             raise HTTPException(400, "That reward isn't available. Pick another.")
     if device_id is None and body.kind == "screen_time":
         device_id = _guess_device(db, kid, client_ip(request))
-    r = economy.request(db, kid, body.kind, body.reward_id, body.minutes, device_id)
+    r = economy.request(db, kid, body.kind, body.reward_id, body.minutes, device_id, body.group_id)
     return {
         "id": r.id,
         "kind": r.kind,

@@ -266,6 +266,7 @@ def _group_out(g: DeviceGroup) -> dict:
         "device_ids": sorted(d.id for d in g.devices),
         "icon": g.icon,
         "chore_lock": g.chore_lock,
+        "screen_price": g.screen_price,
     }
 
 
@@ -295,6 +296,7 @@ def create_group(body: GroupIn, db: Session = Depends(get_db)):
     g = DeviceGroup(name=body.name, icon=body.icon or "devices")
     if body.chore_lock is not None:
         g.chore_lock = body.chore_lock
+    g.screen_price = body.screen_price
     g.devices = _devices(db, body.device_ids)
     db.add(g)
     _commit(db, "A group with that name already exists. Pick another name.", 400)
@@ -311,6 +313,8 @@ def patch_group(group_id: int, body: GroupIn, db: Session = Depends(get_db)):
         g.icon = body.icon
     if body.chore_lock is not None:
         g.chore_lock = body.chore_lock
+    if "screen_price" in body.model_fields_set:
+        g.screen_price = body.screen_price
     g.devices = _devices(db, body.device_ids)
     _commit(db, "A group with that name already exists. Pick another name.", 400)
     trigger()
