@@ -33,7 +33,7 @@
   - Word text fits narrow screens.
   - The mascot is centred and its image bottom stays below the screen edge.
 - All art is bundled locally, with no runtime downloads, and adds 3 MB at most. Noto credit goes in About and in `docs/CREDITS.md`.
-- Use existing theme tokens only. Mockup-matched light and dark screenshots on phone (390×844 @2x) and desktop (1280×900). The approved mockups are in `/home/user/code/tskfrce-bank/.superpowers/brainstorm/1783461-1793987804/content/` (`excitement-v2.html`, `excitement-v3.html`, `trex-tryout-v5.html`).
+- Use existing theme tokens only. Mockup-matched light and dark screenshots on phone (390×844 @2x) and desktop (1280×900). The approved mockups are in `/home/user/code/tskfrce-fun/.superpowers/mockups/` (`excitement-v2.html`, `excitement-v3.html`, `trex-tryout-v5.html`).
 - Files under 500 lines. Semantic commits, each with this trailer:
   ```
   Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
