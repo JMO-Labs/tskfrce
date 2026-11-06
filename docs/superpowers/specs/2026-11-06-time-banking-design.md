@@ -43,7 +43,7 @@ Kids buy screen time with points, up to a daily max. If they skip screen time on
   - Switch: **"Save unused time"**, with the hint **"Minutes a kid doesn't buy today carry over, so they can save up for a bigger day."**
   - When the switch is on, a number field: **"Save up to"**, followed by "min", with the placeholder "Same as the daily max (60)".
   - The per-kid limits list shows each kid's saved minutes: "Saved: 40 min".
-- **Kid rewards card.** Under the minutes picker, the kid sees **"You saved 40 min — today you can buy up to 100 min."** This only shows when the bank is above 0. The minutes picker allows up to the new limit.
+- **Kid rewards card.** Under the minutes picker, the kid sees **"You saved 40 min — today you can buy up to 100 min."** This only shows when the bank is above 0. The picker offers steps up to what is left today (each request stays 15–120 min).
 - **Daily summary and weekly recap.** Not part of this item.
 
 ## Docs
