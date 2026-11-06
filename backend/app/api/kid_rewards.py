@@ -1,6 +1,7 @@
 """Kid API: rewards shop, redeeming and award pop-ups."""
 
 from datetime import UTC, datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
@@ -19,11 +20,13 @@ from app.services import economy, screen_time
 router = APIRouter(prefix="/api/v1/kid", tags=["kid"])
 
 
-class RedeemIn(BaseModel):
+class RedeemIn(BaseModel):  # scope None: 'group' when group_id is set, else 'all' (old clients)
     kind: str
     reward_id: int | None = None
     minutes: int | None = None
     device_id: int | None = None
+    group_id: int | None = None
+    scope: Literal["all", "other", "group"] | None = None
 
 
 @router.get("/rewards")
@@ -35,9 +38,10 @@ def rewards(db: Session = Depends(get_db), kid: User = Depends(view_kid)):
     now = datetime.now(UTC)
     cap, min_points = screen_time.limit_for(db, fam, kid.id)
     got = screen_time.bought_today(db, fam, [kid.id], now)[kid.id]
+    opts = screen_time.options(db, fam, kid)
     screen = {
         "enabled": bool(fam.points_unlock_early),
-        "price": fam.screen_time_price,
+        "price": opts[0]["price"],  # the All price, for old clients
         "auto": bool(fam.screen_auto_approve),
         "only_in_hours": bool(fam.screen_only_allowed_hours),
         "max_today": cap,
@@ -47,11 +51,12 @@ def rewards(db: Session = Depends(get_db), kid: User = Depends(view_kid)):
         "in_hours": screen_time.in_allowed_hours(db, kid, now),
         # bought minutes never open an off window (bedtime), even when allowed outside hours
         "off_now": screen_time.all_in_off_window(db, kid, now),
+        "options": opts,
     }
     return {
         "balance": economy.balance(db, kid.id),
         "screen": screen,
-        "screen_time_price": fam.screen_time_price,
+        "screen_time_price": opts[0]["price"],
         "screen_time_enabled": bool(fam.points_unlock_early),
         "rewards": [
             {
@@ -99,7 +104,9 @@ def redeem(
             raise HTTPException(400, "That reward isn't available. Pick another.")
     if device_id is None and body.kind == "screen_time":
         device_id = _guess_device(db, kid, client_ip(request))
-    r = economy.request(db, kid, body.kind, body.reward_id, body.minutes, device_id)
+    r = economy.request(
+        db, kid, body.kind, body.reward_id, body.minutes, device_id, body.group_id, body.scope
+    )
     return {
         "id": r.id,
         "kind": r.kind,

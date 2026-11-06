@@ -21,3 +21,5 @@ Taken with Playwright from a demo family (kids Bobby and Susan), read-only: ever
 | `setup-claim.jpg` | Box code screen (phone), empty, from the sticker's **Open my box** link. |
 | `setup-phones.jpg` | Setup wizard step 4 "Kids' phones" (phone). The QR is a mock pattern. |
 | `kid-welcome.jpg` | Kid welcome page after scanning a code (iPhone steps). |
+| `group-price.jpg` | **Devices → Groups**, one group open with **Screen time price** filled in (phone). Mocked API. |
+| `kid-screen-for.jpg` | Kid **Rewards** (phone): **What for?** picker with Consoles selected. Mocked API. |

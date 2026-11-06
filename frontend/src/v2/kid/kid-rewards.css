@@ -66,6 +66,23 @@
 .r-view[data-mode='teen'] .r-btn { width: auto; min-width: 90px; height: 40px; border-radius: 10px; font-size: 14px; border-width: 1px; border-color: var(--k-sun); white-space: nowrap; }
 .r-view[data-mode='teen'] .r-btn:disabled { border-color: var(--k-line); }
 
+/* "What for?" picker: radio chips, 48px+ tap targets; focus ring comes from .k-app :focus-visible */
+.r-for { display: flex; flex-direction: column; gap: 6px; }
+.r-for-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.r-for-chip {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 6px 14px 6px 10px; cursor: pointer; text-align: left;
+  font: inherit; color: var(--k-ink); background: var(--k-card); border: 2px solid var(--k-line); border-radius: 14px;
+}
+.r-for-chip .ms { font-size: 24px; }
+.r-for-t { display: flex; flex-direction: column; line-height: 1.15; }
+.r-for-t b { font-size: 16px; }
+.r-for-t small { font-size: 13px; font-weight: 600; color: var(--k-sub); }
+.r-for-chip[aria-checked='true'] { background: var(--k-sun); color: var(--k-navy); border-color: var(--k-navy); }
+.r-for-chip[aria-checked='true'] small { color: var(--k-navy); }
+.r-view[data-mode='little'] .r-for-chip { min-height: 64px; border-width: 3px; border-radius: 20px; }
+.r-view[data-mode='little'] .r-for-t b { font-size: 22px; }
+.r-view[data-mode='teen'] .r-for-chip { min-height: 44px; border-width: 1px; border-radius: 10px; }
+
 /* Me: profile + family cards in the mode's card style */
 .me-card { background: var(--k-card); color: var(--k-ink); display: flex; flex-direction: column; gap: 14px; min-width: 0; border: 2px solid var(--k-line); border-radius: 20px; padding: 20px; }
 .me-h { margin: 0; font-size: 24px; }

@@ -241,6 +241,7 @@ html[data-look='parent'] .pn-addr .f-input.f-input { font: 12.5px ui-monospace, 
 [data-look='parent'] .rw-prog b { font-size: 12px; white-space: nowrap; }
 [data-look='parent'] .rw-unit { display: flex; align-items: center; gap: 6px; }
 [data-look='parent'] .rw-unit input { flex: 0 1 5ch; min-width: 0; width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; }
+[data-look='parent'] .rw-unit-wide input { flex: 1 1 18ch; }
 [data-look='parent'] .rw-unit input:focus-visible { outline: none; }
 [data-look='parent'] .rw-unit:focus-within { outline: 2px solid var(--p-ink); outline-offset: 1px; }
 [data-look='parent'] .rw-unit > span { color: var(--p-sub); white-space: nowrap; }

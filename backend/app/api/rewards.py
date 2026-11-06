@@ -83,7 +83,7 @@ redemptions_router = APIRouter(
 
 def redemption_name(db: Session, r: Redemption) -> str:
     if r.kind == "screen_time":
-        return f"{r.minutes} min of screen time"
+        return economy.screen_label(db, r.minutes, r.device_group_id, r.screen_scope)
     reward = db.get(Reward, r.reward_id)
     return reward.name if reward else "Reward"
 

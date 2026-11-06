@@ -86,6 +86,8 @@ export interface Group {
   icon: string
   owner_ids?: number[]
   chore_lock: boolean
+  /** Points per 15 min for this group; null uses the family price. */
+  screen_price: number | null
 }
 
 /** GET /kids item */

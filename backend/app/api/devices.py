@@ -26,6 +26,7 @@ from app.models.lock import (
 )
 from app.models.user import User, UserRole
 from app.schemas.lock import DevicePatch, GroupIn, OverrideIn, utc_z
+from app.services import economy
 
 router = APIRouter(prefix="/api/v1", tags=["devices"], dependencies=[Depends(require_parent)])
 
@@ -266,6 +267,7 @@ def _group_out(g: DeviceGroup) -> dict:
         "device_ids": sorted(d.id for d in g.devices),
         "icon": g.icon,
         "chore_lock": g.chore_lock,
+        "screen_price": g.screen_price,
     }
 
 
@@ -295,6 +297,7 @@ def create_group(body: GroupIn, db: Session = Depends(get_db)):
     g = DeviceGroup(name=body.name, icon=body.icon or "devices")
     if body.chore_lock is not None:
         g.chore_lock = body.chore_lock
+    g.screen_price = body.screen_price
     g.devices = _devices(db, body.device_ids)
     db.add(g)
     _commit(db, "A group with that name already exists. Pick another name.", 400)
@@ -311,6 +314,8 @@ def patch_group(group_id: int, body: GroupIn, db: Session = Depends(get_db)):
         g.icon = body.icon
     if body.chore_lock is not None:
         g.chore_lock = body.chore_lock
+    if "screen_price" in body.model_fields_set:
+        g.screen_price = body.screen_price
     g.devices = _devices(db, body.device_ids)
     _commit(db, "A group with that name already exists. Pick another name.", 400)
     trigger()
@@ -320,11 +325,13 @@ def patch_group(group_id: int, body: GroupIn, db: Session = Depends(get_db)):
 @router.delete("/groups/{group_id}")
 def delete_group(group_id: int, db: Session = Depends(get_db)):
     g = _group(db, group_id)
-    db.query(HourRuleTarget).filter_by(group_id=g.id).delete()
-    g.devices = []
-    db.flush()
-    db.delete(g)
-    db.commit()
+    with economy.SPEND_LOCK:  # held to the commit so no one approves meanwhile
+        economy.deny_group_requests(db, g.id)  # owner ruling: waiting requests are denied
+        db.query(HourRuleTarget).filter_by(group_id=g.id).delete()
+        g.devices = []
+        db.flush()
+        db.delete(g)
+        db.commit()
     trigger()
     return {"ok": True}
 

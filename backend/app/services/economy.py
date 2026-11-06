@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, object_session
 
 from app.models.chores import ChoreRun
 from app.models.family import FamilySettings, get_family
-from app.models.lock import Device, Override
+from app.models.lock import Device, DeviceGroup, Override
 from app.models.points import Points, PointsType
 from app.models.reward import Redemption, Reward
 from app.models.user import User
@@ -173,6 +173,16 @@ def deactivate_reward(r: Reward) -> None:
             p.status, p.decided_at = "denied", datetime.utcnow()
 
 
+def deny_group_requests(db: Session, group_id: int) -> None:
+    """A group is being deleted: deny its pending screen-time requests (points released).
+    The caller commits."""
+    with SPEND_LOCK:  # same lock as decide, so a request isn't answered twice
+        for p in db.query(Redemption).filter(
+            Redemption.device_group_id == group_id, Redemption.status == "pending"
+        ):
+            p.status, p.decided_at = "denied", datetime.utcnow()
+
+
 def request(
     db: Session,
     kid: User,
@@ -180,11 +190,13 @@ def request(
     reward_id: int | None,
     minutes: int | None,
     device_id: int | None = None,
+    group_id: int | None = None,
+    scope: str | None = None,
 ) -> Redemption:
     """Create a pending spend request and notify parents. Commits."""
     with SPEND_LOCK:
         db.commit()  # end any open snapshot so the balance below sees other commits
-        return _request(db, kid, kind, reward_id, minutes, device_id)
+        return _request(db, kid, kind, reward_id, minutes, device_id, group_id, scope)
 
 
 def _request(
@@ -194,6 +206,8 @@ def _request(
     reward_id: int | None,
     minutes: int | None,
     device_id: int | None = None,
+    group_id: int | None = None,
+    scope: str | None = None,
 ) -> Redemption:
     fam = get_family(db)
     if kind == "reward":
@@ -212,9 +226,15 @@ def _request(
             raise HTTPException(400, "Ask a parent to add your device first.")
         if device_id is not None and device_id not in {d.id for d in kid.devices}:
             raise HTTPException(400, "Pick one of your own devices.")
-        cost, reward_id = minutes // 15 * fam.screen_time_price, None
+        from app.services import screen_time  # screen_time imports this module
+
+        scope = scope or ("group" if group_id is not None else "all")
+        if scope != "group":
+            group_id = None
+        cost = minutes // 15 * screen_time.price_for(db, fam, kid, scope, group_id)
+        reward_id = None
         auto = _auto(fam, kind, None)
-        label = f"{minutes} min of screen time"
+        label = screen_label(db, minutes, group_id, scope)
     else:
         raise HTTPException(400, "Pick screen time or a reward.")
     bal = balance(db, kid.id)
@@ -226,11 +246,9 @@ def _request(
             409, f"{held} of your points are held for requests a parent hasn't answered yet."
         )
     if kind == "screen_time":
-        from app.services import screen_time  # screen_time imports this module
-
         screen_time.check(db, fam, kid, minutes, datetime.now(UTC))
     if kind != "screen_time":
-        device_id = None
+        device_id = group_id = scope = None
     red = Redemption(
         kid_id=kid.id,
         kind=kind,
@@ -238,6 +256,8 @@ def _request(
         minutes=minutes,
         cost=cost,
         device_id=device_id,
+        device_group_id=group_id,
+        screen_scope=scope,
     )
     dev = db.get(Device, device_id) if device_id else None
     if dev:
@@ -288,10 +308,17 @@ def decide(
         return _decide(db, redemption, parent, approve, note)
 
 
+def screen_label(db: Session, minutes: int, group_id: int | None, scope: str | None = None) -> str:
+    if scope == "other":
+        return f"{minutes} min on other devices"
+    g = db.get(DeviceGroup, group_id) if group_id else None
+    return f"{minutes} min on {g.name}" if g else f"{minutes} min of screen time"
+
+
 def _what(db: Session, r: Redemption) -> str:
     """Ledger description: the reward name, or the screen-time amount."""
     if r.kind == "screen_time":
-        return f"{r.minutes} min of screen time"
+        return screen_label(db, r.minutes, r.device_group_id, r.screen_scope)
     reward = db.get(Reward, r.reward_id)
     return reward.name if reward else "Reward"
 
@@ -314,6 +341,12 @@ def _decide(
                 raise HTTPException(409, "That reward was removed.")
         if redemption.cost > balance(db, redemption.kid_id):
             raise HTTPException(409, "Not enough points anymore.")
+        if redemption.kind == "screen_time":
+            from app.services import screen_time
+
+            kid = db.get(User, redemption.kid_id)
+            # raises 409 before any points move when nothing is left to open
+            targets = screen_time.unlock_targets(db, get_family(db), kid, redemption)
         db.add(
             Points(
                 user_id=redemption.kid_id,
@@ -325,9 +358,8 @@ def _decide(
             )
         )
         if redemption.kind == "screen_time":
-            kid = db.get(User, redemption.kid_id)
             expires = now + timedelta(minutes=redemption.minutes)
-            for dev in kid.devices:
+            for dev in targets:
                 db.add(
                     Override(
                         device_id=dev.id,

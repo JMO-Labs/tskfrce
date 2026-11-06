@@ -47,6 +47,7 @@ class GroupIn(BaseModel):
     device_ids: list[int] = []
     icon: str | None = Field(default=None, min_length=1, max_length=40)
     chore_lock: bool | None = None
+    screen_price: int | None = Field(None, ge=1, le=1000)
 
 
 class KidCreate(BaseModel):

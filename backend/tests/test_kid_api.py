@@ -351,3 +351,42 @@ def test_wrong_pin_logged_per_device(kc, db, kid):
         assert kc.post("/api/v1/kid/login", json={"kid_id": kid.id, "pin": "0"}).status_code == 401
     (e,) = db.query(DeviceEvent).filter_by(kind="sign_in").all()
     assert (e.device_id, e.count, e.kid_id) == (d.id, 2, kid.id)
+
+
+def _price_setup(db, kid):
+    from tests.test_screen_price import _setup
+
+    return _setup(db, kid, None)
+
+
+def test_kid_rewards_options(client, db, kid, kid_headers):
+    c, _, _ = _price_setup(db, kid)
+    opts = client.get("/api/v1/kid/rewards", headers=kid_headers).json()["screen"]["options"]
+    assert opts[0]["group_id"] is None
+    assert c.id in [o["group_id"] for o in opts]
+
+
+def test_kid_redeem_group(client, db, kid, kid_headers):
+    c, _, _ = _price_setup(db, kid)
+    body = {"kind": "screen_time", "minutes": 30, "group_id": c.id}
+    r = client.post("/api/v1/kid/redeem", headers=kid_headers, json=body)
+    assert r.status_code == 200 and r.json()["cost"] == 80
+
+
+def test_kid_redeem_foreign_group(client, db, kid, kid_headers):
+    from app.services import economy
+
+    from tests.test_screen_price import _grp
+
+    _price_setup(db, kid)
+    foreign = _grp(db, "Theirs", 40)
+    sis = other_kid(db)
+    sd = mkdev(db, sis, ip="192.168.1.77", mac="aa:bb:cc:dd:ee:77")
+    sd.groups.append(foreign)
+    db.commit()
+    before = economy.balance(db, kid.id)
+    body = {"kind": "screen_time", "minutes": 30, "group_id": foreign.id}
+    r = client.post("/api/v1/kid/redeem", headers=kid_headers, json=body)
+    assert r.status_code == 400
+    assert economy.balance(db, kid.id) == before
+    assert db.query(Redemption).filter_by(kid_id=kid.id).count() == 0

@@ -11,6 +11,7 @@ from app.lock.rules import in_allowed, in_off
 from app.lock.schedule import local_now
 from app.lock.state import device_facts
 from app.models.family import FamilySettings, get_family
+from app.models.lock import DeviceGroup
 from app.models.reward import Redemption
 from app.models.screen_time import ScreenTimeLimit
 from app.models.user import User
@@ -92,3 +93,79 @@ def check(db: Session, fam: FamilySettings, kid: User, minutes: int, now_utc: da
         raise HTTPException(409, "Screen time only works during your allowed hours.")
     if not fam.screen_only_allowed_hours and all_in_off_window(db, kid, now_utc):
         raise HTTPException(409, "Screen time can't turn the internet on during off hours.")
+
+
+def options(db: Session, fam: FamilySettings, kid: User) -> list[dict]:
+    """What the kid can buy time for: "All my devices", then "Other devices" (no group), then
+    chore-locked groups by id. Exempt and free-only devices are never priced. "All" costs the
+    max of what it covers; if every option costs the same, only "All" is left.
+    Group pricing is opt-in: when it is off, "All" at the family price is the only option."""
+    fam_price = fam.screen_time_price
+    if not fam.group_pricing:
+        return [_opt("all", None, "All my devices", "devices", fam_price)]
+    devs = [d for d in kid.devices if not d.exempt]
+    groups = {g.id: g for d in devs for g in d.groups if g.chore_lock}
+    prices = {gid: g.screen_price or fam_price for gid, g in groups.items()}
+    # offer a group only if some device in it opens at its price (not a dearer shared one)
+    prices = {
+        gid: p
+        for gid, p in prices.items()
+        if any(device_price(fam, d) <= p for d in devs if groups[gid] in d.groups)
+    }
+    other = any(not d.groups for d in devs)
+    top = max([fam_price] * other + list(prices.values()), default=fam_price)
+    out = [_opt("all", None, "All my devices", "devices", top)]
+    if other and top > fam_price:
+        out.append(_opt("other", None, "Other devices", "devices", fam_price))
+    out += [
+        _opt("group", gid, groups[gid].name, groups[gid].icon, p)
+        for gid, p in sorted(prices.items())
+    ]
+    return out if any(o["price"] != top for o in out) else out[:1]
+
+
+def _opt(scope: str, group_id: int | None, name: str, icon: str | None, price: int) -> dict:
+    return {"group_id": group_id, "scope": scope, "name": name, "icon": icon, "price": price}
+
+
+def price_for(db: Session, fam: FamilySettings, kid: User, scope: str, group_id: int | None) -> int:
+    for o in options(db, fam, kid):
+        if o["scope"] == scope and (scope != "group" or o["group_id"] == group_id):
+            return o["price"]
+    raise HTTPException(400, "Pick one of your options.")
+
+
+def group_devices(kid: User, group_id: int | None) -> list:
+    if group_id is None:
+        return list(kid.devices)
+    return [d for d in kid.devices if any(g.id == group_id for g in d.groups)]
+
+
+def device_price(fam: FamilySettings, dev) -> int:
+    """What it costs to buy time for this device: the dearest of its chore-locked groups."""
+    prices = [g.screen_price or fam.screen_time_price for g in dev.groups if g.chore_lock]
+    return max(prices, default=fam.screen_time_price)
+
+
+def unlock_targets(db: Session, fam: FamilySettings, kid: User, red: Redemption) -> list:
+    """Devices an approved screen-time request opens. 'all': every device. 'other': devices in
+    no chore-locked group. 'group': the group's devices the paid rate (or the group's current
+    price, if raised since) covers, so a dearer shared device stays locked.
+    409 before any charge when nothing is left to open."""
+    if red.screen_scope == "other":
+        out = [d for d in kid.devices if not any(g.chore_lock for g in d.groups)]
+    elif red.screen_scope == "group":
+        g = db.get(DeviceGroup, red.device_group_id) if red.device_group_id else None
+        out = []
+        if g is not None:
+            cap = max(red.cost // (red.minutes // 15), g.screen_price or fam.screen_time_price)
+            out = [d for d in group_devices(kid, g.id) if device_price(fam, d) <= cap]
+    else:
+        return list(kid.devices)
+    if not out:
+        raise HTTPException(
+            409,
+            f"None of those devices belong to {kid.full_name} anymore. "
+            "Deny the request to give the points back.",
+        )
+    return out

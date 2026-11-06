@@ -9,6 +9,7 @@ export interface ScreenPatch {
   max_minutes_per_day?: number | null
   auto_approve?: boolean
   only_in_allowed_hours?: boolean
+  group_pricing?: boolean
 }
 
 export interface LimitBody {

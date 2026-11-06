@@ -31,6 +31,7 @@ class SettingsPatch(BaseModel):
     max_minutes_per_day: int | None = Field(default=None, ge=15, le=480)
     auto_approve: bool | None = None
     only_in_allowed_hours: bool | None = None
+    group_pricing: bool | None = None
 
     _step = field_validator("max_minutes_per_day")(_quarter_hours)
 
@@ -55,6 +56,7 @@ def _payload(db: Session) -> dict:
         "max_minutes_per_day": fam.screen_max_minutes,
         "auto_approve": bool(fam.screen_auto_approve),
         "only_in_allowed_hours": bool(fam.screen_only_allowed_hours),
+        "group_pricing": bool(fam.group_pricing),
         "reset_time": fam.reset_time,
         "avg_chore_points": round(avg) if avg else 0,
         "kids": [
@@ -89,6 +91,7 @@ def patch_settings(body: SettingsPatch, db: Session = Depends(get_db)):
         "max_minutes_per_day": "screen_max_minutes",
         "auto_approve": "screen_auto_approve",
         "only_in_allowed_hours": "screen_only_allowed_hours",
+        "group_pricing": "group_pricing",
     }
     for k, v in body.model_dump(exclude_unset=True).items():
         if v is not None or k == "max_minutes_per_day":  # only the daily max can be cleared
