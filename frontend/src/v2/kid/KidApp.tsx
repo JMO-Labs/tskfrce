@@ -11,6 +11,7 @@ import { AlertsMoved } from './AlertsMoved'
 import { CelebrationLayer } from './celebrate/CelebrationLayer'
 import { useCelebrationTriggers } from './celebrate/triggers'
 import { useCelebrate } from './celebrate/useCelebrate'
+import { useFreezeNotice } from './freezeNotice'
 import { KidAlerts } from './KidAlerts'
 import { Locker } from './Locker'
 import { kidSort, tally } from './kidChips'
@@ -72,6 +73,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
   }, [chat])
   const cel = useCelebrate({ level: d.celebrate ?? (mode === 'teen' ? 'small' : 'full'), mode, kidLevel: d.progress?.level ?? 1, hold: holdCelebrations })
   const submit = useCelebrationTriggers(d, kidId, cel.fire, !preview)
+  useFreezeNotice(d.progress?.frozen, kidId, !preview)
   const onDone = (id: number) => {
     const c = d.chores.find((x) => x.id === id)
     // marked before the request goes out (polls racing an auto-approve); a double tap sends nothing

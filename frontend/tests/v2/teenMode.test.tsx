@@ -202,4 +202,8 @@ describe('TeenMode', () => {
     expect(within(detail).getByText('+40 pts', { selector: 's' })).toBeInTheDocument()
     expect(within(detail).getByText('+80 pts')).toHaveAttribute('data-x2')
   })
+  test('the streak stat shows a ❄ when a freeze saved it', () => {
+    render(wrap(props({ d: today({ progress: { level: 3, title: 'x', xp: 0, floor: 0, next: 1, streak: 6, frozen: ['2026-10-25'] } }) })))
+    expect(screen.getByRole('img', { name: 'A freeze saved this streak' })).toHaveTextContent('❄')
+  })
 })
