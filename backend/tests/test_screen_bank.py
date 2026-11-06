@@ -212,3 +212,10 @@ def test_lowered_max_does_not_refund_spent_bank(db, kid):
     _red(db, kid, 60, START + timedelta(hours=1))
     _settle(db, fam)
     assert _minutes(db, kid) == 0
+
+
+
+def test_settle_skipped_during_setup(db, kid):
+    fam = _fam(db, kid, setup_step=1)
+    _settle(db, fam)
+    assert db.get(ScreenBank, kid.id) is None

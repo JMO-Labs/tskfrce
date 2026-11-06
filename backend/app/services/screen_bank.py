@@ -38,10 +38,11 @@ def saved(db: Session, fam: FamilySettings, kid_id: int, daily_max: int | None =
 
 def settle(db: Session, fam: FamilySettings, now_utc: datetime) -> None:
     """Settle the old chore day (last_reset_date) into each kid's bank. Run before run_reset.
-    Missed resets settle only that day; a fresh install skips; a settled day never repeats."""
+    Missed resets settle only that day; a fresh install or open setup wizard skips;
+    a settled day never repeats."""
     old = fam.last_reset_date
     new = clock_chore_day(fam, now_utc)
-    if old is None or new <= old:
+    if old is None or new <= old or fam.setup_step is not None:
         return
     start = economy.deadline_utc(fam, old, fam.reset_time)
     end = economy.deadline_utc(fam, new, fam.reset_time)
