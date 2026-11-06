@@ -13,7 +13,6 @@ const STEPS = [
   { num: 5, title: 'Chores', sub: 'Pick starters' },
   { num: 6, title: 'Devices', sub: 'Who owns what' },
   { num: 7, title: 'Hours', sub: 'Bedtime, school nights' },
-  { num: 8, title: 'Remote access', sub: 'Tailscale', opt: true },
 ]
 
 interface Props {
@@ -49,7 +48,7 @@ export function WizardFrame({
     if (el && strip && strip.scrollWidth > strip.clientWidth) strip.scrollLeft = el.offsetLeft - (strip.clientWidth - el.offsetWidth) / 2
   }, [step])
 
-  const estimatedMinLeft = Math.max(1, 8 - step)
+  const estimatedMinLeft = Math.max(1, STEPS.length + 1 - step)
 
   return (
     <div className={styles.page}>

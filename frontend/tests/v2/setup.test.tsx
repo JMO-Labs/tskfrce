@@ -145,14 +145,14 @@ describe('setup wizard', () => {
     await screen.findByText(/Ava/)
     await user.click(screen.getByRole('button', { name: 'Next' })) // 3 → 4 with a kid
     await screen.findByRole('button', { name: 'Show code for Ava' })
-    for (let step = 4; step <= 7; step++) {
-      expect(screen.getByRole('button', { name: 'Skip' })).toBeInTheDocument() // step 4..7
+    for (let step = 4; step <= 6; step++) {
+      expect(screen.getByRole('button', { name: 'Skip' })).toBeInTheDocument() // step 4..6
       await skipStep(user)
     }
-    expect(await screen.findByRole('button', { name: 'Finish' })).toBeInTheDocument() // step 8
+    expect(await screen.findByRole('button', { name: 'Finish' })).toBeInTheDocument() // step 7 is the last
   })
 
-  test('skipping steps 3 to 7 reaches Finish', async () => {
+  test('skipping steps 3 to 7 reaches the finish screen', async () => {
     const user = userEvent.setup()
     wrap()
     await toFamily(user)
@@ -160,7 +160,9 @@ describe('setup wizard', () => {
     await waitFor(() => expect(loginWithToken).toHaveBeenCalledWith('t', 'r', 1800))
     await skipStep(user) // 3 → 4
     await nextNoSkip(user) // 4 → 5, no kids
-    for (let i = 0; i < 4; i++) await skipStep(user) // 5 → 8
+    for (let i = 0; i < 3; i++) await skipStep(user) // 5 → finish
+    expect(await screen.findByText('Hours start now.')).toBeInTheDocument() // no kids, no chores
+    expect(screen.queryByText(/next daily reset/)).toBeNull()
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Finish' })).toBeNull()
     await user.click(await screen.findByRole('button', { name: 'Go to Today' }))
@@ -229,8 +231,7 @@ describe('setup wizard', () => {
     await screen.findByText('Allowed hours')
     await user.click(screen.getByRole('button', { name: 'Back' }))
     await user.click(await screen.findByRole('button', { name: 'Next' }))
-    await user.click(await screen.findByRole('button', { name: 'Next' }))
-    await user.click(await screen.findByRole('button', { name: 'Finish' })) // step 8 → all set
+    await user.click(await screen.findByRole('button', { name: 'Finish' })) // step 7 → all set
     await screen.findByText("You're all set")
     expect(posts('/chores/')).toHaveLength(1)
     expect(posts('/chores/')[0][1]).toEqual({
@@ -258,8 +259,7 @@ describe('setup wizard', () => {
     const user = userEvent.setup()
     wrap()
     await toHours(user)
-    expect(rowText('School nights')).toContain('6–8a')
-    expect(rowText('School nights')).toContain('3–8p')
+    expect(rowText('School nights')).toContain('7a–8p')
     expect(rowText('Weekends')).toContain('8a–10p')
     expect(screen.getByLabelText('Bedtime on school nights')).toHaveValue('20:00')
     fireEvent.change(screen.getByLabelText('Bedtime on weekends'), { target: { value: '23:00' } })
@@ -270,15 +270,16 @@ describe('setup wizard', () => {
     const user = userEvent.setup()
     wrap()
     await toHours(user)
+    expect(screen.getByText('Starts at the next daily reset after you finish, so nobody is paused during setup.')).toBeInTheDocument()
     await user.click(screen.getByRole('switch', { name: "Lock until today's chores are done" }))
-    await user.click(screen.getByRole('button', { name: 'Next' }))
-    await screen.findByText('Reach it from anywhere')
+    await user.click(screen.getByRole('button', { name: 'Finish' }))
+    await screen.findByText("You're all set")
     const bodies = posts('/hours').map(([, i]) => (i as { body: Record<string, unknown> }).body)
     expect(bodies.map((b) => b.name)).toEqual(['School nights', 'Weekends'])
     expect(bodies[0]).toEqual({
       name: 'School nights', category: 'school_night', kind: 'allowed', days: '01236', everyone: true,
       kid_ids: [], group_ids: [], start_date: null, end_date: null,
-      times: [{ start: '06:00', end: '08:00' }, { start: '15:00', end: '20:00' }],
+      times: [{ start: '07:00', end: '20:00' }],
     })
     expect(bodies[1]).toMatchObject({ category: 'weekend', days: '45', everyone: true, times: [{ start: '08:00', end: '22:00' }] })
     expect(apiMock).toHaveBeenCalledWith('/family', { method: 'PATCH', body: { chores_lock: false } })
@@ -292,8 +293,8 @@ describe('setup wizard', () => {
     const user = userEvent.setup()
     wrap()
     await toHours(user)
-    await user.click(screen.getByRole('button', { name: 'Next' }))
-    await screen.findByText('Reach it from anywhere')
+    await user.click(screen.getByRole('button', { name: 'Finish' }))
+    await screen.findByText("You're all set")
     expect(posts('/hours').map(([, i]) => (i as { body: { name: string } }).body.name)).toEqual(['Weekends'])
   })
 
@@ -305,8 +306,8 @@ describe('setup wizard', () => {
     const user = userEvent.setup()
     wrap()
     await toHours(user)
-    await user.click(screen.getByRole('button', { name: 'Next' }))
-    await screen.findByText('Reach it from anywhere')
+    await user.click(screen.getByRole('button', { name: 'Finish' }))
+    await screen.findByText("You're all set")
     expect(posts('/hours').map(([, i]) => (i as { body: { name: string } }).body.name)).toEqual(['School nights', 'Weekends'])
   })
 
@@ -340,9 +341,36 @@ describe('setup wizard', () => {
     await skipStep(user) // 3 → 4
     await nextNoSkip(user) // 4 → 5, no kids
     await waitFor(() => expect(puts()).toEqual([{ step: 4 }, { step: 5 }]))
-    for (let i = 0; i < 3; i++) await skipStep(user) // → 8
-    await user.click(await screen.findByRole('button', { name: 'Finish' }))
+    for (let i = 0; i < 3; i++) await skipStep(user) // → finish
     await waitFor(() => expect(puts().at(-1)).toEqual({ step: null }))
+  })
+})
+
+describe('turnkey defaults', () => {
+  test('default hours are one window per day type', () => {
+    expect(DEFAULT_DRAFTS.map((d) => [d.days, d.times])).toEqual([
+      ['01236', [{ start: '07:00', end: '20:00' }]],
+      ['45', [{ start: '08:00', end: '22:00' }]],
+    ])
+  })
+
+  test('Homework repeats on school days only', async () => {
+    const user = userEvent.setup()
+    authed = true
+    apiMock.mockImplementation(async (path, init) => {
+      if (path === '/setup') return { needed: false }
+      if (path === '/setup/step') return init?.method === 'PUT' ? {} : { step: 5 }
+      if (path === '/kids') return [{ id: 7, full_name: 'Ava', username: 'kid-ava', avatar: '🦊', has_pin: false }]
+      if (path === '/chores/' && init?.method === 'POST') return { id: 31 }
+      if (path === '/chore-types') return [{ id: 5, name: 'Schoolwork' }]
+      return []
+    })
+    wrap()
+    expect(await screen.findByText(/30 pts · school days/)).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: /^Homework/ }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await waitFor(() => expect(posts('/chores/31/assignments')).toHaveLength(1))
+    expect((posts('/chores/31/assignments')[0][1] as { body: { repeat: unknown } }).body.repeat).toEqual({ type: 'weekly', days: [0, 1, 2, 3, 4] })
   })
 })
 
@@ -374,12 +402,25 @@ describe('resuming an unfinished setup', () => {
 
   test('Finish on a resumed wizard shows "You\'re all set" with the real counts', async () => {
     const user = userEvent.setup()
-    resumeAt(8, { '/chores/': [{ id: 1 }, { id: 2 }, { id: 3 }], '/hours': { rules: [{}, {}] } })
+    resumeAt(7, { '/chores/': [{ id: 1 }, { id: 2 }, { id: 3 }], '/hours': { rules: [{}, {}] } })
     wrap()
     await user.click(await screen.findByRole('button', { name: 'Finish' }))
     expect(await screen.findByText("You're all set")).toBeInTheDocument()
     expect(replace).not.toHaveBeenCalled()
     expect(await screen.findByText(/1 kid, 3 chores, 0 devices, 2 schedules/)).toBeInTheDocument()
+  })
+
+  test('a family stored at the old step 8 resumes on the finish screen', async () => {
+    resumeAt(8, { '/family': { reset_time: '06:00:00', chores_lock: true }, '/chores/': [{ id: 1 }], '/hours': { rules: [] } })
+    wrap()
+    expect(await screen.findByText("You're all set")).toBeInTheDocument()
+    expect(await screen.findByText('Hours start now. Chores, and the chore lock, start at the next daily reset (6:00 AM).')).toBeInTheDocument()
+    expect(screen.getByText(/Want to approve chores away from home\? Set up Tailscale\. Takes 5 minutes\./)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'How to set it up' })).toBeInTheDocument()
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/setup/step', { method: 'PUT', body: { step: null } })) // self-heal
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Go to Today' }))
+    expect(push).toHaveBeenCalledWith('/')
+    expect(replace).not.toHaveBeenCalledWith('/setup')
   })
 
   test('a starter that already exists is locked as Added and not created again', async () => {

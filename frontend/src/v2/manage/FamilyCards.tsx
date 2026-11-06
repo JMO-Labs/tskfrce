@@ -8,6 +8,7 @@ import { PasswordEye } from '@/v2/components/PasswordEye'
 import { toastFail, toastOk } from '../notify'
 import { PaneCard, PaneHead } from './PaneParts'
 import { Chip } from '@/v2/parent/Chip'
+import { Fold } from '@/v2/parent/Fold'
 import { ago } from './settingsMeta'
 
 function zones(current: string): string[] {
@@ -111,17 +112,23 @@ export function FamilyCard({ fam }: { fam: Family }) {
                 value={val('reset_time')}
                 onChange={(e) => set({ reset_time: e.currentTarget.value })}
               />
-              <NumberInput
-                label="Early finish bonus cap"
-                description="Most bonus points a kid can earn for finishing chores early."
-                min={0}
-                max={50}
-                allowDecimal={false}
-                value={val('early_bonus_cap')}
-                onChange={(v) => typeof v === 'number' && set({ early_bonus_cap: v })}
-              />
             </div>
           </PaneCard>
+          <Fold title="Points rules">
+            <section className="pn-card" aria-label="Points rules">
+              <div className="pn-fields">
+                <NumberInput
+                  label="Early finish bonus cap"
+                  description="Most bonus points a kid can earn for finishing chores early."
+                  min={0}
+                  max={50}
+                  allowDecimal={false}
+                  value={val('early_bonus_cap')}
+                  onChange={(v) => typeof v === 'number' && set({ early_bonus_cap: v })}
+                />
+              </div>
+            </section>
+          </Fold>
           <PaneCard icon="shield" title="Network">
             <Switchy
               label="Block new devices until I assign them"
@@ -143,34 +150,40 @@ export function GifsCard({ fam }: { fam: Family }) {
       {({ val, set }) => (
         <PaneCard icon="gif_box" title="GIPHY">
           <Switchy label="Allow GIFs in chat" checked={val('gifs_enabled')} onChange={(v) => set({ gifs_enabled: v })} />
-          <div className="pn-fields">
-            <Input.Wrapper label="GIF rating">
-              <SegmentedControl
-                aria-label="GIF rating"
-                data={[
-                  { label: 'G (all ages)', value: 'g' },
-                  { label: 'PG', value: 'pg' },
-                ]}
-                value={val('gif_rating')}
-                onChange={(v) => set({ gif_rating: v as 'g' | 'pg' })}
-              />
-            </Input.Wrapper>
-            <PasswordInput
-              visibilityToggleIcon={PasswordEye}
-              label="GIPHY key"
-              autoComplete="off"
-              placeholder={fam.giphy_key_set ? 'Saved' : ''}
-              value={val('giphy_api_key') ?? ''}
-              onChange={(e) => set({ giphy_api_key: e.currentTarget.value })}
-            />
-          </div>
-          <p className="pn-help pn-note">
-            Free. Create an app, copy its API key.{' '}
-            <a className="pn-link" href="https://developers.giphy.com/dashboard/" target="_blank" rel="noreferrer">
-              developers.giphy.com/dashboard
-            </a>
-            . When on, GIF searches are sent to GIPHY through your home box. Your kids&apos; devices never talk to GIPHY directly.
-          </p>
+          {val('gifs_enabled') ? (
+            <>
+              <div className="pn-fields">
+                <Input.Wrapper label="GIF rating">
+                  <SegmentedControl
+                    aria-label="GIF rating"
+                    data={[
+                      { label: 'G (all ages)', value: 'g' },
+                      { label: 'PG', value: 'pg' },
+                    ]}
+                    value={val('gif_rating')}
+                    onChange={(v) => set({ gif_rating: v as 'g' | 'pg' })}
+                  />
+                </Input.Wrapper>
+                <PasswordInput
+                  visibilityToggleIcon={PasswordEye}
+                  label="GIPHY key"
+                  autoComplete="off"
+                  placeholder={fam.giphy_key_set ? 'Saved' : ''}
+                  value={val('giphy_api_key') ?? ''}
+                  onChange={(e) => set({ giphy_api_key: e.currentTarget.value })}
+                />
+              </div>
+              <p className="pn-help pn-note">
+                Free. Create an app, copy its API key.{' '}
+                <a className="pn-link" href="https://developers.giphy.com/dashboard/" target="_blank" rel="noreferrer">
+                  developers.giphy.com/dashboard
+                </a>
+                . When on, GIF searches are sent to GIPHY through your home box. Your kids&apos; devices never talk to GIPHY directly.
+              </p>
+            </>
+          ) : (
+            <p className="pn-help pn-note">Off. Turn on to search GIFs in chat (needs a free GIPHY key).</p>
+          )}
         </PaneCard>
       )}
     </Pane>

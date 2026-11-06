@@ -4,6 +4,7 @@ import { Switch, TextInput } from '@mantine/core'
 import { TimeInput } from '@mantine/dates'
 import { useNotifySettings, usePatchNotifySettings, usePlaces, type NotifySettings, type SettingsPatch } from '@/v2/hooks/useNotify'
 import { Icon } from '@/v2/parent/Icon'
+import { Fold } from '@/v2/parent/Fold'
 import { EmptyState, ErrorPanel, Skeleton } from '@/v2/parent/states'
 import { toastFail } from '@/v2/notify'
 import { PaneHead } from './PaneParts'
@@ -43,20 +44,23 @@ function QuietCard({ s, save }: { s: NotifySettings; save: (p: SettingsPatch) =>
           <TimeInput label="To" {...to} />
         </div>
       )}
-      <div className="pn-kv">
-        <Switch
-          className="pn-sw"
-          label="Security alerts still send"
-          labelPosition="left"
-          checked={s.quiet_security}
-          onChange={(e) => save({ quiet_security: e.currentTarget.checked })}
-        />
-      </div>
+      {on && (
+        <div className="pn-kv">
+          <Switch
+            className="pn-sw"
+            label="Security alerts still send"
+            labelPosition="left"
+            checked={s.quiet_security}
+            onChange={(e) => save({ quiet_security: e.currentTarget.checked })}
+          />
+        </div>
+      )}
     </section>
   )
 }
 
 function AddressCard({ s, save }: { s: NotifySettings; save: (p: SettingsPatch) => unknown }) {
+  const fallback = s.app_address_default ?? 'http://chores.local'
   const field = useBlurField(s.app_address ?? '', (v) => save({ app_address: v.trim() || null }))
   return (
     <section className="pn-card" aria-label="App address">
@@ -68,10 +72,11 @@ function AddressCard({ s, save }: { s: NotifySettings; save: (p: SettingsPatch) 
       <TextInput
         aria-label="App address"
         className="pn-addr"
-        placeholder={s.app_address_default ?? 'http://chores.local'}
+        placeholder={fallback}
         maxLength={200}
         {...field}
       />
+      <p className="pn-help pn-note">Leave blank to use {fallback}.</p>
     </section>
   )
 }
@@ -98,11 +103,11 @@ export function NotificationsPane() {
         <EmptyState icon="notifications" title="No places yet" body="Add a Signal group, Discord channel, email or any Apprise address." />
       )}
       {settings.data && places.data?.map((p) => <PlaceCard key={p.id} place={p} events={settings.data.events} />)}
+      {settings.data && places.data && places.data.length > 0 && <QuietCard s={settings.data} save={save} />}
       {settings.data && (
-        <div className="pn-g2">
-          <QuietCard s={settings.data} save={save} />
+        <Fold title="Advanced">
           <AddressCard s={settings.data} save={save} />
-        </div>
+        </Fold>
       )}
       <PlaceForm opened={adding} onClose={() => setAdding(false)} />
     </div>

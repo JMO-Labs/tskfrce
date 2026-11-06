@@ -1,6 +1,6 @@
 """First-run setup: create the owner parent and family."""
 
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -15,6 +15,7 @@ from app.core.auth import AuthService
 from app.core.client_ip import client_ip
 from app.core.config import settings
 from app.core.ratelimit import limit
+from app.lock.reset import clock_chore_day
 from app.models.family import FamilySettings, get_family, owner_set
 from app.models.user import User, UserRole
 from app.schemas.password import Password
@@ -23,8 +24,9 @@ from app.services.chore_types import seed as seed_chore_types
 router = APIRouter(prefix="/api/v1/setup", tags=["setup"])
 
 DONE = "Setup is already done. Log in instead."
+FINISHED = "Setup is already finished."
 RESUME_AFTER_ACCOUNT = 3  # the account exists from step 2 on; the wizard resumes at step 3
-LAST_STEP = 8
+LAST_STEP = 7
 CLAIM_WRONG = "That code doesn't match this box. Check the sticker and try again."
 
 
@@ -50,12 +52,27 @@ class SetupIn(BaseModel):
         return v
 
 
+def _now() -> datetime:
+    return datetime.now(UTC)
+
+
+def _start_chore_day(fam: FamilySettings) -> None:
+    """Chore day = today in the family's zone, so the next reset is the first one after now."""
+    fam.last_reset_date = clock_chore_day(fam, _now())
+
+
 def claim_owner(db: Session, user_id: int, name: str, tz: str) -> int:
     """Compare-and-set on owner_id is the lock: only one setup can win (returns 1)."""
     return db.execute(
         update(FamilySettings)
         .where(FamilySettings.id == 1, FamilySettings.owner_id.is_(None))
-        .values(owner_id=user_id, name=name, timezone=tz, setup_step=RESUME_AFTER_ACCOUNT)
+        .values(
+            owner_id=user_id,
+            name=name,
+            timezone=tz,
+            setup_step=RESUME_AFTER_ACCOUNT,
+            points_unlock_early=True,  # new families only; existing ones keep their choice
+        )
     ).rowcount
 
 
@@ -95,12 +112,19 @@ class StepIn(BaseModel):
 @router.get("/step")
 def get_step(db: Session = Depends(get_db), _: User = Depends(require_parent)):
     """The wizard step an unfinished setup should resume at (None = nothing to resume)."""
-    return {"step": get_family(db).setup_step}
+    step = get_family(db).setup_step
+    # old step-8 saves count as finished
+    return {"step": step if step is None or step <= LAST_STEP else None}
 
 
 @router.put("/step")
 def put_step(body: StepIn, db: Session = Depends(get_db), _: User = Depends(require_parent)):
-    get_family(db).setup_step = body.step
+    fam = get_family(db)
+    if body.step is not None and fam.setup_step is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, FINISHED)  # no reopening: runs would stop
+    if body.step is None and fam.setup_step is not None:
+        _start_chore_day(fam)  # Finish: wizard chores start at the next reset, not tonight
+    fam.setup_step = body.step
     db.commit()
     return {"step": body.step}
 
@@ -136,6 +160,9 @@ def run_setup(body: SetupIn, request: Request, db: Session = Depends(get_db)):
         if won != 1:
             db.rollback()
             raise HTTPException(status.HTTP_409_CONFLICT, DONE)
+        fam = get_family(db)
+        db.refresh(fam)
+        _start_chore_day(fam)  # in the new time zone; the unclaimed box ticked in UTC
         db.commit()
     except IntegrityError:
         db.rollback()

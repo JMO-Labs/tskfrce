@@ -11,15 +11,15 @@ Taken with Playwright from a demo family (kids Bobby and Susan), read-only: ever
 | `needs-you.jpg` | Parent **Today**, desktop, **Needs you** tab. The demo had nothing waiting, so four sample requests were injected into the `/today` response. |
 | `setup-account.jpg` | Setup wizard step 1 "Make your parent account", with the step list visible. |
 | `setup-family.jpg` | Setup wizard step 2 "Your family" (step 1 filled in locally; nothing is sent before step 2's Next). |
-| `setup-hours.jpg` | Setup wizard step 6 "When can devices be online?" with the starting schedule (resumed at step 6 by faking `/setup/step`). |
-| `setup-devices.jpg` | Setup wizard step 5 "Whose devices are these?", devices assigned to kid chips and Guest. |
+| `setup-hours.jpg` | Setup wizard step 7 "When can devices be online?" with the new starting schedule (07:00–20:00 Sun–Thu, 08:00–22:00 Fri–Sat). Retaken 2026-11-06 for 2.4.0; 1280×900 capture cropped to 1280×740 from the top. |
+| `setup-devices.jpg` | Setup wizard step 6 "Whose devices are these?", devices assigned to kid chips and Guest. |
 | `devices.jpg` | **Devices** page with one device open (owners, right now, lock and test block buttons). |
 | `chat.jpg` | **Chat** on a chore thread with a kid note ("Need help"). |
 | `kid-today.jpg` | Kid page (phone): internet paused, chore cards with points and due chips. |
 | `kid-chore.jpg` | Kid page: one chore opened with chained steps, "I'm done!" held back. |
 | `kid-locker.jpg` | Kid **Customize** (Locker): name card preview, slot tabs, locked items with unlock level. |
 | `setup-claim.jpg` | Box code screen (phone), empty, from the sticker's **Open my box** link. |
-| `setup-phones.jpg` | Setup wizard step 4 "Kids' phones" (phone). The QR is a mock pattern. |
+| `setup-phones.jpg` | Setup wizard step 4 "Kids' phones" (phone), Bobby's code shown. The QR is a mock pattern. Retaken 2026-11-06 for the 7-step wizard. |
 | `kid-welcome.jpg` | Kid welcome page after scanning a code (iPhone steps). |
 | `group-price.jpg` | **Devices → Groups**, one group open with **Screen time price** filled in (phone). Mocked API. |
 | `kid-screen-for.jpg` | Kid **Rewards** (phone): **What for?** picker with Consoles selected. Mocked API. |

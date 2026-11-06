@@ -2,7 +2,7 @@
 
 "Open t@sk4ce" means: in a web browser on your phone or computer, type the address from the install step (like `http://192.168.1.50:3000`) into the address bar. Not working? See [Troubleshooting](06-troubleshooting.md).
 
-The first time you open t@sk4ce, a short wizard asks a few questions. It has eight steps: **You**, **Family**, **Kids**, **Kids' phones**, **Chores**, **Devices**, **Hours** and **Remote access**. The last one is optional. It takes about 7 minutes, and you can change every answer later.
+The first time you open t@sk4ce, a short wizard asks a few questions. It has seven steps: **You**, **Family**, **Kids**, **Kids' phones**, **Chores**, **Devices** and **Hours**. It takes about 7 minutes, and you can change every answer later.
 
 If you stop partway, just open t@sk4ce again and log in. It picks up where you left off.
 
@@ -46,7 +46,7 @@ You should see: the phone shows "You're in" and the kid's name.
 
 ## Step 5. Chores
 
-Tap the starter chores you like, such as **Make bed**, **Homework** or **Feed the pet**. Each one becomes a daily chore for every kid you added, with points. They are only a start. You can change them later.
+Tap the starter chores you like, such as **Make bed**, **Homework** or **Feed the pet**. Each one becomes a daily chore for every kid you added, with points (Homework is for school days only). They are only a start. You can change them later.
 
 You should see: a tick on each chore you picked, and "4 picked" (or however many) next to **Next**.
 
@@ -66,22 +66,20 @@ Not seeing a device? iPhones and iPads use a "Private Wi-Fi Address". Turn it of
 
 The page asks "When can devices be online?" It starts you with two schedules for everyone:
 
-- **School nights** (Sunday to Thursday): 6 to 8 am and 3 to 8 pm.
+- **School nights** (Sunday to Thursday): 7 am to 8 pm.
 - **Weekends** (Friday and Saturday): 8 am to 10 pm.
 
-Change the bedtimes if you like. Tap the pencil on a row to change it, or **Add hours** for more.
+There is no separate school-hours block, so devices are not cut off during the school day. Change the bedtimes if you like. Tap the pencil on a row to change it, or **Add hours** for more.
 
 ![Step 7: the starting schedule on a timeline](img/setup-hours.jpg)
 
-**Lock until today's chores are done** is on. That means devices stay paused, even inside these hours, until the day's chores are approved. Turn it off if you only want the schedule.
+**Lock until today's chores are done** is on. That means devices stay paused, even inside these hours, until the day's chores are approved. Turn it off if you only want the schedule. Chores from step 5 start at the next daily reset after you finish, so nobody is paused while you finish setting up.
 
 You should see: the hours as bars on the timeline.
 
-## Step 8. Remote access (optional)
+Tap **Finish**.
 
-This step explains how to check in from outside the house with Tailscale, a free app. You can do it later: the full steps are in [Remote access](../remote-access.md). Tap **Finish**.
-
-You should see: "You're all set", with how many kids, chores, devices and schedules you made. Tap **Go to Today**.
+You should see: "You're all set", with how many kids, chores, devices and schedules you made. Hours start now. If you picked chores for your kids, they start at the next daily reset (6:00 AM unless you changed it), and so does the chore lock if it is on. A tip links to [Remote access](../remote-access.md) if you want to check in away from home. Tap **Go to Today**.
 
 ### Add t@sk4ce to your home screen
 

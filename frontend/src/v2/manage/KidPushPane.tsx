@@ -4,11 +4,14 @@ import { InfoBlock } from '@/v2/components/InfoBlock'
 import { useFamily, usePatchFamily } from '@/v2/hooks/useFamily'
 import { useKidPush, useResetKidPush } from '@/v2/hooks/useKidPush'
 import { useKids } from '@/v2/hooks/useKids'
+import { Fold } from '@/v2/parent/Fold'
 import { Icon } from '@/v2/parent/Icon'
 import type { Kid } from '@/v2/types'
 import { toastFail, toastOk } from '@/v2/notify'
 import { ConfirmDelete } from './ConfirmDelete'
 import { initial, nameOf } from './choreMeta'
+
+const GUIDE_DOC = 'https://github.com/JMO-Labs/tskfrce/blob/main/docs/guide/04-everyday-use.md#alerts-on-a-kids-phone'
 
 function KidPhone({ kid }: { kid: Kid }) {
   const push = useKidPush(kid.id)
@@ -53,18 +56,28 @@ export function KidPushPane() {
   const fam = useFamily().data
   const patch = usePatchFamily()
   const first = kids[0]
-  // the ntfy service is box-wide, so the first kid's answer tells us if it is on
-  const on = useKidPush(first?.id ?? 0, !!first).data?.enabled
+  // the ntfy service and the relay are box-wide, so the first kid's answer tells us
+  const d = useKidPush(first?.id ?? 0, !!first).data
+  const on = d?.enabled
   return (
     <>
-      {on === false ? (
-        <InfoBlock icon="info" text="Kid phone alerts need the ntfy service. Set BOX_URL / NTFY_URL on the box." />
-      ) : on === undefined ? null : (
+      {d?.upstream ? (
         <InfoBlock
           icon="notifications"
-          text="Kids get chore alerts on their own phone through the box. Nothing leaves your home unless you turn on iPhone alerts below."
+          text="Kid phones signed in with a code get a short generic line, like 'You have a new chore', through a public relay (ntfy.sh by default). Names, chores and messages stay in your home."
         />
-      )}
+      ) : on ? (
+        <InfoBlock icon="notifications" text="Alert text stays in your home." />
+      ) : d ? (
+        <InfoBlock
+          icon="info"
+          text={
+            <span className="pk-hint">
+              Phone alerts aren&apos;t set up on this box. See the guide: <a href={GUIDE_DOC} target="_blank" rel="noreferrer">Alerts on a kid&apos;s phone</a>
+            </span>
+          }
+        />
+      ) : null}
       {on && fam && (
         <section className="pk-panel" aria-label="iPhone alerts">
           <Switch
@@ -72,10 +85,14 @@ export function KidPushPane() {
             checked={fam.ntfy_upstream_relay}
             onChange={(e) => patch.mutate({ ntfy_upstream_relay: e.currentTarget.checked }, { onError: toastFail })}
           />
-          <Text className="m-help">When on, the box asks ntfy.sh to wake iPhones with a content-free poll request; the alert text stays in your home. Off sends nothing outside; iPhones then get alerts late.</Text>
+          <Text className="m-help">When on, the box asks ntfy.sh to wake iPhones with a content-free poll request; the alert text stays in your home. Off skips this wake-up; iPhones then get alerts late.</Text>
         </section>
       )}
-      {on && kids.map((k) => <KidPhone key={k.id} kid={k} />)}
+      {on && kids.length > 0 && (
+        <Fold title="Use the ntfy app instead" icon="qr_code_2">
+          {kids.map((k) => <KidPhone key={k.id} kid={k} />)}
+        </Fold>
+      )}
     </>
   )
 }

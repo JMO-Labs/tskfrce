@@ -344,6 +344,7 @@ export interface KidToday {
 /** GET /kids/{id}/push */
 export interface KidPush {
   enabled: boolean
+  upstream: boolean // generic kid alerts go through a public relay
   server: string
   topic: string
   link: string

@@ -10,7 +10,6 @@
 .chip { flex: none; padding: 4px 8px; border-radius: 6px; background: var(--p-acc); color: #292928; font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
 .tip { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; background: var(--p-amb); color: var(--p-ambink); font-size: 13px; line-height: 1.5; }
 .tip :global(.ms) { flex: none; font-size: 20px; }
-.steps { margin: 0; padding-left: 20px; line-height: 1.7; }
 .card p { margin: 0 0 10px; }
 .card p:last-child { margin-bottom: 0; }
 .card ol { margin: 0; padding-left: 20px; line-height: 1.7 }

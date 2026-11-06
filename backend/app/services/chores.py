@@ -271,17 +271,18 @@ def generate(db: Session, day: date) -> list[ChoreRun]:
 
 
 def run_reset(db: Session, day: date) -> int:
-    """Cancel unfinished older runs, create today's, retire past one-time assignments."""
+    """Cancel unfinished older runs, create today's, retire past one-time assignments.
+    No new runs while the setup wizard is open: nothing pauses a device during setup."""
+    fam = get_family(db)
     for r in db.query(ChoreRun).filter(
         ChoreRun.day < day, ChoreRun.status.notin_(["done", "cancelled", "skipped"])
     ):
         r.status = "cancelled"
-    created = len(generate(db, day))
+    created = 0 if fam.setup_step is not None else len(generate(db, day))
     for a in db.query(ChoreAssignment).filter(
         ChoreAssignment.repeat == "once", ChoreAssignment.on_date < day
     ):
         a.active = False
-    fam = get_family(db)
     fam.last_reset_date = day
     db.flush()
     return created
