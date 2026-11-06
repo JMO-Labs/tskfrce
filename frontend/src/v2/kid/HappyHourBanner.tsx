@@ -14,13 +14,19 @@ export function HappyHourBanner({ hh, onGo }: { hh: KidToday['happy_hour']; onGo
     return () => clearInterval(t)
   }, [live, hh?.ends_at])
   if (!hh || !live) return null
+  const left = hhLeft(hh, now)
+  const mins = Math.ceil(left / 60)
   return (
-    <div className="k-hh" data-testid="hh" data-still={still() || undefined} role="status">
+    <div className="k-hh" data-testid="hh" data-still={still() || undefined}>
+      {/* the live region changes once a minute; the ticking clock is hidden from screen readers */}
+      <span className="k-sr" role="status">{`Happy Hour: every chore is worth ${hh.multiplier}×, ${mins} ${mins === 1 ? 'minute' : 'minutes'} left`}</span>
       <div className="k-hh-t">
         <b>HAPPY HOUR!</b>
         <small>{`Every chore is worth ${hh.multiplier}×`}</small>
       </div>
-      <span className="k-hh-cd">{mmss(hhLeft(hh, now))}</span>
+      <span className="k-hh-cd" aria-hidden="true">
+        {mmss(left)}
+      </span>
       <button type="button" className="k-hh-go" onClick={onGo}>
         Go →
       </button>

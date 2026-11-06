@@ -47,6 +47,21 @@ describe('HappyHourBanner', () => {
     act(() => void jest.advanceTimersByTime(2000))
     expect(screen.getByText('41:56')).toBeInTheDocument()
   })
+  test('screen readers hear minutes only, not every second', () => {
+    render(<HappyHourBanner hh={{ ends_at: at(41 * 60 + 58), multiplier: 1.5 }} onGo={() => {}} />)
+    const live = screen.getByRole('status')
+    expect(live).toHaveTextContent('Happy Hour: every chore is worth 1.5×, 42 minutes left')
+    expect(screen.getByTestId('hh')).not.toHaveAttribute('role')
+    expect(screen.getByText('41:58')).toHaveAttribute('aria-hidden', 'true')
+    act(() => void jest.advanceTimersByTime(2000))
+    expect(live).toHaveTextContent('42 minutes left')
+    act(() => void jest.advanceTimersByTime(60_000))
+    expect(live).toHaveTextContent('41 minutes left')
+  })
+  test('one minute left is singular', () => {
+    render(<HappyHourBanner hh={{ ends_at: at(30), multiplier: 2 }} onGo={() => {}} />)
+    expect(screen.getByRole('status')).toHaveTextContent('1 minute left')
+  })
   test('hides itself at zero without a refetch', () => {
     render(<HappyHourBanner hh={{ ends_at: at(3), multiplier: 2 }} onGo={() => {}} />)
     expect(screen.getByText('Every chore is worth 2×')).toBeInTheDocument()
