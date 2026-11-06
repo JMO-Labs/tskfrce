@@ -81,9 +81,9 @@ function Moment({ show, freeze, balance }: { show: Show; freeze: number | null; 
       {fx && <TileAnchor ref={anchor} event={event} fx={fx} />}
       {kind === 'full' && combo && (
         <>
-          {combo.legendary ? <Legendary fx={combo.legendary} cast={combo.cast} /> : <Burst fx={combo.burst} balance={balance} />}
+          {combo.legendary ? <Legendary fx={combo.legendary} cast={combo.cast} /> : <Burst fx={combo.burst} balance={balance} sparks={combo.sparks} />}
           <Word text={combo.word} color={combo.color} base={BASE[mode]} width={box.width} />
-          {combo.mascot && <MascotPop id={combo.mascot} say={combo.say} prop={HELD[event.kind]} />}
+          {combo.mascot && <MascotPop id={combo.mascot} say={combo.say} prop={HELD[event.kind]} style={combo.style} entry={combo.entry} />}
         </>
       )}
     </div>

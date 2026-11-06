@@ -1,9 +1,10 @@
 import { forwardRef, useLayoutEffect, useRef, type CSSProperties } from 'react'
 import { PROPS, mascotById } from './catalog'
-import type { BurstFx, CardFx, LegendaryFx, WordColor } from './pick'
+import type { BurstFx, CardFx, EntryFx, LegendaryFx, Spark, StyleFx, WordColor } from './pick'
 import type { CelebrateEvent } from './plan'
 import { fitWordSize } from './words'
 import s from './celebrate.module.css'
+import mc from './mascot.module.css'
 
 type Vars = CSSProperties & Record<`--${string}`, string | number>
 const range = (n: number) => Array.from({ length: n }, (_, i) => i)
@@ -70,8 +71,22 @@ export const Confetti = ({ n = 18 }: { n?: number }) => (
 // Sneeze spray directions.
 const SPRAY: [number, number][] = [[90, -90], [140, -30], [110, -150], [170, -80], [60, -170], [190, -10], [130, -120], [80, -50]]
 
-/** The burst under the word: confetti, coins to the counter, balloon, disco, or a confetti sneeze. */
-export function Burst({ fx, balance }: { fx: BurstFx; balance?: number }) {
+/** Fireworks: 3 to 5 starbursts in kid colours that pop at random points and fade. */
+const Fireworks = ({ sparks }: { sparks: Spark[] }) => (
+  <div className={s.col} data-burst="fireworks">
+    {sparks.map(([x, y, d], i) => (
+      <span key={i} className={mc.fw} data-spark style={{ left: `${x}%`, top: `${y}%`, '--d': `${d}s` } as Vars}>
+        {range(12).map((r) => (
+          <i key={r} style={{ '--a': `${r * 30}deg` } as Vars} />
+        ))}
+      </span>
+    ))}
+  </div>
+)
+
+/** The burst under the word: confetti, coins to the counter, balloon, disco, a confetti sneeze, or fireworks. */
+export function Burst({ fx, balance, sparks = [] }: { fx: BurstFx; balance?: number; sparks?: Spark[] }) {
+  if (fx === 'fireworks') return <Fireworks sparks={sparks} />
   if (fx === 'coins')
     return (
       <div data-burst="coins">
@@ -104,17 +119,24 @@ export function Burst({ fx, balance }: { fx: BurstFx; balance?: number }) {
   return <Confetti />
 }
 
-/** A mascot rising from the bottom edge, centred, with a speech bubble (trex-tryout v5). */
-export function MascotPop({ id, say, prop }: { id: string; say: string; prop?: string }) {
+/**
+ * A mascot popping up with a speech bubble: centred, its image bottom kept under the screen edge (trex-tryout v5),
+ * with a random look (mascot-styles-v2) and entrance (mascots-animated-v1). Peek tucks in from the corner instead.
+ */
+export function MascotPop({ id, say, prop, style = 'original', entry = 'rise' }: { id: string; say: string; prop?: string; style?: StyleFx; entry?: EntryFx }) {
   const m = mascotById(id)
   const held = prop ?? m.prop
+  const mask = `url(${m.src})`
   return (
-    <div className={s.mascot} data-mascot={m.id} data-art={m.art}>
+    <div className={mc.mascot} data-mascot={m.id} data-art={m.art} data-entry={entry}>
+      <span className={mc.look} data-style={style}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={m.src} alt="" className={mc.mascotImg} />
+        {style === 'popart' && <span className={mc.halftone} style={{ maskImage: mask, WebkitMaskImage: mask }} />}
+      </span>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={m.src} alt="" className={s.mascotImg} />
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {held && <img src={held} alt="" className={s.prop} />}
-      <span className={s.bubble}>{say}</span>
+      {held && <img src={held} alt="" className={mc.prop} />}
+      <span className={mc.bubble}>{say}</span>
     </div>
   )
 }
@@ -122,12 +144,12 @@ export function MascotPop({ id, say, prop }: { id: string; say: string; prop?: s
 /** Legendary (about 1 in 25): a parade across the screen, or a dance party. */
 export function Legendary({ fx, cast }: { fx: LegendaryFx; cast: string[] }) {
   return (
-    <div className={s.legend} data-burst={fx} data-legendary={fx}>
+    <div className={mc.legend} data-burst={fx} data-legendary={fx}>
       <span className={s.col}>
         <i className={s.beams} />
       </span>
       {fx === 'party' && <i className={s.ball} />}
-      <div className={s.cast}>
+      <div className={mc.cast}>
         {cast.map((id, i) => (
           // eslint-disable-next-line @next/next/no-img-element
           <img key={i} src={mascotById(id).src} alt="" style={{ '--i': i, '--d': `${fx === 'parade' ? i * 0.07 : (i % 2) * 0.12}s` } as Vars} />
@@ -135,7 +157,7 @@ export function Legendary({ fx, cast }: { fx: LegendaryFx; cast: string[] }) {
       </div>
       {fx === 'party' && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img className={s.popper} src={PROPS.popper} alt="" />
+        <img className={mc.popper} src={PROPS.popper} alt="" />
       )}
       <Confetti n={28} />
     </div>

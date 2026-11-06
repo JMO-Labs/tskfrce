@@ -1,4 +1,7 @@
-/** Mascots, props, seasonal and legendary sets. Static: unlocks follow the kid's level (spec Settled 9). */
+/**
+ * Mascots, props, seasonal and legendary sets. Static (spec Settled 9): the owner's cast is always there;
+ * Noto animals unlock with the kid's level.
+ */
 
 const noto = (cp: string) => `/celebrate/noto/${cp}.webp`
 
@@ -10,6 +13,8 @@ export interface Mascot {
   level: number
   /** a prop shown beside it (the panda's taco) */
   prop?: string
+  /** its own bubble word (owner cast), mixed with the generic ones */
+  says?: string
   /** owner art is a cut-out with a flat bottom edge; Noto art is a square emoji */
   art: 'cutout' | 'emoji'
   /** seasonal-only mascots never show outside their season */
@@ -28,7 +33,12 @@ export const PROPS = {
 } as const
 
 export const MASCOTS: Mascot[] = [
-  { id: 'trex', name: 'T-Rex', src: '/celebrate/mascots/trex.svg', level: 1, art: 'cutout' },
+  { id: 'trex', name: 'T-Rex', src: '/celebrate/mascots/trex.svg', level: 0, art: 'cutout', says: 'ROAR-SOME!' },
+  { id: 'lizard', name: 'Lizard', src: '/celebrate/mascots/lizard-sombrero.svg', level: 0, art: 'cutout', says: '¡OLÉ!' },
+  { id: 'dog-cowboy', name: 'Cowboy dog', src: '/celebrate/mascots/dog-cowboy.svg', level: 0, art: 'cutout', says: 'YEEHAW!' },
+  { id: 'axolotl', name: 'Axolotl', src: '/celebrate/mascots/axolotl.svg', level: 0, art: 'cutout', says: 'SQUEE!' },
+  { id: 'cat-princess', name: 'Princess cat', src: '/celebrate/mascots/cat-princess.svg', level: 0, art: 'cutout', says: 'FABULOUS!' },
+  { id: 'sloth', name: 'Sloth', src: '/celebrate/mascots/sloth-cool.svg', level: 0, art: 'cutout', says: 'CHILL!' },
   { id: 'dog', name: 'Dog', src: noto('1f415'), level: 1, art: 'emoji' },
   { id: 'cat', name: 'Cat', src: noto('1f431'), level: 1, art: 'emoji' },
   { id: 'panda', name: 'Panda', src: noto('1f43c'), level: 2, art: 'emoji', prop: PROPS.taco },
@@ -39,6 +49,9 @@ export const MASCOTS: Mascot[] = [
   { id: 'unicorn', name: 'Unicorn', src: noto('1f984'), level: 8, art: 'emoji' },
   { id: 'snowman', name: 'Snowman', src: noto('26c4'), level: 1, art: 'emoji', season: 'december' },
 ]
+
+/** The owner's cast (level 0): always available. */
+export const OWNER_MASCOTS = MASCOTS.filter((m) => m.level === 0).map((m) => m.id)
 
 export const mascotById = (id: string) => MASCOTS.find((m) => m.id === id) ?? MASCOTS[0]
 
@@ -63,8 +76,8 @@ export function mascotsFor(level: number, d: Date) {
 
 /** Legendary shows (about 1 in 25): a parade across the screen, or a dance party. */
 export const LEGENDARY = {
-  parade: { word: 'LEGENDARY!', cast: ['unicorn', 'dino', 'panda', 'croc', 'dog', 'cat'] },
-  party: { word: 'DANCE PARTY!', cast: ['monkey', 'raccoon', 'trex', 'cat', 'dog'] },
+  parade: { word: 'LEGENDARY!', cast: ['unicorn', 'lizard', 'panda', 'dog-cowboy', 'cat-princess', 'dino'] },
+  party: { word: 'DANCE PARTY!', cast: ['monkey', 'raccoon', 'trex', 'axolotl', 'sloth'] },
 } as const
 
 /** The show's cast from unlocked mascots only, padded with other unlocked ones (repeating if few are unlocked). */
