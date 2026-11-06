@@ -1,4 +1,6 @@
+import pytest
 from app.core.config import settings
+from app.lock import identity
 from app.models.device_activity import DeviceEvent
 from app.models.inbox import Notification
 from app.models.lock import Device
@@ -66,3 +68,30 @@ def test_same_report_twice_once(client, db, parent):
     _seen(client, model="MacBookPro18,1")
     ev, nt = _counts(db)
     assert len(ev) == 1 and len(nt) == 1
+
+
+def test_flip_flop_notifies_once_per_day(client, db, parent, monkeypatch):
+    from datetime import timedelta
+
+    _setup(db, parent)
+    _seen(client, model="iPad")
+    _seen(client, model="MacBookPro18,1")
+    _seen(client, model="iPad")
+    ev, nt = _counts(db)
+    assert len(ev) == 2 and len(nt) == 1
+    for e in ev:
+        e.at -= timedelta(hours=25)
+    db.commit()
+    _seen(client, model="Pixel 8")
+    ev, nt = _counts(db)
+    assert len(ev) == 3 and len(nt) == 2
+
+
+@pytest.mark.parametrize("bad", ["Pad\nTap http://x.co", "http://evil.example/x?a=<b>", "A" * 60])
+def test_unsafe_model_gets_generic_body(client, db, parent, bad):
+    _setup(db, parent)
+    _seen(client, model="iPad")
+    _seen(client, model=bad)
+    ev, nt = _counts(db)
+    assert len(nt) == 1 and nt[0].body == identity.GENERIC
+    assert len(ev[0].detail) <= 120
