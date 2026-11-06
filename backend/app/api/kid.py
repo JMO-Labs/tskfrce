@@ -1,6 +1,7 @@
 """Kid API: kids are identified by the device they use (no password)."""
 
 from datetime import UTC, datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
 from pydantic import BaseModel, Field
@@ -50,6 +51,10 @@ class SubtaskIn(BaseModel):
 class NoteIn(BaseModel):
     label: str
     text: str | None = Field(None, max_length=200)
+
+
+class MePatch(BaseModel):
+    celebrate: Literal["full", "small", "off"]
 
 
 class KidLogin(BaseModel):
@@ -169,6 +174,7 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
 
     return {
         "age_group": kid.age_group,
+        "celebrate": kid.celebrate_level,
         "locks_at": kid_view.locks_at(db, kid, fam, now),
         "locked": _locked(
             db,
@@ -199,6 +205,13 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
             {"ends_at": utc_z(hh.ends_at), "multiplier": hh.mult_x10 / 10} if hh else None
         ),
     }
+
+
+@router.patch("/me")
+def patch_me(body: MePatch, db: Session = Depends(get_db), kid: User = Depends(require_kid)):
+    kid.celebrate = body.celebrate
+    db.commit()
+    return {"celebrate": kid.celebrate_level}
 
 
 def _open_run(db: Session, kid: User, run_id: int) -> ChoreRun:

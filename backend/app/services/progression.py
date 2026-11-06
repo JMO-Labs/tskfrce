@@ -1,6 +1,6 @@
 """XP, levels and streaks, all derived from existing data (nothing stored)."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -26,6 +26,7 @@ TITLES = [
     (25, "Mythic"),
 ]
 LOOKBACK_DAYS = 400
+FREEZE_EVERY, FREEZE_MAX = 7, 2
 _DONE = ("done", "submitted")
 
 
@@ -43,6 +44,8 @@ class Streak:
     current: int
     longest: int
     runs: list[int]  # completed (broken) run lengths, chronological
+    frozen: list[date] = field(default_factory=list)  # missed days a freeze covered
+    freezes_held: int = 0
 
 
 def xp(db: Session, kid_id: int) -> int:
@@ -132,6 +135,41 @@ def streak_of(days: dict[date, bool], today: date) -> Streak:
     return Streak(run, longest, runs)
 
 
+def streak_with_freezes(days: dict[date, bool], today: date) -> Streak:
+    """streak_of, plus freezes: one earned each time the run hits a multiple of 7 (max 2 held);
+    a missed past day uses one automatically, so the run carries on (the frozen day adds 0)."""
+    runs, run, longest, held, frozen = [], 0, 0, 0, []
+    for d in sorted(days):
+        if days[d]:
+            run += 1
+            longest = max(longest, run)
+            if run % FREEZE_EVERY == 0:
+                held = min(FREEZE_MAX, held + 1)
+        elif d == today:
+            continue  # still open: pauses, never breaks
+        elif held:
+            held -= 1
+            frozen.append(d)
+        else:
+            if run:
+                runs.append(run)
+            run = 0
+    return Streak(run, longest, runs, frozen, held)
+
+
+def streak_for(days: dict[date, bool], today: date, freeze: bool) -> Streak:
+    return streak_with_freezes(days, today) if freeze else streak_of(days, today)
+
+
+def streak_fields(st: Streak) -> dict:
+    """The streak keys every kid/parent payload carries."""
+    return {
+        "streak": st.current,
+        "freezes_held": st.freezes_held,
+        "frozen": [d.isoformat() for d in st.frozen],
+    }
+
+
 def streak(db: Session, kid_id: int, today: date) -> Streak:
     return streak_of(chore_days(db, kid_id, today), today)
 
@@ -157,13 +195,14 @@ def progress_many(
     out = {}
     for i in ids:
         lv = level_for(totals[i][0])
+        st = streak_for(days[i], today, fam.streak_freeze)
         out[i] = {
             "level": lv.level,
             "title": lv.title,
             "xp": lv.xp,
             "floor": lv.floor,
             "next": lv.next,
-            "streak": streak_of(days[i], today).current,
+            **streak_fields(st),
             "flair": flair[i],
         }
     return out

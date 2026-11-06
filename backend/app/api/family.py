@@ -61,6 +61,7 @@ def _fam_out(fam) -> dict:
         "hh_default_minutes": fam.hh_default_minutes,
         "hh_weekly_surprise": fam.hh_weekly_surprise,
         "hh_auto_boost": fam.hh_auto_boost,
+        "streak_freeze": fam.streak_freeze,
     }
 
 

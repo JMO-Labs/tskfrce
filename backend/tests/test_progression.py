@@ -103,6 +103,16 @@ def test_progress_in_today_payloads(client, db, parent_headers):
     db.commit()
     kid_p = client.get("/api/v1/kid/today", headers=_headers(db, k)).json()["progress"]
     assert kid_p["level"] == 2 and kid_p["title"] == "Rookie" and kid_p["xp"] == 60
-    assert set(kid_p) == {"level", "title", "xp", "floor", "next", "streak", "flair"}
+    assert set(kid_p) == {
+        "level",
+        "title",
+        "xp",
+        "floor",
+        "next",
+        "streak",
+        "freezes_held",
+        "frozen",
+        "flair",
+    }
     par = client.get("/api/v1/today", headers=parent_headers).json()["kids"][0]
     assert par["progress"] == kid_p
