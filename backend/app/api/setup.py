@@ -55,7 +55,13 @@ def claim_owner(db: Session, user_id: int, name: str, tz: str) -> int:
     return db.execute(
         update(FamilySettings)
         .where(FamilySettings.id == 1, FamilySettings.owner_id.is_(None))
-        .values(owner_id=user_id, name=name, timezone=tz, setup_step=RESUME_AFTER_ACCOUNT)
+        .values(
+            owner_id=user_id,
+            name=name,
+            timezone=tz,
+            setup_step=RESUME_AFTER_ACCOUNT,
+            points_unlock_early=True,  # new families only; existing ones keep their choice
+        )
     ).rowcount
 
 

@@ -48,10 +48,10 @@ DEFAULT_EVENTS = (
     "chore_ok",
     "kid_note",
     "reward_request",
-    "new_device",
     "resisting",
     "box_offline",
     "workaround",
+    "summary",
 )
 KIND_EVENT = {
     "chore_submitted": "chore_ok",

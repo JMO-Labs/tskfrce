@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.api.deps import get_db, require_parent
 from app.models.chore_type import ChoreType
 from app.models.chores import Chore, ChoreAssignment, ChoreRun, ChoreStep
+from app.models.family import get_family
 from app.models.points import Points
 from app.models.user import User, UserRole
 from app.schemas.chore import (
@@ -252,7 +253,8 @@ def add_assignment(chore_id: int, body: AssignmentIn, db: Session = Depends(get_
         raise HTTPException(422, "Pick today or a later date.")
     db.add(a)
     db.flush()
-    svc.make_runs(db, a, day)
+    if get_family(db).setup_step is None:  # wizard chores start at the next reset
+        svc.make_runs(db, a, day)
     kid_events.chore_new(db, a)
     db.commit()
     return assignment_out(a)
@@ -271,7 +273,8 @@ def patch_assignment(assignment_id: int, body: AssignmentPatch, db: Session = De
             raise HTTPException(422, "Pick today or a later date.")
         a.active = a.on_date >= day  # a reused one-time assignment wakes up again
     db.flush()
-    svc.make_runs(db, a, day)
+    if get_family(db).setup_step is None:
+        svc.make_runs(db, a, day)
     db.commit()
     return assignment_out(a)
 

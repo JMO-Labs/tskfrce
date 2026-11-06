@@ -163,7 +163,8 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
         db.add(dev)
         try:
             db.flush()
-            if not apply_hint(db, dev):  # a hint sends its own notice
+            # a hint sends its own notice; no bell while the wizard is running
+            if not apply_hint(db, dev) and get_family(db).setup_step is None:
                 inbox.notify_parents(
                     db,
                     "new_device",

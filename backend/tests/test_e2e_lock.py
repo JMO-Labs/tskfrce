@@ -47,6 +47,7 @@ def _setup(client):
     assert r.status_code == 201, r.text
     ph = {"Authorization": f"Bearer {r.json()['access_token']}"}
     kid = client.post("/api/v1/kids", json={"full_name": "Tim"}, headers=ph).json()
+    client.put("/api/v1/setup/step", json={"step": None}, headers=ph)  # wizard finished
     dev = client.post(
         "/api/v1/internal/devices/seen", json={"mac": MAC, "ip": KID_IP}, headers=tok()
     ).json()
