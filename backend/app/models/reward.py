@@ -68,3 +68,7 @@ class Redemption(Base):
     note = Column(String(200), nullable=True)
     # the device a screen-time request is about (kid's pick); gone device -> NULL
     device_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), nullable=True)
+    # the device group a screen-time request is for; deleted group -> NULL (unlocks all)
+    device_group_id = Column(
+        Integer, ForeignKey("device_groups.id", ondelete="SET NULL"), nullable=True
+    )

@@ -92,3 +92,34 @@ def check(db: Session, fam: FamilySettings, kid: User, minutes: int, now_utc: da
         raise HTTPException(409, "Screen time only works during your allowed hours.")
     if not fam.screen_only_allowed_hours and all_in_off_window(db, kid, now_utc):
         raise HTTPException(409, "Screen time can't turn the internet on during off hours.")
+
+
+def options(db: Session, fam: FamilySettings, kid: User) -> list[dict]:
+    """What the kid can buy time for: "All my devices" first, then chore-locked groups by id.
+    Exempt devices are ignored. "All" costs the max of what it covers. Equal prices collapse."""
+    devs = [d for d in kid.devices if not d.exempt]
+    groups = {g.id: g for d in devs for g in d.groups if g.chore_lock}
+    prices = {gid: g.screen_price or fam.screen_time_price for gid, g in groups.items()}
+    free = any(not any(g.chore_lock for g in d.groups) for d in devs) or not devs
+    top = max([fam.screen_time_price] * free + list(prices.values()))
+    if all(p == top for p in prices.values()):
+        prices = {}
+    out = [{"group_id": None, "name": "All my devices", "icon": "devices", "price": top}]
+    out += [
+        {"group_id": gid, "name": groups[gid].name, "icon": groups[gid].icon, "price": p}
+        for gid, p in sorted(prices.items())
+    ]
+    return out
+
+
+def price_for(db: Session, fam: FamilySettings, kid: User, group_id: int | None) -> int:
+    for o in options(db, fam, kid):
+        if o["group_id"] == group_id:
+            return o["price"]
+    raise HTTPException(400, "Pick one of your options.")
+
+
+def group_devices(kid: User, group_id: int | None) -> list:
+    if group_id is None:
+        return list(kid.devices)
+    return [d for d in kid.devices if any(g.id == group_id for g in d.groups)]
