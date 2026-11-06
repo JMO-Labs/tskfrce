@@ -76,6 +76,7 @@ export default function SetupPage() {
     setAccountDone(true)
     setStep(at)
     setResumed(true)
+    // ponytail: belt for pre-migration cached state; the step-8 migration and GET /setup/step already finish these
     if (at > LAST) saveStep(qc, at) // an old step-8 save: finish it so the guard stops sending us back
   })
   useEffect(() => {

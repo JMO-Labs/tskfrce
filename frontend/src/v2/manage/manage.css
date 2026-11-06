@@ -156,7 +156,6 @@
 [data-look='parent'] .pn-ev:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
 [data-look='parent'] .pn-warn { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; padding: 8px 10px; border-radius: 12px; background: var(--p-amb); color: var(--p-ambink); border: 1px solid color-mix(in srgb, var(--p-ambink) 30%, transparent); font-size: 13px; font-weight: 600; }
 [data-look='parent'] .pn-warn > span:not(.ms) { flex: 1; }
-[data-look='parent'] .pn-g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 [data-look='parent'] .pn-kv, [data-look='parent'] .pn-times { padding: 8px 0; font-size: 13px; border-top: 1px solid var(--p-line); }
 [data-look='parent'] .pn-box { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 [data-look='parent'] .pn-h + .pn-kv { border-top: 0; }
@@ -173,7 +172,6 @@ html[data-look='parent'] .pn-addr .f-input.f-input { font: 12.5px ui-monospace, 
 [data-look='parent'] .pn-sw .mantine-Switch-input:checked + .mantine-Switch-track { background: var(--p-ink); border-color: var(--p-ink); }
 [data-look='parent'] .pn-sw .mantine-Switch-input:checked + .mantine-Switch-track .mantine-Switch-thumb { background: var(--p-acc); border-color: var(--p-acc); }
 [data-look='parent'] .pn-form { display: grid; gap: 14px; }
-@media (max-width: 767px) { [data-look='parent'] .pn-g2 { grid-template-columns: 1fr; } }
 
 /* Rewards (mockup 02 Kids & chores → Rewards): nav count, requests, catalogue */
 [data-look='parent'] .rw-badge { flex: none; min-width: 20px; height: 20px; padding: 0 6px; display: grid; place-items: center; border-radius: 10px; background: var(--p-acc); color: #292928; font-size: 11px; font-weight: 700; }
