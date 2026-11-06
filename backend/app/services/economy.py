@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, object_session
 
 from app.models.chores import ChoreRun
 from app.models.family import FamilySettings, get_family
-from app.models.lock import Device, Override
+from app.models.lock import Device, DeviceGroup, Override
 from app.models.points import Points, PointsType
 from app.models.reward import Redemption, Reward
 from app.models.user import User
@@ -180,11 +180,12 @@ def request(
     reward_id: int | None,
     minutes: int | None,
     device_id: int | None = None,
+    group_id: int | None = None,
 ) -> Redemption:
     """Create a pending spend request and notify parents. Commits."""
     with SPEND_LOCK:
         db.commit()  # end any open snapshot so the balance below sees other commits
-        return _request(db, kid, kind, reward_id, minutes, device_id)
+        return _request(db, kid, kind, reward_id, minutes, device_id, group_id)
 
 
 def _request(
@@ -194,6 +195,7 @@ def _request(
     reward_id: int | None,
     minutes: int | None,
     device_id: int | None = None,
+    group_id: int | None = None,
 ) -> Redemption:
     fam = get_family(db)
     if kind == "reward":
@@ -212,7 +214,10 @@ def _request(
             raise HTTPException(400, "Ask a parent to add your device first.")
         if device_id is not None and device_id not in {d.id for d in kid.devices}:
             raise HTTPException(400, "Pick one of your own devices.")
-        cost, reward_id = minutes // 15 * fam.screen_time_price, None
+        from app.services import screen_time  # screen_time imports this module
+
+        cost = minutes // 15 * screen_time.price_for(db, fam, kid, group_id)
+        reward_id = None
         auto = _auto(fam, kind, None)
         label = f"{minutes} min of screen time"
     else:
@@ -226,11 +231,9 @@ def _request(
             409, f"{held} of your points are held for requests a parent hasn't answered yet."
         )
     if kind == "screen_time":
-        from app.services import screen_time  # screen_time imports this module
-
         screen_time.check(db, fam, kid, minutes, datetime.now(UTC))
     if kind != "screen_time":
-        device_id = None
+        device_id = group_id = None
     red = Redemption(
         kid_id=kid.id,
         kind=kind,
@@ -238,6 +241,7 @@ def _request(
         minutes=minutes,
         cost=cost,
         device_id=device_id,
+        device_group_id=group_id,
     )
     dev = db.get(Device, device_id) if device_id else None
     if dev:
@@ -291,7 +295,8 @@ def decide(
 def _what(db: Session, r: Redemption) -> str:
     """Ledger description: the reward name, or the screen-time amount."""
     if r.kind == "screen_time":
-        return f"{r.minutes} min of screen time"
+        g = db.get(DeviceGroup, r.device_group_id) if r.device_group_id else None
+        return f"{r.minutes} min on {g.name}" if g else f"{r.minutes} min of screen time"
     reward = db.get(Reward, r.reward_id)
     return reward.name if reward else "Reward"
 
@@ -327,7 +332,12 @@ def _decide(
         if redemption.kind == "screen_time":
             kid = db.get(User, redemption.kid_id)
             expires = now + timedelta(minutes=redemption.minutes)
-            for dev in kid.devices:
+            from app.services import screen_time
+
+            gid = redemption.device_group_id
+            if gid and db.get(DeviceGroup, gid) is None:
+                gid = None  # group deleted since the request: unlock all
+            for dev in screen_time.group_devices(kid, gid):
                 db.add(
                     Override(
                         device_id=dev.id,

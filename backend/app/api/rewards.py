@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, object_session
 
 from app.api.deps import get_db, require_parent
 from app.models.integration import IntegrationInstall
-from app.models.lock import Device
+from app.models.lock import Device, DeviceGroup
 from app.models.reward import Redemption, Reward
 from app.models.user import User
 from app.schemas.lock import utc_z
@@ -83,7 +83,8 @@ redemptions_router = APIRouter(
 
 def redemption_name(db: Session, r: Redemption) -> str:
     if r.kind == "screen_time":
-        return f"{r.minutes} min of screen time"
+        g = db.get(DeviceGroup, r.device_group_id) if r.device_group_id else None
+        return f"{r.minutes} min on {g.name}" if g else f"{r.minutes} min of screen time"
     reward = db.get(Reward, r.reward_id)
     return reward.name if reward else "Reward"
 
