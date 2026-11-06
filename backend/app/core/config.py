@@ -5,10 +5,11 @@ This module contains all configuration settings for the t@sk4ce application,
 including database, authentication, and external service configurations.
 """
 
+import ipaddress
 from pathlib import Path
 from typing import Any
 
-from pydantic import ConfigDict, model_validator, validator
+from pydantic import ConfigDict, field_validator, model_validator, validator
 from pydantic_settings import BaseSettings
 
 from app.core.secrets import load_or_create_secrets
@@ -37,8 +38,18 @@ class Settings(BaseSettings):
     BLOCKER_URL: str = "http://127.0.0.1:7777"
     LOCK_INTERVAL_SECONDS: int = 30
     LOCK_LOOP_ENABLED: bool = True
+    INTEGRATIONS_LOOP_ENABLED: bool = True
+    REGISTRY_URL: str = "https://taskfrce.jmolabs.dev"
     # Peers allowed to set X-Real-IP (our frontend proxy); comma list
     TRUSTED_PROXY_IPS: str = "127.0.0.1,::1,::ffff:127.0.0.1"
+    # Local push keys (integration-local): client IPs allowed, minus the exclude list.
+    # Exclude wins; it covers loopback, link-local and our Docker bridges (host tunnels via
+    # docker-proxy arrive from the bridge gateway, so they must not count as the LAN).
+    LOCAL_PUSH_CIDRS: str = "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fd00::/8"
+    LOCAL_PUSH_EXCLUDE_CIDRS: str = (
+        "127.0.0.0/8,::1/128,169.254.0.0/16,fe80::/10,"
+        "172.17.0.0/16,172.29.40.0/24,172.29.50.0/24,fd00:4ce::/64"
+    )
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -76,6 +87,20 @@ class Settings(BaseSettings):
         elif isinstance(v, (list, str)):
             return v
         raise ValueError(v)
+
+    @field_validator("LOCAL_PUSH_CIDRS", "LOCAL_PUSH_EXCLUDE_CIDRS")
+    @classmethod
+    def _cidrs(cls, v: str, info) -> str:
+        """Fail at startup on a bad range rather than 500 on every push."""
+        parts = [p.strip() for p in v.split(",")]
+        if info.field_name == "LOCAL_PUSH_CIDRS" and not any(parts):
+            raise ValueError("LOCAL_PUSH_CIDRS must list at least one range")
+        for p in parts:
+            try:
+                ipaddress.ip_network(p, strict=False)
+            except ValueError as e:
+                raise ValueError(f"{info.field_name}: {p!r} is not a CIDR range ({e})") from e
+        return ",".join(parts)
 
     # Email settings
 

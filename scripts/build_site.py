@@ -41,6 +41,13 @@ GUIDE_CHAPTERS = [
     ("07-faq.md", "7. FAQ"),
 ]
 
+# Standalone pages: (source md, output html, edit-link path under docs/)
+STANDALONE = [
+    (REMOTE_ACCESS_SOURCE, "remote-access.html", "remote-access.md"),
+    (Path("docs/integrations/protocol-v1.md"), "integrations-protocol.html",
+     "integrations/protocol-v1.md"),
+]
+
 REMOTE_ACCESS_ENTRY = ("remote-access.md", "Remote access (Tailscale)")
 
 
@@ -91,6 +98,11 @@ def rewrite_links(html, source_file):
     # Links to remote-access.md: ../remote-access.md or remote-access -> remote-access.html
     html = re.sub(r'href="\.\./remote-access\.md([#"]?)', r'href="remote-access.html\1', html)
     html = re.sub(r'href="remote-access([#"]?)"', r'href="remote-access.html\1"', html)
+
+    # Integrations protocol: ../integrations/protocol-v1.md -> integrations-protocol.html
+    html = re.sub(
+        r'href="\.\./integrations/protocol-v1\.md([#"]?)', r'href="integrations-protocol.html\1', html
+    )
 
     # Links to engineering.md: ../engineering.md -> ../engineering.html
     html = re.sub(r'href="\.\./engineering\.md"', r'href="../engineering.html"', html)
@@ -317,32 +329,27 @@ def build_site():
             with open(output_path, "w") as f:
                 f.write(page_html)
 
-    # Build remote-access page separately (not in main chapter list navigation)
-    if REMOTE_ACCESS_SOURCE.exists():
-        print("  Building remote-access.html...")
-        # For remote-access, create a standalone page without chapter nav
-        with open(REMOTE_ACCESS_SOURCE) as f:
-            md_content = f.read()
-
-        html = markdown_to_html(md_content)
+    # Standalone pages (no chapter nav)
+    for source, out_name, edit_path in STANDALONE:
+        if not source.exists():
+            continue
+        print(f"  Building {out_name}...")
+        html = markdown_to_html(source.read_text())
         title_match = re.search(r"<h1[^>]*>([^<]+)</h1>", html)
-        title = title_match.group(1) if title_match else "Remote access"
+        title = title_match.group(1) if title_match else source.stem
 
-        html = rewrite_links(html, "remote-access.md")
+        html = rewrite_links(html, source.name)
         html = add_copy_buttons(html)
         html = style_callouts(html)
 
-        # For remote-access, use simplified page without chapter nav
-        page_html = build_standalone_page(html, title)
-
-        with open(SITE_OUTPUT / "remote-access.html", "w") as f:
-            f.write(page_html)
+        page_html = build_standalone_page(html, title, edit_path)
+        (SITE_OUTPUT / out_name).write_text(page_html)
 
     print("✓ Guide site built successfully!")
     print(f"  Output: {SITE_OUTPUT}")
 
 
-def build_standalone_page(content_html, title):
+def build_standalone_page(content_html, title, edit_path="remote-access.md"):
     """Build a standalone page (like remote-access) without chapter navigation."""
     # Remove the first <h1> from content (will be in header instead)
     content_html = re.sub(r'<h1[^>]*>.+?</h1>\n?', '', content_html, count=1, flags=re.DOTALL)
@@ -355,7 +362,7 @@ def build_standalone_page(content_html, title):
     # Breadcrumb
     breadcrumb = f"Guide › {title}"
 
-    return standalone_page(title, chapter_links, breadcrumb, toc_html, content_html)
+    return standalone_page(title, chapter_links, breadcrumb, toc_html, content_html, edit_path)
 
 
 if __name__ == "__main__":

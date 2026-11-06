@@ -21,8 +21,9 @@ const KIND: Record<NeedsItem['type'], { label: string; icon: string; tone: 'lav'
   screen_time: { label: 'Screen time', icon: 'timer', tone: 'amb' },
   reward: { label: 'Reward', icon: 'redeem', tone: 'amb' },
   note: { label: 'Note', icon: 'flag', tone: 'amb' },
+  integration: { label: 'From an integration', icon: 'extension', tone: 'lav' },
 }
-const isChore = (i: NeedsItem) => i.type === 'chore' || i.type === 'redo'
+const isChore = (i: NeedsItem) => i.type === 'chore' || i.type === 'redo' || i.type === 'integration'
 const ordinal = (n: number) => (n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`)
 
 function Thumb({ item, onOpen }: { item: NeedsItem; onOpen: () => void }) {
@@ -116,7 +117,7 @@ export function NeedsYouList({ items }: { items: NeedsItem[] }) {
                 <Thumb item={i} onOpen={() => setViewing(i)} />
               ) : (
                 <span className="p-needs-ic">
-                  <Icon name={k.icon} size={18} />
+                  <Icon name={i.integration?.icon ?? k.icon} size={18} />
                 </span>
               )}
               <span className="p-needs-t">
@@ -128,6 +129,12 @@ export function NeedsYouList({ items }: { items: NeedsItem[] }) {
                     : chore
                     ? `${i.attempt && i.attempt > 1 ? ` · ${ordinal(i.attempt)} try` : ''}${i.subtasks_total ? ` · ${i.subtasks_done}/${i.subtasks_total} steps` : ''}${i.submitted_at ? ` · ${clock(i.submitted_at)}` : ''}`
                     : `${i.device_name ? ` · from ${i.device_name}` : ''} · ${i.cost} pts · has ${i.kid_balance}`}
+                  {i.integration && (
+                    <>
+                      {' · '}
+                      <span className="p-needs-via">via {i.integration.name}</span>
+                    </>
+                  )}
                 </small>
               </span>
               <Chip tone={k.tone} icon={k.icon}>

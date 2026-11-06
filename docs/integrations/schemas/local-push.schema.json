@@ -1,0 +1,20 @@
+{
+  "additionalProperties": false,
+  "description": "A local push: actions from a LAN source holding a local key.",
+  "properties": {
+    "actions": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "maxItems": 20,
+      "title": "Actions",
+      "type": "array"
+    }
+  },
+  "required": [
+    "actions"
+  ],
+  "title": "PushIn",
+  "type": "object"
+}

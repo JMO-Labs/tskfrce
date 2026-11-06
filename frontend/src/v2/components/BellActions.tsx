@@ -30,7 +30,7 @@ export function BellActions({ n, busy, sending, note, onNote, onApprove, onSendB
   const needs = isNeedsYou(n)
   const device = n.device_id ? `/devices?item=${n.device_id}` : '/devices'
   let body = null
-  if (needs && n.kind === 'chore_submitted')
+  if (needs && (n.kind === 'chore_submitted' || n.kind === 'integration_done'))
     body = (
       <>
         {sending && (

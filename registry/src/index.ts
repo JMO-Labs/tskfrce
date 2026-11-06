@@ -1,8 +1,10 @@
 import { authBox } from './auth'
 import { findPage } from './find'
+import { CATALOG, REVOKED } from './catalog'
+import { signEnvelope } from './sign'
 import { createRecord, deleteRecord, isPrivateV4, upsertRecord } from './cf'
 
-export type Env = { BOXES: KVNamespace; CF_API_TOKEN: string; CF_ZONE_ID: string; BASE_DOMAIN: string }
+export type Env = { BOXES: KVNamespace; CF_API_TOKEN: string; CF_ZONE_ID: string; BASE_DOMAIN: string; INTEGRATIONS_SIGNING_KEY: string }
 type Ctx = { req: Request; env: Env; cf: typeof fetch }
 type Route = (c: Ctx) => Promise<Response>
 
@@ -45,9 +47,20 @@ const find: Route = async ({ req, env }) => {
   return findPage(u.searchParams.get('id'), req.headers.get('CF-Connecting-IP'), env)
 }
 
+const catalog: Route = async ({ env }) => {
+  const key = env.INTEGRATIONS_SIGNING_KEY
+  if (!key) return json({ error: 'catalog unavailable' }, 503)
+  const integrations = await Promise.all(CATALOG.map((m) => signEnvelope(m, key)))
+  const body = { v: 1, issued_at: new Date().toISOString(), integrations, revoked: REVOKED }
+  const res = json(await signEnvelope(body, key))
+  res.headers.set('Cache-Control', 'public, max-age=300')
+  return res
+}
+
 // path -> { METHOD: handler }. Add new routes here.
 const routes: Record<string, Record<string, Route>> = {
   '/find': { GET: find },
+  '/api/integrations/catalog': { GET: catalog },
   '/api/ip': { POST: postIp },
   '/api/acme/present': { POST: acme(createRecord) },
   '/api/acme/cleanup': { POST: acme(deleteRecord) },

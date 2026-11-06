@@ -1,0 +1,327 @@
+{
+  "$defs": {
+    "Button": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "chore.complete",
+            "reward.upsert",
+            "reward.remove",
+            "message.parents",
+            "request.decide"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[a-z0-9_]{1,32}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 30,
+          "title": "Label",
+          "type": "string"
+        },
+        "type": {
+          "const": "button",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "id",
+        "label",
+        "action"
+      ],
+      "title": "Button",
+      "type": "object"
+    },
+    "Card": {
+      "additionalProperties": false,
+      "properties": {
+        "children": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "button": "#/$defs/Button",
+                "card": "#/$defs/Card",
+                "image": "#/$defs/Image",
+                "list": "#/$defs/ListBlock",
+                "progress": "#/$defs/Progress",
+                "stat": "#/$defs/Stat",
+                "text": "#/$defs/Text"
+              },
+              "propertyName": "type"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/Card"
+              },
+              {
+                "$ref": "#/$defs/Text"
+              },
+              {
+                "$ref": "#/$defs/ListBlock"
+              },
+              {
+                "$ref": "#/$defs/Stat"
+              },
+              {
+                "$ref": "#/$defs/Progress"
+              },
+              {
+                "$ref": "#/$defs/Image"
+              },
+              {
+                "$ref": "#/$defs/Button"
+              }
+            ]
+          },
+          "maxItems": 20,
+          "title": "Children",
+          "type": "array"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "maxLength": 60,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "type": {
+          "const": "card",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "Card",
+      "type": "object"
+    },
+    "Image": {
+      "additionalProperties": false,
+      "properties": {
+        "alt": {
+          "maxLength": 100,
+          "title": "Alt",
+          "type": "string"
+        },
+        "type": {
+          "const": "image",
+          "title": "Type",
+          "type": "string"
+        },
+        "url": {
+          "maxLength": 2048,
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "url",
+        "alt"
+      ],
+      "title": "Image",
+      "type": "object"
+    },
+    "ListBlock": {
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "items": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "maxItems": 10,
+          "title": "Items",
+          "type": "array"
+        },
+        "type": {
+          "const": "list",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "items"
+      ],
+      "title": "ListBlock",
+      "type": "object"
+    },
+    "Progress": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "maxLength": 40,
+          "title": "Label",
+          "type": "string"
+        },
+        "max": {
+          "exclusiveMinimum": 0,
+          "title": "Max",
+          "type": "number"
+        },
+        "type": {
+          "const": "progress",
+          "title": "Type",
+          "type": "string"
+        },
+        "value": {
+          "minimum": 0,
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "label",
+        "value",
+        "max"
+      ],
+      "title": "Progress",
+      "type": "object"
+    },
+    "Stat": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "maxLength": 40,
+          "title": "Label",
+          "type": "string"
+        },
+        "type": {
+          "const": "stat",
+          "title": "Type",
+          "type": "string"
+        },
+        "value": {
+          "maxLength": 20,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "label",
+        "value"
+      ],
+      "title": "Stat",
+      "type": "object"
+    },
+    "Text": {
+      "additionalProperties": false,
+      "properties": {
+        "link": {
+          "anyOf": [
+            {
+              "maxLength": 2048,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Link"
+        },
+        "text": {
+          "maxLength": 200,
+          "title": "Text",
+          "type": "string"
+        },
+        "tone": {
+          "default": "normal",
+          "enum": [
+            "normal",
+            "muted",
+            "good",
+            "warn"
+          ],
+          "title": "Tone",
+          "type": "string"
+        },
+        "type": {
+          "const": "text",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "text"
+      ],
+      "title": "Text",
+      "type": "object"
+    },
+    "Widget": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "root": {
+          "discriminator": {
+            "mapping": {
+              "button": "#/$defs/Button",
+              "card": "#/$defs/Card",
+              "image": "#/$defs/Image",
+              "list": "#/$defs/ListBlock",
+              "progress": "#/$defs/Progress",
+              "stat": "#/$defs/Stat",
+              "text": "#/$defs/Text"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Card"
+            },
+            {
+              "$ref": "#/$defs/Text"
+            },
+            {
+              "$ref": "#/$defs/ListBlock"
+            },
+            {
+              "$ref": "#/$defs/Stat"
+            },
+            {
+              "$ref": "#/$defs/Progress"
+            },
+            {
+              "$ref": "#/$defs/Image"
+            },
+            {
+              "$ref": "#/$defs/Button"
+            }
+          ],
+          "title": "Root"
+        }
+      },
+      "required": [
+        "id",
+        "root"
+      ],
+      "title": "Widget",
+      "type": "object"
+    }
+  },
+  "items": {
+    "$ref": "#/$defs/Widget"
+  },
+  "type": "array"
+}

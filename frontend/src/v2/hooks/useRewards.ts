@@ -12,10 +12,11 @@ export interface RewardBody {
 
 export const useRewards = () => useQuery({ queryKey: ['rewards'], queryFn: () => api<Reward[]>('/rewards') })
 
-function useInvalidating<V>(fn: (v: V) => Promise<unknown>, keys: string[]) {
+export function useInvalidating<V, R = unknown>(fn: (v: V) => Promise<R>, keys: string[], gcTime?: number) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: fn,
+    gcTime,
     onSettled: () => Promise.all(keys.map((k) => qc.invalidateQueries({ queryKey: [k] }))),
   })
 }

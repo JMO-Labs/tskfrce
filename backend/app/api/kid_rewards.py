@@ -10,6 +10,7 @@ from app.api.deps import get_db
 from app.api.kid import request_device, require_kid, view_kid
 from app.api.rewards import redemption_name
 from app.core.client_ip import client_ip
+from app.integrations import store
 from app.models.family import get_family
 from app.models.reward import Redemption, Reward
 from app.models.user import User
@@ -61,6 +62,7 @@ def rewards(db: Session = Depends(get_db), kid: User = Depends(view_kid)):
                 "needs_approval": r.needs_approval,
             }
             for r in db.query(Reward).filter(Reward.active, Reward.visible).order_by(Reward.id)
+            if store.reward_visible_to(db, r, kid.id)
         ],
         "pending": [
             {
@@ -91,6 +93,10 @@ def redeem(
     kid: User = Depends(require_kid),
 ):
     device_id = body.device_id
+    if body.kind == "reward" and body.reward_id:
+        rw = db.get(Reward, body.reward_id)
+        if rw is not None and not store.reward_visible_to(db, rw, kid.id):
+            raise HTTPException(400, "That reward isn't available. Pick another.")
     if device_id is None and body.kind == "screen_time":
         device_id = _guess_device(db, kid, client_ip(request))
     r = economy.request(db, kid, body.kind, body.reward_id, body.minutes, device_id)

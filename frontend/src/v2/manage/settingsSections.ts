@@ -1,6 +1,6 @@
 import type { SettingsSection } from './SettingsList'
 
-export type S = 'family' | 'hours' | 'notifications' | 'look' | 'gifs' | 'parents'
+export type S = 'family' | 'hours' | 'notifications' | 'look' | 'gifs' | 'parents' | 'integrations'
 
 /** The settings sections (spec mockup 02): one list for the Settings page and the phone More page. */
 export const SETTINGS_SECTIONS: SettingsSection<S>[] = [
@@ -10,4 +10,5 @@ export const SETTINGS_SECTIONS: SettingsSection<S>[] = [
   { id: 'look', label: 'Appearance', description: 'Accent colour, dark mode', icon: 'palette' },
   { id: 'gifs', label: 'GIFs', description: 'Chat GIF search', icon: 'gif_box' },
   { id: 'parents', label: 'Parents', description: 'Invite and manage parents', icon: 'supervisor_account' },
+  { id: 'integrations', label: 'Integrations', description: 'Connect other apps', icon: 'extension' },
 ]

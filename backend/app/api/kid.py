@@ -24,7 +24,7 @@ from app.models.points import Points
 from app.models.reward import Redemption
 from app.models.user import User, UserRole
 from app.schemas.lock import utc_z
-from app.services import badges, chat, economy, inbox, kid_view, progression
+from app.services import badges, chat, chore_actions, economy, inbox, kid_view, progression
 from app.services import chores as svc
 from app.services.chore_types import notes_for
 from app.services.photos import save_photo
@@ -261,15 +261,18 @@ def done(chore_id: int, db: Session = Depends(get_db), kid: User = Depends(requi
         raise HTTPException(status_code=409, detail="Tick every step first.")
     if c.needs_photo and not svc.photo_count(r):
         raise HTTPException(status_code=409, detail="Add a photo first.")
-    r.status = "submitted"
-    r.submitted_at = now
-    r.submitted_by_id = kid.id
+    chore_actions.submit(r, kid.id, now)
     inbox.notify_parents(
         db,
         "chore_submitted",
         f"{kid.full_name} finished {c.title}",
         "Take a look and approve it.",
         run_id=r.id,
+    )
+    from app.integrations import events
+
+    events.emit(
+        db, "request.created", [kid.id], chore_id=c.id, type="chore", id=r.id, title=c.title
     )
     db.commit()
     trigger()

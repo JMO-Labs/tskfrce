@@ -34,6 +34,9 @@ KINDS = (
     "lock_warning",
     "device_bypass",
     "box_offline",
+    "integration_done",
+    "integration_msg",
+    "integration_paused",
 )
 
 
