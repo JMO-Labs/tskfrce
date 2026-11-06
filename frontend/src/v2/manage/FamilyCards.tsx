@@ -1,4 +1,3 @@
-import { Fold } from '@/v2/parent/Fold'
 import { useState, type ReactNode } from 'react'
 import { Input, NativeSelect, NumberInput, PasswordInput, SegmentedControl, Switch, TextInput } from '@mantine/core'
 import { useBlocker } from '@/v2/hooks/useDevices'
@@ -9,6 +8,7 @@ import { PasswordEye } from '@/v2/components/PasswordEye'
 import { toastFail, toastOk } from '../notify'
 import { PaneCard, PaneHead } from './PaneParts'
 import { Chip } from '@/v2/parent/Chip'
+import { Fold } from '@/v2/parent/Fold'
 import { ago } from './settingsMeta'
 
 function zones(current: string): string[] {
@@ -115,7 +115,7 @@ export function FamilyCard({ fam }: { fam: Family }) {
             </div>
           </PaneCard>
           <Fold title="Points rules">
-            <PaneCard icon="stars" title="Points">
+            <section className="pn-card" aria-label="Points rules">
               <div className="pn-fields">
                 <NumberInput
                   label="Early finish bonus cap"
@@ -127,7 +127,7 @@ export function FamilyCard({ fam }: { fam: Family }) {
                   onChange={(v) => typeof v === 'number' && set({ early_bonus_cap: v })}
                 />
               </div>
-            </PaneCard>
+            </section>
           </Fold>
           <PaneCard icon="shield" title="Network">
             <Switchy

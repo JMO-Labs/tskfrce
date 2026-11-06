@@ -116,6 +116,7 @@ describe('family cards (items 7, 8)', () => {
     const d = screen.getByText('Points rules').closest('details')!
     expect(d.open).toBe(false)
     expect(d.contains(screen.getByLabelText('Early finish bonus cap'))).toBe(true)
+    expect(screen.queryByRole('heading', { name: 'Points' })).toBeNull() // the fold already names it
   })
 })
 
