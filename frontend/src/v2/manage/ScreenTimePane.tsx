@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { useState } from 'react'
 import { usePatchScreenTime, useScreenTime, type ScreenPatch } from '@/v2/hooks/useScreenTime'
 import { Icon } from '@/v2/parent/Icon'
@@ -41,6 +42,9 @@ function HowItWorks({ st }: { st: ScreenTime }) {
             <span aria-hidden="true">pts per 15 min</span>
           </span>
           {priceErr && <span className="pk-error">{priceErr}</span>}
+          <span className="pk-hint pk-hint-tight">
+            Groups can have their own price. <Link href="/devices?tab=groups">Set group prices</Link>
+          </span>
         </label>
         <label className="pk-field">
           <span className="pk-label">Max per day</span>

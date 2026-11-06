@@ -250,6 +250,35 @@ describe('devices', () => {
     )
   })
 
+  describe('group screen price', () => {
+    const g = { id: 3, name: 'Tablets', device_ids: [1], owner_ids: [], icon: 'tv', chore_lock: true, screen_price: null as number | null }
+    const mount = (grp = g) => {
+      apiMock.mockImplementation(async (path) => (path === '/screen-time' ? { price: 20 } : {}))
+      render(wrap(<GroupDetail group={grp} devices={[device]} kids={kids} onSelect={() => {}} onRequestOverride={() => {}} />))
+    }
+    test('placeholder shows the family price; typing 40 saves screen_price 40', async () => {
+      mount()
+      const input = await screen.findByPlaceholderText('Family price (20)')
+      await userEvent.type(input, '40')
+      await userEvent.tab()
+      await waitFor(() => expect(calls('PATCH')[0]).toEqual(['/groups/3', { method: 'PATCH', body: { name: 'Tablets', device_ids: [1], screen_price: 40 } }]))
+    })
+    test('clearing sends screen_price null', async () => {
+      mount({ ...g, screen_price: 40 })
+      const input = await screen.findByLabelText('Screen time price')
+      await userEvent.clear(input)
+      await userEvent.tab()
+      await waitFor(() => expect(calls('PATCH')[0][1].body).toEqual({ name: 'Tablets', device_ids: [1], screen_price: null }))
+    })
+    test('out of range shows an error and does not save', async () => {
+      mount()
+      await userEvent.type(await screen.findByLabelText('Screen time price'), '5000')
+      await userEvent.tab()
+      expect(screen.getByText('Must be 1000 or less.')).toBeInTheDocument()
+      expect(calls('PATCH')).toHaveLength(0)
+    })
+  })
+
   test('group delete asks first, then DELETEs', async () => {
     const g = { id: 3, name: 'Tablets', device_ids: [1], owner_ids: [] }
     render(wrap(<GroupDetail group={g} devices={[device]} kids={kids} onSelect={() => {}} onRequestOverride={() => {}} />))

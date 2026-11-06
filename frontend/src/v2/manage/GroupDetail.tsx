@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useResetState } from '@/v2/hooks/useResetState'
 import { useDisclosure } from '@mantine/hooks'
 import { useDeleteGroup, useSaveGroup } from '@/v2/hooks/useDevices'
+import { useScreenTime } from '@/v2/hooks/useScreenTime'
 import Link from 'next/link'
 import { GlyphPicker } from '@/v2/parent/GlyphPicker'
 import { HeaderChips } from '@/v2/parent/HeaderChips'
@@ -11,7 +12,7 @@ import { ActionButton } from './ActionButton'
 import { ConfirmDelete } from './ConfirmDelete'
 import { GroupStats } from './GroupStats'
 import { HoursTimeline } from './HoursTimeline'
-import { nameOf } from './choreMeta'
+import { intError, nameOf } from './choreMeta'
 import { toastFail, toastOk, toasted } from '../notify'
 import { useSingleFlight } from '@/v2/hooks/useSingleFlight'
 
@@ -43,6 +44,9 @@ export function GroupDetail({ group, devices, kids, groups, rules, onSelect, onR
   const once = useSingleFlight()
   const [confirm, { open, close }] = useDisclosure(false)
   const [name, setName] = useResetState(group?.name ?? '')
+  const familyPrice = useScreenTime().data?.price
+  const [price, setPrice] = useResetState(group?.screen_price != null ? String(group.screen_price) : '')
+  const priceErr = price.trim() === '' ? '' : intError(price, 1, 1000)
   const [draftIds, setDraftIds] = useState<number[]>([])
   const [draft, setDraft] = useState<{ icon?: string; chore_lock?: boolean }>({})
 
@@ -77,9 +81,14 @@ export function GroupDetail({ group, devices, kids, groups, rules, onSelect, onR
     if (group) once(() => toasted(save.mutateAsync({ id: group.id, name: group.name, device_ids: group.device_ids, icon, chore_lock: choreLock, ...extra }), 'Saved'))
     else setDraft({ ...draft, ...extra })
   }
+  const savePrice = () => {
+    if (!group || priceErr) return
+    const next = price.trim() === '' ? null : Number(price)
+    if (next !== group.screen_price) once(() => toasted(save.mutateAsync({ id: group.id, name: group.name, device_ids: group.device_ids, screen_price: next }), 'Saved'))
+  }
   const create = () =>
     once(() =>
-      save.mutateAsync({ name: name.trim(), device_ids: draftIds, ...draft }).then((g) => {
+      save.mutateAsync({ name: name.trim(), device_ids: draftIds, ...draft, ...(price.trim() && !priceErr ? { screen_price: Number(price) } : {}) }).then((g) => {
         toastOk('Created')
         onSelect((g as Group).id)
       }, toastFail),
@@ -163,6 +172,24 @@ export function GroupDetail({ group, devices, kids, groups, rules, onSelect, onR
             <button type="button" role="switch" aria-checked={choreLock} aria-labelledby="group-chore-label" aria-disabled={(save.isPending && !!group) || undefined} onClick={() => !(save.isPending && group) && setExtra({ chore_lock: !choreLock })} />
           </div>
           <p className="pk-hint">Off: these devices skip the chore check. Hours and manual locks still apply.</p>
+          <label className="pk-field">
+            <span className="pk-label">Screen time price</span>
+            <span className="pk-input rw-unit">
+              <input
+                aria-label="Screen time price"
+                inputMode="numeric"
+                placeholder={`Family price (${familyPrice ?? ''})`}
+                value={price}
+                aria-invalid={!!priceErr}
+                onChange={(e) => setPrice(e.currentTarget.value)}
+                onBlur={savePrice}
+                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+              />
+              <span aria-hidden="true">pts per 15 min</span>
+            </span>
+            {priceErr && <span className="pk-error">{priceErr}</span>}
+          </label>
+          <p className="pk-hint">Points per 15 minutes. Leave empty to use the family price.</p>
         </section>
         {group && rules && (
           <section className="pk-panel pk-span" aria-label="Hours">
@@ -185,7 +212,7 @@ export function GroupDetail({ group, devices, kids, groups, rules, onSelect, onR
           <button type="button" className="p-btn" onClick={() => onSelect(null)}>
             Cancel
           </button>
-          <button type="button" className="p-btn" data-variant="accent" onClick={create} disabled={!name.trim() || save.isPending}>
+          <button type="button" className="p-btn" data-variant="accent" onClick={create} disabled={!name.trim() || !!priceErr || save.isPending}>
             <Icon name={save.isPending ? 'progress_activity' : 'check'} className={save.isPending ? 'p-spin' : undefined} />
             {save.isPending ? 'Creating…' : 'Create group'}
           </button>

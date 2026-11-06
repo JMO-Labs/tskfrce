@@ -200,6 +200,14 @@ const stFull = {
 }
 
 describe('rewards: screen time', () => {
+  test('points to per-group prices', async () => {
+    data({ '/screen-time': stFull })
+    mockRoute.query = { section: 'rewards', item: 'screen' }
+    render(wrap(<KidsPage />))
+    expect(await within(detail()).findByText(/Groups can have their own price\./)).toBeInTheDocument()
+    expect(within(detail()).getByRole('link', { name: 'Set group prices' })).toHaveAttribute('href', '/devices?tab=groups')
+  })
+
   test('Approve automatically + Save PATCHes only auto_approve', async () => {
     data({ '/screen-time': stFull })
     mockRoute.query = { section: 'rewards', item: 'screen' }
