@@ -26,13 +26,22 @@ def test_step_8_becomes_finished(tmp_path):
     _alembic(url, PREV, data)
     con = sqlite3.connect(path)
     # fill every NOT NULL column with a neutral value, then set the two steps under test
-    cols = [r for r in con.execute("PRAGMA table_info(family_settings)") if r[3] and r[4] is None and r[1] != "id"]
+    cols = [
+        r
+        for r in con.execute("PRAGMA table_info(family_settings)")
+        if r[3] and r[4] is None and r[1] != "id"
+    ]
     names = ", ".join(["id", "setup_step"] + [c[1] for c in cols])
-    fill = ", ".join("''" if (c[2] or "").upper().startswith(("VARCHAR", "TEXT")) else "0" for c in cols)
+    fill = ", ".join(
+        "''" if (c[2] or "").upper().startswith(("VARCHAR", "TEXT")) else "0" for c in cols
+    )
     for i, step in ((1, 8), (2, 5)):
         con.execute(f"INSERT INTO family_settings ({names}) VALUES ({i}, {step}, {fill})")
     con.commit()
     con.close()
     _alembic(url, "head", data)
     con = sqlite3.connect(path)
-    assert con.execute("SELECT setup_step FROM family_settings ORDER BY id").fetchall() == [(None,), (5,)]
+    assert con.execute("SELECT setup_step FROM family_settings ORDER BY id").fetchall() == [
+        (None,),
+        (5,),
+    ]
