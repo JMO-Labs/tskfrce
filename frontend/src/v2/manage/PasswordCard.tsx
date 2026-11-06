@@ -29,8 +29,8 @@ export function PasswordCard() {
       setAgain('')
       toastOk('Password changed.')
     } catch (e) {
-      // plain call, not a mutation: a wrong current password must not look like an expired session
-      setError(e instanceof ApiError && e.status === 401 ? "That's not your current password." : e instanceof ApiError ? e.detail : 'Something went wrong. Try again.')
+      // 400 carries "That's not your current password."; plain call, not a mutation, so no session redirect
+      setError(e instanceof ApiError ? e.detail : 'Something went wrong. Try again.')
     }
   }
   const eye = { visibilityToggleIcon: PasswordEye }

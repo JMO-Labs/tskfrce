@@ -43,11 +43,12 @@ describe('PasswordCard', () => {
     expect(await screen.findByText("Passwords don't match.")).toBeTruthy()
     expect(apiMock).not.toHaveBeenCalled()
   })
-  test('401 says the current password is wrong', async () => {
+  test('400 shows the wrong-password detail after exactly one POST', async () => {
     const { ApiError } = jest.requireMock('@/v2/api') as { ApiError: new (s: number, d: string) => Error }
-    apiMock.mockReset().mockRejectedValue(new ApiError(401, 'Current password is incorrect.'))
+    apiMock.mockReset().mockRejectedValue(new ApiError(400, "That's not your current password."))
     await fill('nope', 'new-pass-123', 'new-pass-123')
     expect(await screen.findByText("That's not your current password.")).toBeTruthy()
+    expect(apiMock).toHaveBeenCalledTimes(1)
   })
   test('422 shows the server detail', async () => {
     const { ApiError } = jest.requireMock('@/v2/api') as { ApiError: new (s: number, d: string) => Error }

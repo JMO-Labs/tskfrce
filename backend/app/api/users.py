@@ -202,8 +202,8 @@ async def change_password(
             db.rollback()
             log.exception("password-guess watch failed")
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Current password is incorrect.",
+            status_code=status.HTTP_400_BAD_REQUEST,  # not 401: the session is fine
+            detail="That's not your current password.",
         )
 
     # Update to new password

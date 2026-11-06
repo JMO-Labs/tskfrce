@@ -99,7 +99,7 @@ def _change(client, headers, current="wrong"):
 
 def test_wrong_current_password_alerts(client, db, parent, parent_headers, clock):
     for _ in range(5):
-        assert _change(client, parent_headers).status_code == 401
+        assert _change(client, parent_headers).status_code == 400
     assert len(_alerts(db)) == 1
 
 
@@ -108,4 +108,4 @@ def test_password_change_rate_limited(client, parent, parent_headers, clock):
 
     ratelimit.reset()
     codes = [_change(client, parent_headers).status_code for _ in range(11)]
-    assert codes[:10] == [401] * 10 and codes[10] == 429
+    assert codes[:10] == [400] * 10 and codes[10] == 429
