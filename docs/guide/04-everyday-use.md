@@ -150,7 +150,7 @@ You should see: the price on the group. Leave it empty and the group uses the fa
 
 The box sees devices, not apps. Two apps on one tablet can't have different prices. See [Troubleshooting](06-troubleshooting.md#why-cant-i-price-youtube-differently-from-homework-on-the-same-tablet).
 
-If the home box stops checking in, a red **Home box offline** message appears at the top. See [Troubleshooting](06-troubleshooting.md#why-cant-i-price-youtube-differently-from-homework-on-the-same-tablet).
+If the home box stops checking in, a red **Home box offline** message appears at the top. See [Troubleshooting](06-troubleshooting.md#the-app-says-home-box-offline).
 
 ## Hours
 
