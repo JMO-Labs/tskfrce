@@ -199,3 +199,16 @@ def test_settle_across_fall_back_day(db, kid):
     _settle(db, fam, end + timedelta(seconds=30))
     assert _minutes(db, kid) == 40
     assert db.get(ScreenBank, kid.id).day == D1
+
+
+
+def test_lowered_max_does_not_refund_spent_bank(db, kid):
+    # Bank 60, max lowered 60 -> 30, kid buys 60 (max 30 + saved 30): nothing is left.
+    fam = _fam(db, kid)
+    _bank(db, kid, 60)
+    fam.screen_max_minutes = 30
+    db.commit()
+    assert screen_bank.saved(db, fam, kid.id) == 30
+    _red(db, kid, 60, START + timedelta(hours=1))
+    _settle(db, fam)
+    assert _minutes(db, kid) == 0

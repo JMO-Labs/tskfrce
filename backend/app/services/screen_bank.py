@@ -56,7 +56,8 @@ def settle(db: Session, fam: FamilySettings, now_utc: datetime) -> None:
         if cap is None:
             row.minutes = 0
         else:
-            row.minutes = max(0, min(cap, row.minutes + daily_max - bought[kid_id]))
+            # Clamp the stored bank to the cap first: only min(bank, cap) was spendable.
+            row.minutes = max(0, min(cap, min(row.minutes, cap) + daily_max - bought[kid_id]))
         row.day = old
         db.add(row)
     db.flush()
