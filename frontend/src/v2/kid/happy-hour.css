@@ -1,0 +1,36 @@
+/* Happy Hour bar (mockup excitement-v3 .hh). Kid tokens only; the bar keeps its coral/sun/navy in both schemes. */
+.k-hh { position: relative; display: flex; align-items: center; gap: 10px; background: var(--k-coral); border: 2px solid var(--k-navy); box-shadow: 4px 4px 0 var(--k-navy); border-radius: 14px; padding: 10px 12px 10px 14px; color: #fff; overflow: hidden; min-height: 70px; margin-bottom: 16px; box-sizing: border-box; }
+.k-hh::before { content: ''; position: absolute; inset: 3px; border-radius: 11px; pointer-events: none; background: repeating-linear-gradient(90deg, var(--k-sun) 0 6px, transparent 6px 14px) top / 100% 3px no-repeat, repeating-linear-gradient(90deg, var(--k-sun) 0 6px, transparent 6px 14px) bottom / 100% 3px no-repeat; animation: k-hh-run 1s linear infinite; }
+@keyframes k-hh-run { to { background-position: 14px top, -14px bottom; } }
+.k-hh-t { flex: 1; min-width: 0; line-height: 1.05; }
+.k-hh b { display: block; font: 900 22px Impact, system-ui; color: var(--k-sun); -webkit-text-stroke: 1px var(--k-navy); text-shadow: 2px 2px 0 var(--k-navy); animation: k-hh-strobe 1.2s infinite; letter-spacing: 0.5px; }
+@keyframes k-hh-strobe { 0%, 45% { color: var(--k-sun); } 50%, 95% { color: #fff; } }
+.k-hh small { display: block; font: 800 12px system-ui; }
+.k-hh-cd { background: var(--k-navy); color: var(--k-sun); border: 2px solid #fff; border-radius: 8px; padding: 3px 8px; font: 900 17px ui-monospace, monospace; font-variant-numeric: tabular-nums; animation: k-hh-shake 2.4s infinite; }
+@keyframes k-hh-shake { 0%, 82%, 100% { transform: none; } 84% { transform: translate(-2px, 0) rotate(-3deg); } 86% { transform: translate(2px, 0) rotate(3deg); } 88% { transform: translate(-1px, 0) rotate(-1deg); } }
+.k-hh-go { cursor: pointer; background: var(--k-sun); color: var(--k-navy); border: 2px solid var(--k-navy); box-shadow: 2px 2px 0 var(--k-navy); border-radius: 10px; padding: 6px 10px; font: 900 14px system-ui; animation: k-hh-nudge 1.6s infinite; }
+@keyframes k-hh-nudge { 0%, 70%, 100% { transform: none; } 78% { transform: scale(1.08); } 86% { transform: scale(0.97); } }
+.k-hh[data-still], .k-hh[data-still]::before, .k-hh[data-still] b, .k-hh[data-still] .k-hh-cd, .k-hh[data-still] .k-hh-go { animation: none; }
+@media (prefers-reduced-motion: reduce) { .k-hh, .k-hh::before, .k-hh b, .k-hh-cd, .k-hh-go { animation: none; } }
+
+/* doubled points: old struck, new highlighted (mockup .x2) */
+.k-chip s { opacity: 0.6; font-weight: 600; margin-right: 2px; }
+.k-chip [data-x2] { background: var(--k-navy); color: var(--k-sun); border-radius: 999px; padding: 0 6px; }
+.t-pts s { opacity: 0.6; font-weight: 600; margin-right: 4px; }
+.t-pts [data-x2] { color: var(--k-coral); font-weight: 800; }
+
+/* Me: fun settings */
+.me-fun { display: flex; flex-direction: column; gap: 12px; background: var(--k-card); color: var(--k-ink); border: 2px solid var(--k-line); border-radius: 20px; padding: 16px 20px; }
+.me-fun h2 { margin: 0; font-size: 20px; }
+.me-fun-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-weight: 700; }
+.me-seg { display: inline-flex; border: 2px solid var(--k-navy); border-radius: 12px; overflow: hidden; }
+.me-seg label { padding: 6px 14px; cursor: pointer; font-weight: 800; background: var(--k-soft); color: var(--k-ink); }
+.me-seg input { position: absolute; opacity: 0; pointer-events: none; }
+.me-seg label:has(input:checked) { background: var(--k-sun); color: var(--k-navy); }
+.me-seg label:has(input:focus-visible) { outline: 3px solid var(--k-ink); outline-offset: -3px; }
+.me-sw { appearance: none; width: 52px; height: 30px; border-radius: 999px; border: 2px solid var(--k-navy); background: var(--k-soft); position: relative; cursor: pointer; margin: 0; }
+.me-sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--k-ink); transition: transform 0.15s; }
+.me-sw:checked { background: var(--k-green); }
+.me-sw:checked::after { transform: translateX(22px); background: var(--k-navy); }
+.me-sw:focus-visible { outline: 3px solid var(--k-ink); outline-offset: 2px; }
+.me-fun-note { margin: 0; font-weight: 700; color: var(--k-sub); }

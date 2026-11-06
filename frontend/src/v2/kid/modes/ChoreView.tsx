@@ -3,6 +3,7 @@ import { Icon } from '@/v2/parent/Icon'
 import type { KidChore, KidToday } from '../../types'
 import { DeductionCards, NoteSent, PhotoButton, SentBackCard, isReady, whyNot } from '../ChoreParts'
 import { KidChip, PointsChip } from '../KidChip'
+import { boosted } from '../happyHour'
 import { kidChips, stepBadge } from '../kidChips'
 import { KidSteps } from '../KidSteps'
 import { TellParentSheet } from '../TellParent'
@@ -49,7 +50,7 @@ export function ChoreView({ c, d, now, onBack, onDone, busyId, onChat }: ChoreVi
         <div>
           <h1 className="k-disp">{c.title}</h1>
           <div className="k-tmeta">
-            <PointsChip points={c.points} long />
+            <PointsChip points={c.points} long now={boosted(c, d.happy_hour, now)} />
             {order && <KidChip chip={{ tone: 'today', icon: 'format_list_numbered', label: order }} />}
             {!act && chip && <KidChip chip={chip} />}
           </div>

@@ -7,7 +7,7 @@ import { kidChips } from '../kidChips'
 export const glyph = (c: KidChore) => c.type?.glyph || 'checklist'
 
 /** Big chore tile (10 .tile): glyph, name, points + top status chip, step bar, → button. */
-export function ChoreTile({ c, now, tz, onOpen }: { c: KidChore; now: number; tz?: string; onOpen: () => void }) {
+export function ChoreTile({ c, now, tz, x2, onOpen }: { c: KidChore; now: number; tz?: string; x2?: number; onOpen: () => void }) {
   const dim = c.state === 'done' || c.state === 'needs_you'
   const chip = kidChips(c, now, tz)[0]
   const steps = c.subtasks ?? []
@@ -22,7 +22,7 @@ export function ChoreTile({ c, now, tz, onOpen }: { c: KidChore; now: number; tz
       <span className="k-tbody">
         <span className="k-tname">{c.title}</span>
         <span className="k-tmeta">
-          <PointsChip points={c.points} />
+          <PointsChip points={c.points} now={x2} />
           {chip && <KidChip chip={chip} />}
         </span>
         {steps.length > 0 && (

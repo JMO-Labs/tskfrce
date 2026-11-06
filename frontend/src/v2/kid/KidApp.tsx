@@ -13,8 +13,9 @@ import { useCelebrationTriggers } from './celebrate/triggers'
 import { useCelebrate } from './celebrate/useCelebrate'
 import { KidAlerts } from './KidAlerts'
 import { Locker } from './Locker'
-import { tally } from './kidChips'
+import { kidSort, tally } from './kidChips'
 import { KidNav, type KidTab } from './KidNav'
+import { HappyHourBanner } from './HappyHourBanner'
 import { MePage } from './MePage'
 import { KidMode } from './modes/KidMode'
 import { LittleMode } from './modes/LittleMode'
@@ -78,6 +79,11 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
     done.mutate(id, { onSuccess: () => c && submit.sent(c), onError: () => c && submit.failed(c) })
   }
   const Mode = MODES[mode]
+  const goChore = () => {
+    const first = kidSort(d.chores, now).find((c) => c.state === 'todo')
+    const el = first && document.querySelector<HTMLElement>(`[data-celebrate-id="${first.id}"]`)
+    el?.scrollIntoView({ behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' })
+  }
   const badges = {
     chores: tally(d.chores).todo,
     chat: threads.data?.total ?? 0,
@@ -103,7 +109,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
     )
   else if (tab === 'me')
     body = (
-      <MePage name={name} avatar={avatar} progress={d.progress} preview={preview} onLocker={onLocker} canSwitch={canSwitch} onExit={onExit} kidId={kidId} little={mode === 'little'} />
+      <MePage name={name} avatar={avatar} progress={d.progress} preview={preview} onLocker={onLocker} canSwitch={canSwitch} onExit={onExit} kidId={kidId} little={mode === 'little'} mode={mode} celebrate={d.celebrate ?? (mode === 'teen' ? 'small' : 'full')} freezes={d.progress?.freezes_held} />
     )
   else if (tab === 'chat') body = chat ? null : elsewhere
   else if (tab === 'alerts') body = preview ? elsewhere : <KidAlerts
@@ -116,6 +122,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
     body = (
       <>
         {children}
+        <HappyHourBanner hh={d.happy_hour} onGo={goChore} />
         <Mode
           d={d}
           focusId={focusId}

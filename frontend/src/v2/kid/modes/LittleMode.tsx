@@ -3,6 +3,7 @@ import { Icon } from '@/v2/parent/Icon'
 import type { KidChore, KidToday } from '../../types'
 import { DeductionCards, NoteSent, PhotoButton, SentBackCard, isReady, whyNot } from '../ChoreParts'
 import { KidChip, PointsChip } from '../KidChip'
+import { boosted } from '../happyHour'
 import { kidChips, kidSort, starsFilled, tally } from '../kidChips'
 import { KidSteps } from '../KidSteps'
 import { TellParentSheet } from '../TellParent'
@@ -47,7 +48,7 @@ function Now({ c, d, now, onDone, busyId }: { c: KidChore; d: KidToday; now: num
       <h2 className="k-disp">{c.title}</h2>
       <div className="l-row">
         {chip && <KidChip chip={chip} size="lg" />}
-        <PointsChip points={c.points} size="lg" />
+        <PointsChip points={c.points} size="lg" now={boosted(c, d.happy_hour, now)} />
       </div>
       {!!(c.note || c.last_note || c.deductions?.length) && (
         <div className="k-cards l-cards">

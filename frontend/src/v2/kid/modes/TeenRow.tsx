@@ -26,12 +26,14 @@ export function TeenRow({
   now,
   tz,
   selected,
+  x2,
   onSelect,
 }: {
   c: KidChore
   now: number
   tz?: string
   selected: boolean
+  x2?: number
   onSelect: () => void
 }) {
   const dim = c.state === 'done' || c.state === 'needs_you'
@@ -47,7 +49,16 @@ export function TeenRow({
         <small>{subline(c, now, tz)}</small>
       </span>
       <span className="t-chip">{chip && <KidChip chip={chip} size="sm" />}</span>
-      <span className="t-pts">{`+${c.points}`}</span>
+      <span className="t-pts">
+        {x2 != null ? (
+          <>
+            <s>{`+${c.points}`}</s>
+            <span data-x2>{`+${x2}`}</span>
+          </>
+        ) : (
+          `+${c.points}`
+        )}
+      </span>
     </button>
   )
 }

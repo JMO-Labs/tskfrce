@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMediaQuery } from '@mantine/hooks'
 import { Icon } from '@/v2/parent/Icon'
 import type { KidChore, KidToday } from '../../types'
+import { boosted } from '../happyHour'
 import { clock, kidSort, tally } from '../kidChips'
 import { TeenDetail } from './TeenDetail'
 import { TeenRow } from './TeenRow'
@@ -96,7 +97,7 @@ export function TeenMode({ d, name, now, onDone, busyId, onSeen, onChat, focusId
         {list.length ? (
           <div className="t-list">
             {list.map((c) => (
-              <TeenRow key={c.id} c={c} now={now} tz={d.timezone} selected={c.id === sel?.id} onSelect={() => pick(c.id)} />
+              <TeenRow key={c.id} c={c} now={now} tz={d.timezone} selected={c.id === sel?.id} x2={boosted(c, d.happy_hour, now)} onSelect={() => pick(c.id)} />
             ))}
           </div>
         ) : (

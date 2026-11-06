@@ -5,7 +5,7 @@ import { api, ApiError, AuthError } from '../api'
 import { KID_ID_KEY, KID_TOKEN_KEY, writeToken } from '../kid/tokenStore'
 import { blocked, kidInit, useAsKid } from './usePreview'
 import { retryIfOffline, toastFail, toastOk } from '../notify'
-import type { KidToday, KidWhoami } from '../types'
+import type { CelebrateLevel, KidToday, KidWhoami } from '../types'
 import type { KidEnrolled } from '../types/enroll'
 import { clearDevice, deviceKid, saveAlert, saveDevice, saveKid } from '../kid/kidDevice'
 
@@ -168,6 +168,20 @@ export function useMarkSeen() {
     mutationFn: async (id: number) => {
       if (!as) await api(`/kid/chores/${id}/seen`, { method: 'POST', kid: true })
     },
+    onSettled: () => refetch(qc),
+  })
+}
+
+/** Save the kid's celebration level (PATCH /kid/me); shows at once, then refetches. Blocked while previewing. */
+export function useSetCelebrate() {
+  const qc = useQueryClient()
+  const as = useAsKid()
+  return useMutation({
+    mutationFn: (celebrate: CelebrateLevel | null) => (as ? blocked() : api('/kid/me', { method: 'PATCH', body: { celebrate }, kid: true })),
+    onMutate: (celebrate) => {
+      qc.setQueriesData<KidToday>({ queryKey: ['kid', 'today'] }, (d) => (d ? { ...d, celebrate: celebrate ?? undefined } : d))
+    },
+    onError: (e: Error) => toastFail(e),
     onSettled: () => refetch(qc),
   })
 }
