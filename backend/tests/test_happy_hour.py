@@ -178,9 +178,8 @@ def test_kid_today_shows_happy_hour_and_points_now(client, db, parent, kid, kid_
     assert r["happy_hour"] is None
     assert r["chores"][0]["points_now"] == 7
     now = datetime.now(UTC).replace(tzinfo=None)
-    hh = _start(db, parent, kids=[kid.id], mult=15, now=now - timedelta(minutes=1))
+    _start(db, parent, kids=[kid.id], mult=15, now=now - timedelta(minutes=1))
     r = client.get("/api/v1/kid/today", headers=kid_headers).json()
     assert r["happy_hour"]["multiplier"] == 1.5
     assert r["happy_hour"]["ends_at"].endswith("Z")
     assert r["chores"][0]["points"] == 7 and r["chores"][0]["points_now"] == 10
-    assert hh.id

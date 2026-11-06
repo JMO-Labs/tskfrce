@@ -116,6 +116,9 @@ def award_chore(db: Session, run: ChoreRun, fam: FamilySettings) -> int:
     chore = run.assignment.chore
     n = len(kids)
     base = (chore.points or 0) // n * (run.hh_mult_x10 or 10) // 10  # Happy Hour: base only
+    title = chore.title
+    if run.hh_mult_x10 and run.hh_mult_x10 != 10:
+        title = f"{chore.title} (Happy Hour ×{run.hh_mult_x10 / 10:g})"
     deadline = deadline_utc(fam, run.day, run.assignment.due_time)
     bonus = bonus_for(run.submitted_at, deadline, fam.early_bonus_cap) // n
     for kid_id in kids:
@@ -125,7 +128,7 @@ def award_chore(db: Session, run: ChoreRun, fam: FamilySettings) -> int:
                 points_type=PointsType.TASK_COMPLETION,
                 amount=base,
                 reason="chore",
-                description=chore.title,
+                description=title,
                 run_id=run.id,
             )
         )

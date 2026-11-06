@@ -51,7 +51,9 @@ def start(
     if minutes not in MINUTES or mult_x10 not in MULTS or source not in SOURCES:
         raise ValueError("Pick 30, 60 or 90 minutes and x1.5, x2 or x3.")
     now = now or datetime.utcnow()
-    ids = sorted(set(kid_ids)) if kid_ids else None
+    ids = sorted(set(kid_ids) & set(_kids(db))) if kid_ids else None
+    if ids == []:
+        raise ValueError("Pick at least one kid.")
     hh = HappyHour(
         starts_at=now,
         ends_at=now + timedelta(minutes=minutes),

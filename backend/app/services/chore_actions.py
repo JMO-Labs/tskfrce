@@ -22,7 +22,9 @@ def submit(run: ChoreRun, by_id: int | None, now: datetime) -> None:
     run.status = "submitted"
     run.submitted_at = now
     run.submitted_by_id = by_id
-    hh = happy_hour.active_for(object_session(run), by_id, now)  # by_id None: all-kids only
+    # team runs pay every member, so only an all-kids Happy Hour may apply (None = all-kids)
+    who = None if run.kid_id is None and run.assignment.mode == "team" else by_id
+    hh = happy_hour.active_for(object_session(run), who, now)
     run.hh_mult_x10 = hh.mult_x10 if hh else None
 
 
