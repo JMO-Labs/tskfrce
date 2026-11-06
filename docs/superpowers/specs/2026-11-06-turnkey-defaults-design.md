@@ -107,3 +107,15 @@ Vis = visibility to a parent who never touched the item: **Shown**, **Hidden** (
 - **Integrations** (#40): opt-in already. Folding "Home network keys" when there are none is optional polish.
 - **Accent and theme** (#39): cosmetic and per-device. Simplifying the contrast-ratio copy is optional.
 - **Migration hygiene:** `new_devices_blocked` and `points_unlock_early` have no server_default (69d343fc2820:30-31). This is harmless because rows are created through the ORM; fix only if raw inserts appear.
+
+## As built (2.4.0)
+
+All 12 items shipped as specified, with these notes:
+
+- Wizard is 7 steps (`LAST_STEP` 7; PUT step 8 now returns 422). Remote access is a tip on Finish with a "How to set it up" link. Migration `w6f7a8b9c0d1` finishes families stored at old step 8; the client also self-heals by sending `step: null`.
+- Default hours: 07:00-20:00 Sun-Thu, 08:00-22:00 Fri-Sat, no school-hours block. Chores and the chore lock start tomorrow (no runs made while setup is open, including on edit); hours start now.
+- Screen time on for new families (`points_unlock_early` set on first claim); `screen_auto_approve` stays off.
+- Default notification events: chore_ok, kid_note, reward_request, resisting, box_offline, workaround, summary. No `new_device` inbox row during setup. The summary time is a constant (19:00), not a setting.
+- Hidden until on: screen time fields, GIF rating/key, "Security alerts still send" (needs quiet hours). App address is under Advanced; early bonus cap under "Points rules"; guests do not show "Always allowed". Stored values are never cleared.
+- Kid phone alert copy: code-enrolled phones get only a short generic line (for example "You have a new chore") through a public relay (ntfy.sh by default). The pane's switch help says "Off skips this wake-up" (not "sends nothing outside"). The "See the guide" line links to "Alerts on a kid's phone".
+- Docs: guide 03/04, READMEs, Pages text and `setup-hours.jpg` updated.

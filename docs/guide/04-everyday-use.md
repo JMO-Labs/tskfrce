@@ -39,7 +39,7 @@ When more than one thing is waiting, **Approve all** approves them in one go.
 
 You should see: for Approve, the item disappears and the kid gets their points (and the internet, if that was their last chore). For Send back, the kid sees your note and does the chore again.
 
-Points come to the kid when you approve, not before. If a kid finishes early, they can earn a small bonus. You choose the limit in **Settings → Family**.
+Points come to the kid when you approve, not before. If a kid finishes early, they can earn a small bonus. You choose the limit in **Settings → Family**, under **Points rules**.
 
 ### Answer a screen time or reward request
 
@@ -49,7 +49,7 @@ You should see: the item leaves the list. The kid is told what you decided.
 
 ## The bell
 
-The bell shows what happened: chores to approve, kid notes, requests, new devices, badges and level-ups, and security alerts such as a device that "got around the lock", "may be a different device", a "tried a VPN" workaround, or someone guessing a parent's password. Use the **All**, **Needs you** and **Alerts** tabs to filter. You can approve or send back right from the bell. Tap an item to go straight to it. **Mark all read** clears the count.
+The bell shows what happened: chores to approve, kid notes, requests, badges and level-ups, and security alerts such as a device that "got around the lock", "may be a different device", a "tried a VPN" workaround, or someone guessing a parent's password. Use the **All**, **Needs you** and **Alerts** tabs to filter. You can approve or send back right from the bell. Tap an item to go straight to it. **Mark all read** clears the count.
 
 On a phone the bell opens as a sheet from the bottom of the screen.
 
@@ -97,7 +97,7 @@ Open **Kids & chores → Rewards**. It has four parts:
 
 - **Requests**: what kids are asking for.
 - **Catalogue**: tap **New reward** for things kids can save up for, with a price in points and an icon. Turn off **Needs approval** if a kid can just take it (the points come off right away and you get a ping). Turn off **Kids can see it** to hide it for now.
-- **Screen time**: lets kids spend points on extra internet time. It is off until you turn on **Kids can buy extra minutes**. The price starts at 20 points for 15 minutes. You can also set a **Max per day**, **Approve automatically** and **Only during allowed hours**. Bought minutes never work during off hours like bedtime.
+- **Screen time**: lets kids spend points on extra internet time. It is on for new families (**Kids can buy extra minutes**), and every purchase still needs your OK. The price starts at 20 points for 15 minutes. Turn the switch off and the price, **Max per day**, **Approve automatically** and **Only during allowed hours** settings are hidden until you turn it on again; what you saved is kept. Bought minutes never work during off hours like bedtime.
 - **History**: the last 30 days.
 
 A kid sees a progress bar toward each reward and can ask when they have enough.
@@ -124,7 +124,7 @@ Tap a device to open it:
 - **Lock now** pauses it until you change it. **Unlock 30 min** lets it online for half an hour. **Back to schedule** cancels either one.
 - **Test block** checks that pausing works for this device.
 - **Guest (never blocked)** keeps it online always.
-- **Always allowed (never lock)** skips hours and the chore check for this one device, like a kid's laptop for school. A manual lock still works.
+- **Always allowed (never lock)** skips hours and the chore check for this one device, like a kid's laptop for school. A manual lock still works. Guest devices never show this switch, because guests are never locked.
 - **Network** and **Activity** show its addresses, when it was online and any alerts.
 
 The **Groups** tab puts several devices together, like "Game consoles", so you can lock them all at once.
@@ -179,7 +179,7 @@ Use **Chores**, **Notes** and **Family** at the top to filter. Quick replies lik
 
 ### GIFs (off by default)
 
-You can allow GIFs in chat. It's off until you turn it on.
+You can allow GIFs in chat. It's off until you turn it on, and the **GIPHY key** and **GIF rating** settings stay hidden until then.
 
 1. Make a free key at https://developers.giphy.com/ (a GIPHY account is needed).
 2. In **Settings → GIFs**, turn on **Allow GIFs in chat**.
@@ -198,11 +198,11 @@ t@sk4ce can send pings to the apps your family already uses, like a Signal group
 
 1. Open **Settings → Notifications** and tap **Add a place**.
 2. Give it a **Name** and paste an **Apprise address** (the Apprise website lists the format for each app).
-3. Choose which events it gets, then tap **Test**.
+3. Choose which events it gets, then tap **Test**. A new place starts with chores to approve, kid notes, reward requests, tricks, a box that goes offline and the daily summary. "New device" alerts are off unless you turn them on (and nothing rings the bell for new devices while you are still in setup).
 
 You should see: a test message in that app.
 
-During **Quiet hours** other pings wait: chores to approve, notes, requests and new devices are sent together when quiet hours end. Security alerts (a device getting around the lock, a different-looking device, password guessing, the box going offline) still send unless you turn off **Security alerts still send**. Set **App address** to the address you open t@sk4ce with, so the link in each ping works.
+During **Quiet hours** other pings wait: chores to approve, notes, requests and new devices are sent together when quiet hours end. Security alerts (a device getting around the lock, a different-looking device, password guessing, the box going offline) still send unless you turn off **Security alerts still send**. That switch only shows once quiet hours are on. Pings link back to your box by itself; if the link is wrong, open **Advanced** and set **App address** to the address you open t@sk4ce with.
 
 These pings leave your home: they go to the service you chose.
 
@@ -210,7 +210,7 @@ These pings leave your home: they go to the service you chose.
 
 **Settings → Notifications** also shows a code for each kid. Install the free **ntfy** app on the kid's phone and scan the code with the phone's camera. Alerts then arrive even when t@sk4ce is closed: a chore due soon, approved or sent back, points taken, new chores, messages, a badge or level-up, and a warning in the 10 minutes before the internet goes off. **New code** makes a fresh code; the old one stops working. A kid's page also has a **Phones and tablets** panel with **Add a phone** and **Remove**.
 
-iPhones get these alerts late unless you turn on **Instant alerts on iPhones**. That asks the public ntfy.sh service to wake the phone. Only a wake-up goes out; the alert text stays in your home.
+iPhones get these alerts late unless you turn on **Instant alerts on iPhones**. That asks the public ntfy.sh service to wake the phone. Only a wake-up goes out; the alert text stays in your home. If a kid's phone was set up with a code instead, it gets only a short generic line, like "You have a new chore", through the public relay (see below). The ntfy app section in the pane is folded away as **Use the ntfy app instead**.
 
 **Who can read them.** The box's ntfy service (port 2586) has no password, by design. Anyone on your home Wi‑Fi who knows a kid's topic name can read that kid's alerts. The topic is a long random name that works like a password, so keep it secret: only share it by scanning the code. Alerts say things like "Dishes is due soon", never passwords.
 

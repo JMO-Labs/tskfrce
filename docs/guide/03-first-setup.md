@@ -69,7 +69,7 @@ The page asks "When can devices be online?" It starts you with two schedules for
 - **School nights** (Sunday to Thursday): 7 am to 8 pm.
 - **Weekends** (Friday and Saturday): 8 am to 10 pm.
 
-Change the bedtimes if you like. Tap the pencil on a row to change it, or **Add hours** for more.
+There is no separate school-hours block, so devices are not cut off during the school day. Change the bedtimes if you like. Tap the pencil on a row to change it, or **Add hours** for more.
 
 ![Step 7: the starting schedule on a timeline](img/setup-hours.jpg)
 

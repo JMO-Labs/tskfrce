@@ -11,8 +11,8 @@ Taken with Playwright from a demo family (kids Bobby and Susan), read-only: ever
 | `needs-you.jpg` | Parent **Today**, desktop, **Needs you** tab. The demo had nothing waiting, so four sample requests were injected into the `/today` response. |
 | `setup-account.jpg` | Setup wizard step 1 "Make your parent account", with the step list visible. |
 | `setup-family.jpg` | Setup wizard step 2 "Your family" (step 1 filled in locally; nothing is sent before step 2's Next). |
-| `setup-hours.jpg` | Setup wizard step 6 "When can devices be online?" with the starting schedule (resumed at step 6 by faking `/setup/step`). |
-| `setup-devices.jpg` | Setup wizard step 5 "Whose devices are these?", devices assigned to kid chips and Guest. |
+| `setup-hours.jpg` | Setup wizard step 7 "When can devices be online?" with the new starting schedule (07:00–20:00 Sun–Thu, 08:00–22:00 Fri–Sat). Retaken 2026-11-06 for 2.4.0; 1280×900 capture cropped to 1280×740 from the top. |
+| `setup-devices.jpg` | Setup wizard step 6 "Whose devices are these?", devices assigned to kid chips and Guest. |
 | `devices.jpg` | **Devices** page with one device open (owners, right now, lock and test block buttons). |
 | `chat.jpg` | **Chat** on a chore thread with a kid note ("Need help"). |
 | `kid-today.jpg` | Kid page (phone): internet paused, chore cards with points and due chips. |
