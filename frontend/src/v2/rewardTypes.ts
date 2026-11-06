@@ -70,6 +70,8 @@ export interface KidScreen {
   auto: boolean
   only_in_hours: boolean
   max_today: number | null
+  /** banked minutes carried in (already included in max_today and left_today) */
+  saved: number
   bought_today: number
   left_today: number | null
   min_points: number | null

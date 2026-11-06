@@ -82,6 +82,7 @@ export function RewardsSection({ onExpired, mode = 'kid' }: { onExpired: () => v
                   {sc.bought_today} of {sc.max_today} min today
                 </p>
               )}
+              {sc.saved > 0 && <p className="r-sub">{`You saved ${sc.saved} min — today you can buy up to ${sc.max_today} min.`}</p>}
               {why && <p className="r-sub">{why}</p>}
             </div>
             <div className="r-act">

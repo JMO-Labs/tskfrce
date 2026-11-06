@@ -23,7 +23,7 @@ const rewards = (over: object = {}) => ({
   balance: 120,
   screen_time_price: 20,
   screen_time_enabled: true,
-  screen: { enabled: true, price: 20, options: [{ group_id: null, scope: 'all', name: 'All my devices', icon: 'devices', price: 20 }], auto: false, only_in_hours: false, max_today: null, bought_today: 0, left_today: null, min_points: null, in_hours: true },
+  screen: { enabled: true, price: 20, options: [{ group_id: null, scope: 'all', name: 'All my devices', icon: 'devices', price: 20 }], auto: false, only_in_hours: false, max_today: null, saved: 0, bought_today: 0, left_today: null, min_points: null, in_hours: true },
   rewards: [],
   pending: [],
   ...over,
@@ -165,7 +165,7 @@ describe('RewardsSection', () => {
   })
 })
 
-const scr = (o: object) => ({ enabled: true, price: 20, options: [{ group_id: null, scope: 'all', name: 'All my devices', icon: 'devices', price: 20 }], auto: false, only_in_hours: false, max_today: null, bought_today: 0, left_today: null, min_points: null, in_hours: true, ...o })
+const scr = (o: object) => ({ enabled: true, price: 20, options: [{ group_id: null, scope: 'all', name: 'All my devices', icon: 'devices', price: 20 }], auto: false, only_in_hours: false, max_today: null, saved: 0, bought_today: 0, left_today: null, min_points: null, in_hours: true, ...o })
 const rw = (o: object = {}) => ({ id: 3, name: 'Movie night', price: 50, icon: 'movie', needs_approval: true, ...o })
 
 describe('Plan E rewards', () => {
@@ -192,6 +192,20 @@ describe('Plan E rewards', () => {
     wrap(<RewardsSection onExpired={() => {}} />)
     await screen.findByText('45 of 60 min today')
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['15 minutes'])
+  })
+
+  test('saved minutes show the banked line; steps stay under left_today', async () => {
+    route({ 'GET /kid/rewards': rewards({ screen: scr({ saved: 40, max_today: 100, left_today: 80, bought_today: 20 }) }) })
+    wrap(<RewardsSection onExpired={() => {}} />)
+    expect(await screen.findByText('You saved 40 min — today you can buy up to 100 min.')).toBeInTheDocument()
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['15 minutes', '30 minutes', '45 minutes', '60 minutes', '75 minutes'])
+  })
+
+  test('no saved line when saved is 0', async () => {
+    route({ 'GET /kid/rewards': rewards({ screen: scr({ saved: 0, max_today: 60, left_today: 60 }) }) })
+    wrap(<RewardsSection onExpired={() => {}} />)
+    await screen.findByText('0 of 60 min today')
+    expect(screen.queryByText(/You saved/)).toBeNull()
   })
 
   test('left_today 0 disables with server wording', async () => {
