@@ -26,7 +26,6 @@ describe('eventText', () => {
     expect(eventText(ev({ kind: 'outside_hours', count: 4, last_at: '2026-10-26T20:30:00Z' }), 'x').sub).toMatch(/^4 tries between .+ and .+\. Each try hit the lock page\.$/)
   })
   test('identity_change', () => {
-    expect(eventText(ev({ kind: 'identity_change', detail: 'fingerprint' }), 'x').title).toBe('Network fingerprint changed')
     expect(eventText(ev({ kind: 'identity_change', detail: 'iPhone → Pixel' }), 'x').title).toBe('May be a different device (iPhone → Pixel)')
   })
   test('workaround_try', () => {

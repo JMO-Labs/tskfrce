@@ -36,7 +36,7 @@ export function eventText(e: DeviceEvent, deviceName: string, tz?: string): { ic
       return {
         icon: 'devices_other',
         sev: 'md',
-        title: e.detail === 'fingerprint' ? 'Network fingerprint changed' : `May be a different device (${e.detail})`,
+        title: `May be a different device (${e.detail})`,
         sub: `${deviceName} may be a different device using the same address. Worth a look.`,
       }
     case 'workaround_try':

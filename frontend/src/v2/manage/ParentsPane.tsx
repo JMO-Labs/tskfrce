@@ -6,6 +6,7 @@ import { Icon } from '@/v2/parent/Icon'
 import { ErrorPanel, Skeleton } from '@/v2/parent/states'
 import { toastFail } from '../notify'
 import { PaneCard, PaneHead } from './PaneParts'
+import { PasswordCard } from './PasswordCard'
 import { lastActive } from './settingsMeta'
 
 const left = (s: number) => (s >= 3600 ? `${Math.ceil(s / 3600)} h` : `${Math.max(1, Math.ceil(s / 60))} min`)
@@ -139,6 +140,7 @@ export function ParentsPane() {
         </PaneCard>
       )}
       {inviting && <InviteCard invite={invite} onDone={() => setInviting(false)} />}
+      <PasswordCard />
       <p className="pn-help">Every parent can approve chores, lock devices and change settings. Invite links last 24 hours; reset links 30 minutes.</p>
     </div>
   )

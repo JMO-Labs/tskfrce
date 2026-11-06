@@ -266,12 +266,12 @@ describe('Bell', () => {
     expect(push).toHaveBeenCalledWith('/devices?item=9')
   })
 
-  test('password_guess links to settings; workaround_try views the device', async () => {
+  test('password_guess links to the password card; workaround_try views the device', async () => {
     serve([item(1, { kind: 'password_guess' }), item(2, { kind: 'workaround_try', device_id: 9 })])
     wrap(<Bell />)
     await userEvent.click(await screen.findByRole('button', { name: /Notifications/ }))
-    await userEvent.click(await screen.findByRole('button', { name: /^Settings$/ }))
-    expect(push).toHaveBeenCalledWith('/settings')
+    await userEvent.click(await screen.findByRole('button', { name: /^Change password$/ }))
+    expect(push).toHaveBeenCalledWith('/settings?section=parents#password')
     await userEvent.click(screen.getByRole('button', { name: /Notifications/ }))
     await userEvent.click(await screen.findByRole('button', { name: /^View$/ }))
     expect(push).toHaveBeenCalledWith('/devices?item=9')

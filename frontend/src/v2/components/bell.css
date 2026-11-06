@@ -148,7 +148,7 @@
   background: var(--p-acc);
   box-shadow: 0 0 0 1.5px var(--p-ink);
 }
-/* touch shows the x all the time: the dot moves beside it */
+/* touch shows the x all the time: the dot moves beside it, and the text keeps clear of both */
 @media (hover: none) { .p-bell-item.unread::after, .p-bell-item.unread:hover::after, .p-bell-item.unread:focus-within::after { display: block; right: 38px; } }
 
 .p-bell-icon {
@@ -202,6 +202,8 @@
 
 .p-bell-text:hover .p-bell-title { text-decoration: underline; }
 .p-bell-text:focus-visible { outline: 2px solid var(--p-acc); outline-offset: 2px; }
+/* touch: the dot sits left of the x, so the text clears both */
+@media (hover: none) { .p-bell-text { padding-right: 44px; } }
 
 .p-bell-title {
   display: block;
