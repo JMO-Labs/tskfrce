@@ -84,7 +84,7 @@ export function GroupDetail({ group, devices, kids, groups, rules, onSelect, onR
   const savePrice = () => {
     if (!group || priceErr) return
     const next = price.trim() === '' ? null : Number(price)
-    if (next !== group.screen_price) once(() => toasted(save.mutateAsync({ id: group.id, name: group.name, device_ids: group.device_ids, screen_price: next }), 'Saved'))
+    if (next !== (group.screen_price ?? null)) once(() => toasted(save.mutateAsync({ id: group.id, name: group.name, device_ids: group.device_ids, screen_price: next }), 'Saved'))
   }
   const create = () =>
     once(() =>
@@ -174,11 +174,11 @@ export function GroupDetail({ group, devices, kids, groups, rules, onSelect, onR
           <p className="pk-hint">Off: these devices skip the chore check. Hours and manual locks still apply.</p>
           <label className="pk-field">
             <span className="pk-label">Screen time price</span>
-            <span className="pk-input rw-unit">
+            <span className="pk-input rw-unit rw-unit-wide">
               <input
                 aria-label="Screen time price"
                 inputMode="numeric"
-                placeholder={`Family price (${familyPrice ?? ''})`}
+                placeholder={familyPrice == null ? 'Family price' : `Family price (${familyPrice})`}
                 value={price}
                 aria-invalid={!!priceErr}
                 onChange={(e) => setPrice(e.currentTarget.value)}

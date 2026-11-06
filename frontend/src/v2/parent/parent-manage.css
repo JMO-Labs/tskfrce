@@ -221,6 +221,7 @@
 [data-look='parent'] .pk-type[data-new] { border-style: dashed; color: var(--p-sub); }
 [data-look='parent'] .pk-type button:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 1px; }
 [data-look='parent'] .pk-hint-tight { margin-top: -4px; }
+[data-look='parent'] .pk-hint a { color: var(--p-ink); font-weight: 600; }
 [data-look='parent'] .pk-notes { display: flex; flex-wrap: wrap; gap: 4px; }
 [data-look='parent'] .pk-np { padding: 3px 9px; border: 1px solid var(--p-line); border-radius: 999px; color: var(--p-ink); font-size: 11.5px; }
 [data-look='parent'] .pk-np[data-universal] { border-style: dashed; color: var(--p-sub); }
