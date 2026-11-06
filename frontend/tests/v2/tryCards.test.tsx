@@ -44,7 +44,7 @@ const patched = (p: string, body: unknown) => apiMock.mock.calls.some(([path, o]
 test('celebrations card comes first, with Preview, Turn off and Got it', async () => {
   show()
   expect(await screen.findByText(/comic-book cheer/)).toBeInTheDocument()
-  for (const n of ['Preview', 'Turn off', 'Got it']) expect(screen.getByRole('button', { name: n })).toBeInTheDocument()
+  for (const n of ['Preview', 'Turn off for all kids', 'Got it']) expect(screen.getByRole('button', { name: n })).toBeInTheDocument()
 })
 
 test('Got it dismisses through the tips API and the next card waits for tomorrow', async () => {
@@ -86,7 +86,7 @@ test.each([
 
 test('Turn off on celebrations sets every kid to off and dismisses', async () => {
   show()
-  await userEvent.click(await screen.findByRole('button', { name: 'Turn off' }))
+  await userEvent.click(await screen.findByRole('button', { name: 'Turn off for all kids' }))
   await waitFor(() => expect(patched('/kids/1', { celebrate: 'off' })).toBe(true))
   await waitFor(() => expect(posted('/me/tips/try.celebrate/dismiss')).toBe(true))
 })

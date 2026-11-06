@@ -111,6 +111,7 @@ export function TodayPage() {
       )}
       {data && kid && !showNeeds && (
         <div className="p-today-detail">
+          {small && <TryCards />}
           <GetStartingChecklistCard kids={data.kids} />
           <div className="pt-head">
             <h2>{kid.name}&apos;s day</h2>
@@ -138,7 +139,7 @@ export function TodayPage() {
             <KidFacts kid={kid} />
           </div>
 
-          <TryCards />
+          {!small && <TryCards />}
           <TipsContainer tips={PARENT_TIPS} maxTips={1} />
 
           {kid.chores.length === 0 && (

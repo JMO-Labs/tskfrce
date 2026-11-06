@@ -55,7 +55,7 @@ export function TryCards() {
     actions = (
       <>
         <CelebratePreview mode={kids?.[0]?.age_group ?? 'kid'} level="full" label="Preview" />
-        <Btn onClick={off(() => kids?.forEach((k) => patchKid.mutate({ id: k.id, body: { celebrate: 'off' } }, { onError: toastFail })))}>Turn off</Btn>
+        <Btn onClick={off(() => kids?.forEach((k) => patchKid.mutate({ id: k.id, body: { celebrate: 'off' } }, { onError: toastFail })))}>Turn off for all kids</Btn>
         {gotIt}
       </>
     )
