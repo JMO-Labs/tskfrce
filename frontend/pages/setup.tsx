@@ -290,7 +290,9 @@ export default function SetupPage() {
           {step === 5 && <StepChores selected={chores} made={addedStarters} hasKids={kids.length > 0} onChange={setChores} />}
           {step === 6 && <StepDevices kids={kids} />}
           {step === 7 && <StepHours drafts={hours} onChange={setHours} choresLock={choresLock} onChoresLock={setChoresLock} />}
-          {step > LAST && <StepFinish resetTime={fam.data?.reset_time} />}
+          {step > LAST && (
+            <StepFinish resetTime={fam.data?.reset_time} chores={made.data?.chores ?? chores.length} kids={kids.length} lock={fam.data?.chores_lock ?? choresLock} />
+          )}
           {err && <p role="alert">Something went wrong: {err} Try again.</p>}
         </WizardFrame>
       </div>

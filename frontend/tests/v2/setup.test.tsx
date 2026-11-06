@@ -161,6 +161,8 @@ describe('setup wizard', () => {
     await skipStep(user) // 3 → 4
     await nextNoSkip(user) // 4 → 5, no kids
     for (let i = 0; i < 3; i++) await skipStep(user) // 5 → finish
+    expect(await screen.findByText('Hours start now.')).toBeInTheDocument() // no kids, no chores
+    expect(screen.queryByText(/next daily reset/)).toBeNull()
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Finish' })).toBeNull()
     await user.click(await screen.findByRole('button', { name: 'Go to Today' }))
@@ -268,6 +270,7 @@ describe('setup wizard', () => {
     const user = userEvent.setup()
     wrap()
     await toHours(user)
+    expect(screen.getByText('Starts at the next daily reset after you finish, so nobody is paused during setup.')).toBeInTheDocument()
     await user.click(screen.getByRole('switch', { name: "Lock until today's chores are done" }))
     await user.click(screen.getByRole('button', { name: 'Finish' }))
     await screen.findByText("You're all set")
@@ -408,10 +411,10 @@ describe('resuming an unfinished setup', () => {
   })
 
   test('a family stored at the old step 8 resumes on the finish screen', async () => {
-    resumeAt(8, { '/family': { reset_time: '06:00:00' } })
+    resumeAt(8, { '/family': { reset_time: '06:00:00', chores_lock: true }, '/chores/': [{ id: 1 }], '/hours': { rules: [] } })
     wrap()
     expect(await screen.findByText("You're all set")).toBeInTheDocument()
-    expect(await screen.findByText(/Hours start now\. Chores, and the chore lock, start tomorrow at 6:00 AM\./)).toBeInTheDocument()
+    expect(await screen.findByText('Hours start now. Chores, and the chore lock, start at the next daily reset (6:00 AM).')).toBeInTheDocument()
     expect(screen.getByText(/Want to approve chores away from home\? Set up Tailscale\. Takes 5 minutes\./)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'How to set it up' })).toBeInTheDocument()
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/setup/step', { method: 'PUT', body: { step: null } })) // self-heal

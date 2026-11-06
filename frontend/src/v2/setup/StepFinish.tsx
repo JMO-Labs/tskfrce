@@ -10,16 +10,23 @@ const n = (count: number, one: string, many: string) => `${count} ${count === 1 
 export const finishSummary = (kids: number, chores: number, devices: number, schedules: number) =>
   `${n(kids, 'kid', 'kids')}, ${n(chores, 'chore', 'chores')}, ${n(devices, 'device', 'devices')}, ${n(schedules, 'schedule', 'schedules')}.`
 
+type Started = { resetTime?: string; chores: number; kids: number; lock: boolean }
+
+/** What starts when: chores only if some were picked for kids, the lock clause only if it is on. */
+export const finishLine = ({ resetTime, chores, kids, lock }: Started) => {
+  if (!chores || !kids) return 'Hours start now.'
+  const when = `the next daily reset${resetTime ? ` (${wallTime(resetTime)})` : ''}`
+  return `Hours start now. ${lock ? 'Chores, and the chore lock, start' : 'Chores start'} at ${when}.`
+}
+
 const REMOTE_DOC = 'https://github.com/JMO-Labs/tskfrce/blob/main/docs/remote-access.md'
 
 /** The two ways out of the wizard; the summary and tile live in the frame (done). */
-export function StepFinish({ resetTime }: { resetTime?: string }) {
+export function StepFinish(started: Started) {
   const router = useRouter()
   return (
     <>
-    <p style={{ marginTop: 14 }}>
-      Hours start now. Chores, and the chore lock, start tomorrow{resetTime ? ` at ${wallTime(resetTime)}` : ''}.
-    </p>
+    <p style={{ marginTop: 14 }}>{finishLine(started)}</p>
     <InstallHint who="parent" />
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 14 }}>
       <Button variant="filled" leftSection={<span className="ms" aria-hidden="true">home</span>} onClick={() => router.push('/')}>Go to Today</Button>

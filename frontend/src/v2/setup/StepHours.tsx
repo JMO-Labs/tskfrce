@@ -66,7 +66,7 @@ export function StepHours({ drafts, onChange, choresLock, onChoresLock }: Props)
           <span id="setup-chores-lock">Lock until today&apos;s chores are done</span>
           <button type="button" role="switch" aria-checked={choresLock} aria-labelledby="setup-chores-lock" onClick={() => onChoresLock(!choresLock)} />
         </div>
-        <p className={styles.hint}>Starts tomorrow, so nobody is paused while you finish setting up.</p>
+        <p className={styles.hint}>Starts at the next daily reset after you finish, so nobody is paused during setup.</p>
       </div>
       <RuleEditor
         opened={open}
