@@ -49,6 +49,8 @@ describe('screen time pane (item 4)', () => {
     for (const n of ['Different prices for device groups', 'Approve automatically', 'Only during allowed hours']) expect(screen.queryByRole('switch', { name: n })).toBeNull()
     expect(screen.queryByRole('region', { name: 'Per-kid limits' })).toBeNull()
     expect(screen.getByText('Turn this on to let kids spend points on extra internet time.')).toBeTruthy()
+    expect(screen.getByText('Off')).toBeTruthy() // header: the On/Off chip only
+    for (const t of ['20 pts = 15 min', 'Max 60 min/day']) expect(screen.queryByText(t)).toBeNull()
   })
   test('hidden values come back unchanged after off then on', async () => {
     serve({ '/screen-time': st({ enabled: true, price: 35 }) })
@@ -66,6 +68,7 @@ describe('screen time pane (item 4)', () => {
     expect(screen.getByLabelText('Max per day')).toHaveValue('60')
     expect(screen.getByRole('switch', { name: 'Approve automatically' })).toBeTruthy()
     expect(screen.getByRole('region', { name: 'Per-kid limits' })).toBeTruthy()
+    for (const t of ['On', '35 pts = 15 min', 'Max 60 min/day']) expect(screen.getByText(t)).toBeTruthy()
   })
 })
 

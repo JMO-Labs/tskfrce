@@ -100,14 +100,18 @@ export function ScreenTimePane() {
               <Icon name={st.enabled ? 'toggle_on' : 'toggle_off'} size={16} />
               {st.enabled ? 'On' : 'Off'}
             </span>
-            <span className="p-header-chip">
-              <Icon name="stars" size={16} />
-              {st.price} pts = 15 min
-            </span>
-            <span className="p-header-chip">
-              <Icon name="hourglass_bottom" size={16} />
-              {st.max_minutes_per_day ? `Max ${st.max_minutes_per_day} min/day` : 'No daily max'}
-            </span>
+            {st.enabled && (
+              <>
+                <span className="p-header-chip">
+                  <Icon name="stars" size={16} />
+                  {st.price} pts = 15 min
+                </span>
+                <span className="p-header-chip">
+                  <Icon name="hourglass_bottom" size={16} />
+                  {st.max_minutes_per_day ? `Max ${st.max_minutes_per_day} min/day` : 'No daily max'}
+                </span>
+              </>
+            )}
           </div>
         </div>
       </header>
