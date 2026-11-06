@@ -152,34 +152,34 @@ export function GifsCard({ fam }: { fam: Family }) {
           <Switchy label="Allow GIFs in chat" checked={val('gifs_enabled')} onChange={(v) => set({ gifs_enabled: v })} />
           {val('gifs_enabled') ? (
             <>
-          <div className="pn-fields">
-            <Input.Wrapper label="GIF rating">
-              <SegmentedControl
-                aria-label="GIF rating"
-                data={[
-                  { label: 'G (all ages)', value: 'g' },
-                  { label: 'PG', value: 'pg' },
-                ]}
-                value={val('gif_rating')}
-                onChange={(v) => set({ gif_rating: v as 'g' | 'pg' })}
-              />
-            </Input.Wrapper>
-            <PasswordInput
-              visibilityToggleIcon={PasswordEye}
-              label="GIPHY key"
-              autoComplete="off"
-              placeholder={fam.giphy_key_set ? 'Saved' : ''}
-              value={val('giphy_api_key') ?? ''}
-              onChange={(e) => set({ giphy_api_key: e.currentTarget.value })}
-            />
-          </div>
-          <p className="pn-help pn-note">
-            Free. Create an app, copy its API key.{' '}
-            <a className="pn-link" href="https://developers.giphy.com/dashboard/" target="_blank" rel="noreferrer">
-              developers.giphy.com/dashboard
-            </a>
-            . When on, GIF searches are sent to GIPHY through your home box. Your kids&apos; devices never talk to GIPHY directly.
-          </p>
+              <div className="pn-fields">
+                <Input.Wrapper label="GIF rating">
+                  <SegmentedControl
+                    aria-label="GIF rating"
+                    data={[
+                      { label: 'G (all ages)', value: 'g' },
+                      { label: 'PG', value: 'pg' },
+                    ]}
+                    value={val('gif_rating')}
+                    onChange={(v) => set({ gif_rating: v as 'g' | 'pg' })}
+                  />
+                </Input.Wrapper>
+                <PasswordInput
+                  visibilityToggleIcon={PasswordEye}
+                  label="GIPHY key"
+                  autoComplete="off"
+                  placeholder={fam.giphy_key_set ? 'Saved' : ''}
+                  value={val('giphy_api_key') ?? ''}
+                  onChange={(e) => set({ giphy_api_key: e.currentTarget.value })}
+                />
+              </div>
+              <p className="pn-help pn-note">
+                Free. Create an app, copy its API key.{' '}
+                <a className="pn-link" href="https://developers.giphy.com/dashboard/" target="_blank" rel="noreferrer">
+                  developers.giphy.com/dashboard
+                </a>
+                . When on, GIF searches are sent to GIPHY through your home box. Your kids&apos; devices never talk to GIPHY directly.
+              </p>
             </>
           ) : (
             <p className="pn-help pn-note">Off. Turn on to search GIFs in chat (needs a free GIPHY key).</p>

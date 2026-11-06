@@ -34,42 +34,43 @@ function HowItWorks({ st }: { st: ScreenTime }) {
         How it works
       </h3>
       <Switch id="st-enabled" label="Kids can buy extra minutes" on={val('enabled')} onChange={(v) => set({ enabled: v })} />
+      {!val('enabled') && <span className="pk-hint pk-hint-tight">Turn this on to let kids spend points on extra internet time.</span>}
       {val('enabled') && (
         <>
-      <div className="rw-form">
-        <label className="pk-field">
-          <span className="pk-label">Price</span>
-          <span className="pk-input rw-unit">
-            <input aria-label="Price (points per 15 min)" inputMode="numeric" value={price} aria-invalid={!!priceErr} onChange={(e) => setPrice(e.currentTarget.value)} />
-            <span aria-hidden="true">pts per 15 min</span>
+          <div className="rw-form">
+            <label className="pk-field">
+              <span className="pk-label">Price</span>
+              <span className="pk-input rw-unit">
+                <input aria-label="Price (points per 15 min)" inputMode="numeric" value={price} aria-invalid={!!priceErr} onChange={(e) => setPrice(e.currentTarget.value)} />
+                <span aria-hidden="true">pts per 15 min</span>
+              </span>
+              {priceErr && <span className="pk-error">{priceErr}</span>}
+            </label>
+            <label className="pk-field">
+              <span className="pk-label">Max per day</span>
+              <select
+                className="pk-input"
+                aria-label="Max per day"
+                value={val('max_minutes_per_day') ?? ''}
+                onChange={(e) => set({ max_minutes_per_day: e.currentTarget.value ? Number(e.currentTarget.value) : null })}
+              >
+                <MaxOptions keep={st.max_minutes_per_day} />
+              </select>
+            </label>
+          </div>
+          <Switch id="st-groups" label="Different prices for device groups" on={val('group_pricing')} onChange={(v) => set({ group_pricing: v })} />
+          <span className="pk-hint pk-hint-tight">
+            Charge more for some devices, like game consoles.
+            {st.group_pricing && ( // saved value: the link is useless until Save
+              <>
+                {' '}
+                <Link href="/devices?tab=groups">Set group prices</Link>
+              </>
+            )}
           </span>
-          {priceErr && <span className="pk-error">{priceErr}</span>}
-        </label>
-        <label className="pk-field">
-          <span className="pk-label">Max per day</span>
-          <select
-            className="pk-input"
-            aria-label="Max per day"
-            value={val('max_minutes_per_day') ?? ''}
-            onChange={(e) => set({ max_minutes_per_day: e.currentTarget.value ? Number(e.currentTarget.value) : null })}
-          >
-            <MaxOptions keep={st.max_minutes_per_day} />
-          </select>
-        </label>
-      </div>
-      <Switch id="st-groups" label="Different prices for device groups" on={val('group_pricing')} onChange={(v) => set({ group_pricing: v })} />
-      <span className="pk-hint pk-hint-tight">
-        Charge more for some devices, like game consoles.
-        {st.group_pricing && ( // saved value: the link is useless until Save
-          <>
-            {' '}
-            <Link href="/devices?tab=groups">Set group prices</Link>
-          </>
-        )}
-      </span>
-      <Switch id="st-auto" label="Approve automatically" on={val('auto_approve')} onChange={(v) => set({ auto_approve: v })} />
-      <Switch id="st-hours" label="Only during allowed hours" on={val('only_in_allowed_hours')} onChange={(v) => set({ only_in_allowed_hours: v })} />
-      {!val('only_in_allowed_hours') && <span className="pk-hint pk-hint-tight">Bought minutes work even outside allowed hours, but never during off hours like bedtime.</span>}
+          <Switch id="st-auto" label="Approve automatically" on={val('auto_approve')} onChange={(v) => set({ auto_approve: v })} />
+          <Switch id="st-hours" label="Only during allowed hours" on={val('only_in_allowed_hours')} onChange={(v) => set({ only_in_allowed_hours: v })} />
+          {!val('only_in_allowed_hours') && <span className="pk-hint pk-hint-tight">Bought minutes work even outside allowed hours, but never during off hours like bedtime.</span>}
         </>
       )}
       <div className="pk-actions">

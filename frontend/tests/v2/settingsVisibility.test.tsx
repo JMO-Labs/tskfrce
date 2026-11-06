@@ -48,6 +48,16 @@ describe('screen time pane (item 4)', () => {
     for (const n of ['Price (points per 15 min)', 'Max per day']) expect(screen.queryByLabelText(n)).toBeNull()
     for (const n of ['Different prices for device groups', 'Approve automatically', 'Only during allowed hours']) expect(screen.queryByRole('switch', { name: n })).toBeNull()
     expect(screen.queryByRole('region', { name: 'Per-kid limits' })).toBeNull()
+    expect(screen.getByText('Turn this on to let kids spend points on extra internet time.')).toBeTruthy()
+  })
+  test('hidden values come back unchanged after off then on', async () => {
+    serve({ '/screen-time': st({ enabled: true, price: 35 }) })
+    wrap(<ScreenTimePane />)
+    const sw = await screen.findByRole('switch', { name: 'Kids can buy extra minutes' })
+    await userEvent.click(sw)
+    expect(screen.queryByLabelText('Price (points per 15 min)')).toBeNull()
+    await userEvent.click(sw)
+    expect(screen.getByLabelText('Price (points per 15 min)')).toHaveValue('35')
   })
   test('on: fields show and keep their values', async () => {
     serve({ '/screen-time': st({ enabled: true, price: 35, max_minutes_per_day: 60 }) })

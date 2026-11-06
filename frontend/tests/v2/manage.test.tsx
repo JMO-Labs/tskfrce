@@ -262,6 +262,13 @@ describe('devices', () => {
       await act(() => new Promise((r) => setTimeout(r, 0))) // let the query settle
       expect(screen.queryByLabelText('Screen time price')).toBeNull()
     })
+    test('hidden while screen time is off, even with group pricing on', async () => {
+      apiMock.mockImplementation(async (path) => (path === '/screen-time' ? { enabled: false, price: 20, group_pricing: true } : {}))
+      render(wrap(<GroupDetail group={g} devices={[device]} kids={kids} onSelect={() => {}} onRequestOverride={() => {}} />))
+      await waitFor(() => expect(apiMock.mock.calls.some(([p]) => p === '/screen-time')).toBe(true))
+      await act(() => new Promise((r) => setTimeout(r, 0)))
+      expect(screen.queryByLabelText('Screen time price')).toBeNull()
+    })
     test('hidden on a free group (chore lock off)', async () => {
       mount({ ...g, chore_lock: false })
       await waitFor(() => expect(apiMock.mock.calls.some(([p]) => p === '/screen-time')).toBe(true))
