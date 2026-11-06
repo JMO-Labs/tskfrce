@@ -36,7 +36,7 @@ def test_counter_bounds_macs():
 def test_categories_only_known():
     from blocker.workaround import _entries
 
-    assert {cat for cat, _ in _entries()} <= set(CATEGORIES)
+    assert {cat for cat, _ in _entries()} <= {*CATEGORIES, "ignore"}
     assert len(_entries()) >= 100
 
 
@@ -50,7 +50,24 @@ def test_qname_of():
 
 
 @pytest.mark.parametrize(
-    "name", ["google.com", "icloud.com", "mask.icloud.com", "use-application-dns.net"]
+    "name",
+    [
+        "google.com",
+        "icloud.com",
+        "mask.icloud.com",
+        "use-application-dns.net",
+        "mozilla.cloudflare-dns.com.",
+        "chrome.cloudflare-dns.com",
+        "doh.dns.sb",
+        "controlplane.tailscale.com",
+        "log.tailscale.io",
+        "x.luminati.io",
+    ],
 )
 def test_background_names_not_flagged(name):
     assert categorize(name) is None
+
+
+def test_ignore_keeps_parent_flagged():
+    assert categorize("cloudflare-dns.com") == "private_dns"
+    assert categorize("dns.sb") == "private_dns"

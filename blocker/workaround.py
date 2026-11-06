@@ -20,7 +20,7 @@ def _entries() -> tuple[tuple[str, str], ...]:
         if not line:
             continue
         parts = line.split(None, 1)
-        if len(parts) == 2 and parts[0] in CATEGORIES:
+        if len(parts) == 2 and parts[0] in (*CATEGORIES, "ignore"):
             out.append((parts[0], parts[1].strip().lower()))
     return tuple(out)
 
@@ -34,11 +34,13 @@ def categorize(qname: str) -> str | None:
     """Category of qname if it equals or is a subdomain of a listed domain, else None."""
     labels = qname.lower().rstrip(".").split(".")
     idx = _index()
-    for i in range(len(labels)):
+    found = None
+    for i in range(len(labels)):  # longest suffix first, so "ignore" beats its parent entry
         cat = idx.get(".".join(labels[i:]))
-        if cat:
-            return cat
-    return None
+        if cat == "ignore":
+            return None
+        found = found or cat
+    return found
 
 
 class WorkaroundCounter:

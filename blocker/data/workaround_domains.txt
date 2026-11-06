@@ -1,6 +1,8 @@
 # Workaround domains the blocker notices in DNS lookups from paused devices.
 # Format: "<category> <domain>" per line; '#' starts a comment.
 # Categories: vpn, private_dns, proxy, tor.
+# "ignore <domain>" lists background names that are never flagged (checked first, subdomains too):
+# the box answers every lookup, so browsers' DoH canary/bootstrap lookups happen without a person.
 # A name matches the domain itself or any subdomain (label boundary).
 # Best-effort list of well-known public names; it is not exhaustive and is
 # shipped with the image (no runtime download).
@@ -70,9 +72,6 @@ vpn getlantern.org
 vpn ultravpn.com
 vpn thundervpn.com
 vpn snapvpn.com
-vpn tailscale.com
-vpn tailscale.io
-vpn zerotier.com
 vpn openvpn.net
 vpn wireguard.com
 vpn x-vpn.com
@@ -133,7 +132,6 @@ proxy hidemy.name
 proxy hidemy.io
 proxy zalmos.com
 proxy croxy.network
-proxy luminati.io
 proxy proxyscrape.com
 proxy free-proxy-list.net
 proxy spys.one
@@ -163,3 +161,8 @@ tor tor.exit.re
 tor onionland.io
 tor torbrowser.org
 tor torproject.net
+
+# ignore (background lookups, not a person)
+ignore mozilla.cloudflare-dns.com
+ignore chrome.cloudflare-dns.com
+ignore doh.dns.sb
