@@ -100,6 +100,9 @@ def tick(db: Session, now_utc: datetime) -> list[str]:
     fam = get_family(db)
     now_local = local_now(fam.timezone, _aware_utc(now_utc))
     if reset_due(fam, now_local):
+        from app.services import screen_bank  # screen_time imports this module
+
+        screen_bank.settle(db, fam, now_utc)
         chores.run_reset(db, now_local.date())
     now = _naive_utc(now_utc)
     db.query(Override).filter(Override.expires_at.isnot(None), Override.expires_at <= now).delete()

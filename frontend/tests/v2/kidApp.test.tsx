@@ -151,7 +151,7 @@ describe('KidApp', () => {
   })
 
   test('Rewards tab says Prizes in Little', async () => {
-    routes['GET /kid/rewards'] = { balance: 4, rewards: [], pending: [], screen_time_enabled: false, screen_time_price: 1, screen: { enabled: false, price: 1, options: [{ group_id: null, scope: 'all', name: 'All my devices', icon: 'devices', price: 1 }], auto: false, only_in_hours: false, max_today: null, bought_today: 0, left_today: null, min_points: null, in_hours: true } }
+    routes['GET /kid/rewards'] = { balance: 4, rewards: [], pending: [], screen_time_enabled: false, screen_time_price: 1, screen: { enabled: false, price: 1, options: [{ group_id: null, scope: 'all', name: 'All my devices', icon: 'devices', price: 1 }], auto: false, only_in_hours: false, max_today: null, saved: 0, bought_today: 0, left_today: null, min_points: null, in_hours: true } }
     renderApp(today('little'))
     await userEvent.click(screen.getByRole('button', { name: 'Prizes' }))
     expect(await screen.findByRole('heading', { name: /^Prizes · 4 points/ })).toBeInTheDocument()

@@ -19,8 +19,17 @@ function HowItWorks({ st }: { st: ScreenTime }) {
   const val = <K extends keyof ScreenPatch>(k: K) => (k in draft ? draft[k] : st[k]) as ScreenTime[K]
   const set = (p: ScreenPatch) => setDraft((d) => ({ ...d, ...p }))
   const priceErr = intError(price, 1, 1000)
+  const priceBad = !!val('enabled') && !!priceErr // a hidden field never blocks Save
+  const [cap, setCap] = useState(st.bank_cap == null ? '' : String(st.bank_cap))
+  const capErr = cap.trim() ? intError(cap, 15, 480) || (Number(cap) % 15 ? 'Use steps of 15.' : '') : ''
   const changed: ScreenPatch = Object.fromEntries(Object.entries(draft).filter(([k, v]) => v !== st[k as keyof ScreenPatch]))
   if (!priceErr && Number(price) !== st.price) changed.price = Number(price)
+  // Banking needs a daily max: the family's, or any kid's own.
+  const bankable = val('max_minutes_per_day') != null || st.kids.some((k) => k.limit?.max_minutes != null)
+  const capShown = !!val('enabled') && bankable && val('rollover')
+  const capBad = capShown && !!capErr
+  const newCap = cap.trim() ? Number(cap) : null
+  if (capShown && !capErr && newCap !== st.bank_cap) changed.bank_cap = newCap
   const dirty = Object.keys(changed).length > 0
   const save = () =>
     patch.mutate(changed, {
@@ -58,6 +67,22 @@ function HowItWorks({ st }: { st: ScreenTime }) {
               </select>
             </label>
           </div>
+          {bankable && (
+            <>
+              <Switch id="st-bank" label="Save unused time" on={val('rollover')} onChange={(v) => set({ rollover: v })} />
+              <span className="pk-hint pk-hint-tight">Minutes a kid doesn&apos;t buy today carry over, so they can save up for a bigger day.</span>
+              {val('rollover') && (
+                <label className="pk-field">
+                  <span className="pk-label">Save up to</span>
+                  <span className="pk-input rw-unit rw-unit-wide">
+                    <input aria-label="Save up to" inputMode="numeric" placeholder={val('max_minutes_per_day') == null ? "Same as each kid's daily max" : `Same as the daily max (${val('max_minutes_per_day')})`} value={cap} aria-invalid={!!capErr} onChange={(e) => setCap(e.currentTarget.value)} />
+                    <span aria-hidden="true">min</span>
+                  </span>
+                  {capErr && <span className="pk-error">{capErr}</span>}
+                </label>
+              )}
+            </>
+          )}
           <Switch id="st-groups" label="Different prices for device groups" on={val('group_pricing')} onChange={(v) => set({ group_pricing: v })} />
           <span className="pk-hint pk-hint-tight">
             Charge more for some devices, like game consoles.
@@ -74,7 +99,7 @@ function HowItWorks({ st }: { st: ScreenTime }) {
         </>
       )}
       <div className="pk-actions">
-        <button type="button" className="p-btn" data-variant="accent" disabled={!dirty || patch.isPending} aria-busy={patch.isPending} onClick={save}>
+        <button type="button" className="p-btn" data-variant="accent" disabled={!dirty || priceBad || capBad || patch.isPending} aria-busy={patch.isPending} onClick={save}>
           <Icon name="check" />
           Save
         </button>
@@ -118,7 +143,7 @@ export function ScreenTimePane() {
       {st.enabled ? (
         <>
           <div className="rw-g2">
-            <HowItWorks key={JSON.stringify([st.enabled, st.price, st.max_minutes_per_day, st.auto_approve, st.only_in_allowed_hours])} st={st} />
+            <HowItWorks key={JSON.stringify([st.enabled, st.price, st.max_minutes_per_day, st.rollover, st.bank_cap, st.auto_approve, st.only_in_allowed_hours])} st={st} />
             <section className="pk-panel rw-rows" aria-label="What points buy">
               <h3>
                 <Icon name="calculate" size={18} className="rw-h3i" />
@@ -150,15 +175,18 @@ export function ScreenTimePane() {
                   <span className="rw-avx" aria-hidden="true">
                     {initial(k.name ?? 'Kid')}
                   </span>
-                  {k.name ?? 'Kid'}
+                  <span>
+                    {k.name ?? 'Kid'}
+                    {k.saved > 0 && <span className="rw-aside rw-sub">Saved: {k.saved} min</span>}
+                  </span>
                 </span>
                 <span className="pt-prog rw-prog">
                   {k.max_minutes ? (
                     <span className="pt-bar">
-                      <i style={{ width: `${Math.min(100, (k.bought_today / k.max_minutes) * 100)}%` }} />
+                      <i style={{ width: `${Math.min(100, (k.bought_today / (k.max_minutes + k.saved)) * 100)}%` }} />
                     </span>
                   ) : null}
-                  <b>{k.max_minutes ? `${k.bought_today} / ${k.max_minutes} min` : `${k.bought_today} min`}</b>
+                  <b>{k.max_minutes ? `${k.bought_today} / ${k.max_minutes + k.saved} min` : `${k.bought_today} min`}</b>
                 </span>
               </div>
             ))}
@@ -166,7 +194,7 @@ export function ScreenTimePane() {
           <ScreenLimits kids={st.kids} />
         </>
       ) : (
-        <HowItWorks key={JSON.stringify([st.enabled, st.price, st.max_minutes_per_day, st.auto_approve, st.only_in_allowed_hours])} st={st} />
+        <HowItWorks key={JSON.stringify([st.enabled, st.price, st.max_minutes_per_day, st.rollover, st.bank_cap, st.auto_approve, st.only_in_allowed_hours])} st={st} />
       )}
     </div>
   )

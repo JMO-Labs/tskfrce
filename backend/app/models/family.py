@@ -57,6 +57,8 @@ class FamilySettings(Base):
     notify_scan_at = Column(DateTime, nullable=True)  # naive UTC
     blocker_alerted = Column(Boolean, nullable=False, default=False, server_default="0")
     setup_step = Column(Integer, nullable=True)  # wizard step to resume; NULL = done/not started
+    screen_rollover = Column(Boolean, nullable=False, default=True, server_default="1")
+    screen_bank_cap = Column(Integer, nullable=True)  # NULL = one day's max
 
 
 def get_family(db: Session) -> FamilySettings:

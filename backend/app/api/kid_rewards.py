@@ -15,7 +15,7 @@ from app.integrations import store
 from app.models.family import get_family
 from app.models.reward import Redemption, Reward
 from app.models.user import User
-from app.services import economy, screen_time
+from app.services import economy, screen_bank, screen_time
 
 router = APIRouter(prefix="/api/v1/kid", tags=["kid"])
 
@@ -39,14 +39,16 @@ def rewards(db: Session = Depends(get_db), kid: User = Depends(view_kid)):
     cap, min_points = screen_time.limit_for(db, fam, kid.id)
     got = screen_time.bought_today(db, fam, [kid.id], now)[kid.id]
     opts = screen_time.options(db, fam, kid)
+    saved = screen_bank.saved(db, fam, kid.id, cap)
     screen = {
         "enabled": bool(fam.points_unlock_early),
         "price": opts[0]["price"],  # the All price, for old clients
         "auto": bool(fam.screen_auto_approve),
         "only_in_hours": bool(fam.screen_only_allowed_hours),
-        "max_today": cap,
+        "max_today": None if cap is None else cap + saved,
+        "saved": saved,
         "bought_today": got,
-        "left_today": None if cap is None else max(cap - got, 0),
+        "left_today": None if cap is None else max(cap + saved - got, 0),
         "min_points": min_points,
         "in_hours": screen_time.in_allowed_hours(db, kid, now),
         # bought minutes never open an off window (bedtime), even when allowed outside hours

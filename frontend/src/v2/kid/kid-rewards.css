@@ -11,6 +11,7 @@
 .r-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .r-name { font-size: 24px; font-weight: 700; line-height: 1.1; overflow-wrap: anywhere; }
 .r-sub { margin: 0; font-size: 17px; font-weight: 600; color: var(--k-sub); }
+.r-bal { text-wrap: balance; }
 .r-sub b { color: var(--k-ink); font-family: var(--font-display), 'Space Grotesk', sans-serif; }
 .r-bar { height: 12px; border-radius: 6px; background: var(--k-soft); overflow: hidden; margin-top: 4px; }
 .r-bar i { display: block; height: 100%; background: var(--k-green); }
