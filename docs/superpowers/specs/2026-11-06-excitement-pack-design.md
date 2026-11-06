@@ -1,6 +1,6 @@
 # Excitement pack: design
 
-Engagement project 1 of 5. Status: **draft for owner approval**.
+Engagement project 1 of 5. Status: **approved by owner 2026-11-06**.
 
 ## Why
 
@@ -197,4 +197,7 @@ The market survey found that chore systems die in week one to three. Paper chart
 - Celebrations "Turn off for all kids" acts on the current kids one by one. New kids start on.
 - The "Try this" nudge snooze is device-local.
 - Query budgets: `/kid/today` is 20, `/today` is 24.
-
+- Sounds: not shipped. There are no sound assets yet, so the Me page hides the Sounds switch; the device toggle and the no-op player stay in code for later.
+- The "reward bought" celebration is deferred.
+- No site image for the excitement pack.
+- Existing notification places don't get the `boost` event (same as `workaround`).

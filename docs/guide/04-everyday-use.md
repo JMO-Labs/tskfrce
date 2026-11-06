@@ -140,7 +140,6 @@ When a kid finishes a chore, a comic-book moment pops up on their screen: a rand
 - **Levels** are **Full**, **Small** and **Off**, or **Mode default** (which means Small for teens, Full for the others).
 - Set the level for each kid on the kid's page, under **Celebrations**. **Preview a celebration** plays one so you can see it.
 - Phones and tablets set to reduce motion get a still badge instead.
-- Sounds are off by default. A kid turns them on from their own **Me** page.
 
 ### Happy Hour
 
@@ -170,8 +169,8 @@ Cards on **Today** introduce each of these features, at most one new card a day.
 ### Where the settings live
 
 - **Kids & chores → Rewards → Happy Hour**: lengths, multiplier, auto boost and weekly surprise.
-- **Kids & chores → Points rules → Streak freezes**.
-- **A kid's page → Celebrations**.
+- **Settings → Family → Points rules → Streak freezes**.
+- **Kids & chores → Kids → a kid's page → Celebrations**.
 
 ## Devices
 

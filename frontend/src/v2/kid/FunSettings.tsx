@@ -4,6 +4,9 @@ import type { CelebrateLevel } from '../types'
 import { setSound, soundOn } from './celebrate/sound'
 import type { KidAge } from './modes/types'
 
+// ponytail: no sound assets ship yet; flip on (and add a test) when they do
+const SHOW_SOUNDS = false
+
 const LEVELS: [CelebrateLevel, string][] = [
   ['full', 'Full'],
   ['small', 'Small'],
@@ -19,7 +22,7 @@ function Switch({ label, on, onChange, disabled }: { label: string; on: boolean;
   )
 }
 
-/** Me tab: celebration level, sounds (this device), teen mascots, and the streak freezes saved. */
+/** Me tab: celebration level, teen mascots (sounds hidden until assets ship), and the streak freezes saved. */
 export function FunSettings({ level, mode, freezes }: { level: CelebrateLevel; mode: KidAge; freezes?: number }) {
   const save = useSetCelebrate()
   const [sound, setSnd] = useState(soundOn)
@@ -39,14 +42,16 @@ export function FunSettings({ level, mode, freezes }: { level: CelebrateLevel; m
       </div>
       {/* a teen's mascots are Full; Small (the teen default) has none, so no new field is needed */}
       {mode === 'teen' && <Switch label="Mascots" on={level === 'full'} disabled={level === 'off'} onChange={(v) => save.mutate(v ? 'full' : 'small')} />}
-      <Switch
-        label="Sounds"
-        on={sound}
-        onChange={(v) => {
-          setSound(v)
-          setSnd(v)
-        }}
-      />
+      {SHOW_SOUNDS && (
+        <Switch
+          label="Sounds"
+          on={sound}
+          onChange={(v) => {
+            setSound(v)
+            setSnd(v)
+          }}
+        />
+      )}
       {freezes != null && <p className="me-fun-note">{`🧊 ${freezes} ${freezes === 1 ? 'freeze' : 'freezes'} saved`}</p>}
     </section>
   )

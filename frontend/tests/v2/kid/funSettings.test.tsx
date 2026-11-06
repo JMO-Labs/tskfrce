@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, test } from '@jest/globals'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { FunSettings } from '@/v2/kid/FunSettings'
-import { soundOn } from '@/v2/kid/celebrate/sound'
 
 const save = jest.fn()
 jest.mock('@/v2/hooks/useKid', () => ({ useSetCelebrate: () => ({ mutate: save }) }))
@@ -21,13 +20,9 @@ describe('FunSettings', () => {
     await userEvent.click(screen.getByRole('radio', { name: 'Small' }))
     expect(save).toHaveBeenCalledWith('small')
   })
-  test('sounds are device-local, off by default', async () => {
-    show()
-    const sw = screen.getByRole('switch', { name: 'Sounds' })
-    expect(sw).not.toBeChecked()
-    await userEvent.click(sw)
-    expect(soundOn()).toBe(true)
-    expect(save).not.toHaveBeenCalled()
+  test('sounds switch is hidden until sound assets ship', () => {
+    show({ mode: 'teen' })
+    expect(screen.queryByRole('switch', { name: 'Sounds' })).toBeNull()
   })
   test('mascots switch only for teens, maps to full/small', async () => {
     show()
