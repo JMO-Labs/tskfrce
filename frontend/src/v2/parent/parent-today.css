@@ -295,7 +295,6 @@
 
 /* stale-data banner: the poll failed but the last good Today is still on screen */
 
-/* Happy Hour sheet and running chip */
+/* Happy Hour sheet */
 [data-look='parent'] .pt-hh-sheet { display: grid; gap: 10px; }
 [data-look='parent'] .pt-hh-sheet .p-btn[aria-pressed='true'] { border-color: var(--p-ink); background: var(--p-soft); color: var(--p-ink); }
-[data-look='parent'] .pt-hh-run { cursor: default; }

@@ -23,7 +23,7 @@
 .me-fun { display: flex; flex-direction: column; gap: 12px; background: var(--k-card); color: var(--k-ink); border: 2px solid var(--k-line); border-radius: 20px; padding: 16px 20px; }
 .me-fun h2 { margin: 0; font-size: 20px; }
 .me-fun-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-weight: 700; }
-.me-seg { display: inline-flex; border: 2px solid var(--k-navy); border-radius: 12px; overflow: hidden; }
+.me-seg { position: relative; display: inline-flex; border: 2px solid var(--k-navy); border-radius: 12px; overflow: hidden; }
 .me-seg label { padding: 6px 14px; cursor: pointer; font-weight: 800; background: var(--k-soft); color: var(--k-ink); }
 .me-seg input { position: absolute; opacity: 0; pointer-events: none; }
 .me-seg label:has(input:checked) { background: var(--k-sun); color: var(--k-navy); }

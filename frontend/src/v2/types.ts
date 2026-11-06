@@ -1,3 +1,4 @@
+import type { CelebrateLevel } from './funTypes'
 import type { KidScreen } from './rewardTypes'
 /** Shapes of the v2 backend responses (backend/app/api/{family,kid,devices,kids,hours,chores,setup}.py). */
 
@@ -127,17 +128,6 @@ export interface Family {
   hh_weekly_surprise: boolean
   hh_auto_boost: boolean
   streak_freeze: boolean
-}
-
-/** GET/POST /happy-hour item */
-export interface HappyHour {
-  id: number
-  starts_at: string
-  ends_at: string
-  multiplier: number
-  mult_x10: 15 | 20 | 30
-  source: 'parent' | 'schedule' | 'auto'
-  kid_ids: number[] | null
 }
 
 /** GET /chore-types item */
@@ -367,8 +357,6 @@ export interface KidToday {
   happy_hour?: { ends_at: string; multiplier: number } | null
 }
 
-export type CelebrateLevel = 'full' | 'small' | 'off'
-
 /** GET /kids/{id}/push */
 export interface KidPush {
   enabled: boolean
@@ -387,21 +375,6 @@ export interface KidRewards {
   screen: KidScreen
   rewards: { id: number; name: string; price: number; icon: string | null; needs_approval: boolean }[]
   pending: { id: number; kind: 'reward' | 'screen_time'; reward_id: number | null; minutes: number | null; cost: number }[]
-}
-
-/** GET /kid/celebrations item. key: "r:<id>" | "b:<id>" | "l:<level>". */
-export interface KidCelebration {
-  key: string
-  kind: 'reward' | 'screen_time' | 'badge' | 'level' | 'bonus'
-  title: string
-  /** badge: tier name; bonus: the parent's note */
-  detail: string
-  /** custom badge: the parent's note */
-  note?: string | null
-  size: 'big' | 'small'
-  glyph?: string | null
-  /** level celebrations: flair newly unlocked */
-  unlocked?: { id: string; label: string; emblem: string | null }[]
 }
 
 /** GET /custom-badges item. */
@@ -516,5 +489,6 @@ export interface FlairCatalog {
   equipped: Flair
 }
 
+export * from './funTypes'
 export * from './hoursTypes'
 export * from './rewardTypes'
