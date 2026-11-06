@@ -208,6 +208,14 @@ describe('Plan E rewards', () => {
     expect(screen.queryByText(/You saved/)).toBeNull()
   })
 
+  test('no saved line when max_today is null', async () => {
+    route({ 'GET /kid/rewards': rewards({ screen: scr({ saved: 40, max_today: null }) }) })
+    const { container } = wrap(<RewardsSection onExpired={() => {}} />)
+    await screen.findByRole('button', { name: 'Request screen time' })
+    expect(screen.queryByText(/You saved/)).toBeNull()
+    expect(container.textContent).not.toContain('null')
+  })
+
   test('left_today 0 disables with server wording', async () => {
     route({ 'GET /kid/rewards': rewards({ screen: scr({ left_today: 0, max_today: 60, bought_today: 60 }) }) })
     wrap(<RewardsSection onExpired={() => {}} />)
