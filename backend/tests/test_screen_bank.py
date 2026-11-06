@@ -189,17 +189,16 @@ def test_check_allows_max_plus_saved(db, kid):
 
 
 def test_settle_across_fall_back_day(db, kid):
-    # 2026-11-01 in New York is 25 hours long; settling it must still credit unused room.
+    # Chore day 2026-11-01 (New York) starts after the fall-back change: 06:00 EST both ends.
     D1 = date(2026, 11, 1)
     fam = _fam(db, kid, timezone="America/New_York", last_reset_date=D1)
-    start = datetime(2026, 11, 1, 10, 0)  # 06:00 EDT (UTC-4)
-    end = datetime(2026, 11, 2, 11, 0)  # 06:00 EST (UTC-5): 25h later
-    _red(db, kid, 20, start + timedelta(hours=24, minutes=30))  # in the extra hour, still day D1
+    start = datetime(2026, 11, 1, 11, 0)  # 06:00 EST (UTC-5)
+    end = datetime(2026, 11, 2, 11, 0)  # 06:00 EST: 24h later
+    _red(db, kid, 20, start + timedelta(hours=23, minutes=30))  # late in day D1
     _red(db, kid, 15, end + timedelta(minutes=1))  # next day: ignored
     _settle(db, fam, end + timedelta(seconds=30))
     assert _minutes(db, kid) == 40
     assert db.get(ScreenBank, kid.id).day == D1
-
 
 
 def test_lowered_max_does_not_refund_spent_bank(db, kid):
@@ -214,8 +213,17 @@ def test_lowered_max_does_not_refund_spent_bank(db, kid):
     assert _minutes(db, kid) == 0
 
 
-
 def test_settle_skipped_during_setup(db, kid):
     fam = _fam(db, kid, setup_step=1)
     _settle(db, fam)
     assert db.get(ScreenBank, kid.id) is None
+
+
+def test_settle_fall_back_25h_window(db, kid):
+    # Old day 2026-10-31 runs 06:00 EDT (10:00Z) to 11-01 06:00 EST (11:00Z): 25 hours.
+    fam = _fam(db, kid, timezone="America/New_York", last_reset_date=date(2026, 10, 31))
+    _red(db, kid, 15, datetime(2026, 10, 31, 9, 59))  # before the window
+    _red(db, kid, 15, datetime(2026, 11, 1, 10, 30))  # the extra hour (05:30 EST)
+    _red(db, kid, 15, datetime(2026, 11, 1, 11, 0))  # new day
+    _settle(db, fam, datetime(2026, 11, 1, 11, 0, 30))
+    assert _minutes(db, kid) == 45
