@@ -24,4 +24,6 @@ Words we use:
 - **Paused**: a device cannot use the internet right now.
 - **Needs you**: the list of things waiting for your decision.
 
+Credits for art and animations: [credits](https://github.com/JMO-Labs/tskfrce/blob/main/docs/CREDITS.md).
+
 Looking for the developer docs? See [the engineering overview](../engineering.md).

@@ -81,6 +81,13 @@ In **Chat** you can talk to your parents (just you and them), to the whole famil
 
 Little mode has no chat or alerts tab.
 
+## Happy Hour and fun stuff
+
+- **Happy Hour** means double points (sometimes more) for a little while. A bright banner at the top tells you how long is left. Do chores then!
+- **Celebrations** pop up when you finish a chore. Every one is different, and some are super rare.
+- **Streak freezes** save your streak if you miss a day. You earn one for every 7 days in a row, and you can keep 2.
+- Want it calmer, or want sounds? Tap **Me** to change your celebrations.
+
 ## Good to know
 
 - Your parents can see your devices and when they're online.

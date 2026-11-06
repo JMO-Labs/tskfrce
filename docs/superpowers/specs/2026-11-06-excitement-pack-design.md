@@ -181,3 +181,20 @@ The market survey found that chore systems die in week one to three. Paper chart
 - Test shapes.
 - How the server tells the kid client "this approval happened during a Happy Hour" (likely a field on the run).
 - Which Noto animals and props to bundle (at most 20).
+
+## As built
+
+- Owner mascots (T-Rex, dog, cat and the rest of the owner's art) are always available. Noto animals unlock by level.
+- Each celebration picks a random character, style, entry and burst, with fireworks as a burst.
+- On phones the mascots sit behind the bottom nav.
+- The real chore tile animates, not a copy.
+- Team runs only get the bonus from an all-kids Happy Hour.
+- The ledger label reads "(Happy Hour ×N)".
+- "Quiet" means the last 2 run days (days with chores), and kids active today are skipped.
+- Streak freezes don't add days. Badges use the freeze-protected streak.
+- "Mode default" is the raw `null` in `users.celebrate`.
+- The Happy Hour settings pane is a sibling of Screen time, under Rewards.
+- Celebrations "Turn off for all kids" acts on the current kids one by one. New kids start on.
+- The "Try this" nudge snooze is device-local.
+- Query budgets: `/kid/today` is 20, `/today` is 24.
+
