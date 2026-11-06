@@ -4,7 +4,7 @@ import hmac
 import ipaddress
 import re
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field, field_validator
@@ -113,6 +113,22 @@ class HitsReport(BaseModel):
     @classmethod
     def _macs(cls, v: dict[str, int]) -> dict[str, int]:
         out = {m.strip().lower().replace("-", ":"): n for m, n in v.items()}
+        if not all(MAC_RE.match(m) for m in out):
+            raise ValueError("MAC address must look like aa:bb:cc:dd:ee:ff.")
+        return out
+
+
+CATEGORIES = ("vpn", "private_dns", "proxy", "tor")
+WORD = {"vpn": "a VPN", "private_dns": "private DNS", "proxy": "a proxy site", "tor": "Tor"}
+
+
+class WorkaroundReport(BaseModel):
+    found: dict[str, list[Literal["vpn", "private_dns", "proxy", "tor"]]] = Field(max_length=1000)
+
+    @field_validator("found")
+    @classmethod
+    def _macs(cls, v: dict) -> dict:
+        out = {m.strip().lower().replace("-", ":"): c for m, c in v.items()}
         if not all(MAC_RE.match(m) for m in out):
             raise ValueError("MAC address must look like aa:bb:cc:dd:ee:ff.")
         return out
@@ -292,5 +308,44 @@ def devices_hits(body: HitsReport, db: Session = Depends(get_db)) -> dict:
         kind = "outside_hours" if reason == "schedule" else "locked_try"
         activity.log(db, d.id, kind, now, merge_minutes=30, count=body.hits[d.mac], reason=reason)
         logged += 1
+    db.commit()
+    return {"logged": logged}
+
+
+@router.post("/devices/workarounds", dependencies=[Depends(require_token)])
+def devices_workarounds(body: WorkaroundReport, db: Session = Depends(get_db)) -> dict:
+    """A paused device looked up a VPN, private-DNS, proxy or Tor name: tell parents once per pause."""
+    _touch(db)
+    now = datetime.now(UTC).replace(tzinfo=None)
+    devs = (
+        db.query(Device).filter(Device.mac.in_(body.found), Device.blocked_since.isnot(None)).all()
+    )
+    fam, logged = get_family(db), 0
+    local, pre = local_now(fam.timezone, now), Prefetch(db, devs)
+    for d in devs:
+        if block_reason(device_facts(db, d, fam, now, pre), local) is None:
+            continue  # open now; the next tick clears blocked_since
+        for cat in dict.fromkeys(body.found[d.mac]):
+            seen = (
+                db.query(DeviceEvent.id)
+                .filter(
+                    DeviceEvent.device_id == d.id,
+                    DeviceEvent.kind == "workaround_try",
+                    DeviceEvent.reason == cat,
+                    DeviceEvent.at >= d.blocked_since,
+                )
+                .first()
+            )
+            if seen:
+                continue
+            activity.log(db, d.id, "workaround_try", now, reason=cat)
+            inbox.notify_parents(
+                db,
+                "workaround_try",
+                f"{d.name} tried {WORD[cat]}",
+                "It didn't work \u2014 the pause is still on.",
+                device_id=d.id,
+            )
+            logged += 1
     db.commit()
     return {"logged": logged}
