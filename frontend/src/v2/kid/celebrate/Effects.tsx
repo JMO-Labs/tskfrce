@@ -1,5 +1,5 @@
-import { useLayoutEffect, useRef, type CSSProperties } from 'react'
-import { LEGENDARY, PROPS, mascotById } from './catalog'
+import { forwardRef, useLayoutEffect, useRef, type CSSProperties } from 'react'
+import { PROPS, mascotById } from './catalog'
 import type { BurstFx, CardFx, LegendaryFx, WordColor } from './pick'
 import type { CelebrateEvent } from './plan'
 import { fitWordSize } from './words'
@@ -8,52 +8,48 @@ import s from './celebrate.module.css'
 type Vars = CSSProperties & Record<`--${string}`, string | number>
 const range = (n: number) => Array.from({ length: n }, (_, i) => i)
 
-const SUB: Record<CelebrateEvent['kind'], string> = {
-  submit: 'Done!',
-  approve: 'Approved!',
-  happy_hour: 'Every chore is worth more',
-  streak: 'Keep it going!',
-  level: 'New level!',
-}
-
-// Card shards for "explode": [x, y, rotate] in px / deg, spread round the card.
+// Card shards for "explode": [x, y, rotate] in px / deg, spread round the tile.
 const SHARDS: [number, number, number][] = [
   [-170, -120, -200], [-60, -170, 140], [70, -160, -120], [180, -110, 220], [-200, 10, 90], [210, 30, -160],
   [-150, 140, 260], [-30, 180, -90], [90, 170, 180], [170, 120, -240], [-90, -40, 300], [110, -30, -300],
 ]
 
-/** The chore card copy, with its "+N" tag and the card effect (pop, wiggle, stamp, blast, explode). */
-export function Card({ event, fx }: { event: CelebrateEvent; fx: CardFx }) {
+/**
+ * What sits over the real tile (positioned at its rect by the layer): the "+N" tag, the stamp, smoke puffs,
+ * or the flash and shards when it explodes. The tile itself does the pop / wiggle / jolt / launch / burst.
+ */
+export const TileAnchor = forwardRef<HTMLDivElement, { event: CelebrateEvent; fx: CardFx }>(function TileAnchor({ event, fx }, ref) {
   return (
-    <div className={s.cardWrap} data-fx={fx}>
-      <div className={s.card} data-card={fx}>
-        {event.title}
-        <small>{event.points != null ? `${event.points} pts · ${SUB[event.kind]}` : SUB[event.kind]}</small>
-        {event.points != null && <span className={s.tag}>{`+${event.points}`}</span>}
-      </div>
+    <div ref={ref} className={s.anchor} data-tile-fx={fx}>
+      {event.points != null && <span className={s.tag}>{`+${event.points}`}</span>}
       {fx === 'stamp' && <div className={s.stamp}>DONE!</div>}
       {fx === 'blast' && range(3).map((i) => <i key={i} className={s.smoke} style={{ '--i': i, '--d': `${i * 0.08}s` } as Vars} />)}
       {fx === 'explode' && (
         <>
-          <i className={s.flash} />
+          <i className={s.flash}>
+            <b />
+          </i>
           {SHARDS.map(([x, y, r], i) => (
-            <i key={i} className={s.shard} style={{ '--x': `${x}px`, '--y': `${y}px`, '--r': `${r}deg`, '--i': i } as Vars} />
+            // the outline is a drop-shadow on the wrapper: clip-path would cut a border off
+            <i key={i} className={s.shard} style={{ '--x': `${x}px`, '--y': `${y}px`, '--r': `${r}deg`, '--i': i } as Vars}>
+              <b />
+            </i>
           ))}
         </>
       )}
     </div>
   )
-}
+})
 
 /** The big comic word, sized to the screen width (and re-measured in case the fallback font runs wide). */
-export function Word({ text, color, base }: { text: string; color: WordColor; base: number }) {
+export function Word({ text, color, base, width }: { text: string; color: WordColor; base: number; width: number }) {
   const ref = useRef<HTMLDivElement>(null)
-  const max = typeof window === 'undefined' ? 360 : Math.min(window.innerWidth * 0.9, 900)
+  const max = Math.min(width * 0.9, 900)
   const size = fitWordSize(text, max, base, 20)
   useLayoutEffect(() => {
     const el = ref.current
-    if (!el || !el.offsetWidth || el.offsetWidth <= max) return
-    el.style.fontSize = `${Math.max(20, Math.floor((size * max) / el.offsetWidth))}px`
+    if (!el || !el.scrollWidth || el.scrollWidth <= max) return
+    el.style.fontSize = `${Math.max(20, Math.floor((size * max) / el.scrollWidth))}px`
   }, [text, size, max])
   return (
     <div ref={ref} className={s.word} data-word data-color={color} style={{ fontSize: size }}>
@@ -107,22 +103,22 @@ export function Burst({ fx, balance }: { fx: BurstFx; balance?: number }) {
 }
 
 /** A mascot rising from the bottom edge, centred, with a speech bubble (trex-tryout v5). */
-export function MascotPop({ id, say }: { id: string; say: string }) {
+export function MascotPop({ id, say, prop }: { id: string; say: string; prop?: string }) {
   const m = mascotById(id)
+  const held = prop ?? m.prop
   return (
     <div className={s.mascot} data-mascot={m.id} data-art={m.art}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={m.src} alt="" className={s.mascotImg} />
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      {m.prop && <img src={m.prop} alt="" className={s.prop} />}
+      {held && <img src={held} alt="" className={s.prop} />}
       <span className={s.bubble}>{say}</span>
     </div>
   )
 }
 
 /** Legendary (about 1 in 25): a parade across the screen, or a dance party. */
-export function Legendary({ fx }: { fx: LegendaryFx }) {
-  const cast = LEGENDARY[fx].cast
+export function Legendary({ fx, cast }: { fx: LegendaryFx; cast: string[] }) {
   return (
     <div className={s.legend} data-burst={fx} data-legendary={fx}>
       <i className={s.beams} />
@@ -130,7 +126,7 @@ export function Legendary({ fx }: { fx: LegendaryFx }) {
       <div className={s.cast}>
         {cast.map((id, i) => (
           // eslint-disable-next-line @next/next/no-img-element
-          <img key={id} src={mascotById(id).src} alt="" style={{ '--i': i, '--d': `${fx === 'parade' ? i * 0.07 : (i % 2) * 0.12}s` } as Vars} />
+          <img key={i} src={mascotById(id).src} alt="" style={{ '--i': i, '--d': `${fx === 'parade' ? i * 0.07 : (i % 2) * 0.12}s` } as Vars} />
         ))}
       </div>
       {fx === 'party' && (

@@ -36,7 +36,7 @@ export interface KidAppProps {
   lockerOpen?: boolean
   onLockerClose?: () => void
   canSwitch: boolean
-  done: { mutate: (id: number, opts?: { onSuccess?: () => void }) => void; isPending: boolean; variables?: number }
+  done: { mutate: (id: number, opts?: { onSuccess?: () => void; onError?: () => void }) => void; isPending: boolean; variables?: number }
   /** an award card is up: celebrations wait for it */
   holdCelebrations?: boolean
   /** shown above the chores (first-visit intro) */
@@ -70,14 +70,12 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
     }
   }, [chat])
   const cel = useCelebrate({ level: d.celebrate ?? (mode === 'teen' ? 'small' : 'full'), mode, kidLevel: d.progress?.level ?? 1, hold: holdCelebrations })
-  const submitted = useCelebrationTriggers(d, kidId, cel.fire, !preview)
-  const onDone = (id: number) =>
-    done.mutate(id, {
-      onSuccess: () => {
-        const c = d.chores.find((x) => x.id === id)
-        if (c) submitted(c)
-      },
-    })
+  const submit = useCelebrationTriggers(d, kidId, cel.fire, !preview)
+  const onDone = (id: number) => {
+    const c = d.chores.find((x) => x.id === id)
+    if (c) submit.tap(c) // marked before the request goes out (double taps, polls racing an auto-approve)
+    done.mutate(id, { onSuccess: () => c && submit.sent(c), onError: () => c && submit.failed(c) })
+  }
   const Mode = MODES[mode]
   const badges = {
     chores: tally(d.chores).todo,

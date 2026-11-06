@@ -12,6 +12,8 @@ export interface CelebrateEvent {
   points?: number
   /** level up, streak milestone, first chore of a Happy Hour: always a mascot */
   big?: boolean
+  /** the chore run whose tile gets the card effect */
+  runId?: number
 }
 
 export interface PlanCtx {
@@ -46,6 +48,7 @@ export function planShow(event: CelebrateEvent, c: PlanCtx): Show | null {
     words: season?.words,
     wantMascot: true,
     forceMascot: !!event.big || c.mode === 'little',
+    cards: c.mode === 'little' ? ['pop', 'wiggle', 'stamp'] : undefined, // "Do this now" never leaves the screen
   })
   return { event, kind: 'full', combo, mode: c.mode }
 }

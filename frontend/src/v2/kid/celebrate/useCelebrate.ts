@@ -31,7 +31,12 @@ const reducedMotion = () => typeof window !== 'undefined' && !!window.matchMedia
 /** The celebration engine: plans each event once, plays one at a time, ends after ~1.5 s or on any tap. */
 export function useCelebrate({ level, mode, kidLevel, hold = false, rng = Math.random }: CelebrateOpts): Celebrate {
   const [dev] = useState(() => (typeof window === 'undefined' ? null : devPreview(window.location.search, mode)))
-  const [queue, setQueue] = useState<Show[]>(() => (dev ? [dev.show] : []))
+  const [queue, setQueue] = useState<Show[]>([])
+  useEffect(() => {
+    if (!dev) return
+    const t = window.setTimeout(() => setQueue((q) => [...q, dev.show])) // after the tiles are on screen
+    return () => window.clearTimeout(t)
+  }, [dev])
   const played = useRef(new Set<string>())
   const last = useRef<Combo | null>(null)
 

@@ -13,7 +13,7 @@ export function ChoreTile({ c, now, tz, onOpen }: { c: KidChore; now: number; tz
   const steps = c.subtasks ?? []
   const done = steps.filter((s) => s.done).length
   return (
-    <button type="button" className="k-tile" data-dim={dim || undefined} onClick={onOpen}>
+    <button type="button" className="k-tile" data-dim={dim || undefined} data-celebrate-id={c.id} onClick={onOpen}>
       {/* named by its visible text (WCAG 2.5.3), "Open …" for screen readers */}
       <VisuallyHidden component="span">Open </VisuallyHidden>
       <span className="k-ticon">

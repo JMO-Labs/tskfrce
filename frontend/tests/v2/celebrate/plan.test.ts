@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals'
 import { planShow, type PlanCtx } from '@/v2/kid/celebrate/plan'
 import { seeded } from '@/v2/kid/celebrate/pick'
-import { mascotsFor, activeSeason } from '@/v2/kid/celebrate/catalog'
+import { mascotsFor, activeSeason, legendaryCast } from '@/v2/kid/celebrate/catalog'
 
 const ev = { kind: 'submit' as const, key: 's:1', title: 'Dishes', points: 20 }
 const ctx = (over: Partial<PlanCtx> = {}): PlanCtx => ({
@@ -63,5 +63,18 @@ describe('catalog', () => {
     expect(activeSeason(new Date('2026-12-10T12:00:00'))?.id).toBe('december')
     expect(activeSeason(new Date('2026-06-10T12:00:00'))).toBeNull()
     expect(mascotsFor(1, new Date('2026-12-10T12:00:00'))).toContain('snowman')
+  })
+  test('legendary casts show only unlocked mascots, padded with unlocked ones', () => {
+    const unlocked = ['trex', 'dog', 'cat']
+    for (const fx of ['parade', 'party'] as const) {
+      const cast = legendaryCast(fx, unlocked)
+      expect(cast.length).toBeGreaterThanOrEqual(5)
+      for (const id of cast) expect(unlocked).toContain(id)
+    }
+  })
+
+  test('Little never gets card effects that hide the tile', () => {
+    const rng = seeded(13)
+    for (let i = 0; i < 60; i++) expect(['pop', 'wiggle', 'stamp']).toContain(planShow(ev, ctx({ mode: 'little', rng }))!.combo!.card)
   })
 })

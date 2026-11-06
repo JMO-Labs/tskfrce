@@ -21,11 +21,10 @@ export const PROPS = {
   iceCream: noto('1f366'),
   skateboard: noto('1f6f9'),
   popper: noto('1f389'),
-  starStruck: noto('1f929'),
+  /** held up on a streak milestone */
   fire: noto('1f525'),
+  /** held up on a level up */
   trophy: noto('1f3c6'),
-  balloon: noto('1f388'),
-  partyFace: noto('1f973'),
 } as const
 
 export const MASCOTS: Mascot[] = [
@@ -67,3 +66,13 @@ export const LEGENDARY = {
   parade: { word: 'LEGENDARY!', cast: ['unicorn', 'dino', 'panda', 'croc', 'dog', 'cat'] },
   party: { word: 'DANCE PARTY!', cast: ['monkey', 'raccoon', 'trex', 'cat', 'dog'] },
 } as const
+
+/** The show's cast from unlocked mascots only, padded with other unlocked ones (repeating if few are unlocked). */
+export function legendaryCast(fx: keyof typeof LEGENDARY, unlocked: string[]): string[] {
+  const want = LEGENDARY[fx].cast as readonly string[]
+  if (!unlocked.length) return []
+  const cast = want.filter((id) => unlocked.includes(id))
+  const extra = [...unlocked.filter((id) => !cast.includes(id)), ...unlocked]
+  for (let i = 0; cast.length < want.length; i++) cast.push(extra[i % extra.length])
+  return cast
+}

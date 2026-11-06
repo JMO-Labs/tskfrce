@@ -20,15 +20,16 @@ beforeEach(() => {
 })
 afterEach(() => jest.useRealTimers())
 
-const ev: CelebrateEvent = { kind: 'submit', key: 's:1', title: 'Dishes', points: 20 }
+const ev: CelebrateEvent = { kind: 'submit', key: 's:1', title: 'Dishes', points: 20, runId: 1 }
 
-function Harness({ opts, event = ev }: { opts: Partial<CelebrateOpts>; event?: CelebrateEvent }) {
+function Harness({ opts, event = ev, tile = true }: { opts: Partial<CelebrateOpts>; event?: CelebrateEvent; tile?: boolean }) {
   const cel = useCelebrate({ level: 'full', mode: 'kid', kidLevel: 1, rng: seeded(2), ...opts })
   const { fire } = cel
   useEffect(() => fire(event), [fire, event])
   return (
     <>
       <button type="button">Other</button>
+      {tile && <div data-celebrate-id="1">Dishes</div>}
       <CelebrationLayer cel={cel} balance={100} />
     </>
   )
@@ -36,10 +37,34 @@ function Harness({ opts, event = ev }: { opts: Partial<CelebrateOpts>; event?: C
 const layer = () => document.querySelector('[data-celebrate]')
 
 describe('CelebrationLayer', () => {
-  test('full plays a comic moment with the +N tag', () => {
+  const tileEl = () => document.querySelector('[data-celebrate-id="1"]')
+
+  test('full animates the real tile in place, with the +N tag; the chore shows once', () => {
     render(<Harness opts={{}} />)
     expect(layer()).toHaveAttribute('data-celebrate', 'full')
-    expect(screen.getAllByText('+20').length).toBeGreaterThan(0)
+    expect(tileEl()).toHaveAttribute('data-cel-fx')
+    expect(screen.getByText('+20')).toBeInTheDocument()
+    expect(screen.getAllByText('Dishes')).toHaveLength(1)
+  })
+
+  test('no tile on screen: word (and mascot) only, no card effect', () => {
+    render(<Harness opts={{}} tile={false} />)
+    expect(layer()).toHaveAttribute('data-celebrate', 'full')
+    expect(document.querySelector('[data-word]')).not.toBeNull()
+    expect(document.querySelector('[data-tile-fx]')).toBeNull()
+    expect(screen.queryByText('+20')).toBeNull()
+  })
+
+  test('the tile is left clean when the moment ends', () => {
+    render(<Harness opts={{}} />)
+    fireEvent.pointerDown(document.body)
+    expect(tileEl()).not.toHaveAttribute('data-cel-fx')
+    expect(tileEl()!.className).toBe('')
+  })
+
+  test('small with no tile on screen falls back to the static badge', () => {
+    render(<Harness opts={{ level: 'small' }} tile={false} />)
+    expect(screen.getByText('+20 ✓')).toBeInTheDocument()
   })
 
   test('reduced motion gives a static "+N ✓" badge and no effects', () => {

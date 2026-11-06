@@ -27,7 +27,7 @@
 /* --- reduced motion: a static badge, nothing moves --- */
 .badge {
   position: absolute;
-  left: 50%;
+  left: calc(var(--cl, 0px) + var(--cw, 100vw) / 2);
   bottom: calc(var(--k-navh, 0px) + 24px);
   transform: translateX(-50%);
   background: var(--k-sun);
@@ -40,32 +40,58 @@
   white-space: nowrap;
 }
 
-/* --- the card copy, with its +N tag --- */
-.cardWrap {
-  position: absolute;
-  left: 50%;
-  top: 22%;
-  width: min(86vw, 340px);
-  transform: translateX(-50%);
+/* --- the real chore tile, animated in place (mockup .hit); the layer lays the tag etc. over its rect --- */
+.tile { position: relative; z-index: 2; animation: t-pop 1.5s ease-out both; }
+.tile[data-cel-fx='wiggle'] { animation-name: t-wiggle; }
+.tile[data-cel-fx='stamp'] { animation-name: t-jolt; }
+.tile[data-cel-fx='blast'] { animation-name: t-launch; animation-timing-function: ease-in; }
+.tile[data-cel-fx='explode'] { animation-name: t-burst; }
+.tile[data-cel-freeze] { animation-play-state: paused !important; animation-delay: var(--cel-freeze) !important; }
+@keyframes t-pop {
+  0% { transform: none; }
+  8% { transform: scale(1.06); background-color: var(--k-blue); }
+  16% { transform: scale(0.98); }
+  24%, 90% { transform: none; background-color: var(--k-blue); }
 }
-[data-mode='little'] .cardWrap { width: min(90vw, 400px); }
-.card {
-  position: relative;
-  background: var(--k-card);
-  color: var(--k-ink);
-  border: 2px solid var(--k-ink);
-  border-radius: 14px;
-  box-shadow: var(--k-shadow);
-  padding: 12px 14px;
-  font: 700 18px var(--font-body), system-ui, sans-serif;
-  animation-name: pop;
+@keyframes t-wiggle {
+  0% { transform: none; }
+  4% { transform: rotate(-3deg) scale(1.04); background-color: var(--k-blue); }
+  10% { transform: rotate(3deg) scale(1.04); }
+  16% { transform: rotate(-1.5deg); }
+  22%, 90% { transform: none; background-color: var(--k-blue); }
 }
-[data-mode='little'] .card { font-size: 22px; padding: 16px 18px; }
-.card small { display: block; font-weight: 500; font-size: 14px; color: var(--k-sub); }
+@keyframes t-jolt {
+  0%, 9% { transform: none; }
+  11% { transform: translateY(4px); }
+  14% { transform: translateY(-1px); }
+  18%, 100% { transform: none; }
+}
+@keyframes t-launch {
+  0% { transform: none; }
+  8% { transform: translate(-2px, 3px) rotate(-2deg); }
+  14% { transform: translate(2px, 4px) rotate(2deg); }
+  20% { transform: translateY(4px) rotate(-1deg); }
+  50% { opacity: 1; transform: translateY(-120vh); }
+  51%, 80% { opacity: 0; transform: translateY(-120vh); }
+  81% { opacity: 0; transform: translateY(40px); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes t-burst {
+  0% { transform: none; }
+  6% { transform: translate(-3px, 1px) rotate(-1deg); }
+  12% { transform: translate(3px, -1px) rotate(1deg); }
+  18% { transform: translate(-3px, 0) scale(1.03); }
+  24% { opacity: 1; transform: scale(1.1); }
+  27%, 78% { opacity: 0; transform: scale(1.15); }
+  79% { opacity: 0; transform: scale(0.6); }
+  100% { opacity: 1; transform: none; }
+}
+
+.anchor { position: absolute; }
 .tag {
   position: absolute;
   right: -6px;
-  top: -16px;
+  top: -14px;
   background: var(--k-sun);
   color: var(--k-navy); /* on sun */
   border: 2px solid var(--ink);
@@ -74,39 +100,22 @@
   font: 900 20px var(--impact);
   animation-name: tag;
 }
-@keyframes pop {
-  0% { opacity: 0; transform: scale(0.85); }
-  10% { opacity: 1; transform: scale(1.1); background: var(--k-blue); }
-  20% { transform: scale(0.97); }
-  28%, 86% { opacity: 1; transform: none; background: var(--k-blue); }
-  100% { opacity: 0; transform: none; background: var(--k-blue); }
-}
-@keyframes wiggle {
-  0% { opacity: 0; transform: none; }
-  4% { opacity: 1; transform: rotate(-3deg) scale(1.04); background: var(--k-blue); }
-  10% { transform: rotate(3deg) scale(1.04); }
-  16% { transform: rotate(-1.5deg); }
-  22%, 86% { opacity: 1; transform: none; background: var(--k-blue); }
-  100% { opacity: 0; transform: none; background: var(--k-blue); }
-}
+[data-mode='little'] .tag { font-size: 26px; }
 @keyframes tag {
   0%, 2% { opacity: 0; transform: scale(0.2) rotate(0); }
   8% { opacity: 1; transform: scale(1.25) rotate(10deg); }
   14%, 80% { opacity: 1; transform: scale(1) rotate(6deg); }
   100% { opacity: 0; transform: scale(1) rotate(6deg) translateY(-14px); }
 }
-.card[data-card='wiggle'] { animation-name: wiggle; }
-
-/* stamp: DONE! slams onto the card, which jolts */
-.card[data-card='stamp'] { animation-name: jolt; }
-@keyframes jolt {
-  0% { opacity: 0; }
-  4%, 9% { opacity: 1; transform: none; }
-  11% { transform: translateY(4px); }
-  14% { transform: translateY(-1px); }
-  18%, 86% { opacity: 1; transform: none; }
-  100% { opacity: 0; }
+.anchor[data-tile-fx='blast'] .tag { animation-name: tag-quick; } /* gone before the tile takes off */
+@keyframes tag-quick {
+  0%, 2% { opacity: 0; transform: scale(0.2); }
+  8% { opacity: 1; transform: scale(1.25) rotate(10deg); }
+  14%, 18% { opacity: 1; transform: rotate(6deg); }
+  24%, 100% { opacity: 0; transform: rotate(6deg) translateY(-14px); }
 }
+
+/* stamp: DONE! slams onto the tile, which jolts */
 .stamp {
   position: absolute;
   left: 50%;
@@ -126,16 +135,7 @@
   100% { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(1); }
 }
 
-/* blast off: rumble, then up and away in smoke */
-.card[data-card='blast'] { animation-name: launch; animation-timing-function: ease-in; }
-@keyframes launch {
-  0% { opacity: 0; transform: none; }
-  6% { opacity: 1; }
-  12% { transform: translate(-2px, 3px) rotate(-2deg); }
-  18% { transform: translate(2px, 4px) rotate(2deg); }
-  24% { transform: translateY(4px) rotate(-1deg); }
-  60%, 100% { opacity: 1; transform: translateY(-80vh) rotate(0); }
-}
+/* blast off: smoke puffs under the tile */
 .smoke {
   position: absolute;
   bottom: -18px;
@@ -148,33 +148,26 @@
   animation-name: puff;
 }
 @keyframes puff {
-  0%, 22% { opacity: 0; transform: scale(0.3); }
-  36% { opacity: 1; transform: scale(1); }
-  80%, 100% { opacity: 0; transform: scale(1.7) translateY(12px); }
+  0%, 18% { opacity: 0; transform: scale(0.3); }
+  30% { opacity: 1; transform: scale(1); }
+  70%, 100% { opacity: 0; transform: scale(1.7) translateY(12px); }
 }
 
-/* explode: the card shakes, flashes and bursts into pieces */
-.card[data-card='explode'] { animation-name: burst; }
-@keyframes burst {
-  0% { opacity: 0; transform: scale(0.9); }
-  6% { opacity: 1; transform: none; }
-  12% { transform: translate(-3px, 1px) rotate(-1deg); }
-  16% { transform: translate(3px, -1px) rotate(1deg); }
-  20% { transform: translate(-3px, 0) scale(1.04); }
-  25% { opacity: 1; transform: scale(1.12); }
-  28%, 100% { opacity: 0; transform: scale(1.2); }
-}
-.flash {
+/* explode: a star flash and the tile in pieces (it fades back in at the end).
+   The ink outline is a drop-shadow on the wrapper, since clip-path on the inner piece cuts borders off. */
+.flash,
+.shard {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 170px;
-  height: 170px;
-  margin: -85px 0 0 -85px;
+  filter: drop-shadow(2px 0 0 var(--ink)) drop-shadow(-2px 0 0 var(--ink)) drop-shadow(0 2px 0 var(--ink)) drop-shadow(0 -2px 0 var(--ink));
+}
+.flash b,
+.shard b { display: block; width: 100%; height: 100%; }
+.flash { width: 170px; height: 170px; margin: -85px 0 0 -85px; animation-name: flash; }
+.flash b {
   background: var(--k-sun);
-  border: 3px solid var(--ink);
   clip-path: polygon(50% 0, 61% 30%, 95% 18%, 72% 45%, 100% 62%, 66% 66%, 72% 100%, 50% 74%, 26% 98%, 32% 66%, 0 60%, 28% 45%, 6% 16%, 39% 30%);
-  animation-name: flash;
 }
 @keyframes flash {
   0%, 24% { opacity: 0; transform: scale(0.2) rotate(0); }
@@ -182,24 +175,14 @@
   55% { opacity: 1; transform: scale(1) rotate(12deg); }
   70%, 100% { opacity: 0; transform: scale(1.2) rotate(14deg); }
 }
-.shard {
-  position: absolute;
-  left: calc(50% - 24px);
-  top: calc(50% - 18px);
-  width: 48px;
-  height: 36px;
-  background: var(--k-card);
-  border: 2px solid var(--k-ink);
-  box-shadow: var(--k-shadow);
-  clip-path: polygon(0 10%, 70% 0, 100% 55%, 40% 100%, 8% 70%);
-  animation-name: shard;
-  animation-timing-function: cubic-bezier(0.1, 0.7, 0.3, 1);
-}
-.shard:nth-child(3n) { width: 34px; height: 30px; background: var(--k-blue); clip-path: polygon(20% 0, 100% 30%, 70% 100%, 0 80%); }
-.shard:nth-child(4n) { background: var(--k-sun); }
+.shard { width: 48px; height: 36px; margin: -18px 0 0 -24px; animation-name: shard; animation-timing-function: cubic-bezier(0.1, 0.7, 0.3, 1); }
+.shard b { background: var(--k-card); clip-path: polygon(0 10%, 70% 0, 100% 55%, 40% 100%, 8% 70%); }
+.shard:nth-of-type(3n) { width: 34px; height: 30px; }
+.shard:nth-of-type(3n) b { background: var(--k-blue); clip-path: polygon(20% 0, 100% 30%, 70% 100%, 0 80%); }
+.shard:nth-of-type(4n) b { background: var(--k-sun); }
 @keyframes shard {
-  0%, 26% { opacity: 0; transform: none; }
-  28% { opacity: 1; transform: none; }
+  0%, 25% { opacity: 0; transform: none; }
+  27% { opacity: 1; transform: none; }
   75% { opacity: 1; }
   100% { opacity: 0; transform: translate(var(--x), var(--y)) rotate(var(--r)); }
 }
@@ -207,9 +190,8 @@
 /* --- the word --- */
 .word {
   position: absolute;
-  left: 50%;
+  left: calc(var(--cl, 0px) + var(--cw, 100vw) / 2);
   top: 50%;
-  max-width: 94vw;
   font-family: var(--impact);
   font-weight: 900;
   line-height: 1;
@@ -281,8 +263,8 @@
 .coin {
   position: absolute;
   z-index: 1; /* out of the card, not behind it */
-  left: calc(50% - 11px);
-  top: 26%;
+  left: calc(var(--ax, 50vw) - 11px);
+  top: calc(var(--ay, 30vh) - 11px);
   width: 22px;
   height: 22px;
   border-radius: 50%;
@@ -295,14 +277,14 @@
 @keyframes coin {
   0%, 8% { opacity: 0; transform: none; }
   14% { opacity: 1; transform: translate(var(--sx), -40px); }
-  58% { opacity: 1; transform: translate(calc(50vw - 60px), calc(var(--k-top, 0px) + 22px - 26vh)) scale(0.6); }
-  62%, 100% { opacity: 0; transform: translate(calc(50vw - 60px), calc(var(--k-top, 0px) + 22px - 26vh)) scale(0.6); }
+  58% { opacity: 1; transform: translate(calc(100vw - 60px - var(--ax, 50vw)), calc(var(--k-top, 0px) + 26px - var(--ay, 30vh))) scale(0.6); }
+  62%, 100% { opacity: 0; transform: translate(calc(100vw - 60px - var(--ax, 50vw)), calc(var(--k-top, 0px) + 26px - var(--ay, 30vh))) scale(0.6); }
 }
 
 /* --- balloon: inflates, wobbles, POP --- */
 .balloon {
   position: absolute;
-  left: calc(50% - 55px);
+  left: calc(var(--cl, 0px) + var(--cw, 100vw) / 2 - 55px);
   top: calc(50% - 160px);
   width: 110px;
   height: 132px;
@@ -343,7 +325,7 @@
 }
 .ball {
   position: absolute;
-  left: calc(50% - 32px);
+  left: calc(var(--cl, 0px) + var(--cw, 100vw) / 2 - 32px);
   top: 4%;
   width: 64px;
   height: 64px;
@@ -361,8 +343,8 @@
 /* --- confetti sneeze: the cat winds up and sprays --- */
 .sneezer {
   position: absolute;
-  left: max(4vw, calc(50% - 200px));
-  top: calc(22% + 92px);
+  left: calc(var(--cl, 0px) + 4%);
+  top: calc(var(--ay, 30vh) + 40px);
   width: 96px;
   animation-name: sneeze;
 }
@@ -398,11 +380,11 @@
 
 /* --- mascot: centred, rises so the image bottom stays below the screen edge (trex-tryout v5) --- */
 .mascot {
-  --w: min(60vw, 240px);
+  --w: min(calc(var(--cw, 100vw) * 0.6), 240px);
   --peak: 4%; /* how much of the image stays under the edge at the top of the jump */
   --rest: 7%;
   position: absolute;
-  left: 50%;
+  left: calc(var(--cl, 0px) + var(--cw, 100vw) / 2);
   bottom: 0;
   width: var(--w);
   margin-left: calc(var(--w) / -2);
@@ -410,7 +392,7 @@
   animation-name: rise;
 }
 .mascot[data-art='emoji'] { --peak: 12%; --rest: 16%; } /* emoji art has a transparent margin */
-[data-mode='little'] .mascot { --w: min(68vw, 280px); }
+[data-mode='little'] .mascot { --w: min(calc(var(--cw, 100vw) * 0.68), 280px); }
 .mascotImg { display: block; width: 100%; }
 @keyframes rise {
   0%, 8% { transform: translateY(105%); }
@@ -450,9 +432,10 @@
 /* --- legendary: parade or dance party --- */
 .legend .cast {
   position: absolute;
-  left: 0;
-  right: 0;
+  left: var(--cl, 0px);
+  width: var(--cw, 100vw);
   bottom: 6%;
+  overflow: hidden;
   display: flex;
   justify-content: center;
   gap: 2vw;
@@ -477,7 +460,7 @@
 @keyframes bob {
   to { translate: 0 -14px; rotate: 6deg; }
 }
-.popper { position: absolute; left: 4%; top: 12%; width: min(24vw, 140px); animation-name: dance; }
+.popper { position: absolute; left: calc(var(--cl, 0px) + var(--cw, 100vw) * 0.04); top: 12%; width: min(24vw, 140px); animation-name: dance; }
 
 @media (prefers-reduced-motion: reduce) {
   .root * { animation: none !important; }

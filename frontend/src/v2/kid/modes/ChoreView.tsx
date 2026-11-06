@@ -42,7 +42,7 @@ export function ChoreView({ c, d, now, onBack, onDone, busyId, onChat }: ChoreVi
         <Icon name="arrow_back" />
         All chores
       </button>
-      <div className="k-chead">
+      <div className="k-chead" data-celebrate-id={c.id}>
         <span className="k-ticon">
           <Icon name={glyph(c)} />
         </span>

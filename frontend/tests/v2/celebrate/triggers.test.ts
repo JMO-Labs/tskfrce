@@ -47,13 +47,29 @@ describe('detect', () => {
   })
 
   test('Happy Hour start fires once per Happy Hour', () => {
+    const now = Date.parse('2026-11-06T16:30:00Z')
     const hh = { ends_at: '2026-11-06T17:00:00Z', multiplier: 2 }
-    const a = detect(null, today([]))
-    const b = detect(a.next, today([], { happy_hour: hh }))
+    const a = detect(null, today([]), now)
+    const b = detect(a.next, today([], { happy_hour: hh }), now)
     expect(kinds(b)).toEqual(['happy_hour'])
-    expect(detect(b.next, today([], { happy_hour: hh })).events).toEqual([])
-    const c = detect(b.next, today([], { happy_hour: { ...hh, ends_at: '2026-11-07T17:00:00Z' } }))
+    expect(detect(b.next, today([], { happy_hour: hh }), now).events).toEqual([])
+    // the next day, after the first one ended
+    const c = detect(b.next, today([], { happy_hour: { ...hh, ends_at: '2026-11-07T17:00:00Z' } }), Date.parse('2026-11-07T16:10:00Z'))
     expect(kinds(c)).toEqual(['happy_hour'])
+  })
+
+  test('a Happy Hour already running on the very first look seeds silently', () => {
+    const hh = { ends_at: '2026-11-06T17:00:00Z', multiplier: 2 }
+    const a = detect(null, today([], { happy_hour: hh }), Date.parse('2026-11-06T16:30:00Z'))
+    expect(a.events).toEqual([])
+    expect(detect(a.next, today([], { happy_hour: hh }), Date.parse('2026-11-06T16:31:00Z')).events).toEqual([])
+  })
+
+  test('an extended Happy Hour (new end, old one not over) is not announced again', () => {
+    const now = Date.parse('2026-11-06T16:30:00Z')
+    const hh = { ends_at: '2026-11-06T17:00:00Z', multiplier: 2 }
+    const b = detect(detect(null, today([]), now).next, today([], { happy_hour: hh }), now)
+    expect(detect(b.next, today([], { happy_hour: { ...hh, ends_at: '2026-11-06T17:30:00Z' } }), now + 60_000).events).toEqual([])
   })
 
   test.each([3, 7, 14, 30])('streak milestone %i fires once', (n) => {
@@ -108,21 +124,48 @@ describe('useCelebrationTriggers', () => {
     expect(fire).toHaveBeenCalledTimes(1)
   })
 
-  test('the kid tap fires a submit once', () => {
+  test('the kid tap fires a submit once it goes through', () => {
     const fire = jest.fn()
     const d = today([chore(1, 'todo')])
     const { result, rerender } = renderHook(({ d }) => useCelebrationTriggers(d, 3, fire, true), { initialProps: { d } })
-    result.current(d.chores[0])
+    result.current.tap(d.chores[0])
+    expect(fire).not.toHaveBeenCalled()
+    result.current.sent(d.chores[0])
     expect(fire).toHaveBeenCalledTimes(1)
     expect((fire.mock.calls[0][0] as { kind: string }).kind).toBe('submit')
     rerender({ d: today([chore(1, 'done')]) })
     expect(fire).toHaveBeenCalledTimes(1)
   })
 
+  test('fast double taps play once, and a poll that sees the auto-approve first does not double-play', () => {
+    const fire = jest.fn()
+    const d = today([chore(1, 'todo')])
+    const { result, rerender } = renderHook(({ d }) => useCelebrationTriggers(d, 3, fire, true), { initialProps: { d } })
+    result.current.tap(d.chores[0])
+    result.current.tap(d.chores[0])
+    rerender({ d: today([chore(1, 'done')]) }) // poll lands before the request resolves
+    result.current.sent(d.chores[0])
+    result.current.sent(d.chores[0])
+    expect(fire).toHaveBeenCalledTimes(1)
+    expect((fire.mock.calls[0][0] as { kind: string }).kind).toBe('submit')
+  })
+
+  test('a failed request un-marks the run, so a later approval still plays', () => {
+    const fire = jest.fn()
+    const d = today([chore(1, 'needs_you')])
+    const { result, rerender } = renderHook(({ d }) => useCelebrationTriggers(d, 3, fire, true), { initialProps: { d } })
+    result.current.tap(d.chores[0])
+    result.current.failed(d.chores[0])
+    rerender({ d: today([chore(1, 'done')]) })
+    expect(fire).toHaveBeenCalledTimes(1)
+    expect((fire.mock.calls[0][0] as { kind: string }).kind).toBe('approve')
+  })
+
   test('disabled (parent preview) never fires', () => {
     const fire = jest.fn()
     const { result } = renderHook(() => useCelebrationTriggers(today([chore(1, 'todo')]), 3, fire, false))
-    result.current(chore(1, 'todo'))
+    result.current.tap(chore(1, 'todo'))
+    result.current.sent(chore(1, 'todo'))
     expect(fire).not.toHaveBeenCalled()
   })
 })

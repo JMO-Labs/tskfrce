@@ -1,4 +1,4 @@
-import { LEGENDARY, mascotById } from './catalog'
+import { LEGENDARY, legendaryCast, mascotById } from './catalog'
 import { SAYS, WORDS } from './words'
 
 export type Rng = () => number
@@ -22,6 +22,8 @@ export interface Combo {
   /** what the mascot's bubble says */
   say: string
   legendary: LegendaryFx | null
+  /** legendary only: who dances or marches (unlocked mascots) */
+  cast: string[]
 }
 
 export interface PickOpts {
@@ -32,6 +34,8 @@ export interface PickOpts {
   wantMascot: boolean
   /** a mascot always (big moments, Little) */
   forceMascot?: boolean
+  /** card effects allowed (Little keeps its tile on screen) */
+  cards?: CardFx[]
 }
 
 // Effects that carry their own word (from the mockups).
@@ -48,15 +52,15 @@ function draw(rng: Rng, o: PickOpts): Combo {
   if (legend) {
     const legendary = of(rng, Object.keys(LEGENDARY) as LegendaryFx[])
     const mascot = o.forceMascot && o.mascots.length ? of(rng, o.mascots) : null
-    return { card: 'pop', burst: 'confetti', word: LEGENDARY[legendary].word, color, mascot, say: 'WOW!', legendary }
+    return { card: 'pop', burst: 'confetti', word: LEGENDARY[legendary].word, color, mascot, say: 'WOW!', legendary, cast: legendaryCast(legendary, o.mascots) }
   }
-  const card = of(rng, CARDS)
+  const card = of(rng, o.cards ?? CARDS)
   const burst = of(rng, BURSTS)
   const word = BURST_WORD[burst] ?? CARD_WORD[card] ?? of(rng, [...WORDS, ...(o.words ?? [])])
   const withMascot = o.mascots.length > 0 && (o.forceMascot || (o.wantMascot && rng() < 0.5))
   const mascot = withMascot ? of(rng, o.mascots) : null
   const say = mascot === 'trex' ? 'ROAR-SOME!' : of(rng, SAYS)
-  return { card, burst, word, color, mascot: mascot && mascotById(mascot).id, say, legendary: null }
+  return { card, burst, word, color, mascot: mascot && mascotById(mascot).id, say, legendary: null, cast: [] }
 }
 
 /** A random combination that is never exactly the last one. The first draw decides legendary (about 1 in 25). */
@@ -65,9 +69,10 @@ export function pickCombo(rng: Rng, last: Combo | null, o: PickOpts): Combo {
   for (let i = 0; i < 5 && last && comboKey(c) === comboKey(last); i++) c = draw(rng, o)
   if (last && comboKey(c) === comboKey(last)) {
     // a stuck RNG: step the card effect on, dropping any word the old card brought
-    const card = CARDS[(CARDS.indexOf(c.card) + 1) % CARDS.length]
+    const cards = o.cards ?? CARDS
+    const card = cards[(cards.indexOf(c.card) + 1) % cards.length]
     const word = c.legendary || c.word === CARD_WORD[c.card] ? 'WOW!' : c.word
-    c = { ...c, legendary: null, card, word: BURST_WORD[c.burst] ?? CARD_WORD[card] ?? word }
+    c = { ...c, legendary: null, cast: [], card, word: BURST_WORD[c.burst] ?? CARD_WORD[card] ?? word }
   }
   return c
 }

@@ -61,7 +61,7 @@ export function TeenDetail({ c, d, now, onBack, onDone, busyId, onChat }: TeenDe
           All chores
         </button>
       )}
-      <div className="t-dh">
+      <div className="t-dh" data-celebrate-id={c.id}>
         <span className="t-ty">
           <Icon name={glyph(c)} />
         </span>

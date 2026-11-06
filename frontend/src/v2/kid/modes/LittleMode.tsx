@@ -83,7 +83,7 @@ function Row({ c, now, tz }: { c: KidChore; now: number; tz?: string }) {
   const chip = kidChips(c, now, tz, true)[0]
   const tone = chip?.tone === 'late' || chip?.tone === 'done' ? chip.tone : undefined
   return (
-    <div className="l-q" data-tone={tone}>
+    <div className="l-q" data-tone={tone} data-celebrate-id={c.id}>
       <span className="l-qi">
         <Icon name={tone === 'done' ? 'check' : glyph(c)} />
       </span>
@@ -117,7 +117,7 @@ export function LittleMode({ d, name, avatar, now, onDone, busyId, onSeen }: Mod
     <section className="l-view">
       <Top d={d} name={name} avatar={avatar} />
       <div className="l-stage">
-        <div className="l-now">
+        <div className="l-now" data-celebrate-id={cur?.id}>
           {cur ? (
             <>
               <div className="l-label">Do this now</div>
