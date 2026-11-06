@@ -49,7 +49,7 @@ You should see: the item leaves the list. The kid is told what you decided.
 
 ## The bell
 
-The bell shows what happened: chores to approve, kid notes, requests, new devices, badges and level-ups, and security alerts such as a device that "got around the lock". Use the **All**, **Needs you** and **Alerts** tabs to filter. You can approve or send back right from the bell. Tap an item to go straight to it. **Mark all read** clears the count.
+The bell shows what happened: chores to approve, kid notes, requests, new devices, badges and level-ups, and security alerts such as a device that "got around the lock", "may be a different device", a "tried a VPN" workaround, or someone guessing a parent's password. Use the **All**, **Needs you** and **Alerts** tabs to filter. You can approve or send back right from the bell. Tap an item to go straight to it. **Mark all read** clears the count.
 
 On a phone the bell opens as a sheet from the bottom of the screen.
 
@@ -180,7 +180,7 @@ t@sk4ce can send pings to the apps your family already uses, like a Signal group
 
 You should see: a test message in that app.
 
-During **Quiet hours** other pings wait: chores to approve, notes, requests and new devices are sent together when quiet hours end. Security alerts (a device getting around the lock, the box going offline) still send unless you turn off **Security alerts still send**. Set **App address** to the address you open t@sk4ce with, so the link in each ping works.
+During **Quiet hours** other pings wait: chores to approve, notes, requests and new devices are sent together when quiet hours end. Security alerts (a device getting around the lock, a different-looking device, password guessing, the box going offline) still send unless you turn off **Security alerts still send**. Set **App address** to the address you open t@sk4ce with, so the link in each ping works.
 
 These pings leave your home: they go to the service you chose.
 
@@ -210,5 +210,7 @@ A kid whose phone also follows your box's own ntfy topic (the older way) can get
 ## Add another parent
 
 **Settings → Parents → Invite a parent** makes a link for a partner or grandparent. It works once and lasts 24 hours. Every parent can approve chores, lock devices and change settings.
+
+**Settings → Parents → Your password** changes your own password. Type your old one, then the new one twice. Five wrong tries in 15 minutes sends the other parents a security alert.
 
 Next: [For kids](05-for-kids.md).

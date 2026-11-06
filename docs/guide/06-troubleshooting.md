@@ -53,6 +53,36 @@ What kids try, and what happens (details in [the home box notes](../blocker.md))
 - Using another device that isn't set up: **not covered**. Put every device on the Devices page.
 - Unplugging the box: the internet comes back on, and you get an alert.
 
+## "May be a different device" alert
+
+A device's reported type changed, for example an iPad that now looks like a MacBook. Someone may have copied its address. This alert ignores quiet hours, and you get it at most once a day per device.
+
+1. Open the device. Its **Activity** tab shows the old and new type.
+2. Check the device is the one you expect. A software update alone does not cause this alert.
+3. If it is the right device, nothing more to do. If not, change the owner or remove it, and talk with your kid.
+
+![The bell with a security alert](img/bell-alerts.jpg)
+
+## "Tried a VPN" alert
+
+The box saw a paused device look up a VPN, private-DNS ("DNS" is the internet's phone book), proxy site or Tor name. It was already blocked. Nothing is broken.
+
+1. Open the device to see which one it tried.
+2. Talk with your kid. You get one alert per kind per pause, so it won't repeat while the device stays paused.
+3. To stop these, turn off **Tried a workaround** in **Settings → Notifications**.
+
+The box can't notice a VPN app that goes straight to a number address, a device that isn't paused, or a sibling's spare device.
+
+## "Someone is guessing my password"
+
+Someone typed a wrong password for your account 5 times in 15 minutes. You get this at most once an hour. Kid accounts don't trigger it.
+
+1. If it was you, ignore it.
+2. If not, tap **Change password** on the alert. It opens **Settings → Parents → Your password**.
+3. Pick a new, long password. Ask your kids if they were trying.
+
+![Your password card in Settings](img/settings-password.jpg)
+
 The real fix is a talk. If you see the alert, ask. Keep the box out of reach.
 
 ## I forgot my password

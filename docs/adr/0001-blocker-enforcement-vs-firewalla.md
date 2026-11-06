@@ -87,6 +87,11 @@ Things we got wrong during evaluation and corrected:
   the box rediscovers it.
 - A device can sometimes undo the box's redirect by answering the router
   directly.
+- Devices that aren't paused are invisible to the box, so workaround
+  attempts on them are not noticed.
+- A VPN (e.g. WireGuard) that connects to a raw IP does no name lookup and
+  is not flagged. It is still blocked while the device is paused.
+- A sibling's or spare device can't be detected.
 - Unblocking can take up to about a minute to fully restore a device (being
   worked on).
 

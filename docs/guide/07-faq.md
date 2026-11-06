@@ -24,6 +24,7 @@ A determined kid can. t@sk4ce is built to stop normal use and to tell you when s
 
 - Mobile data and phone hotspots aren't covered. It only works on your home Wi-Fi.
 - A new, unregistered device can be used instead, unless you turn on "Block new devices" in Settings (it is off at first).
+- A kid who tries a VPN, a proxy site or Tor on a paused device is still blocked, and you get a "Tried a workaround" alert. A VPN app that goes straight to a number address is blocked but not noticed.
 - A kid who changes their device's network settings is usually still stopped, and you get an alert when something gets through.
 
 Talk with your kids. The app helps with that. It can't replace it.

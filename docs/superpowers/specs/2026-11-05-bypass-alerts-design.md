@@ -127,3 +127,14 @@ paused. No work in this design beyond docs (row 1 of the blocker table).
 
 - Design approved.
 - "Tried a workaround": **alert once per device per category per pause**, normal priority, respects quiet hours.
+
+## As built
+
+Deviations from the design above:
+
+- The alert body never echoes the device model. The old and new model show only in the device's Activity tab.
+- Fingerprint-only changes are not logged (software updates change them). Only model changes count.
+- "May be a different device" is throttled to one alert per device per 24 h, keyed on alerts actually sent.
+- Password guessing: 5 wrong passwords in 15 minutes on a parent account (sign-in or change-password), one security alert per account per hour. Kid accounts and unknown usernames never trigger it.
+- New "Your password" card in Settings → Parents, with a hardened change-password endpoint that returns 400 on a wrong current password. The alert's "Change password" button opens it.
+- "Tried a workaround" notification setting, on by default.

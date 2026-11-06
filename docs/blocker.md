@@ -23,14 +23,22 @@ For the reasoning behind these limits, see the [blocker enforcement decision rec
 
 | Trick | What happens |
 |---|---|
-| Change DNS / use a VPN | Doesn't work: all internet traffic is dropped |
-| Forget the network / rotating private address | A new address looks like a new device. You get a "New device" alert. It stays online unless **Block new devices until I assign them** is on (Settings → Family). |
+| Change DNS / use a VPN | Doesn't work: all internet traffic is dropped. If the device looks up a well-known VPN, private-DNS, proxy or Tor name, you get a "Tried a VPN" style alert (once per kind per pause). |
+| Copy another device's address (spoof) | The box notices the reported device type changed and sends "may be a different device" (at most once a day per device). |
+| Guess a parent's password | After 5 wrong tries in 15 minutes you get "Someone is guessing <name>'s password" (at most once an hour). |
+| Forget the network / rotating private address | The box matches the new address to the paused device and keeps it paused. A truly new device gets a "New device" alert. You get a "New device" alert. It stays online unless **Block new devices until I assign them** is on (Settings → Family). |
 | Set a fixed (static) IP | Doesn't work: the box tracks the device itself, not its number |
 | IPv6 | Blocked too, as long as the box has IPv6 on your network. If it doesn't, turn IPv6 off on your router to be sure. |
 | Mobile data / hotspot / other Wi-Fi | Not covered (home Wi-Fi only) |
 | Unplug the box | Devices come back online; you get an alert |
 | Router that resists blocking | Use the "Test block" button to check; see below |
 | Tech-savvy laptop admin hardcoding the router's address | Usually stopped; flagged if it gets through. |
+
+## What it can't see
+
+- A VPN app that connects straight to a numeric address never looks up a name, so you get no alert. It is still blocked while the device is paused.
+- Devices that aren't paused are invisible to the box, so nothing is noticed.
+- Using a sibling's or spare device can't be detected.
 
 ## Place the box out of reach
 
