@@ -19,7 +19,7 @@ Taken with Playwright from a demo family (kids Bobby and Susan), read-only: ever
 | `kid-chore.jpg` | Kid page: one chore opened with chained steps, "I'm done!" held back. |
 | `kid-locker.jpg` | Kid **Customize** (Locker): name card preview, slot tabs, locked items with unlock level. |
 | `setup-claim.jpg` | Box code screen (phone), empty, from the sticker's **Open my box** link. |
-| `setup-phones.jpg` | Setup wizard step 4 "Kids' phones" (phone). The QR is a mock pattern. |
+| `setup-phones.jpg` | Setup wizard step 4 "Kids' phones" (phone), Bobby's code shown. The QR is a mock pattern. Retaken 2026-11-06 for the 7-step wizard. |
 | `kid-welcome.jpg` | Kid welcome page after scanning a code (iPhone steps). |
 | `group-price.jpg` | **Devices → Groups**, one group open with **Screen time price** filled in (phone). Mocked API. |
 | `kid-screen-for.jpg` | Kid **Rewards** (phone): **What for?** picker with Consoles selected. Mocked API. |
