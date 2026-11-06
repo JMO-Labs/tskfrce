@@ -3,11 +3,9 @@
 from datetime import timedelta
 
 from app.core.config import settings
-from app.core.crypto import seal
 from app.models.chores import ChoreRun
 from app.models.family import get_family
 from app.models.inbox import Notification
-from app.models.notify import NotifyPlace
 from app.services import chores as svc
 from app.services import notify
 
@@ -28,6 +26,7 @@ def test_wizard_chores_start_tomorrow(client, db, parent_headers):
     db.commit()
     api_chore(client, parent_headers, [_kid(db)])
     assert db.query(ChoreRun).count() == 0
+    get_family(db).setup_step = None  # Finish
     tomorrow = svc.today(db) + timedelta(days=1)
     svc.run_reset(db, tomorrow)  # the normal reset path
     db.commit()
@@ -76,8 +75,11 @@ def test_no_new_device_bell_during_setup(client, db, parent):
     assert db.query(Notification).filter_by(kind="new_device").count() == 0
 
 
-def test_existing_place_events_unchanged(db):
-    old = "chore_ok,new_device,resisting"
-    db.add(NotifyPlace(name="P", url_enc=seal("json://x"), url_mask="m", events=old))
-    db.commit()
-    assert db.query(NotifyPlace).one().events == old
+def test_explicit_place_events_kept(client, parent_headers):
+    """The quieter defaults only fill in a place made without events."""
+    mine = ["chore_ok", "new_device", "resisting"]
+    body = {"name": "P", "url": "json://x", "events": mine}
+    r = client.post("/api/v1/notify/places", json=body, headers=parent_headers)
+    assert r.status_code == 201 and r.json()["events"] == mine
+    (p,) = client.get("/api/v1/notify/places", headers=parent_headers).json()
+    assert p["events"] == mine

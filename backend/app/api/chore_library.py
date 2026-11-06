@@ -253,9 +253,9 @@ def add_assignment(chore_id: int, body: AssignmentIn, db: Session = Depends(get_
         raise HTTPException(422, "Pick today or a later date.")
     db.add(a)
     db.flush()
-    if get_family(db).setup_step is None:  # wizard chores start at the next reset
+    if get_family(db).setup_step is None:  # wizard chores start at the next reset, quietly
         svc.make_runs(db, a, day)
-    kid_events.chore_new(db, a)
+        kid_events.chore_new(db, a)
     db.commit()
     return assignment_out(a)
 
