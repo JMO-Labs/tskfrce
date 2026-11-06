@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Icon } from '../parent/Icon'
 import { useKidRewards, useRedeem } from '../hooks/useKidRewards'
-import { ScreenFor } from './ScreenFor'
+import { ScreenFor, optKey } from './ScreenFor'
 import type { KidAge } from './modes/types'
 
 const STEPS = [15, 30, 45, 60, 75, 90, 105, 120]
@@ -16,7 +16,7 @@ export function RewardsSection({ onExpired, mode = 'kid' }: { onExpired: () => v
   const { data: d } = useKidRewards(onExpired)
   const redeem = useRedeem(onExpired)
   const [minutes, setMinutes] = useState('30')
-  const [forId, setForId] = useState<number | null>(null)
+  const [forKey, setForKey] = useState('')
   const [got, setGot] = useState<number[]>([])
   if (!d?.pending) return null
   const sc = d.screen
@@ -36,7 +36,7 @@ export function RewardsSection({ onExpired, mode = 'kid' }: { onExpired: () => v
             : null
   const pendingReward = (id: number) => d.pending.some((p) => p.kind === 'reward' && p.reward_id === id)
   const pendingTime = d.pending.some((p) => p.kind === 'screen_time')
-  const pick = sc.options.find((o) => o.group_id === forId) ?? sc.options[0]
+  const pick = sc.options.find((o) => optKey(o) === forKey) ?? sc.options[0]
   const cost = (Number(mins) / 15) * pick.price
   const chip = CHIP[mode]
   const wait = (
@@ -66,7 +66,7 @@ export function RewardsSection({ onExpired, mode = 'kid' }: { onExpired: () => v
               <label className="r-name k-disp" htmlFor="r-minutes">
                 Screen time
               </label>
-              {sc.options.length > 1 && <ScreenFor options={sc.options} value={pick.group_id} onChange={setForId} />}
+              {sc.options.length > 1 && <ScreenFor options={sc.options} value={optKey(pick)} onChange={setForKey} />}
               <select id="r-minutes" className="r-sel" value={mins} onChange={(e) => setMinutes(e.currentTarget.value)}>
                 {data.map((o) => (
                   <option key={o.value} value={o.value}>
@@ -92,7 +92,7 @@ export function RewardsSection({ onExpired, mode = 'kid' }: { onExpired: () => v
                   type="button"
                   className="r-btn"
                   disabled={!!why || !data.length || cost > free || redeem.isPending}
-                  onClick={() => redeem.mutate({ kind: 'screen_time', minutes: Number(mins), group_id: pick.group_id })}
+                  onClick={() => redeem.mutate({ kind: 'screen_time', minutes: Number(mins), group_id: pick.group_id, scope: pick.scope })}
                 >
                   {sc.auto ? 'Get screen time' : 'Request screen time'}
                 </button>

@@ -40,14 +40,17 @@ export interface ScreenTime {
   max_minutes_per_day: number | null
   auto_approve: boolean
   only_in_allowed_hours: boolean
+  /** opt-in: device groups may have their own price */
+  group_pricing: boolean
   reset_time: string
   avg_chore_points: number
   kids: ScreenKid[]
 }
 
-/** One thing screen time can be bought for; group_id null = all the kid's devices */
+/** One thing screen time can be bought for: all devices, ungrouped ("other") devices, or one group */
 export interface ScreenOption {
   group_id: number | null
+  scope: 'all' | 'other' | 'group'
   name: string
   icon: string
   price: number

@@ -23,7 +23,7 @@ const rewards = (over: object = {}) => ({
   balance: 120,
   screen_time_price: 20,
   screen_time_enabled: true,
-  screen: { enabled: true, price: 20, options: [{ group_id: null, name: 'All my devices', icon: 'devices', price: 20 }], auto: false, only_in_hours: false, max_today: null, bought_today: 0, left_today: null, min_points: null, in_hours: true },
+  screen: { enabled: true, price: 20, options: [{ group_id: null, scope: 'all', name: 'All my devices', icon: 'devices', price: 20 }], auto: false, only_in_hours: false, max_today: null, bought_today: 0, left_today: null, min_points: null, in_hours: true },
   rewards: [],
   pending: [],
   ...over,
@@ -122,23 +122,30 @@ describe('RewardsSection', () => {
     expect(calls('/kid/redeem')[0][1]).toMatchObject({ body: { kind: 'screen_time', minutes: 30 } })
   })
 
-  test('what-for chips price the purchase and send group_id', async () => {
+  test('what-for chips price the purchase and send scope + group_id', async () => {
     const options = [
-      { group_id: null, name: 'All my devices', icon: 'devices', price: 40 },
-      { group_id: 7, name: 'Tablets', icon: 'tablet_mac', price: 20 },
-      { group_id: 9, name: 'Consoles', icon: 'sports_esports', price: 40 },
+      { group_id: null, scope: 'all', name: 'All my devices', icon: 'devices', price: 40 },
+      { group_id: null, scope: 'other', name: 'Other devices', icon: 'devices', price: 20 },
+      { group_id: 7, scope: 'group', name: 'Tablets', icon: 'tablet_mac', price: 20 },
+      { group_id: 9, scope: 'group', name: 'Consoles', icon: 'sports_esports', price: 40 },
     ]
     route({ 'GET /kid/rewards': rewards({ screen: { ...rewards().screen, options } }), 'POST /kid/redeem': {} })
     wrap(<RewardsSection onExpired={() => {}} />)
     expect(await screen.findByRole('radiogroup', { name: 'What for?' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: /All my devices/ })).toHaveAttribute('aria-checked', 'true')
+    const all = screen.getByRole('radio', { name: /All my devices/ })
+    expect(all).toHaveAttribute('aria-checked', 'true')
+    expect(all.querySelector('[data-icon="check_circle"]')).not.toBeNull() // not colour alone
+    await userEvent.click(screen.getByRole('radio', { name: /Other devices/ }))
+    expect(screen.getByRole('radio', { name: /Other devices/ })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('radio', { name: /All my devices/ })).toHaveAttribute('aria-checked', 'false')
+    expect(all.querySelector('[data-icon="check_circle"]')).toBeNull()
     await userEvent.click(screen.getByRole('radio', { name: /Tablets/ }))
     expect(screen.getByText('40')).toBeInTheDocument() // 30 min at 20 pts / 15 min
     await userEvent.keyboard('{ArrowRight}')
     expect(screen.getByRole('radio', { name: /Consoles/ })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByText('80')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Request screen time' }))
-    expect(calls('/kid/redeem')[0][1]).toMatchObject({ body: { kind: 'screen_time', minutes: 30, group_id: 9 } })
+    expect(calls('/kid/redeem')[0][1]).toMatchObject({ body: { kind: 'screen_time', minutes: 30, group_id: 9, scope: 'group' } })
   })
 
   test('one option shows no chips and sends group_id null', async () => {
@@ -147,7 +154,7 @@ describe('RewardsSection', () => {
     await screen.findByText('Screen time')
     expect(screen.queryByRole('radiogroup')).toBeNull()
     await userEvent.click(screen.getByRole('button', { name: 'Request screen time' }))
-    expect(calls('/kid/redeem')[0][1]).toMatchObject({ body: { minutes: 30, group_id: null } })
+    expect(calls('/kid/redeem')[0][1]).toMatchObject({ body: { minutes: 30, group_id: null, scope: 'all' } })
   })
 
   test('screen time hidden when disabled', async () => {
@@ -158,7 +165,7 @@ describe('RewardsSection', () => {
   })
 })
 
-const scr = (o: object) => ({ enabled: true, price: 20, options: [{ group_id: null, name: 'All my devices', icon: 'devices', price: 20 }], auto: false, only_in_hours: false, max_today: null, bought_today: 0, left_today: null, min_points: null, in_hours: true, ...o })
+const scr = (o: object) => ({ enabled: true, price: 20, options: [{ group_id: null, scope: 'all', name: 'All my devices', icon: 'devices', price: 20 }], auto: false, only_in_hours: false, max_today: null, bought_today: 0, left_today: null, min_points: null, in_hours: true, ...o })
 const rw = (o: object = {}) => ({ id: 3, name: 'Movie night', price: 50, icon: 'movie', needs_approval: true, ...o })
 
 describe('Plan E rewards', () => {
