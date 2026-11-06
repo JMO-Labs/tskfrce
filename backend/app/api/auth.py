@@ -26,6 +26,7 @@ from app.schemas.auth import (
     RefreshTokenResponse,
 )
 from app.schemas.user import RegisterIn
+from app.services import guess_watch
 
 router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
 
@@ -50,6 +51,7 @@ async def login(login_data: LoginRequest, request: Request, db: Session = Depend
     user = auth_service.authenticate_user(login_data.username, login_data.password)
 
     if not user:
+        guess_watch.record_failure(db, login_data.username)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="That username and password don't match.",
