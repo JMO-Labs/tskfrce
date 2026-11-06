@@ -15,7 +15,7 @@ from app.models.lock import DeviceGroup
 from app.models.reward import Redemption
 from app.models.screen_time import ScreenTimeLimit
 from app.models.user import User
-from app.services import economy
+from app.services import economy, screen_bank
 
 
 def day_start_utc(fam: FamilySettings, now_utc: datetime) -> datetime:
@@ -37,17 +37,22 @@ def _aware(now: datetime) -> datetime:
 
 def bought_today(db: Session, fam: FamilySettings, kid_ids: list[int], now_utc: datetime):
     """Minutes bought (pending + approved) since today's reset, per kid."""
-    rows = (
-        db.query(Redemption.kid_id, func.coalesce(func.sum(Redemption.minutes), 0))
-        .filter(
-            Redemption.kid_id.in_(kid_ids),
-            Redemption.kind == "screen_time",
-            Redemption.status.in_(("pending", "approved")),
-            Redemption.created_at >= day_start_utc(fam, now_utc),
-        )
-        .group_by(Redemption.kid_id)
-        .all()
+    return bought_between(db, kid_ids, day_start_utc(fam, now_utc))
+
+
+def bought_between(
+    db: Session, kid_ids: list[int], start: datetime, end: datetime | None = None
+) -> dict[int, int]:
+    """Minutes bought (pending + approved) from start up to end (naive UTC), per kid."""
+    q = db.query(Redemption.kid_id, func.coalesce(func.sum(Redemption.minutes), 0)).filter(
+        Redemption.kid_id.in_(kid_ids),
+        Redemption.kind == "screen_time",
+        Redemption.status.in_(("pending", "approved")),
+        Redemption.created_at >= start,
     )
+    if end is not None:
+        q = q.filter(Redemption.created_at < end)
+    rows = q.group_by(Redemption.kid_id).all()
     out = {k: 0 for k in kid_ids}
     out.update({k: int(m) for k, m in rows})
     return out
@@ -82,6 +87,7 @@ def check(db: Session, fam: FamilySettings, kid: User, minutes: int, now_utc: da
     if min_points and economy.balance(db, kid.id) - economy.pending_cost(db, kid.id) < min_points:
         raise HTTPException(409, f"You can buy screen time once you have {min_points} points.")
     if cap is not None:
+        cap += screen_bank.saved(db, fam, kid.id)
         left = cap - bought_today(db, fam, [kid.id], now_utc)[kid.id]
         if left <= 0:
             raise HTTPException(409, "You've had all your screen time for today.")
