@@ -170,9 +170,8 @@ def test_clear_all(db, kid):
 
 def test_check_allows_max_plus_saved(db, kid):
     import pytest
-    from fastapi import HTTPException
-
     from app.services import screen_time
+    from fastapi import HTTPException
 
     fam = _fam(db, kid, last_reset_date=None)
     _bank(db, kid, 45)
