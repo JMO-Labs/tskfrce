@@ -211,6 +211,6 @@ A kid whose phone also follows your box's own ntfy topic (the older way) can get
 
 **Settings → Parents → Invite a parent** makes a link for a partner or grandparent. It works once and lasts 24 hours. Every parent can approve chores, lock devices and change settings.
 
-**Settings → Parents → Your password** changes your own password. Type your old one, then the new one twice. Five wrong tries in 15 minutes sends the other parents a security alert.
+**Settings → Parents → Your password** changes your own password. Type your old one, then the new one twice. Five wrong tries in 15 minutes sends all parents a security alert.
 
 Next: [For kids](05-for-kids.md).
