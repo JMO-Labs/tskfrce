@@ -168,28 +168,35 @@ def test_clear_all(db, kid):
     assert _minutes(db, kid) == 0
 
 
-def test_check_allows_max_plus_saved(client, db, kid, kid_headers):
-    from app.models.lock import Device
+def test_check_allows_max_plus_saved(db, kid):
+    import pytest
+    from fastapi import HTTPException
+
     from app.services import screen_time
 
     fam = _fam(db, kid, last_reset_date=None)
-    d = Device(mac="aa:bb:cc:dd:ee:01", name="Phone", status="assigned")
-    d.owners.append(kid)
-    db.add(d)
-    db.commit()
     _bank(db, kid, 45)
-    now = datetime.now(UTC)
+    now = datetime(2026, 11, 3, 12, 0, tzinfo=UTC)  # fixed
     _red(db, kid, 60, screen_time.day_start_utc(fam, now) + timedelta(seconds=1))
 
-    def ask(m):
-        return client.post(
-            "/api/v1/kid/redeem", json={"kind": "screen_time", "minutes": m}, headers=kid_headers
-        )
+    with pytest.raises(HTTPException) as e:
+        screen_time.check(db, fam, kid, 60, now)
+    assert e.value.detail == "That's over today's limit. You can buy 45 more minutes today."
+    screen_time.check(db, fam, kid, 45, now)  # exactly the saved room
+    _red(db, kid, 45, now.replace(tzinfo=None))
+    with pytest.raises(HTTPException) as e:
+        screen_time.check(db, fam, kid, 15, now)
+    assert e.value.detail == "You've had all your screen time for today."
 
-    r = ask(60)
-    assert r.status_code == 409
-    assert r.json()["detail"] == "That's over today's limit. You can buy 45 more minutes today."
-    assert ask(45).status_code == 200
-    r = ask(15)
-    assert r.status_code == 409
-    assert r.json()["detail"] == "You've had all your screen time for today."
+
+def test_settle_across_fall_back_day(db, kid):
+    # 2026-11-01 in New York is 25 hours long; settling it must still credit unused room.
+    D1 = date(2026, 11, 1)
+    fam = _fam(db, kid, timezone="America/New_York", last_reset_date=D1)
+    start = datetime(2026, 11, 1, 10, 0)  # 06:00 EDT (UTC-4)
+    end = datetime(2026, 11, 2, 11, 0)  # 06:00 EST (UTC-5): 25h later
+    _red(db, kid, 20, start + timedelta(hours=24, minutes=30))  # in the extra hour, still day D1
+    _red(db, kid, 15, end + timedelta(minutes=1))  # next day: ignored
+    _settle(db, fam, end + timedelta(seconds=30))
+    assert _minutes(db, kid) == 40
+    assert db.get(ScreenBank, kid.id).day == D1

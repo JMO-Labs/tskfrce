@@ -15,17 +15,23 @@ def _active(fam: FamilySettings) -> bool:
     return bool(fam.points_unlock_early and fam.screen_rollover)
 
 
+def _cap(fam: FamilySettings, daily_max: int | None) -> int | None:
+    return None if daily_max is None else fam.screen_bank_cap or daily_max
+
+
 def cap_for(db: Session, fam: FamilySettings, kid_id: int) -> int | None:
     """Most a kid can save: the family cap, or one day's max. None when there is no max."""
-    daily_max, _ = screen_time.limit_for(db, fam, kid_id)
+    return _cap(fam, screen_time.limit_for(db, fam, kid_id)[0])
+
+
+def saved(db: Session, fam: FamilySettings, kid_id: int, daily_max: int | None = None) -> int:
+    """Effective bank, min(bank, cap); 0 when banking is off or there is no daily max.
+    Pass daily_max when already known (and not None) to skip a lookup."""
+    if not _active(fam):
+        return 0
     if daily_max is None:
-        return None
-    return fam.screen_bank_cap or daily_max
-
-
-def saved(db: Session, fam: FamilySettings, kid_id: int) -> int:
-    """Effective bank, min(bank, cap); 0 when banking is off or there is no daily max."""
-    cap = cap_for(db, fam, kid_id) if _active(fam) else None
+        daily_max = screen_time.limit_for(db, fam, kid_id)[0]
+    cap = _cap(fam, daily_max)
     row = db.get(ScreenBank, kid_id)
     return min(row.minutes, cap) if cap is not None and row else 0
 
@@ -45,11 +51,11 @@ def settle(db: Session, fam: FamilySettings, now_utc: datetime) -> None:
         row = db.get(ScreenBank, kid_id) or ScreenBank(kid_id=kid_id, minutes=0)
         if row.day == old:
             continue
-        cap = cap_for(db, fam, kid_id) if _active(fam) else None
+        daily_max = screen_time.limit_for(db, fam, kid_id)[0]
+        cap = _cap(fam, daily_max) if _active(fam) else None
         if cap is None:
             row.minutes = 0
         else:
-            daily_max, _ = screen_time.limit_for(db, fam, kid_id)
             row.minutes = max(0, min(cap, row.minutes + daily_max - bought[kid_id]))
         row.day = old
         db.add(row)

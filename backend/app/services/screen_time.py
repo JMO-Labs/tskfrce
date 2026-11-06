@@ -15,7 +15,7 @@ from app.models.lock import DeviceGroup
 from app.models.reward import Redemption
 from app.models.screen_time import ScreenTimeLimit
 from app.models.user import User
-from app.services import economy, screen_bank
+from app.services import economy
 
 
 def day_start_utc(fam: FamilySettings, now_utc: datetime) -> datetime:
@@ -83,11 +83,13 @@ def all_in_off_window(db: Session, kid: User, now_utc: datetime) -> bool:
 
 
 def check(db: Session, fam: FamilySettings, kid: User, minutes: int, now_utc: datetime) -> None:
+    from app.services import screen_bank  # screen_bank imports this module
+
     cap, min_points = limit_for(db, fam, kid.id)
     if min_points and economy.balance(db, kid.id) - economy.pending_cost(db, kid.id) < min_points:
         raise HTTPException(409, f"You can buy screen time once you have {min_points} points.")
     if cap is not None:
-        cap += screen_bank.saved(db, fam, kid.id)
+        cap += screen_bank.saved(db, fam, kid.id, cap)
         left = cap - bought_today(db, fam, [kid.id], now_utc)[kid.id]
         if left <= 0:
             raise HTTPException(409, "You've had all your screen time for today.")
