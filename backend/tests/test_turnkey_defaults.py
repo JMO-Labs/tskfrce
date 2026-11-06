@@ -1,4 +1,4 @@
-"""Turnkey defaults: wizard chores start tomorrow, screen time on, quieter alerts."""
+"""Turnkey defaults: wizard chores start at the next reset, screen time on, quieter alerts."""
 
 from datetime import timedelta
 
