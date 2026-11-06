@@ -102,6 +102,20 @@ Open **Kids & chores → Rewards**. It has four parts:
 
 A kid sees a progress bar toward each reward and can ask when they have enough.
 
+### Saving unused time
+
+Kids can save the screen time they didn't buy. It is on by default.
+
+- Each day, the minutes a kid could have bought but didn't are added to their saved time, up to a cap. The default cap is one day's **Max per day**. With a 60 minute max, a kid's biggest day is 120 minutes.
+- It needs a **Max per day**. With no max (or with screen time off), nothing is saved.
+- Saved time is room to buy, not free time. Kids still pay points and you still approve each request.
+- Each request is still 15 to 120 minutes, so a big day may take two requests.
+- You can find it in **Kids & chores → Rewards → Screen time**: **Save unused time** (the switch) and **Save up to** (the cap; leave it empty to use the daily max).
+- Turning it off clears all saved time. Turning it on again starts from zero.
+- Days the box was off don't add to saved time.
+- A request that is still waiting at the daily reset counts as used.
+- **Saved: N min** shows next to each kid in **Bought today**.
+
 ## Points, levels and badges
 
 - Approved chores earn **points**. Kids spend points on rewards and screen time.

@@ -53,6 +53,13 @@ Kids buy screen time with points, up to a daily max. If they skip screen time on
 - Pages feature list: one line.
 - Version **2.5.0**.
 
+## As built
+
+- Settle zeroes the bank when screen time is off or there is no daily max.
+- "Saved" shows in the Bought-today rows, not the limits list.
+- The kid's saved line is hidden when `max_today` is null.
+- Each request is still capped at 120 minutes, so a big day may take two requests.
+
 ## Non-goals
 
 - Banking bought-but-unused minutes (the box can't tell idle from use).
