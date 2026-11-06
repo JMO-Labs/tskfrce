@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, test } from '@jest/globals'
 import type { Mock } from 'jest-mock'
 import type { ReactNode } from 'react'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MantineProvider } from '@mantine/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -252,10 +252,40 @@ describe('devices', () => {
 
   describe('group screen price', () => {
     const g = { id: 3, name: 'Tablets', device_ids: [1], owner_ids: [], icon: 'tv', chore_lock: true, screen_price: null as number | null }
-    const mount = (grp = g) => {
-      apiMock.mockImplementation(async (path) => (path === '/screen-time' ? { price: 20 } : {}))
+    const mount = (grp = g, group_pricing = true) => {
+      apiMock.mockImplementation(async (path) => (path === '/screen-time' ? { price: 20, group_pricing } : {}))
       render(wrap(<GroupDetail group={grp} devices={[device]} kids={kids} onSelect={() => {}} onRequestOverride={() => {}} />))
     }
+    test('hidden while group pricing is off', async () => {
+      mount(g, false)
+      await waitFor(() => expect(apiMock.mock.calls.some(([p]) => p === '/screen-time')).toBe(true))
+      await act(() => new Promise((r) => setTimeout(r, 0))) // let the query settle
+      expect(screen.queryByLabelText('Screen time price')).toBeNull()
+    })
+    test('hidden on a free group (chore lock off)', async () => {
+      mount({ ...g, chore_lock: false })
+      await waitFor(() => expect(apiMock.mock.calls.some(([p]) => p === '/screen-time')).toBe(true))
+      await act(() => new Promise((r) => setTimeout(r, 0))) // let the query settle
+      expect(screen.queryByLabelText('Screen time price')).toBeNull()
+      expect(screen.queryByText(/Leave empty to use the family price/)).toBeNull()
+    })
+    test('a price blur during another save is retried after it', async () => {
+      let release = () => {}
+      let patches = 0
+      apiMock.mockImplementation(async (path, opts) => {
+        if (path === '/screen-time') return { price: 20, group_pricing: true }
+        if ((opts as { method?: string } | undefined)?.method === 'PATCH' && patches++ === 0) await new Promise<void>((r) => (release = r))
+        return {}
+      })
+      render(wrap(<GroupDetail group={g} devices={[device]} kids={kids} onSelect={() => {}} onRequestOverride={() => {}} />))
+      const input = await screen.findByLabelText('Screen time price')
+      await userEvent.click(screen.getByRole('button', { name: 'Maya laptop' })) // member save, held open
+      await userEvent.type(input, '40')
+      await userEvent.tab() // dropped: a save is in flight
+      expect(calls('PATCH')).toHaveLength(1)
+      release()
+      await waitFor(() => expect(calls('PATCH')[1]).toEqual(['/groups/3', { method: 'PATCH', body: { name: 'Tablets', device_ids: [1], screen_price: 40 } }]))
+    })
     test('placeholder shows the family price; typing 40 saves screen_price 40', async () => {
       mount()
       const input = await screen.findByPlaceholderText('Family price (20)')

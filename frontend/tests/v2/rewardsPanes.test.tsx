@@ -190,6 +190,7 @@ const stFull = {
   max_minutes_per_day: 60,
   auto_approve: false,
   only_in_allowed_hours: true,
+  group_pricing: true,
   reset_time: '04:00',
   avg_chore_points: 20,
   kids: [
@@ -200,12 +201,19 @@ const stFull = {
 }
 
 describe('rewards: screen time', () => {
-  test('points to per-group prices', async () => {
-    data({ '/screen-time': stFull })
+  test('group pricing switch: off hides the link; on shows it and saves', async () => {
+    data({ '/screen-time': { ...stFull, group_pricing: false } })
     mockRoute.query = { section: 'rewards', item: 'screen' }
     render(wrap(<KidsPage />))
-    expect(await within(detail()).findByText(/Groups can have their own price\./)).toBeInTheDocument()
+    const sw = await within(detail()).findByRole('switch', { name: 'Different prices for device groups' })
+    expect(sw).toHaveAttribute('aria-checked', 'false')
+    expect(within(detail()).getByText(/Charge more for some devices, like game consoles\./)).toBeInTheDocument()
+    expect(within(detail()).queryByRole('link', { name: 'Set group prices' })).toBeNull()
+    await userEvent.click(sw)
+    expect(sw).toHaveAttribute('aria-checked', 'true')
     expect(within(detail()).getByRole('link', { name: 'Set group prices' })).toHaveAttribute('href', '/devices?tab=groups')
+    await userEvent.click(within(detail()).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(calls('PATCH')[0]).toEqual(['/screen-time', { method: 'PATCH', body: { group_pricing: true } }]))
   })
 
   test('Approve automatically + Save PATCHes only auto_approve', async () => {
