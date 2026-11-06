@@ -37,7 +37,7 @@ export const severity = (n: InboxItem): { name: string; tone: Tone } => {
     case 'redemption_request':
       return { name: 'redeem', tone: 'lv' }
     case 'boost':
-      return { name: 'bolt', tone: 'md' }
+      return { name: 'bolt', tone: 'ok' }
     case 'level_up':
       return { name: 'military_tech', tone: 'ok' }
     case 'badge_earned':

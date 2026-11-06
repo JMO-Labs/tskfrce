@@ -127,6 +127,7 @@ export function FamilyCard({ fam }: { fam: Family }) {
                   onChange={(v) => typeof v === 'number' && set({ early_bonus_cap: v })}
                 />
               </div>
+              <div className="pn-sp" />
               <Switchy label="Streak freezes" checked={val('streak_freeze')} onChange={(v) => set({ streak_freeze: v })} />
               <p className="pn-help pn-note">Kids earn a freeze every 7 days in a row; it covers one missed day.</p>
             </section>

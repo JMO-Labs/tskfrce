@@ -3,7 +3,9 @@ import { Modal } from '@mantine/core'
 import { useFamily } from '@/v2/hooks/useFamily'
 import { useHappyHours, useStartHappyHour, useStopHappyHour } from '@/v2/hooks/useHappyHour'
 import { useKids } from '@/v2/hooks/useKids'
+import { Chip } from '@/v2/parent/Chip'
 import { Icon } from '@/v2/parent/Icon'
+import type { HappyHour } from '@/v2/types'
 import { SegmentedControl } from '@/v2/parent/SegmentedControl'
 import { toastFail, toastOk } from '../notify'
 
@@ -23,40 +25,48 @@ function useMinutesLeft(endsAt: string | undefined) {
 
 /**
  * "Start Happy Hour": opens a quick sheet (length, multiplier, kids) whose Start uses the family defaults.
- * While one runs (for this kid, or any when `kidId` is omitted) it shows the time left and a Stop button.
+ * With `kidId`, only Happy Hours covering that kid show as running (with a Stop each).
+ * `allKids`: the sheet starts on "All kids" (Today) instead of just `kidId`.
  */
-export function HappyHourButton({ kidId }: { kidId?: number }) {
+export function HappyHourButton({ kidId, allKids = false }: { kidId?: number; allKids?: boolean }) {
   const hh = useHappyHours().data
+  const kids = useKids().data ?? []
   const running = (hh?.active ?? []).filter((h) => kidId == null || !h.kid_ids || h.kid_ids.includes(kidId))
-  const left = useMinutesLeft(running[0]?.ends_at)
   const stop = useStopHappyHour()
   const [open, setOpen] = useState(false)
-
-  if (running.length)
-    return (
-      <>
-        <span className="p-btn pt-hh-run" data-variant="accent" role="status">
-          <Icon name="bolt" size={17} fill />
-          Happy Hour {multText(running[0].mult_x10)} · {left} min left
-        </span>
-        <button
-          type="button"
-          className="p-btn"
-          disabled={stop.isPending}
-          onClick={() => Promise.all(running.map((h) => stop.mutateAsync(h.id))).then(() => toastOk('Happy Hour stopped'), toastFail)}
-        >
-          <Icon name="stop_circle" size={17} />
-          Stop
-        </button>
-      </>
-    )
+  const who = (h: HappyHour) =>
+    h.kid_ids ? h.kid_ids.map((id) => kids.find((k) => k.id === id)).map((k) => k?.full_name ?? k?.username ?? 'a kid').join(', ') : 'everyone'
+  const stopIt = (h: HappyHour) => {
+    if (!h.kid_ids && kidId != null && !window.confirm('This Happy Hour is for everyone. Stop it for all kids?')) return
+    stop.mutate(h.id, { onSuccess: () => toastOk('Happy Hour stopped'), onError: toastFail })
+  }
   return (
     <>
-      <button type="button" className="p-btn" data-variant="accent" onClick={() => setOpen(true)}>
-        <Icon name="bolt" size={17} />
-        Start Happy Hour
+      {running.map((h) => (
+        <RunningHH key={h.id} h={h} who={who(h)} busy={stop.isPending} onStop={() => stopIt(h)} />
+      ))}
+      {!running.length && (
+        <button type="button" className="p-btn" onClick={() => setOpen(true)}>
+          <Icon name="bolt" size={17} />
+          Start Happy Hour
+        </button>
+      )}
+      {open && <StartSheet kidId={allKids ? undefined : kidId} onClose={() => setOpen(false)} />}
+    </>
+  )
+}
+
+function RunningHH({ h, who, busy, onStop }: { h: HappyHour; who: string; busy: boolean; onStop: () => void }) {
+  const left = useMinutesLeft(h.ends_at)
+  return (
+    <>
+      <Chip tone="acc" icon="bolt">
+        Happy Hour {multText(h.mult_x10)} · <span role="status">{left} min left</span> · {who}
+      </Chip>
+      <button type="button" className="p-btn" disabled={busy} aria-label={`Stop Happy Hour for ${who}`} onClick={onStop}>
+        <Icon name="stop_circle" size={17} />
+        Stop
       </button>
-      {open && <StartSheet kidId={kidId} onClose={() => setOpen(false)} />}
     </>
   )
 }

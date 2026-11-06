@@ -39,7 +39,7 @@ def _out(k: User) -> dict:
         "avatar": k.avatar,
         "has_pin": bool(k.pin_hash),
         "age_group": k.age_group,
-        "celebrate": k.celebrate_level,
+        "celebrate": k.celebrate,  # raw: null = mode default
     }
 
 

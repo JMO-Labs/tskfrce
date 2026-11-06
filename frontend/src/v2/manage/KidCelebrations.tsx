@@ -3,6 +3,7 @@ import { usePatchKid } from '@/v2/hooks/useKids'
 import { Icon } from '@/v2/parent/Icon'
 import { SegmentedControl } from '@/v2/parent/SegmentedControl'
 import type { CelebrateLevel, Kid } from '@/v2/types'
+import { toastFail } from '../notify'
 import { CelebratePreview } from './CelebratePreview'
 
 type Pick = CelebrateLevel | 'default'
@@ -14,10 +15,10 @@ export function KidCelebrations({ kid }: { kid: Kid }) {
   const choose = (v: Pick) => {
     const prev = pick
     setPick(v)
-    patch.mutate({ id: kid.id, body: { celebrate: v === 'default' ? null : v } }, { onError: () => setPick(prev) })
+    patch.mutate({ id: kid.id, body: { celebrate: v === 'default' ? null : v } }, { onError: (e) => (setPick(prev), toastFail(e)) })
   }
   return (
-    <section className="pk-panel" aria-label="Celebrations">
+    <section className="pk-panel pk-span" aria-label="Celebrations">
       <h3>
         <Icon name="celebration" size={18} />
         Celebrations
@@ -35,7 +36,7 @@ export function KidCelebrations({ kid }: { kid: Kid }) {
       />
       <span className="pk-hint">How loud the fun is when a chore is done. Mode default is Full, or Small for teens.</span>
       <div className="pk-actions">
-        <CelebratePreview mode={kid.age_group} />
+        <CelebratePreview mode={kid.age_group} level={pick === 'default' ? (kid.age_group === 'teen' ? 'small' : 'full') : pick} />
       </div>
     </section>
   )

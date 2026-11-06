@@ -15,7 +15,7 @@ def test_default_comes_from_age_group(client, db, kid, parent_headers, age, want
     me = client.get("/api/v1/kid/today", headers=_headers(db, kid)).json()
     assert me["celebrate"] == want
     [row] = client.get("/api/v1/kids", headers=parent_headers).json()
-    assert row["celebrate"] == want
+    assert row["celebrate"] is None  # parent list is raw: null = mode default
 
 
 def test_kid_sets_their_own(client, db, kid):
@@ -59,7 +59,7 @@ def test_null_clears_back_to_mode_default(client, db, kid, parent_headers):
     r = client.patch(f"/api/v1/kids/{kid.id}", json={"full_name": "T"}, headers=parent_headers)
     assert r.json()["celebrate"] == "off"  # absent: unchanged
     r = client.patch(f"/api/v1/kids/{kid.id}", json={"celebrate": None}, headers=parent_headers)
-    assert r.status_code == 200 and r.json()["celebrate"] == "small"
+    assert r.status_code == 200 and r.json()["celebrate"] is None
     db.refresh(kid)
     assert kid.celebrate is None
     h = _headers(db, kid)

@@ -114,7 +114,7 @@ export function TodayPage() {
           <div className="pt-head">
             <h2>{kid.name}&apos;s day</h2>
             <div className="pt-head-acts">
-              <HappyHourButton />
+              <HappyHourButton kidId={kid.id} allKids />
               <Link href={viewAs(kid.id, router.asPath)} className="p-btn">
                 <Icon name="visibility" size={17} />
                 View as kid

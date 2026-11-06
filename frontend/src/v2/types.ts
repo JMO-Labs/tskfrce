@@ -100,8 +100,8 @@ export interface Kid {
   avatar: string | null
   has_pin: boolean
   age_group: AgeGroup
-  /** effective celebration level (the server fills in the mode default) */
-  celebrate?: CelebrateLevel
+  /** the kid's own pick; null = mode default */
+  celebrate?: CelebrateLevel | null
 }
 
 /** GET/PATCH /family */
