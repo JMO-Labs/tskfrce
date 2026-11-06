@@ -1,21 +1,14 @@
 import { describe, expect, test } from '@jest/globals'
 import type { ReactNode } from 'react'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { notifications } from '@mantine/notifications'
 import { KidsPage } from '@/v2/manage/KidsPage'
-import { apiMock, calls, detail, list, mockRoute, serve, setupLibrary, wrap } from './libraryHelpers'
+import { calls, detail, mockRoute, serve, setupLibrary, wrap } from './libraryHelpers'
 
-jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn(), hide: jest.fn() } }))
 jest.mock('next/router', () => ({
   useRouter: () => ({ query: mockRoute.query, push: mockRoute.push, replace: mockRoute.replace, pathname: '/kids' }),
 }))
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
-const mockDownload = jest.fn()
-jest.mock('@/v2/manage/historyCsv', () => ({
-  ...jest.requireActual<object>('@/v2/manage/historyCsv'),
-  downloadCsv: (...a: unknown[]) => mockDownload(...a),
-}))
 jest.mock('@/v2/parent/ParentShell', () => ({
   ParentShell: ({ list, children }: { list: ReactNode; children: ReactNode }) => (
     <>
@@ -31,7 +24,6 @@ jest.mock('@/v2/components/RequireParent', () => ({
 }))
 
 setupLibrary()
-
 
 const kid = { kid_id: 7, name: 'Maya', balance: 300, bought_today: 30, max_minutes: 60, limit: null, saved: 0 }
 const st = {
@@ -87,6 +79,21 @@ describe('time banking: parent settings', () => {
     const bought = within(detail()).getByRole('region', { name: 'Bought today' })
     expect(within(bought).getByText('Saved: 40 min')).toBeInTheDocument()
     expect(within(bought).getAllByText('Saved: 40 min')).toHaveLength(1)
-    expect(bought.querySelectorAll('.pt-bar i')[1]).toHaveStyle({ width: '30%' })
+    expect((within(bought).getByText('Leo').closest('.rw-kv') as HTMLElement).querySelector('.pt-bar i')).toHaveStyle({ width: '30%' })
+  })
+  test('a valid cap is sent as a number', async () => {
+    await open()
+    await userEvent.type(within(detail()).getByLabelText('Save up to'), '120')
+    await userEvent.click(within(detail()).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(calls('PATCH')[0]).toEqual(['/screen-time', { method: 'PATCH', body: { bank_cap: 120 } }]))
+  })
+  test('a hidden invalid cap neither blocks Save nor is sent', async () => {
+    await open()
+    await userEvent.type(within(detail()).getByLabelText('Save up to'), '20')
+    await userEvent.click(sw() as HTMLElement)
+    const save = within(detail()).getByRole('button', { name: 'Save' })
+    expect(save).toBeEnabled()
+    await userEvent.click(save)
+    await waitFor(() => expect(calls('PATCH')[0]).toEqual(['/screen-time', { method: 'PATCH', body: { rollover: false } }]))
   })
 })

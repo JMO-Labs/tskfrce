@@ -23,8 +23,10 @@ function HowItWorks({ st }: { st: ScreenTime }) {
   const capErr = cap.trim() ? intError(cap, 15, 480) || (Number(cap) % 15 ? 'Use steps of 15.' : '') : ''
   const changed: ScreenPatch = Object.fromEntries(Object.entries(draft).filter(([k, v]) => v !== st[k as keyof ScreenPatch]))
   if (!priceErr && Number(price) !== st.price) changed.price = Number(price)
+  const capShown = !!val('enabled') && val('max_minutes_per_day') != null && val('rollover')
+  const capBad = capShown && !!capErr
   const newCap = cap.trim() ? Number(cap) : null
-  if (!capErr && newCap !== st.bank_cap) changed.bank_cap = newCap
+  if (capShown && !capErr && newCap !== st.bank_cap) changed.bank_cap = newCap
   const dirty = Object.keys(changed).length > 0
   const save = () =>
     patch.mutate(changed, {
@@ -94,7 +96,7 @@ function HowItWorks({ st }: { st: ScreenTime }) {
         </>
       )}
       <div className="pk-actions">
-        <button type="button" className="p-btn" data-variant="accent" disabled={!dirty || !!priceErr || !!capErr || patch.isPending} aria-busy={patch.isPending} onClick={save}>
+        <button type="button" className="p-btn" data-variant="accent" disabled={!dirty || !!priceErr || capBad || patch.isPending} aria-busy={patch.isPending} onClick={save}>
           <Icon name="check" />
           Save
         </button>
@@ -170,7 +172,10 @@ export function ScreenTimePane() {
                   <span className="rw-avx" aria-hidden="true">
                     {initial(k.name ?? 'Kid')}
                   </span>
-                  {k.name ?? 'Kid'}
+                  <span>
+                    {k.name ?? 'Kid'}
+                    {k.saved > 0 && <span className="rw-aside rw-sub">Saved: {k.saved} min</span>}
+                  </span>
                 </span>
                 <span className="pt-prog rw-prog">
                   {k.max_minutes ? (
@@ -179,7 +184,6 @@ export function ScreenTimePane() {
                     </span>
                   ) : null}
                   <b>{k.max_minutes ? `${k.bought_today} / ${k.max_minutes + k.saved} min` : `${k.bought_today} min`}</b>
-                  {k.saved > 0 && <span className="rw-aside">Saved: {k.saved} min</span>}
                 </span>
               </div>
             ))}
