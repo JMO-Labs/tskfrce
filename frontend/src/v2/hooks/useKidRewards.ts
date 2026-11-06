@@ -24,7 +24,7 @@ export function useKidRewards(onExpired: () => void) {
   return q
 }
 
-export type RedeemBody = { kind: 'reward'; reward_id: number } | { kind: 'screen_time'; minutes: number }
+export type RedeemBody = { kind: 'reward'; reward_id: number } | { kind: 'screen_time'; minutes: number; group_id?: number | null }
 
 export function useRedeem(onExpired: () => void) {
   const qc = useQueryClient()

@@ -45,8 +45,17 @@ export interface ScreenTime {
   kids: ScreenKid[]
 }
 
+/** One thing screen time can be bought for; group_id null = all the kid's devices */
+export interface ScreenOption {
+  group_id: number | null
+  name: string
+  icon: string
+  price: number
+}
+
 /** `screen` block of GET /kid/rewards */
 export interface KidScreen {
+  options: ScreenOption[]
   enabled: boolean
   price: number
   auto: boolean
