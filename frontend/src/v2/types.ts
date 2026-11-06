@@ -449,7 +449,7 @@ export interface Progress {
   floor: number
   next: number
   streak: number
-  freezes_held?: number
+  freezes_held?: number | null // null: family has streak freezes off
   /** ISO dates a freeze covered in the current run */
   frozen?: string[]
   flair?: Flair

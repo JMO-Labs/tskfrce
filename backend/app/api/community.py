@@ -35,7 +35,8 @@ def _profiles(db: Session, kids: list[User]) -> list[dict]:
                 "level": lv.level,
                 "title": lv.title,
                 **progression.streak_fields(
-                    progression.streak_for(days[kid.id], today, fam.streak_freeze)
+                    progression.streak_for(days[kid.id], today, fam.streak_freeze),
+                    fam.streak_freeze,
                 ),
                 "badges": badge_rows[kid.id],
                 "flair": flair[kid.id],

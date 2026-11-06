@@ -23,7 +23,7 @@ function Switch({ label, on, onChange, disabled }: { label: string; on: boolean;
 }
 
 /** Me tab: celebration level, teen mascots (sounds hidden until assets ship), and the streak freezes saved. */
-export function FunSettings({ level, mode, freezes }: { level: CelebrateLevel; mode: KidAge; freezes?: number }) {
+export function FunSettings({ level, mode, freezes }: { level: CelebrateLevel; mode: KidAge; freezes?: number | null }) {
   const save = useSetCelebrate()
   const [sound, setSnd] = useState(soundOn)
   return (

@@ -161,17 +161,13 @@ def streak_for(days: dict[date, bool], today: date, freeze: bool) -> Streak:
     return streak_with_freezes(days, today) if freeze else streak_of(days, today)
 
 
-def streak_fields(st: Streak) -> dict:
-    """The streak keys every kid/parent payload carries."""
+def streak_fields(st: Streak, freeze: bool) -> dict:
+    """The streak keys every kid/parent payload carries. freezes_held is None when freezes are off."""
     return {
         "streak": st.current,
-        "freezes_held": st.freezes_held,
+        "freezes_held": st.freezes_held if freeze else None,
         "frozen": [d.isoformat() for d in st.frozen],
     }
-
-
-def streak(db: Session, kid_id: int, today: date) -> Streak:
-    return streak_of(chore_days(db, kid_id, today), today)
 
 
 def progress(db: Session, kid: User, fam: FamilySettings, balances: dict | None = None) -> dict:
@@ -202,7 +198,7 @@ def progress_many(
             "xp": lv.xp,
             "floor": lv.floor,
             "next": lv.next,
-            **streak_fields(st),
+            **streak_fields(st, fam.streak_freeze),
             "flair": flair[i],
         }
     return out

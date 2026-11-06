@@ -116,9 +116,9 @@ def test_setting_off_uses_plain_streak(client, db, parent, kid, parent_headers):
     r = client.patch("/api/v1/family", json={"streak_freeze": False}, headers=parent_headers)
     assert r.status_code == 200 and r.json()["streak_freeze"] is False
     kid_p = client.get("/api/v1/kid/today", headers=_headers(db, kid)).json()["progress"]
-    assert (kid_p["streak"], kid_p["freezes_held"], kid_p["frozen"]) == (1, 0, [])
+    assert (kid_p["streak"], kid_p["freezes_held"], kid_p["frozen"]) == (1, None, [])
     [prof] = client.get("/api/v1/profiles", headers=parent_headers).json()
-    assert prof["streak"] == 1
+    assert prof["streak"] == 1 and prof["freezes_held"] is None  # off: hide the freezes line
 
 
 def test_streak_freeze_on_by_default(client, parent_headers):

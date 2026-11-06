@@ -32,7 +32,7 @@ export function MePage({
   little?: boolean
   mode?: KidAge
   celebrate?: CelebrateLevel
-  freezes?: number
+  freezes?: number | null
 }) {
   return (
     <section className="me-view">

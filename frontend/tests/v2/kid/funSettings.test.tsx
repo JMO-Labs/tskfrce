@@ -44,6 +44,10 @@ describe('FunSettings', () => {
     show()
     expect(screen.getByText('🧊 2 freezes saved')).toBeInTheDocument()
   })
+  test('no freezes line when the family has streak freezes off (null)', () => {
+    show({ freezes: null })
+    expect(screen.queryByText(/freeze/)).toBeNull()
+  })
   test('one freeze singular', () => {
     show({ freezes: 1 })
     expect(screen.getByText('🧊 1 freeze saved')).toBeInTheDocument()
