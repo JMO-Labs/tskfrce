@@ -96,4 +96,16 @@ describe('time banking: parent settings', () => {
     await userEvent.click(save)
     await waitFor(() => expect(calls('PATCH')[0]).toEqual(['/screen-time', { method: 'PATCH', body: { rollover: false } }]))
   })
+  test('family max empty + a per-kid max: switch shows, placeholder per kid', async () => {
+    const limited = { ...kid, limit: { max_minutes: 45, min_points: null }, max_minutes: 45 }
+    await open({ max_minutes_per_day: null, kids: [limited, { ...kid, kid_id: 8, name: 'Leo', max_minutes: null }] })
+    expect(sw()).toHaveAttribute('aria-checked', 'true')
+    expect(within(detail()).getByLabelText('Save up to')).toHaveAttribute('placeholder', "Same as each kid's daily max")
+  })
+  test('neither family nor kid max: switch hidden', async () => {
+    const free = { ...kid, max_minutes: null }
+    await open({ max_minutes_per_day: null, kids: [free, { ...free, kid_id: 8, name: 'Leo', limit: { max_minutes: null, min_points: 100 } }] })
+    expect(sw()).toBeNull()
+    expect(within(detail()).queryByLabelText('Save up to')).toBeNull()
+  })
 })

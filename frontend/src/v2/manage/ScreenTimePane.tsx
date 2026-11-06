@@ -23,7 +23,9 @@ function HowItWorks({ st }: { st: ScreenTime }) {
   const capErr = cap.trim() ? intError(cap, 15, 480) || (Number(cap) % 15 ? 'Use steps of 15.' : '') : ''
   const changed: ScreenPatch = Object.fromEntries(Object.entries(draft).filter(([k, v]) => v !== st[k as keyof ScreenPatch]))
   if (!priceErr && Number(price) !== st.price) changed.price = Number(price)
-  const capShown = !!val('enabled') && val('max_minutes_per_day') != null && val('rollover')
+  // Banking needs a daily max: the family's, or any kid's own.
+  const bankable = val('max_minutes_per_day') != null || st.kids.some((k) => k.limit?.max_minutes != null)
+  const capShown = !!val('enabled') && bankable && val('rollover')
   const capBad = capShown && !!capErr
   const newCap = cap.trim() ? Number(cap) : null
   if (capShown && !capErr && newCap !== st.bank_cap) changed.bank_cap = newCap
@@ -64,7 +66,7 @@ function HowItWorks({ st }: { st: ScreenTime }) {
               </select>
             </label>
           </div>
-          {val('max_minutes_per_day') != null && (
+          {bankable && (
             <>
               <Switch id="st-bank" label="Save unused time" on={val('rollover')} onChange={(v) => set({ rollover: v })} />
               <span className="pk-hint pk-hint-tight">Minutes a kid doesn&apos;t buy today carry over, so they can save up for a bigger day.</span>
@@ -72,7 +74,7 @@ function HowItWorks({ st }: { st: ScreenTime }) {
                 <label className="pk-field">
                   <span className="pk-label">Save up to</span>
                   <span className="pk-input rw-unit rw-unit-wide">
-                    <input aria-label="Save up to" inputMode="numeric" placeholder={`Same as the daily max (${val('max_minutes_per_day')})`} value={cap} aria-invalid={!!capErr} onChange={(e) => setCap(e.currentTarget.value)} />
+                    <input aria-label="Save up to" inputMode="numeric" placeholder={val('max_minutes_per_day') == null ? "Same as each kid's daily max" : `Same as the daily max (${val('max_minutes_per_day')})`} value={cap} aria-invalid={!!capErr} onChange={(e) => setCap(e.currentTarget.value)} />
                     <span aria-hidden="true">min</span>
                   </span>
                   {capErr && <span className="pk-error">{capErr}</span>}
