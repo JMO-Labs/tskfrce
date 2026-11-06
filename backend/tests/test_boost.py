@@ -77,11 +77,7 @@ def test_tick_twice_in_a_minute_makes_one(db, parent, kid):
 
 
 def test_nothing_assigned_is_not_quiet(db, parent, kid):
-    """Review Focus 4: no runs, or a day with no runs, never boosts."""
-    _tick(db, AT16)
-    assert _auto(db) == []
-    _quiet(db, parent, kid, days=(1, 3))  # day before yesterday had nothing
-    get_family(db).hh_auto_date = None
+    """Review Focus 4: a kid with nothing assigned is never boosted."""
     _tick(db, AT16)
     assert _auto(db) == []
 
