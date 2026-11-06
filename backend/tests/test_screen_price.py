@@ -3,6 +3,7 @@ from app.api.rewards import redemption_name
 from app.models.family import get_family
 from app.models.lock import Device, DeviceGroup, Override
 from app.models.points import Points, PointsType
+from app.models.reward import Redemption
 from app.services import economy, screen_time
 from fastapi import HTTPException
 
@@ -104,6 +105,13 @@ def _setup(db, kid, parent):
     return c, dt, dc
 
 
+def _setup_prices(db, kid):
+    fam = get_family(db)
+    fam.screen_time_price, fam.points_unlock_early = 20, True
+    db.add(Points(user_id=kid.id, points_type=PointsType.BONUS, amount=500, reason="bonus"))
+    db.commit()
+
+
 def _req(db, kid, gid=None):
     return economy.request(db, kid, "screen_time", None, 30, group_id=gid)
 
@@ -148,3 +156,55 @@ def test_decide_deleted_group_unlocks_all(db, kid, parent):
 def test_redemption_name_group(db, kid, parent):
     c, _, _ = _setup(db, kid, parent)
     assert redemption_name(db, _req(db, kid, c.id)) == "30 min on Consoles"
+
+
+def _bonus_devs(db):
+    return {o.device_id for o in db.query(Override).filter_by(source="bonus")}
+
+
+def test_shared_device_not_unlocked_below_its_price(db, kid, parent):
+    t, c = _grp(db, "Tablets"), _grp(db, "Consoles", 40)
+    only_t = _dev(db, kid, 1, [t])
+    shared = _dev(db, kid, 2, [t, c])
+    _setup_prices(db, kid)
+    economy.decide(db, _req(db, kid, t.id), parent, True)
+    assert _bonus_devs(db) == {only_t.id}
+    assert shared.id not in _bonus_devs(db)
+
+
+def test_deleted_group_does_not_unlock_dearer_device(db, kid, parent):
+    t, c = _grp(db, "Tablets"), _grp(db, "Consoles", 40)
+    only_t, only_c = _dev(db, kid, 1, [t]), _dev(db, kid, 2, [c])
+    _setup_prices(db, kid)
+    red = _req(db, kid, t.id)
+    db.delete(db.get(DeviceGroup, t.id))
+    db.commit()
+    economy.decide(db, red, parent, True)
+    assert _bonus_devs(db) == {only_t.id}
+
+
+def test_buy_all_unlocks_everything(db, kid, parent):
+    t, c = _grp(db, "Tablets"), _grp(db, "Consoles", 40)
+    ds = [_dev(db, kid, 1, [t]), _dev(db, kid, 2, [c]), _dev(db, kid, 3, [t, c])]
+    _setup_prices(db, kid)
+    economy.decide(db, _req(db, kid), parent, True)
+    assert _bonus_devs(db) == {d.id for d in ds}
+
+
+def test_invalid_group_no_redemption_no_charge(db, kid, parent):
+    _setup(db, kid, parent)
+    other = _grp(db, "Other", 40)
+    before = economy.balance(db, kid.id)
+    with pytest.raises(HTTPException) as e:
+        _req(db, kid, other.id)
+    assert e.value.status_code == 400
+    assert db.query(Redemption).count() == 0
+    assert economy.balance(db, kid.id) == before
+
+
+def test_request_label_names_group(db, kid, parent):
+    from app.models.inbox import Notification
+
+    c, _, _ = _setup(db, kid, parent)
+    _req(db, kid, c.id)
+    assert any("30 min on Consoles" in (n.body or "") for n in db.query(Notification))

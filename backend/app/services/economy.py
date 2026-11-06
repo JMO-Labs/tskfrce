@@ -219,7 +219,7 @@ def _request(
         cost = minutes // 15 * screen_time.price_for(db, fam, kid, group_id)
         reward_id = None
         auto = _auto(fam, kind, None)
-        label = f"{minutes} min of screen time"
+        label = screen_label(db, minutes, group_id)
     else:
         raise HTTPException(400, "Pick screen time or a reward.")
     bal = balance(db, kid.id)
@@ -292,11 +292,15 @@ def decide(
         return _decide(db, redemption, parent, approve, note)
 
 
+def screen_label(db: Session, minutes: int, group_id: int | None) -> str:
+    g = db.get(DeviceGroup, group_id) if group_id else None
+    return f"{minutes} min on {g.name}" if g else f"{minutes} min of screen time"
+
+
 def _what(db: Session, r: Redemption) -> str:
     """Ledger description: the reward name, or the screen-time amount."""
     if r.kind == "screen_time":
-        g = db.get(DeviceGroup, r.device_group_id) if r.device_group_id else None
-        return f"{r.minutes} min on {g.name}" if g else f"{r.minutes} min of screen time"
+        return screen_label(db, r.minutes, r.device_group_id)
     reward = db.get(Reward, r.reward_id)
     return reward.name if reward else "Reward"
 
@@ -337,7 +341,8 @@ def _decide(
             gid = redemption.device_group_id
             if gid and db.get(DeviceGroup, gid) is None:
                 gid = None  # group deleted since the request: unlock all
-            for dev in screen_time.group_devices(kid, gid):
+            rate = redemption.cost // (redemption.minutes // 15)
+            for dev in screen_time.unlock_targets(get_family(db), kid, gid, rate):
                 db.add(
                     Override(
                         device_id=dev.id,

@@ -123,3 +123,14 @@ def group_devices(kid: User, group_id: int | None) -> list:
     if group_id is None:
         return list(kid.devices)
     return [d for d in kid.devices if any(g.id == group_id for g in d.groups)]
+
+
+def device_price(fam: FamilySettings, dev) -> int:
+    """What it costs to buy time for this device: the dearest of its chore-locked groups."""
+    prices = [g.screen_price or fam.screen_time_price for g in dev.groups if g.chore_lock]
+    return max(prices, default=fam.screen_time_price)
+
+
+def unlock_targets(fam: FamilySettings, kid: User, group_id: int | None, rate: int) -> list:
+    """Group devices the paid rate covers (a shared dearer device stays locked)."""
+    return [d for d in group_devices(kid, group_id) if device_price(fam, d) <= rate]
