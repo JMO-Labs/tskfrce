@@ -13,7 +13,7 @@ import { toastFail, toastOk } from '../notify'
 // mirrors backend FILTERS (app/models/device_activity.py)
 const FILTERS: { key: string; label: string; kinds?: EventKind[] }[] = [
   { key: 'all', label: 'All' },
-  { key: 'bypass', label: 'Bypass', kinds: ['bypass', 'new_address'] },
+  { key: 'bypass', label: 'Bypass', kinds: ['bypass', 'new_address', 'identity_change', 'workaround_try'] },
   { key: 'locked', label: 'While locked', kinds: ['locked_try', 'outside_hours', 'left_wifi'] },
   { key: 'sign_in', label: 'Sign-in', kinds: ['sign_in'] },
 ]

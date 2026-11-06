@@ -50,13 +50,14 @@ export function BellActions({ n, busy, sending, note, onNote, onApprove, onSendB
   else if (needs && n.kind === 'chore_note' && n.run_id)
     body = <Btn icon="chat" label="Reply" onClick={() => void go(`/?chore=${n.run_id}`).then(() => openChat('chore', String(n.run_id)))} />
   else if (n.kind === 'new_device' && n.pending) body = <Btn icon="person_add" label="Who's this?" onClick={() => go(device)} />
-  else if (n.kind === 'device_resisting' || n.kind === 'device_bypass')
+  else if (n.kind === 'device_resisting' || n.kind === 'device_bypass' || n.kind === 'workaround_try')
     body = (
       <>
         <Btn icon="devices" label="View" onClick={() => go(device)} />
         {n.kid_id && <Btn icon="chat" label={`Ask ${n.kid_name ?? 'kid'}`} onClick={() => void go(null).then(() => openChat('private', String(n.kid_id)))} />}
       </>
     )
+  else if (n.kind === 'password_guess') body = <Btn icon="settings" label="Settings" onClick={() => go('/settings')} />
   else if (n.kind === 'box_offline') body = <Btn icon="devices" label="View" onClick={() => go('/devices')} />
   return <div className="p-bell-actions">{body}</div>
 }
