@@ -39,6 +39,7 @@ For the reasoning behind these limits, see the [blocker enforcement decision rec
 - A VPN app that connects straight to a numeric address never looks up a name, so you get no alert. It is still blocked while the device is paused.
 - Devices that aren't paused are invisible to the box, so nothing is noticed.
 - Using a sibling's or spare device can't be detected.
+- Apps. The box sees devices, not apps, so two apps on one tablet can't have different prices. See [Troubleshooting](guide/06-troubleshooting.md#why-cant-i-price-youtube-differently-from-homework-on-the-same-tablet).
 
 ## Place the box out of reach
 

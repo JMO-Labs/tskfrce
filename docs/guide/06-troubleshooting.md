@@ -85,6 +85,15 @@ Someone typed a wrong password for your account 5 times in 15 minutes. You get t
 
 The real fix is a talk. If you see the alert, ask. Keep the box out of reach.
 
+## Why can't I price YouTube differently from homework on the same tablet?
+
+The box sees devices, not apps. It can't tell YouTube from a homework app on one tablet, so the tablet has one price.
+
+1. To price them apart, put the apps on separate devices, like a cheap tablet for homework.
+2. Put each device in its own group, then set a **Screen time price** on each group. See [Everyday use](04-everyday-use.md).
+
+You should see: kids pick the group in "What for?" when they ask for time.
+
 ## I forgot my password
 
 **If there is another parent:**

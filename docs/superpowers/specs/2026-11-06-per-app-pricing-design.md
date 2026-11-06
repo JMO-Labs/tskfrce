@@ -85,3 +85,15 @@ where the kid owns at least one lockable device, plus "All my devices". If there
 
 - Test shapes (follow `tests/test_economy*.py`, `test_kid_rewards*.py`).
 - Whether the options list is computed in `economy.py` or `screen_time.py` (the file must stay under 500 lines).
+
+## As built
+
+Shipped as 2.3.0. Deviations from the design above:
+
+- **Shared devices.** A device that is in several groups counts at its highest group price, and approval unlocks it only
+  for a request paid at that rate or more. Buying a cheaper group does not unlock it; the kid buys the pricier group or "All my
+  devices". This came from a security fix (otherwise the cheapest group would unlock a pricey device) and replaces the plan's
+  earlier expectation.
+- **Deleted-group fallback is capped.** If the group is deleted before approval, the unlock covers all of the kid's devices
+  whose price is at or below the rate paid, not every device.
+- **Family price field** is wider so its placeholder text fits.
