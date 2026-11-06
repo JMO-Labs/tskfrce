@@ -183,7 +183,7 @@ describe('rewards: catalogue', () => {
   })
 })
 
-const sam = { kid_id: 9, name: 'Sam', balance: 95, bought_today: 0, max_minutes: null, limit: null }
+const sam = { kid_id: 9, name: 'Sam', balance: 95, bought_today: 0, max_minutes: null, limit: null, saved: 0 }
 const stFull = {
   enabled: true,
   price: 20,
@@ -191,11 +191,13 @@ const stFull = {
   auto_approve: false,
   only_in_allowed_hours: true,
   group_pricing: true,
+  rollover: true,
+  bank_cap: null,
   reset_time: '04:00',
   avg_chore_points: 20,
   kids: [
-    { kid_id: 7, name: 'Maya', balance: 860, bought_today: 30, max_minutes: 60, limit: null },
-    { kid_id: 8, name: 'Leo', balance: 310, bought_today: 15, max_minutes: 30, limit: { max_minutes: 30, min_points: null } },
+    { kid_id: 7, name: 'Maya', balance: 860, bought_today: 30, max_minutes: 60, limit: null, saved: 0 },
+    { kid_id: 8, name: 'Leo', balance: 310, bought_today: 15, max_minutes: 30, limit: { max_minutes: 30, min_points: null }, saved: 0 },
     sam,
   ],
 }
