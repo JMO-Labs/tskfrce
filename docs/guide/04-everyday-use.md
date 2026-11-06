@@ -49,7 +49,7 @@ You should see: the item leaves the list. The kid is told what you decided.
 
 ## The bell
 
-The bell shows what happened: chores to approve, kid notes, requests, badges and level-ups, and security alerts such as a device that "got around the lock", "may be a different device", a "tried a VPN" workaround, or someone guessing a parent's password. Use the **All**, **Needs you** and **Alerts** tabs to filter. You can approve or send back right from the bell. Tap an item to go straight to it. **Mark all read** clears the count.
+The bell shows what happened: chores to approve, kid notes, requests, new devices (not during setup), badges and level-ups, and security alerts such as a device that "got around the lock", "may be a different device", a "tried a VPN" workaround, or someone guessing a parent's password. Use the **All**, **Needs you** and **Alerts** tabs to filter. You can approve or send back right from the bell. Tap an item to go straight to it. **Mark all read** clears the count.
 
 On a phone the bell opens as a sheet from the bottom of the screen.
 

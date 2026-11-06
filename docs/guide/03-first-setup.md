@@ -73,13 +73,13 @@ There is no separate school-hours block, so devices are not cut off during the s
 
 ![Step 7: the starting schedule on a timeline](img/setup-hours.jpg)
 
-**Lock until today's chores are done** is on. That means devices stay paused, even inside these hours, until the day's chores are approved. Turn it off if you only want the schedule. Chores you add here start tomorrow, so nobody is paused while you finish setting up.
+**Lock until today's chores are done** is on. That means devices stay paused, even inside these hours, until the day's chores are approved. Turn it off if you only want the schedule. Chores from step 5 start at the next daily reset after you finish, so nobody is paused while you finish setting up.
 
 You should see: the hours as bars on the timeline.
 
 Tap **Finish**.
 
-You should see: "You're all set", with how many kids, chores, devices and schedules you made. Hours start now. Chores, and the chore lock, start tomorrow at your reset time (6:00 AM unless you changed it). A tip links to [Remote access](../remote-access.md) if you want to check in away from home. Tap **Go to Today**.
+You should see: "You're all set", with how many kids, chores, devices and schedules you made. Hours start now. If you picked chores for your kids, they start at the next daily reset (6:00 AM unless you changed it), and so does the chore lock if it is on. A tip links to [Remote access](../remote-access.md) if you want to check in away from home. Tap **Go to Today**.
 
 ### Add t@sk4ce to your home screen
 

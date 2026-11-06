@@ -10,8 +10,9 @@ No. It's free and open source. You supply the small computer.
 
 ## Where does my family's information go?
 
-It stays in your home, on the home box. There are no accounts with us, no ads and no tracking. Something only leaves your home if you turn it on:
+It stays in your home, on the home box. There are no accounts with us, no ads and no tracking. A few things do leave your home, and all but the first only if you turn them on:
 
+- **Alerts on kids' phones** (phones signed in with a code): short generic lines like "You have a new chore" go through a public relay (ntfy.sh by default), which also sees when they were sent and your home's internet address. Names, chores and messages stay home. See [Kid alerts away from home](04-everyday-use.md#kid-alerts-away-from-home).
 - **GIFs in chat**: GIF searches go to GIPHY through the box. See [Everyday use](04-everyday-use.md#gifs-off-by-default).
 - **Notifications to your chat apps**: pings go to the service you chose. See [Everyday use](04-everyday-use.md#notifications).
 - **Instant alerts on iPhones**: a content-free wake-up goes to ntfy.sh. The alert text stays home.
