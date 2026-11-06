@@ -59,10 +59,23 @@ describe('KidPushPane', () => {
   test('disabled: copy shown, relay switch hidden', async () => {
     serve(false)
     render(wrap(<KidPushPane />))
-    expect(await screen.findByText(/need the ntfy service/)).toBeInTheDocument()
+    expect(await screen.findByText("Phone alerts aren't set up on this box. See the guide: Kid phone alerts.")).toBeInTheDocument()
+    expect(document.body.textContent).not.toMatch(/BOX_URL|NTFY_URL|NTFY_UPSTREAM/)
     expect(screen.queryByText(/Instant alerts on iPhones/)).toBeNull()
     expect(screen.queryByText(/unless you turn on iPhone alerts below/)).toBeNull()
     expect(screen.queryByAltText(/Kid phone code/)).toBeNull()
+  })
+
+  test('on: honest privacy line, QR inside a closed fold', async () => {
+    serve(true)
+    render(wrap(<KidPushPane />))
+    await screen.findByAltText('Kid phone code for Mia')
+    expect(screen.getByText("Alert text stays in your home. Kid phones signed in with a code get a content-free 'check t@sk4ce' nudge through ntfy.sh.")).toBeInTheDocument()
+    expect(screen.queryByText(/Nothing leaves your home/)).toBeNull()
+    const fold = screen.getByText('Use the ntfy app instead').closest('details')!
+    expect(fold).not.toHaveAttribute('open')
+    expect(fold).toContainElement(screen.getByAltText('Kid phone code for Mia'))
+    expect(document.body.textContent).not.toMatch(/BOX_URL|NTFY_URL|NTFY_UPSTREAM/)
   })
 
   test('relay switch reflects the setting and patches it', async () => {

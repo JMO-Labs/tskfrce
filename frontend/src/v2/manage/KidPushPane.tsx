@@ -4,6 +4,7 @@ import { InfoBlock } from '@/v2/components/InfoBlock'
 import { useFamily, usePatchFamily } from '@/v2/hooks/useFamily'
 import { useKidPush, useResetKidPush } from '@/v2/hooks/useKidPush'
 import { useKids } from '@/v2/hooks/useKids'
+import { Fold } from '@/v2/parent/Fold'
 import { Icon } from '@/v2/parent/Icon'
 import type { Kid } from '@/v2/types'
 import { toastFail, toastOk } from '@/v2/notify'
@@ -58,11 +59,11 @@ export function KidPushPane() {
   return (
     <>
       {on === false ? (
-        <InfoBlock icon="info" text="Kid phone alerts need the ntfy service. Set BOX_URL / NTFY_URL on the box." />
+        <InfoBlock icon="info" text="Phone alerts aren't set up on this box. See the guide: Kid phone alerts." />
       ) : on === undefined ? null : (
         <InfoBlock
           icon="notifications"
-          text="Kids get chore alerts on their own phone through the box. Nothing leaves your home unless you turn on iPhone alerts below."
+          text="Alert text stays in your home. Kid phones signed in with a code get a content-free 'check t@sk4ce' nudge through ntfy.sh."
         />
       )}
       {on && fam && (
@@ -72,10 +73,14 @@ export function KidPushPane() {
             checked={fam.ntfy_upstream_relay}
             onChange={(e) => patch.mutate({ ntfy_upstream_relay: e.currentTarget.checked }, { onError: toastFail })}
           />
-          <Text className="m-help">When on, the box asks ntfy.sh to wake iPhones with a content-free poll request; the alert text stays in your home. Off sends nothing outside; iPhones then get alerts late.</Text>
+          <Text className="m-help">When on, the box asks ntfy.sh to wake iPhones with a content-free poll request; the alert text stays in your home. Off skips this wake-up; iPhones then get alerts late.</Text>
         </section>
       )}
-      {on && kids.map((k) => <KidPhone key={k.id} kid={k} />)}
+      {on && kids.length > 0 && (
+        <Fold title="Use the ntfy app instead" icon="qr_code_2">
+          {kids.map((k) => <KidPhone key={k.id} kid={k} />)}
+        </Fold>
+      )}
     </>
   )
 }
