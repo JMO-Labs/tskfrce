@@ -87,3 +87,25 @@ def test_notify_failure_keeps_401_and_retries(client, db, parent, clock, monkeyp
     assert not _alerts(db)
     _bad(client, n=5)
     assert len(_alerts(db)) == 1
+
+
+def _change(client, headers, current="wrong"):
+    return client.post(
+        "/api/v1/users/password",
+        json={"current_password": current, "new_password": "Newpass-12345"},
+        headers=headers,
+    )
+
+
+def test_wrong_current_password_alerts(client, db, parent, parent_headers, clock):
+    for _ in range(5):
+        assert _change(client, parent_headers).status_code == 401
+    assert len(_alerts(db)) == 1
+
+
+def test_password_change_rate_limited(client, parent, parent_headers, clock):
+    from app.core import ratelimit
+
+    ratelimit.reset()
+    codes = [_change(client, parent_headers).status_code for _ in range(11)]
+    assert codes[:10] == [401] * 10 and codes[10] == 429

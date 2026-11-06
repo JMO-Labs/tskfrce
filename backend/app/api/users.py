@@ -4,6 +4,7 @@ Users API router for t@sk4ce.
 This module contains API endpoints for user management and authentication.
 """
 
+import logging
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -17,6 +18,7 @@ from app.api.deps import (
 )
 from app.core.auth import INVITE_TTL, AuthService
 from app.core.database import get_db_session
+from app.core.ratelimit import limit
 from app.models.user import PendingInvite, UsedInvite, User, UserRole
 from app.schemas.user import (
     InviteIn,
@@ -26,8 +28,10 @@ from app.schemas.user import (
     UserResponse,
     UserUpdate,
 )
+from app.services import guess_watch
 from app.services.user_service import UserService
 
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
 KID_EDITABLE = {"full_name", "profile_picture", "preferences"}
@@ -187,10 +191,16 @@ async def change_password(
     current_user: User = Depends(get_current_active_user),
 ):
     """Change user password."""
+    limit(f"pwchange:{current_user.id}", 10, 60)
     auth = AuthService(db)
 
     # Verify current password before allowing change
     if not auth.verify_password(password_data.current_password, current_user.hashed_password):
+        try:
+            guess_watch.record_failure(db, current_user.username)
+        except Exception:
+            db.rollback()
+            log.exception("password-guess watch failed")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Current password is incorrect.",

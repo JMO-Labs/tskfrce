@@ -48,12 +48,11 @@ def test_first_model_no_alert(client, db, parent):
     assert _counts(db) == ([], [])
 
 
-def test_fingerprint_only_logs(client, db, parent):
+def test_fingerprint_only_ignored(client, db, parent):
     _setup(db, parent)
     _seen(client, model="iPad", dhcp_fp="1,3,6")
     _seen(client, model="iPad", dhcp_fp="1,121,3")
-    ev, nt = _counts(db)
-    assert [e.detail for e in ev] == ["fingerprint"] and nt == []
+    assert _counts(db) == ([], [])
 
 
 def test_unassigned_ignored(client, db, parent):

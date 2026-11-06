@@ -32,7 +32,7 @@ def _differs(old: str | None, new: str | None) -> bool:
 
 
 def note_identity_change(
-    db: Session, dev: Device, old_model: str | None, old_fp: str | None, now: datetime
+    db: Session, dev: Device, old_model: str | None, _old_fp: str | None, now: datetime
 ) -> None:
     if dev.status != "assigned":
         return
@@ -51,5 +51,3 @@ def note_identity_change(
                 BODY,
                 device_id=dev.id,
             )
-    elif _differs(old_fp, dev.dhcp_fp):
-        activity.log(db, dev.id, "identity_change", now, detail="fingerprint")
