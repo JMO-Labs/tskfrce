@@ -3,7 +3,7 @@ import { daysAgo } from '../clockText'
 
 /** Security alerts: the bell's Alerts tab. */
 export const ALERT_KINDS = ['device_resisting', 'device_bypass', 'box_offline']
-const NEEDS_KINDS = ['chore_submitted', 'redemption_request', 'chore_note']
+const NEEDS_KINDS = ['chore_submitted', 'integration_done', 'redemption_request', 'chore_note']
 
 /** Still waiting on a parent; the server decides (`pending`), so a stale item gets no buttons. */
 export const isNeedsYou = (n: InboxItem): boolean => n.pending && NEEDS_KINDS.includes(n.kind)
@@ -26,6 +26,12 @@ export const severity = (n: InboxItem): { name: string; tone: Tone } => {
       return { name: n.glyph ?? 'flag', tone: 'md' }
     case 'chore_submitted':
       return { name: n.glyph ?? 'task_alt', tone: 'lv' }
+    case 'integration_done':
+      return { name: 'extension', tone: 'lv' }
+    case 'integration_paused':
+      return { name: 'extension_off', tone: 'md' }
+    case 'integration_msg':
+      return { name: 'extension', tone: 'ok' }
     case 'redemption_request':
       return { name: 'redeem', tone: 'lv' }
     case 'level_up':

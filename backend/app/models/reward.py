@@ -2,13 +2,27 @@
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+)
 
 from app.core.database import Base
 
 
 class Reward(Base):
     __tablename__ = "rewards"
+    __table_args__ = (
+        UniqueConstraint(
+            "integration_install_id", "integration_ref", name="uq_reward_integration_ref"
+        ),
+    )
 
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False)
@@ -18,6 +32,14 @@ class Reward(Base):
     visible = Column(Boolean, nullable=False, default=True, server_default="1")
     needs_approval = Column(Boolean, nullable=False, default=True, server_default="1")
     created_at = Column(DateTime, default=datetime.utcnow)
+    integration_install_id = Column(
+        Integer,
+        ForeignKey(
+            "integration_installs.id", ondelete="SET NULL", name="fk_reward_integration_install"
+        ),
+        nullable=True,
+    )
+    integration_ref = Column(String(64), nullable=True)
 
 
 class Redemption(Base):

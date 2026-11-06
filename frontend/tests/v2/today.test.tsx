@@ -41,7 +41,7 @@ const kid = (id: number, name = `Kid${id}`, done = 0, total = 2): TodayKid => ({
   progress: { level: 1, title: 'Rookie', xp: 0, floor: 0, next: 50, streak: 3 },
   points: 860,
   next_reward: 40,
-  locks_at: '2026-10-25T00:00:00Z',
+  locks_at: '2026-10-25T20:00:00Z',
   chores: [
     { id: 10 + id, title: 'Dishes', points: 10, state: 'todo', due_time: null },
     { id: 20 + id, title: 'Laundry', points: 20, state: 'todo', due_time: null },

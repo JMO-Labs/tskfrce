@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from app.models.chores import ChoreRun
 from app.models.family import FamilySettings, get_family
@@ -161,6 +161,18 @@ def pending_cost(db: Session, kid_id: int) -> int:
     )
 
 
+def deactivate_reward(r: Reward) -> None:
+    """Retire a reward and deny its pending requests. The caller commits."""
+    with SPEND_LOCK:  # same lock as decide, so a request isn't answered twice
+        r.active = False
+        for p in (
+            object_session(r)
+            .query(Redemption)
+            .filter(Redemption.reward_id == r.id, Redemption.status == "pending")
+        ):
+            p.status, p.decided_at = "denied", datetime.utcnow()
+
+
 def request(
     db: Session,
     kid: User,
@@ -252,6 +264,12 @@ def _request(
         f"{kid.full_name} wants {label} ({cost} points)",
         redemption_id=red.id,
     )
+    if kind == "reward":
+        from app.integrations import events  # events -> apply -> this module
+
+        events.emit(
+            db, "request.created", [kid.id], type="reward", id=red.id, title=label, cost=cost
+        )
     db.commit()
     return red
 
@@ -290,6 +308,10 @@ def _decide(
     now = datetime.now(UTC).replace(tzinfo=None)
     screen = False
     if approve:
+        if redemption.kind == "reward":
+            reward = db.get(Reward, redemption.reward_id)
+            if reward is None or not reward.active:
+                raise HTTPException(409, "That reward was removed.")
         if redemption.cost > balance(db, redemption.kid_id):
             raise HTTPException(409, "Not enough points anymore.")
         db.add(
@@ -334,6 +356,16 @@ def _decide(
         from app.services import badges  # badges imports this module
 
         badges.check_badges(db, db.get(User, redemption.kid_id), get_family(db))
+    if approve and redemption.kind == "reward":
+        from app.integrations import events  # events -> apply -> this module
+
+        events.emit(
+            db,
+            "reward.redeemed",
+            [redemption.kid_id],
+            reward_name=_what(db, redemption),
+            cost=redemption.cost,
+        )
     db.commit()
     if screen:
         from app.lock.loop import trigger

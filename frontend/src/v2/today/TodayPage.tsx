@@ -15,6 +15,7 @@ import { GetStartingChecklistCard } from "./GetStartingChecklistCard";
 import { KidList } from "./KidList";
 import { KidStrip } from "./KidStrip";
 import { NeedsYouList } from "./NeedsYouList";
+import { IntegrationWidgets } from "../integrations/WidgetFrame";
 import { SegmentedControl } from "../parent/SegmentedControl";
 import { KidFacts } from "./KidFacts";
 import { ChoreRow } from "./ChoreRow";
@@ -92,6 +93,7 @@ export function TodayPage() {
       {showNeeds && (
         <div className="p-today-detail">
           <NeedsYouList items={needs} />
+          <IntegrationWidgets surface="parent" />
         </div>
       )}
       {data && data.kids.length === 0 && (
@@ -179,6 +181,7 @@ export function TodayPage() {
               )}
             </div>
           )}
+          <IntegrationWidgets surface="parent" />
         </div>
       )}
     </ParentShell>

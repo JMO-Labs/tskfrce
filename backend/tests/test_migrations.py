@@ -22,3 +22,24 @@ def test_alembic_upgrade_creates_tables(tmp_path):
     tables = set(inspect(create_engine(url)).get_table_names()) - {"alembic_version"}
     _import_all_models()
     assert tables == set(Base.metadata.tables)
+
+
+def test_integration_kinds_migration_round_trips(tmp_path):
+    url = f"sqlite:///{tmp_path / 'rt.db'}"
+
+    def alembic(*args):
+        subprocess.run(
+            [sys.executable, "-m", "alembic", *args],
+            cwd=BACKEND,
+            env={**os.environ, "DATABASE_URL": url},
+            check=True,
+        )
+
+    alembic("upgrade", "head")
+    alembic("downgrade", "c1d2e3f4a5b6")
+    alembic("upgrade", "head")
+    sql = "".join(
+        c["sqltext"].text if hasattr(c["sqltext"], "text") else str(c["sqltext"])
+        for c in inspect(create_engine(url)).get_check_constraints("notifications")
+    )
+    assert "integration_done" in sql

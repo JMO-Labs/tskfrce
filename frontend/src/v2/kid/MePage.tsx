@@ -1,6 +1,7 @@
 import { Icon } from '../parent/Icon'
 import { ProgressHeader } from '../components/ProgressHeader'
 import type { Progress } from '../types'
+import { IntegrationWidgets } from '../integrations/WidgetFrame'
 import { FamilySection } from './FamilySection'
 
 /** Kid "Me" tab: name card with XP, Customize (not in preview), family, and "Not me" on shared devices. */
@@ -40,6 +41,7 @@ export function MePage({
         </div>
       )}
       <FamilySection meId={kidId} little={little} />
+      {!preview && <IntegrationWidgets surface="kid" />}
       {canSwitch && (
         <button type="button" className="r-btn me-out" data-tone="plain" onClick={onExit}>
           <Icon name="swap_horiz" />

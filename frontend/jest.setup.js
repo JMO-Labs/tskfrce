@@ -12,8 +12,8 @@ const motionCss = fs.readFileSync(
   'utf8'
 )
 
+// Inject styles into document head (skipped in @jest-environment node tests)
 if (typeof document !== 'undefined') {
-  // Inject styles into document head
   const style = document.createElement('style')
   style.textContent = parentTokensCss + '\n' + motionCss
   document.head.appendChild(style)

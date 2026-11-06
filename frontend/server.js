@@ -7,6 +7,7 @@
 const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
+require('./relay-preload'); // marks wire-relayed requests before Next adds x-forwarded-*
 const { clientIp } = require('./clientIp');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 

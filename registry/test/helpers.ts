@@ -26,8 +26,8 @@ export function fakeCf(records: { id: string; content: string }[] = []) {
 
 export const basic = (id: string, secret: string) => 'Basic ' + btoa(`${id}:${secret}`)
 
-export async function makeEnv(id = 'abc123', secret = 's3cret'): Promise<Env> {
+export async function makeEnv(id = 'abc123', secret = 's3cret', signingKey = ''): Promise<Env> {
   const BOXES = fakeKV()
   await BOXES.put(`box:${id}`, await sha256hex(secret))
-  return { BOXES, CF_API_TOKEN: 'tok', CF_ZONE_ID: 'zone1', BASE_DOMAIN: 'taskfrce.jmolabs.dev' }
+  return { BOXES, CF_API_TOKEN: 'tok', CF_ZONE_ID: 'zone1', BASE_DOMAIN: 'taskfrce.jmolabs.dev', INTEGRATIONS_SIGNING_KEY: signingKey }
 }

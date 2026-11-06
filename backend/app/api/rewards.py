@@ -4,9 +4,10 @@ from datetime import datetime, timedelta
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from app.api.deps import get_db, require_parent
+from app.models.integration import IntegrationInstall
 from app.models.lock import Device
 from app.models.reward import Redemption, Reward
 from app.models.user import User
@@ -20,7 +21,13 @@ router = APIRouter(
 
 
 def _out(r: Reward) -> dict:
+    inst = (
+        object_session(r).get(IntegrationInstall, r.integration_install_id)
+        if r.integration_install_id
+        else None
+    )
     return {
+        "integration": {"id": inst.id, "name": inst.name} if inst else None,
         "id": r.id,
         "name": r.name,
         "price": r.price,
@@ -63,13 +70,8 @@ def patch_reward(reward_id: int, body: RewardPatch, db: Session = Depends(get_db
 @router.delete("/{reward_id}", status_code=204)
 def delete_reward(reward_id: int, db: Session = Depends(get_db)):
     r = _get(db, reward_id)
-    with economy.SPEND_LOCK:  # same lock as decide, so a request isn't answered twice
-        r.active = False
-        pending = db.query(Redemption).filter(
-            Redemption.reward_id == r.id, Redemption.status == "pending"
-        )
-        for p in pending:
-            p.status, p.decided_at = "denied", datetime.utcnow()
+    with economy.SPEND_LOCK:
+        economy.deactivate_reward(r)
         db.commit()
     return Response(status_code=204)
 

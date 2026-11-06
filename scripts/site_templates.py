@@ -125,7 +125,7 @@ def chapter_page(title, summary_text, chapter_links, breadcrumb, toc_html, conte
 """
 
 
-def standalone_page(title, chapter_links, breadcrumb, toc_html, content_html):
+def standalone_page(title, chapter_links, breadcrumb, toc_html, content_html, edit_path="remote-access.md"):
     """A page outside the chapter list (remote access): back link instead of chapters."""
     return f"""<!doctype html>
 <html lang="en">
@@ -167,7 +167,7 @@ def standalone_page(title, chapter_links, breadcrumb, toc_html, content_html):
 
           <!-- Edit on GitHub -->
           <div class="guide-edit-link">
-            <a href="https://github.com/JMO-Labs/tskfrce/blob/main/docs/remote-access.md" target="_blank" rel="noopener">
+            <a href="https://github.com/JMO-Labs/tskfrce/blob/main/docs/{edit_path}" target="_blank" rel="noopener">
               Edit this page on GitHub →
             </a>
           </div>

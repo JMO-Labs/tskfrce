@@ -7,6 +7,7 @@ import { ErrorPanel, Skeleton } from '@/v2/parent/states'
 import { RequireParent } from '@/v2/components/RequireParent'
 import { useFamily, usePatchFamily } from '@/v2/hooks/useFamily'
 import { FamilyCard, GifsCard } from './FamilyCards'
+import { IntegrationsPane } from '@/v2/integrations/IntegrationsPane'
 import { HoursSection } from './HoursSection'
 import { ParentsPane } from './ParentsPane'
 import { PaneHead } from './PaneParts'
@@ -75,6 +76,7 @@ function SettingsBody() {
           </>
         )}
         {section === 'parents' && <ParentsPane />}
+        {section === 'integrations' && <IntegrationsPane />}
       </div>
     </ParentShell>
   )

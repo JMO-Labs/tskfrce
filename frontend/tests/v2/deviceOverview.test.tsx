@@ -19,7 +19,7 @@ const kids: Kid[] = [{ id: 7, full_name: 'Maya', username: 'kid-maya', avatar: n
 const dev = (over: Partial<Device> = {}): Device => ({
   id: 1, name: 'Tablet', mac: 'aa:bb:cc:dd:ee:01', vendor: null, status: 'assigned', owner_ids: [7],
   group_ids: [], online: false, override: null, last_seen: null, resisting: false,
-  exempt: false, reason: 'chores', chores_done: 3, chores_total: 5, locks_at: '2026-10-26T00:00:00Z', alerts: 1, address_changes: 1,
+  exempt: false, reason: 'chores', chores_done: 3, chores_total: 5, locks_at: '2026-10-26T20:00:00Z', alerts: 1, address_changes: 1,
   ...over,
 })
 const day = (date: string) => ({ date, slots: 'o'.repeat(20) + 'l'.repeat(20) + '.'.repeat(104), online_minutes: 200 })

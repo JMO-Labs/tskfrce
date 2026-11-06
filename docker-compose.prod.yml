@@ -20,6 +20,9 @@ services:
       CORS_ORIGINS: ${BOX_URL:-http://localhost:3000}
       # Only the frontend proxy may set X-Real-IP
       TRUSTED_PROXY_IPS: 127.0.0.1,::1,${TASK4CE_FRONTEND_IP:-172.29.50.10}
+      # Local push keys: LAN ranges, minus loopback, link-local and Docker bridges
+      LOCAL_PUSH_CIDRS: ${LOCAL_PUSH_CIDRS:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fd00::/8}
+      LOCAL_PUSH_EXCLUDE_CIDRS: ${LOCAL_PUSH_EXCLUDE_CIDRS:-127.0.0.0/8,::1/128,169.254.0.0/16,fe80::/10,172.17.0.0/16,${TASK4CE_SUBNET:-172.29.50.0/24}}
       NTFY_URL: http://ntfy:80
       NTFY_PUBLIC_URL: ${NTFY_PUBLIC_URL:-http://task4ce.local:2586}
       NTFY_PORT: ${NTFY_PORT:-0.0.0.0:2586}

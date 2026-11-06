@@ -10,17 +10,17 @@ from app.core.config import settings
 
 
 @cache
-def _fernet() -> Fernet:
-    digest = hashlib.sha256(("apprise:" + (settings.SECRET_KEY or "")).encode()).digest()
+def _fernet(purpose: str) -> Fernet:
+    digest = hashlib.sha256((f"{purpose}:" + (settings.SECRET_KEY or "")).encode()).digest()
     return Fernet(base64.urlsafe_b64encode(digest))
 
 
-def seal(text: str) -> str:
-    return _fernet().encrypt(text.encode()).decode()
+def seal(text: str, purpose: str = "apprise") -> str:
+    return _fernet(purpose).encrypt(text.encode()).decode()
 
 
-def unseal(token: str) -> str:
+def unseal(token: str, purpose: str = "apprise") -> str:
     try:
-        return _fernet().decrypt(token.encode()).decode()
+        return _fernet(purpose).decrypt(token.encode()).decode()
     except InvalidToken as e:
         raise ValueError("unreadable") from e

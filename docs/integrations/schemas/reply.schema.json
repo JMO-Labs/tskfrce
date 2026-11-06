@@ -1,0 +1,23 @@
+{
+  "properties": {
+    "actions": {
+      "default": [],
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "maxItems": 20,
+      "title": "Actions",
+      "type": "array"
+    },
+    "request_id": {
+      "title": "Request Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "request_id"
+  ],
+  "title": "Reply",
+  "type": "object"
+}

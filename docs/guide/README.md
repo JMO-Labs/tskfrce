@@ -14,6 +14,8 @@ Read the pages in order the first time. It takes about 20 minutes.
 
 Optional: [Remote access](../remote-access.md), to check in when you are away from home.
 
+Building an integration? See the [integrations protocol](../integrations/protocol-v1.md).
+
 Boxes that say **For the curious** are for people who want the technical detail. You can skip them.
 
 Words we use:
