@@ -5,7 +5,7 @@
   --ink: var(--k-ink); /* outlines: navy in light, light in dark, like the kid cards */
   --impact: Impact, 'Arial Black', var(--font-display), system-ui, sans-serif;
   position: fixed;
-  inset: 0;
+  inset: 0 0 var(--k-navh, 0px); /* phones: the bottom nav stays on top; mascots tuck in behind its top edge */
   z-index: 999; /* under AwardOverlay (1000) */
   overflow: hidden;
   pointer-events: none;
@@ -28,7 +28,7 @@
 .badge {
   position: absolute;
   left: calc(var(--cl, 0px) + var(--cw, 100vw) / 2);
-  bottom: calc(var(--k-navh, 0px) + 24px);
+  bottom: 24px;
   transform: translateX(-50%);
   background: var(--k-sun);
   color: var(--k-navy); /* on sun */

@@ -70,3 +70,12 @@ describe('words', () => {
     expect(fitWordSize('SUPERCALIFRAGILISTIC!', 100, 50, 18)).toBe(18)
   })
 })
+
+describe('legendary without a mascot', () => {
+  test('look and entrance stay fixed', () => {
+    const c = pickCombo(() => 0.001, null, { mascots: [], wantMascot: true })
+    expect(c.legendary).not.toBeNull()
+    expect(c.mascot).toBeNull()
+    expect([c.style, c.entry]).toEqual(['original', 'rise'])
+  })
+})

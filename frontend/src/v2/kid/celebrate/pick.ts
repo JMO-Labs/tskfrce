@@ -77,7 +77,8 @@ function draw(rng: Rng, o: PickOpts): Combo {
   if (legend) {
     const legendary = of(rng, Object.keys(LEGENDARY) as LegendaryFx[])
     const mascot = o.forceMascot && o.mascots.length ? of(rng, o.mascots) : null
-    const look = { style: pickStyle(rng), entry: of(rng, ENTRIES), sparks: [] }
+    // no mascot: look and entrance don't show, so they stay fixed (same guard as below)
+    const look = { style: mascot ? pickStyle(rng) : 'original', entry: mascot ? of(rng, ENTRIES) : 'rise', sparks: [] }
     return { card: 'pop', burst: 'confetti', word: LEGENDARY[legendary].word, color, mascot, say: 'WOW!', legendary, cast: legendaryCast(legendary, o.mascots), ...look }
   }
   const card = of(rng, o.cards ?? CARDS)
