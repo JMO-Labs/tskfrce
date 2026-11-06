@@ -57,6 +57,10 @@ def _fam_out(fam) -> dict:
         "accent": fam.accent,
         "ntfy_upstream_relay": fam.ntfy_upstream_relay,
         "giphy_key_set": bool(fam.giphy_api_key),  # the key itself is never returned
+        "hh_default_mult_x10": fam.hh_default_mult_x10,
+        "hh_default_minutes": fam.hh_default_minutes,
+        "hh_weekly_surprise": fam.hh_weekly_surprise,
+        "hh_auto_boost": fam.hh_auto_boost,
     }
 
 

@@ -137,6 +137,7 @@ class ChoreRun(Base):
     note_at = Column(DateTime, nullable=True)
     submitted_at = Column(DateTime, nullable=True)
     submitted_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    hh_mult_x10 = Column(Integer, nullable=True)  # Happy Hour fixed at submit; NULL = x1
     approved_at = Column(DateTime, nullable=True)
     approved_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     completed_at = Column(DateTime, nullable=True)

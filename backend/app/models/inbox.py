@@ -39,6 +39,7 @@ KINDS = (
     "integration_paused",
     "password_guess",
     "workaround_try",
+    "happy_hour",
 )
 
 

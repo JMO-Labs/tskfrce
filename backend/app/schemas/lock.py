@@ -87,6 +87,10 @@ class FamilyPatch(BaseModel):
         | None
     ) = Field(default=None, max_length=8)
     giphy_api_key: str | None = Field(default=None, max_length=100)  # "" clears
+    hh_default_mult_x10: Literal[15, 20, 30] | None = None
+    hh_default_minutes: Literal[30, 60, 90] | None = None
+    hh_weekly_surprise: bool | None = None
+    hh_auto_boost: bool | None = None
     accent: (
         Literal[
             "neon", "sun", "tangerine", "bubblegum", "lilac", "sky", "aqua", "mint", "peach", "ice"

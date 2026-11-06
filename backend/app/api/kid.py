@@ -24,7 +24,16 @@ from app.models.points import Points
 from app.models.reward import Redemption
 from app.models.user import User, UserRole
 from app.schemas.lock import utc_z
-from app.services import badges, chat, chore_actions, economy, inbox, kid_view, progression
+from app.services import (
+    badges,
+    chat,
+    chore_actions,
+    economy,
+    happy_hour,
+    inbox,
+    kid_view,
+    progression,
+)
 from app.services import chores as svc
 from app.services.chore_types import notes_for
 from app.services.photos import save_photo
@@ -151,6 +160,13 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
     deds = svc.deductions(db, runs)
     texts = svc.note_texts(db, runs)
     seen = kid_view.seen_ids(db, kid.id, {r.assignment_id for r in runs})
+    hh = happy_hour.active_for(db, kid.id, now.replace(tzinfo=None))
+
+    def mult(r: ChoreRun) -> int:  # display only: fixed on submit, else the live one
+        if r.status == "todo":
+            return hh.mult_x10 if hh else 10
+        return r.hh_mult_x10 or 10
+
     return {
         "age_group": kid.age_group,
         "locks_at": kid_view.locks_at(db, kid, fam, now),
@@ -166,6 +182,7 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
                 "id": r.id,
                 "title": svc.chore_of(r).title,
                 "points": svc.chore_of(r).points or 0,
+                "points_now": (svc.chore_of(r).points or 0) * mult(r) // 10,
                 "state": svc.state(r),
                 "due_time": r.assignment.due_time,
                 **kid_view.extras(
@@ -178,6 +195,9 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
         "points_held": economy.pending_cost(db, kid.id),
         "progress": prog,
         "timezone": fam.timezone,
+        "happy_hour": (
+            {"ends_at": utc_z(hh.ends_at), "multiplier": hh.mult_x10 / 10} if hh else None
+        ),
     }
 
 

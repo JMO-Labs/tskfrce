@@ -59,6 +59,12 @@ class FamilySettings(Base):
     setup_step = Column(Integer, nullable=True)  # wizard step to resume; NULL = done/not started
     screen_rollover = Column(Boolean, nullable=False, default=True, server_default="1")
     screen_bank_cap = Column(Integer, nullable=True)  # NULL = one day's max
+    hh_default_mult_x10 = Column(Integer, nullable=False, default=20, server_default="20")
+    hh_default_minutes = Column(Integer, nullable=False, default=60, server_default="60")
+    hh_weekly_surprise = Column(Boolean, nullable=False, default=False, server_default="0")
+    hh_auto_boost = Column(Boolean, nullable=False, default=True, server_default="1")
+    hh_auto_date = Column(Date, nullable=True)  # local day the auto boost job last ran
+    hh_surprise_date = Column(Date, nullable=True)  # local day the weekly surprise last ran
 
 
 def get_family(db: Session) -> FamilySettings:
