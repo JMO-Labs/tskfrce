@@ -56,11 +56,19 @@ export function KidPushPane() {
   const fam = useFamily().data
   const patch = usePatchFamily()
   const first = kids[0]
-  // the ntfy service is box-wide, so the first kid's answer tells us if it is on
-  const on = useKidPush(first?.id ?? 0, !!first).data?.enabled
+  // the ntfy service and the relay are box-wide, so the first kid's answer tells us
+  const d = useKidPush(first?.id ?? 0, !!first).data
+  const on = d?.enabled
   return (
     <>
-      {on === false ? (
+      {d?.upstream ? (
+        <InfoBlock
+          icon="notifications"
+          text="Kid phones signed in with a code get a short generic line, like 'You have a new chore', through a public relay (ntfy.sh by default). Names, chores and messages stay in your home."
+        />
+      ) : on ? (
+        <InfoBlock icon="notifications" text="Alert text stays in your home." />
+      ) : d ? (
         <InfoBlock
           icon="info"
           text={
@@ -69,12 +77,7 @@ export function KidPushPane() {
             </span>
           }
         />
-      ) : on === undefined ? null : (
-        <InfoBlock
-          icon="notifications"
-          text="Alert text stays in your home. Kid phones signed in with a code get only a short generic line, like 'You have a new chore', through a public relay (ntfy.sh by default)."
-        />
-      )}
+      ) : null}
       {on && fam && (
         <section className="pk-panel" aria-label="iPhone alerts">
           <Switch

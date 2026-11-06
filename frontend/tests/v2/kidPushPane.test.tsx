@@ -21,14 +21,15 @@ const wrap = (ui: unknown) => (
 )
 const kid: Kid = { id: 7, full_name: 'Mia', username: 'mia', avatar: null, has_pin: false, age_group: 'kid' }
 const fam = (relay: boolean) => ({ name: 'S', ntfy_upstream_relay: relay })
-const push = (enabled: boolean) => ({ enabled, server: 'http://box:2586', topic: 'kid-abc', link: 'x', qr_svg: '<svg xmlns="http://www.w3.org/2000/svg"/>' })
+const push = (enabled: boolean, upstream = true) => ({ enabled, upstream, server: 'http://box:2586', topic: 'kid-abc', link: 'x', qr_svg: '<svg xmlns="http://www.w3.org/2000/svg"/>' })
 
-const serve = (enabled: boolean, relay = false) =>
+const RELAY = "Kid phones signed in with a code get a short generic line, like 'You have a new chore', through a public relay (ntfy.sh by default). Names, chores and messages stay in your home."
+const serve = (enabled: boolean, relay = false, upstream = true) =>
   apiMock.mockImplementation(async (p, i) => {
     if (p === '/kids') return [kid]
     if (p === '/family') return i?.method === 'PATCH' ? { ...fam(true) } : fam(relay)
     if (p === '/kids/7/push/reset') return push(true)
-    if (p === '/kids/7/push') return push(enabled)
+    if (p === '/kids/7/push') return push(enabled, upstream)
     return {}
   })
 
@@ -56,8 +57,8 @@ describe('KidPushPane', () => {
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/kids/7/push/reset', { method: 'POST' }))
   })
 
-  test('disabled: copy shown, relay switch hidden', async () => {
-    serve(false)
+  test('both off: not set up, no relay line', async () => {
+    serve(false, false, false)
     render(wrap(<KidPushPane />))
     expect(await screen.findByText(/Phone alerts aren't set up on this box\. See the guide:/)).toBeInTheDocument()
     const link = screen.getByRole('link', { name: "Alerts on a kid's phone" })
@@ -68,13 +69,31 @@ describe('KidPushPane', () => {
     expect(screen.queryByText(/Instant alerts on iPhones/)).toBeNull()
     expect(screen.queryByText(/unless you turn on iPhone alerts below/)).toBeNull()
     expect(screen.queryByAltText(/Kid phone code/)).toBeNull()
+    expect(screen.queryByText(/ntfy\.sh by default/)).toBeNull()
   })
 
-  test('on: honest privacy line, QR inside a closed fold', async () => {
+  test('LAN off, relay on: relay disclosed, not "not set up"', async () => {
+    serve(false, false, true)
+    render(wrap(<KidPushPane />))
+    expect(await screen.findByText(RELAY)).toBeInTheDocument()
+    expect(screen.queryByText(/aren't set up/)).toBeNull()
+    expect(screen.queryByText(/Instant alerts on iPhones/)).toBeNull()
+    expect(screen.queryByAltText(/Kid phone code/)).toBeNull()
+  })
+
+  test('LAN on, relay off: no public relay claim', async () => {
+    serve(true, false, false)
+    render(wrap(<KidPushPane />))
+    await screen.findByAltText('Kid phone code for Mia')
+    expect(screen.getByText('Alert text stays in your home.')).toBeInTheDocument()
+    expect(screen.queryByText(/ntfy\.sh by default/)).toBeNull()
+  })
+
+  test('both on: honest privacy line, QR inside a closed fold', async () => {
     serve(true)
     render(wrap(<KidPushPane />))
     await screen.findByAltText('Kid phone code for Mia')
-    expect(screen.getByText("Alert text stays in your home. Kid phones signed in with a code get only a short generic line, like 'You have a new chore', through a public relay (ntfy.sh by default).")).toBeInTheDocument()
+    expect(screen.getByText(RELAY)).toBeInTheDocument()
     expect(screen.queryByText(/Nothing leaves your home/)).toBeNull()
     const fold = screen.getByText('Use the ntfy app instead').closest('details')!
     expect(fold).not.toHaveAttribute('open')
