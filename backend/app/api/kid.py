@@ -54,7 +54,7 @@ class NoteIn(BaseModel):
 
 
 class MePatch(BaseModel):
-    celebrate: Literal["full", "small", "off"]
+    celebrate: Literal["full", "small", "off"] | None  # required; null = mode default
 
 
 class KidLogin(BaseModel):

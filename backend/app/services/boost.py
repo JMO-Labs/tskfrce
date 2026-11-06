@@ -48,12 +48,12 @@ def quiet_kids(db: Session, today: date) -> list[int]:
     )
     busy: dict[int, dict[date, bool]] = {}  # kid -> day -> anything sent in
     for kid_id, d, status in rows:
-        days = busy.setdefault(kid_id, {})
-        days[d] = days.get(d, False) or status in ("submitted", "done")
+        sent = busy.setdefault(kid_id, {})
+        sent[d] = sent.get(d, False) or status in ("submitted", "done")
     out = []
-    for kid_id, days in busy.items():
-        last = [days[d] for d in sorted(days, reverse=True) if d < today][:2]
-        if len(last) == 2 and not any(last) and not days.get(today):
+    for kid_id, sent in busy.items():
+        last = [sent[d] for d in sorted(sent, reverse=True) if d < today][:2]
+        if len(last) == 2 and not any(last) and not sent.get(today):
             out.append(kid_id)
     return sorted(out)
 
@@ -81,14 +81,17 @@ def auto_boost(db: Session, now_utc: datetime) -> None:
     for kid_id in quiet_kids(db, svc.today(db, now_utc)):
         try:
             with db.begin_nested():  # one kid failing rolls back only their own rows
-                _boost(db, kid_id, day_start, now)
+                started = _boost(db, kid_id, day_start, now)
+            if started:  # ping only once the rows are safely in
+                u = db.get(User, kid_id)
+                inbox.notify_parents(db, "boost", QUIET.format(u.full_name or u.username)[:120])
         except Exception:
             log.exception("auto boost failed for kid %s", kid_id)
 
 
-def _boost(db: Session, kid_id: int, day_start: datetime, now: datetime) -> None:
+def _boost(db: Session, kid_id: int, day_start: datetime, now: datetime) -> bool:
     if _capped(db, kid_id, day_start, now):
-        return
+        return False
     happy_hour.start(
         db,
         kid_ids=[kid_id],
@@ -98,8 +101,7 @@ def _boost(db: Session, kid_id: int, day_start: datetime, now: datetime) -> None
         by=None,
         now=now,
     )
-    u = db.get(User, kid_id)
-    inbox.notify_parents(db, "boost", QUIET.format(u.full_name or u.username)[:120])
+    return True
 
 
 def pick_slot(local: datetime, rng: random.Random) -> datetime | None:

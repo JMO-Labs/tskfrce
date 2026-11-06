@@ -6,11 +6,12 @@ import pytest
 from app.models.family import get_family
 from app.models.happy_hour import HappyHour
 from app.models.user import UserRole
-from app.services import happy_hour, notify_jobs
+from app.services import boost, happy_hour, notify_jobs
 
 from tests.conftest import _make_user
 from tests.factories import make_run
 from tests.test_boost import AT16, WED, _auto, _quiet, _tick
+from tests.test_notify_core import _place
 
 
 @pytest.fixture(autouse=True)
@@ -80,7 +81,8 @@ def test_open_run_today_still_boosts(db, parent, kid):
 # (i) one kid failing never undoes the date guard, the other kids or the other jobs
 
 
-def test_one_kid_failing_does_not_stop_the_rest(db, parent, kid, monkeypatch, caplog):
+def test_one_kid_failing_does_not_stop_the_rest(db, parent, kid, monkeypatch, caplog, pings):
+    _place(db, events=("boost",))
     ana = _make_user(db, "ana", UserRole.KID)
     _quiet(db, parent, kid)
     for n in (1, 2):
@@ -100,6 +102,9 @@ def test_one_kid_failing_does_not_stop_the_rest(db, parent, kid, monkeypatch, ca
     assert db.query(HappyHour).count() == 1
     assert get_family(db).hh_auto_date == WED
     assert "auto boost failed" in caplog.text
+    name = kid.full_name or kid.username
+    assert [p[1] for p in pings] == [boost.QUIET.format(ana.full_name or ana.username)]
+    assert not any(name in p[1] for p in pings)  # no ghost ping for the failed kid
 
 
 # (j) team runs only (the run_kids path)

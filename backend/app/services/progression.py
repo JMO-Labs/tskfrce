@@ -153,7 +153,7 @@ def streak_with_freezes(days: dict[date, bool], today: date) -> Streak:
         else:
             if run:
                 runs.append(run)
-            run = 0
+            run, frozen = 0, []  # frozen covers only the current run
     return Streak(run, longest, runs, frozen, held)
 
 

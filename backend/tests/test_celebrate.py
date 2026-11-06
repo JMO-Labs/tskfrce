@@ -51,3 +51,20 @@ def test_check_constraint(db, kid):
     with pytest.raises(IntegrityError):
         db.query(User).filter(User.id == kid.id).update({"celebrate": "loud"})
     db.rollback()
+
+
+def test_null_clears_back_to_mode_default(client, db, kid, parent_headers):
+    kid.age_group, kid.celebrate = "teen", "off"
+    db.commit()
+    r = client.patch(f"/api/v1/kids/{kid.id}", json={"full_name": "T"}, headers=parent_headers)
+    assert r.json()["celebrate"] == "off"  # absent: unchanged
+    r = client.patch(f"/api/v1/kids/{kid.id}", json={"celebrate": None}, headers=parent_headers)
+    assert r.status_code == 200 and r.json()["celebrate"] == "small"
+    db.refresh(kid)
+    assert kid.celebrate is None
+    h = _headers(db, kid)
+    client.patch("/api/v1/kid/me", json={"celebrate": "off"}, headers=h)
+    r = client.patch("/api/v1/kid/me", json={"celebrate": None}, headers=h)
+    assert r.status_code == 200 and r.json()["celebrate"] == "small"
+    db.refresh(kid)
+    assert kid.celebrate is None
