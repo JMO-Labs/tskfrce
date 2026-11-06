@@ -40,6 +40,7 @@ EVENTS = {
     "box_offline": "Box offline",
     "lock_change": "Locked / unlocked",
     "overdue": "Overdue",
+    "workaround": "Tried a workaround",
 }
 SECURITY = {"resisting", "box_offline"}
 HELD = {"chore_ok", "kid_note", "reward_request", "new_device"}
@@ -50,6 +51,7 @@ DEFAULT_EVENTS = (
     "new_device",
     "resisting",
     "box_offline",
+    "workaround",
 )
 KIND_EVENT = {
     "chore_submitted": "chore_ok",
@@ -60,6 +62,8 @@ KIND_EVENT = {
     "new_device": "new_device",
     "device_resisting": "resisting",
     "device_bypass": "resisting",
+    "password_guess": "resisting",
+    "workaround_try": "workaround",
     "badge_earned": "badge",
     "level_up": "badge",
     "box_offline": "box_offline",
