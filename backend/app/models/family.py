@@ -64,7 +64,8 @@ class FamilySettings(Base):
     hh_weekly_surprise = Column(Boolean, nullable=False, default=False, server_default="0")
     hh_auto_boost = Column(Boolean, nullable=False, default=True, server_default="1")
     hh_auto_date = Column(Date, nullable=True)  # local day the auto boost job last ran
-    hh_surprise_date = Column(Date, nullable=True)  # local day the weekly surprise last ran
+    hh_surprise_date = Column(Date, nullable=True)  # local day this week's surprise was planned
+    hh_surprise_at = Column(DateTime, nullable=True)  # naive UTC start of the planned surprise
 
 
 def get_family(db: Session) -> FamilySettings:

@@ -40,6 +40,7 @@ KINDS = (
     "password_guess",
     "workaround_try",
     "happy_hour",
+    "boost",
 )
 
 
