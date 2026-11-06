@@ -76,6 +76,8 @@ def notify(
 
 
 def path_for(kind: str, *, run_id=None, redemption_id=None, device_id=None) -> str:
+    if kind == "password_guess":
+        return "/settings?section=parents#password"
     if device_id is not None:
         return f"/devices?item={device_id}"
     if run_id is not None:

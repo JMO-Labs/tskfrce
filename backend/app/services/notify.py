@@ -34,7 +34,7 @@ EVENTS = {
     "kid_note": "Kid note",
     "reward_request": "Reward request",
     "new_device": "New device",
-    "resisting": "Device resisting",
+    "resisting": "Security alerts",
     "badge": "Badge / level up",
     "summary": "Daily summary",
     "box_offline": "Box offline",
@@ -43,7 +43,7 @@ EVENTS = {
     "workaround": "Tried a workaround",
 }
 SECURITY = {"resisting", "box_offline"}
-HELD = {"chore_ok", "kid_note", "reward_request", "new_device"}
+HELD = {"chore_ok", "kid_note", "reward_request", "new_device", "workaround"}
 DEFAULT_EVENTS = (
     "chore_ok",
     "kid_note",

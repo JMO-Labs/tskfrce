@@ -89,3 +89,8 @@ def test_bad_category_422(client, db):
 
 def test_requires_token(client, db):
     assert client.post(URL, json={"found": {}}).status_code == 403
+
+
+def test_too_many_categories_422(client, db, parent):
+    _paused(db, parent)
+    assert _post(client, ["vpn", "tor", "proxy", "private_dns", "vpn"]).status_code == 422

@@ -118,12 +118,13 @@ class HitsReport(BaseModel):
         return out
 
 
-CATEGORIES = ("vpn", "private_dns", "proxy", "tor")
 WORD = {"vpn": "a VPN", "private_dns": "private DNS", "proxy": "a proxy site", "tor": "Tor"}
 
 
 class WorkaroundReport(BaseModel):
-    found: dict[str, list[Literal["vpn", "private_dns", "proxy", "tor"]]] = Field(max_length=1000)
+    found: dict[
+        str, Annotated[list[Literal["vpn", "private_dns", "proxy", "tor"]], Field(max_length=4)]
+    ] = Field(max_length=1000)
 
     @field_validator("found")
     @classmethod
@@ -183,7 +184,7 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
         _apply(dev, body, now)
         if old_ip is not None and body.ip is not None and old_ip != body.ip:
             activity.log(db, dev.id, "address_change", now, detail=f"{old_ip} → {body.ip}")
-        note_identity_change(db, dev, before[1], before[2], now)
+        note_identity_change(db, dev, before[1], now)
         changed = before != (dev.mdns_name, dev.model, dev.dhcp_fp)
         hinted = changed and dev.status == "unassigned" and apply_hint(db, dev)
     if new and dev.hostname:

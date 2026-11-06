@@ -47,6 +47,9 @@ def test_path_for():
     assert inbox.path_for("box_offline") == "/devices"
     assert inbox.path_for("redemption_decided") == "/kids?section=rewards&item=history"
     assert inbox.path_for("level_up") == "/"
+    assert inbox.path_for("password_guess") == "/settings?section=parents#password"
+    assert inbox.path_for("workaround_try", device_id=4) == "/devices?item=4"
+    assert inbox.path_for("device_bypass", device_id=4) == "/devices?item=4"
 
 
 def test_bypass_report_pings_parents_even_in_quiet_hours(client, db, parent, pings, monkeypatch):
