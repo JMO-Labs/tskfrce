@@ -1,6 +1,6 @@
 # Time banking: design
 
-Roadmap item 7a. Status: **draft for owner approval**.
+Roadmap item 7a. Status: **approved by owner 2026-11-06**.
 
 ## Why
 
@@ -59,6 +59,13 @@ Kids buy screen time with points, up to a daily max. If they skip screen time on
 - "Saved" shows in the Bought-today rows, not the limits list.
 - The kid's saved line is hidden when `max_today` is null.
 - Each request is still capped at 120 minutes, so a big day may take two requests.
+- Settle clamps the stored bank to the cap first: `min(cap, min(bank, cap) + daily_max - bought)`. Lowering the max or cap never gives back bank the kid already spent.
+- The **Save unused time** switch and **Save up to** field show when screen time is on and the family max or any kid's own max is set (owner ruling 2026-11-06). With no family max the field's placeholder reads "Same as each kid's daily max".
+- Settle is skipped while the setup wizard is open (`setup_step` set), the same as `run_reset`.
+
+## Future
+
+- Kids can contribute banked time to family goals (owner, 2026-11-06). Not built.
 
 ## Non-goals
 
