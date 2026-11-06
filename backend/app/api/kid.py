@@ -165,12 +165,15 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
     deds = svc.deductions(db, runs)
     texts = svc.note_texts(db, runs)
     seen = kid_view.seen_ids(db, kid.id, {r.assignment_id for r in runs})
-    hh = happy_hour.active_for(db, kid.id, now.replace(tzinfo=None))
+    naive = now.replace(tzinfo=None)
+    hh = happy_hour.active_for(db, kid.id, naive)
+    team_hh = happy_hour.active_for(db, None, naive)  # team runs: all-kids only, as on submit
 
     def mult(r: ChoreRun) -> int:  # display only: fixed on submit, else the live one
-        if r.status == "todo":
-            return hh.mult_x10 if hh else 10
-        return r.hh_mult_x10 or 10
+        if r.status != "todo":
+            return r.hh_mult_x10 or 10
+        live = team_hh if r.kid_id is None and r.assignment.mode == "team" else hh
+        return live.mult_x10 if live else 10
 
     return {
         "age_group": kid.age_group,

@@ -1,6 +1,6 @@
 """Happy Hour edge cases: window end, undo, inactive kids, ledger text, team runs."""
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from app.models.inbox import Notification
@@ -97,3 +97,16 @@ def test_race_run_keeps_submitter_scope(db, parent, kid):
 def test_start_with_no_active_kids_left_refuses(db, parent):
     with pytest.raises(ValueError):
         _start(db, parent, kids=[parent.id])
+
+
+def test_kid_today_team_run_ignores_kid_scoped_happy_hour(client, db, parent, kid, kid_headers):
+    from app.services import chores as svc
+
+    ana = _make_user(db, "ana", UserRole.KID)
+    today = svc.today(db, datetime.now(UTC))
+    make_run(db, parent, kids=[kid, ana], points=10, mode="team", day=today)
+    _start(
+        db, parent, kids=[kid.id], now=datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=1)
+    )
+    chore = client.get("/api/v1/kid/today", headers=kid_headers).json()["chores"][0]
+    assert chore["points_now"] == chore["points"] == 10

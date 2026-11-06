@@ -195,4 +195,11 @@ describe('TeenMode', () => {
     await userEvent.click(screen.getByRole('button', { name: /Homework/ }))
     expect(screen.getByText('5:30', { selector: '.k-steps .k-chip' })).toBeInTheDocument()
   })
+  test('Happy Hour: the detail header shows struck base and boosted points like the row', () => {
+    const hh = { ends_at: '2026-10-26T17:30:00Z', multiplier: 2 }
+    render(wrap(props({ d: today({ chores: [{ ...bathroom, points_now: 80 }], happy_hour: hh }) })))
+    const detail = screen.getByRole('heading', { name: 'Clean bathroom' }).closest('.t-detail') as HTMLElement
+    expect(within(detail).getByText('+40 pts', { selector: 's' })).toBeInTheDocument()
+    expect(within(detail).getByText('+80 pts')).toHaveAttribute('data-x2')
+  })
 })
