@@ -55,7 +55,7 @@ export function GroupDetail({ group, devices, kids, groups, rules, onSelect, onR
   const icon = group?.icon ?? draft.icon ?? 'devices'
   const choreLock = group?.chore_lock ?? draft.chore_lock ?? true
   // a free group (chore lock off) is never sold, so its price would do nothing
-  const showPrice = !!st?.group_pricing && choreLock
+  const showPrice = !!st?.enabled && !!st?.group_pricing && choreLock
   const ids = group ? group.device_ids : draftIds
   const members = devices.filter((d) => ids.includes(d.id))
   const locked = members.filter((d) => !d.online && d.status !== 'guest' && !d.exempt).length

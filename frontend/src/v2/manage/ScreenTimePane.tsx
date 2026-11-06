@@ -34,6 +34,8 @@ function HowItWorks({ st }: { st: ScreenTime }) {
         How it works
       </h3>
       <Switch id="st-enabled" label="Kids can buy extra minutes" on={val('enabled')} onChange={(v) => set({ enabled: v })} />
+      {val('enabled') && (
+        <>
       <div className="rw-form">
         <label className="pk-field">
           <span className="pk-label">Price</span>
@@ -68,6 +70,8 @@ function HowItWorks({ st }: { st: ScreenTime }) {
       <Switch id="st-auto" label="Approve automatically" on={val('auto_approve')} onChange={(v) => set({ auto_approve: v })} />
       <Switch id="st-hours" label="Only during allowed hours" on={val('only_in_allowed_hours')} onChange={(v) => set({ only_in_allowed_hours: v })} />
       {!val('only_in_allowed_hours') && <span className="pk-hint pk-hint-tight">Bought minutes work even outside allowed hours, but never during off hours like bedtime.</span>}
+        </>
+      )}
       <div className="pk-actions">
         <button type="button" className="p-btn" data-variant="accent" disabled={!dirty || patch.isPending} aria-busy={patch.isPending} onClick={save}>
           <Icon name="check" />
@@ -152,7 +156,7 @@ export function ScreenTimePane() {
           </div>
         ))}
       </section>
-      <ScreenLimits kids={st.kids} />
+      {st.enabled && <ScreenLimits kids={st.kids} />}
     </div>
   )
 }

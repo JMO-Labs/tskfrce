@@ -1,3 +1,4 @@
+import { Fold } from '@/v2/parent/Fold'
 import { useState, type ReactNode } from 'react'
 import { Input, NativeSelect, NumberInput, PasswordInput, SegmentedControl, Switch, TextInput } from '@mantine/core'
 import { useBlocker } from '@/v2/hooks/useDevices'
@@ -111,17 +112,23 @@ export function FamilyCard({ fam }: { fam: Family }) {
                 value={val('reset_time')}
                 onChange={(e) => set({ reset_time: e.currentTarget.value })}
               />
-              <NumberInput
-                label="Early finish bonus cap"
-                description="Most bonus points a kid can earn for finishing chores early."
-                min={0}
-                max={50}
-                allowDecimal={false}
-                value={val('early_bonus_cap')}
-                onChange={(v) => typeof v === 'number' && set({ early_bonus_cap: v })}
-              />
             </div>
           </PaneCard>
+          <Fold title="Points rules">
+            <PaneCard icon="stars" title="Points">
+              <div className="pn-fields">
+                <NumberInput
+                  label="Early finish bonus cap"
+                  description="Most bonus points a kid can earn for finishing chores early."
+                  min={0}
+                  max={50}
+                  allowDecimal={false}
+                  value={val('early_bonus_cap')}
+                  onChange={(v) => typeof v === 'number' && set({ early_bonus_cap: v })}
+                />
+              </div>
+            </PaneCard>
+          </Fold>
           <PaneCard icon="shield" title="Network">
             <Switchy
               label="Block new devices until I assign them"
@@ -143,6 +150,8 @@ export function GifsCard({ fam }: { fam: Family }) {
       {({ val, set }) => (
         <PaneCard icon="gif_box" title="GIPHY">
           <Switchy label="Allow GIFs in chat" checked={val('gifs_enabled')} onChange={(v) => set({ gifs_enabled: v })} />
+          {val('gifs_enabled') ? (
+            <>
           <div className="pn-fields">
             <Input.Wrapper label="GIF rating">
               <SegmentedControl
@@ -171,6 +180,10 @@ export function GifsCard({ fam }: { fam: Family }) {
             </a>
             . When on, GIF searches are sent to GIPHY through your home box. Your kids&apos; devices never talk to GIPHY directly.
           </p>
+            </>
+          ) : (
+            <p className="pn-help pn-note">Off. Turn on to search GIFs in chat (needs a free GIPHY key).</p>
+          )}
         </PaneCard>
       )}
     </Pane>

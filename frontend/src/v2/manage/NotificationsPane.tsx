@@ -4,6 +4,7 @@ import { Switch, TextInput } from '@mantine/core'
 import { TimeInput } from '@mantine/dates'
 import { useNotifySettings, usePatchNotifySettings, usePlaces, type NotifySettings, type SettingsPatch } from '@/v2/hooks/useNotify'
 import { Icon } from '@/v2/parent/Icon'
+import { Fold } from '@/v2/parent/Fold'
 import { EmptyState, ErrorPanel, Skeleton } from '@/v2/parent/states'
 import { toastFail } from '@/v2/notify'
 import { PaneHead } from './PaneParts'
@@ -43,6 +44,7 @@ function QuietCard({ s, save }: { s: NotifySettings; save: (p: SettingsPatch) =>
           <TimeInput label="To" {...to} />
         </div>
       )}
+      {on && (
       <div className="pn-kv">
         <Switch
           className="pn-sw"
@@ -52,6 +54,7 @@ function QuietCard({ s, save }: { s: NotifySettings; save: (p: SettingsPatch) =>
           onChange={(e) => save({ quiet_security: e.currentTarget.checked })}
         />
       </div>
+      )}
     </section>
   )
 }
@@ -72,6 +75,7 @@ function AddressCard({ s, save }: { s: NotifySettings; save: (p: SettingsPatch) 
         maxLength={200}
         {...field}
       />
+      <p className="pn-help pn-note">Leave blank to use {s.app_address_default ?? 'http://chores.local'}.</p>
     </section>
   )
 }
@@ -100,9 +104,13 @@ export function NotificationsPane() {
       {settings.data && places.data?.map((p) => <PlaceCard key={p.id} place={p} events={settings.data.events} />)}
       {settings.data && (
         <div className="pn-g2">
-          <QuietCard s={settings.data} save={save} />
-          <AddressCard s={settings.data} save={save} />
+          {places.data && places.data.length > 0 && <QuietCard s={settings.data} save={save} />}
         </div>
+      )}
+      {settings.data && (
+        <Fold title="Advanced">
+          <AddressCard s={settings.data} save={save} />
+        </Fold>
       )}
       <PlaceForm opened={adding} onClose={() => setAdding(false)} />
     </div>

@@ -253,7 +253,7 @@ describe('devices', () => {
   describe('group screen price', () => {
     const g = { id: 3, name: 'Tablets', device_ids: [1], owner_ids: [], icon: 'tv', chore_lock: true, screen_price: null as number | null }
     const mount = (grp = g, group_pricing = true) => {
-      apiMock.mockImplementation(async (path) => (path === '/screen-time' ? { price: 20, group_pricing } : {}))
+      apiMock.mockImplementation(async (path) => (path === '/screen-time' ? { enabled: true, price: 20, group_pricing } : {}))
       render(wrap(<GroupDetail group={grp} devices={[device]} kids={kids} onSelect={() => {}} onRequestOverride={() => {}} />))
     }
     test('hidden while group pricing is off', async () => {
@@ -273,7 +273,7 @@ describe('devices', () => {
       let release = () => {}
       let patches = 0
       apiMock.mockImplementation(async (path, opts) => {
-        if (path === '/screen-time') return { price: 20, group_pricing: true }
+        if (path === '/screen-time') return { enabled: true, price: 20, group_pricing: true }
         if ((opts as { method?: string } | undefined)?.method === 'PATCH' && patches++ === 0) await new Promise<void>((r) => (release = r))
         return {}
       })

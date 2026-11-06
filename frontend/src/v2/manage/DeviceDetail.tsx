@@ -156,6 +156,8 @@ export function DeviceDetail({ device, kids, groups = [], onDeleted, onRequestOv
           onClick={() => !patch.isPending && save({ status: !guest ? 'guest' : device.owner_ids.length ? 'assigned' : 'unassigned' }, 'Saved')}
         />
       </div>
+      {!guest && (
+        <>
       <div className="pk-switch ph-sw-row">
         <span id="exempt-label">Always allowed (never lock)</span>
         <button
@@ -168,7 +170,9 @@ export function DeviceDetail({ device, kids, groups = [], onDeleted, onRequestOv
           onClick={() => !patch.isPending && save({ exempt: !device.exempt }, 'Saved')}
         />
       </div>
-      <p className="pk-hint" id="exempt-hint">Skips hours and the chore check. A manual lock still applies.</p>
+      <p className="pk-hint" id="exempt-hint">For a kid&apos;s device that should skip hours and chores, like a school laptop. A manual lock still applies.</p>
+        </>
+      )}
     </section>
   )
 
