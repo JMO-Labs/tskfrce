@@ -195,3 +195,36 @@ describe('preview', () => {
     expect(screen.getByText("Alerts and chat show on Leo's own screen.")).toBeInTheDocument()
   })
 })
+
+describe('KidApp celebrations', () => {
+  const renderWith = (preview: boolean) => {
+    localStorage.clear()
+    const done = { mutate: jest.fn((_id: number, o?: { onSuccess?: () => void }) => o?.onSuccess?.()), isPending: false, variables: undefined }
+    render(
+      <QueryClientProvider client={client()}>
+        <MantineProvider theme={fridgeTheme}>
+          <KidApp d={today('kid')} name="Leo" avatar="🦁" kidId={3} preview={preview} onExit={() => {}} onLocker={() => {}} canSwitch={false} done={done} />
+        </MantineProvider>
+      </QueryClientProvider>,
+    )
+    return done
+  }
+
+  test("the kid's own done tap celebrates once it goes through", async () => {
+    const done = renderWith(false)
+    expect(document.querySelector('[data-celebrate]')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: /^Open Dishes/ }))
+    await userEvent.click(screen.getByRole('button', { name: /I'm done!/ }))
+    expect(done.mutate).toHaveBeenCalledTimes(1)
+    // this file's matchMedia stub matches every query, so reduced motion is on: the static badge
+    expect(document.querySelector('[data-celebrate="static"]')).not.toBeNull()
+    expect(screen.getByText('+5 ✓')).toBeInTheDocument()
+  })
+
+  test('parent preview never celebrates', async () => {
+    renderWith(true)
+    await userEvent.click(screen.getByRole('button', { name: /^Open Dishes/ }))
+    await userEvent.click(screen.getByRole('button', { name: /I'm done!/ }))
+    expect(document.querySelector('[data-celebrate]')).toBeNull()
+  })
+})

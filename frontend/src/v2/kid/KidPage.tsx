@@ -80,6 +80,7 @@ function Session({ name, avatar, kidId, onExit, canSwitch }: { name?: string; av
         onLockerClose={() => setLockerOpen(false)}
         canSwitch={canSwitch}
         done={done}
+        holdCelebrations={award}
       >
         {!introComplete && !preview && !award && <KidIntroSwipe kidId={kidId} onComplete={() => setIntroComplete(true)} />}
       </KidApp>

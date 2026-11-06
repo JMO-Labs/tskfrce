@@ -325,6 +325,8 @@ export interface KidChore extends TodayChore {
   taken_by?: string | null
   notes?: ChoreNote[]
   deductions?: { amount: number; note: string | null; by_name: string | null; at: string }[]
+  /** points with the live (todo) or locked-in (submitted) Happy Hour multiplier */
+  points_now?: number
 }
 
 export interface KidToday {
@@ -339,7 +341,13 @@ export interface KidToday {
   age_group: AgeGroup
   /** UTC ISO when the kid next locks; null = not today */
   locks_at: string | null
+  /** celebration level; missing = mode default (teen small, else full) */
+  celebrate?: CelebrateLevel
+  /** active Happy Hour, if any */
+  happy_hour?: { ends_at: string; multiplier: number } | null
 }
+
+export type CelebrateLevel = 'full' | 'small' | 'off'
 
 /** GET /kids/{id}/push */
 export interface KidPush {
@@ -421,6 +429,9 @@ export interface Progress {
   floor: number
   next: number
   streak: number
+  freezes_held?: number
+  /** ISO dates a freeze covered in the current run */
+  frozen?: string[]
   flair?: Flair
 }
 

@@ -8,6 +8,9 @@ import { useMarkSeen } from '../hooks/useKid'
 import { askOnFirstClick, useOsNotify } from '../osNotify'
 import type { KidToday } from '../types'
 import { AlertsMoved } from './AlertsMoved'
+import { CelebrationLayer } from './celebrate/CelebrationLayer'
+import { useCelebrationTriggers } from './celebrate/triggers'
+import { useCelebrate } from './celebrate/useCelebrate'
 import { KidAlerts } from './KidAlerts'
 import { Locker } from './Locker'
 import { tally } from './kidChips'
@@ -33,13 +36,15 @@ export interface KidAppProps {
   lockerOpen?: boolean
   onLockerClose?: () => void
   canSwitch: boolean
-  done: { mutate: (id: number) => void; isPending: boolean; variables?: number }
+  done: { mutate: (id: number, opts?: { onSuccess?: () => void }) => void; isPending: boolean; variables?: number }
+  /** an award card is up: celebrations wait for it */
+  holdCelebrations?: boolean
   /** shown above the chores (first-visit intro) */
   children?: ReactNode
 }
 
 /** The kid app: full-width shell, age-mode nav, and the Chores / Rewards / Alerts / Me tabs. */
-export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lockerOpen = false, onLockerClose, canSwitch, done, children }: KidAppProps) {
+export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lockerOpen = false, onLockerClose, canSwitch, done, holdCelebrations = false, children }: KidAppProps) {
   const [chosen, setTab] = useState<KidTab>('chores')
   const showLocker = lockerOpen && !!d.progress
   const tab = showLocker ? 'me' : chosen
@@ -64,6 +69,15 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
       window.removeEventListener(OPEN_CHAT_LIST_EVENT, show)
     }
   }, [chat])
+  const cel = useCelebrate({ level: d.celebrate ?? (mode === 'teen' ? 'small' : 'full'), mode, kidLevel: d.progress?.level ?? 1, hold: holdCelebrations })
+  const submitted = useCelebrationTriggers(d, kidId, cel.fire, !preview)
+  const onDone = (id: number) =>
+    done.mutate(id, {
+      onSuccess: () => {
+        const c = d.chores.find((x) => x.id === id)
+        if (c) submitted(c)
+      },
+    })
   const Mode = MODES[mode]
   const badges = {
     chores: tally(d.chores).todo,
@@ -109,7 +123,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
           name={name}
           avatar={avatar}
           now={now}
-          onDone={done.mutate}
+          onDone={onDone}
           busyId={done.isPending ? done.variables ?? null : null}
           onSeen={seen.mutate}
           onChat={preview || mode === 'little' ? undefined : (id) => openChat('chore', String(id))}
@@ -132,6 +146,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
           </div>
         )}
       </main>
+      <CelebrationLayer cel={cel} balance={d.points_balance} />
     </div>
   )
 }

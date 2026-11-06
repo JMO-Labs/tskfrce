@@ -1,0 +1,484 @@
+/* Comic celebrations (excitement-v2/v3, trex-tryout-v5 mockups), one-shot in about 1.5 s.
+   Kid tokens only (--k-*). Every delay goes through --d so the dev freeze hook can pause on a key frame. */
+.root {
+  --t: 1.5s;
+  --ink: var(--k-ink); /* outlines: navy in light, light in dark, like the kid cards */
+  --impact: Impact, 'Arial Black', var(--font-display), system-ui, sans-serif;
+  position: fixed;
+  inset: 0;
+  z-index: 999; /* under AwardOverlay (1000) */
+  overflow: hidden;
+  pointer-events: none;
+  contain: layout paint;
+}
+.root * {
+  pointer-events: none;
+  animation-duration: var(--t);
+  animation-fill-mode: both;
+  animation-timing-function: ease-out;
+  animation-delay: var(--d, 0s);
+}
+.root[data-freeze],
+.root[data-freeze] * {
+  animation-play-state: paused !important;
+  animation-delay: calc(var(--cel-freeze, 0ms) + var(--d, 0s)) !important;
+}
+
+/* --- reduced motion: a static badge, nothing moves --- */
+.badge {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--k-navh, 0px) + 24px);
+  transform: translateX(-50%);
+  background: var(--k-sun);
+  color: var(--k-navy); /* on sun */
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: var(--k-shadow);
+  padding: 8px 16px;
+  font: 900 22px var(--impact);
+  white-space: nowrap;
+}
+
+/* --- the card copy, with its +N tag --- */
+.cardWrap {
+  position: absolute;
+  left: 50%;
+  top: 22%;
+  width: min(86vw, 340px);
+  transform: translateX(-50%);
+}
+[data-mode='little'] .cardWrap { width: min(90vw, 400px); }
+.card {
+  position: relative;
+  background: var(--k-card);
+  color: var(--k-ink);
+  border: 2px solid var(--k-ink);
+  border-radius: 14px;
+  box-shadow: var(--k-shadow);
+  padding: 12px 14px;
+  font: 700 18px var(--font-body), system-ui, sans-serif;
+  animation-name: pop;
+}
+[data-mode='little'] .card { font-size: 22px; padding: 16px 18px; }
+.card small { display: block; font-weight: 500; font-size: 14px; color: var(--k-sub); }
+.tag {
+  position: absolute;
+  right: -6px;
+  top: -16px;
+  background: var(--k-sun);
+  color: var(--k-navy); /* on sun */
+  border: 2px solid var(--ink);
+  box-shadow: var(--k-shadow);
+  padding: 4px 9px;
+  font: 900 20px var(--impact);
+  animation-name: tag;
+}
+@keyframes pop {
+  0% { opacity: 0; transform: scale(0.85); }
+  10% { opacity: 1; transform: scale(1.1); background: var(--k-blue); }
+  20% { transform: scale(0.97); }
+  28%, 86% { opacity: 1; transform: none; background: var(--k-blue); }
+  100% { opacity: 0; transform: none; background: var(--k-blue); }
+}
+@keyframes wiggle {
+  0% { opacity: 0; transform: none; }
+  4% { opacity: 1; transform: rotate(-3deg) scale(1.04); background: var(--k-blue); }
+  10% { transform: rotate(3deg) scale(1.04); }
+  16% { transform: rotate(-1.5deg); }
+  22%, 86% { opacity: 1; transform: none; background: var(--k-blue); }
+  100% { opacity: 0; transform: none; background: var(--k-blue); }
+}
+@keyframes tag {
+  0%, 2% { opacity: 0; transform: scale(0.2) rotate(0); }
+  8% { opacity: 1; transform: scale(1.25) rotate(10deg); }
+  14%, 80% { opacity: 1; transform: scale(1) rotate(6deg); }
+  100% { opacity: 0; transform: scale(1) rotate(6deg) translateY(-14px); }
+}
+.card[data-card='wiggle'] { animation-name: wiggle; }
+
+/* stamp: DONE! slams onto the card, which jolts */
+.card[data-card='stamp'] { animation-name: jolt; }
+@keyframes jolt {
+  0% { opacity: 0; }
+  4%, 9% { opacity: 1; transform: none; }
+  11% { transform: translateY(4px); }
+  14% { transform: translateY(-1px); }
+  18%, 86% { opacity: 1; transform: none; }
+  100% { opacity: 0; }
+}
+.stamp {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  font: 900 34px var(--impact);
+  color: var(--k-coral);
+  border: 4px solid var(--k-coral);
+  border-radius: 8px;
+  padding: 2px 12px;
+  background: color-mix(in srgb, var(--k-card) 60%, transparent);
+  animation-name: stamp;
+}
+@keyframes stamp {
+  0%, 2% { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(3); }
+  10% { opacity: 1; transform: translate(-50%, -50%) rotate(-12deg) scale(0.9); }
+  15%, 84% { opacity: 1; transform: translate(-50%, -50%) rotate(-12deg) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(1); }
+}
+
+/* blast off: rumble, then up and away in smoke */
+.card[data-card='blast'] { animation-name: launch; animation-timing-function: ease-in; }
+@keyframes launch {
+  0% { opacity: 0; transform: none; }
+  6% { opacity: 1; }
+  12% { transform: translate(-2px, 3px) rotate(-2deg); }
+  18% { transform: translate(2px, 4px) rotate(2deg); }
+  24% { transform: translateY(4px) rotate(-1deg); }
+  60%, 100% { opacity: 1; transform: translateY(-80vh) rotate(0); }
+}
+.smoke {
+  position: absolute;
+  bottom: -18px;
+  left: calc(30% + var(--i) * 18%);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--k-line);
+  border: 2px solid var(--ink);
+  animation-name: puff;
+}
+@keyframes puff {
+  0%, 22% { opacity: 0; transform: scale(0.3); }
+  36% { opacity: 1; transform: scale(1); }
+  80%, 100% { opacity: 0; transform: scale(1.7) translateY(12px); }
+}
+
+/* explode: the card shakes, flashes and bursts into pieces */
+.card[data-card='explode'] { animation-name: burst; }
+@keyframes burst {
+  0% { opacity: 0; transform: scale(0.9); }
+  6% { opacity: 1; transform: none; }
+  12% { transform: translate(-3px, 1px) rotate(-1deg); }
+  16% { transform: translate(3px, -1px) rotate(1deg); }
+  20% { transform: translate(-3px, 0) scale(1.04); }
+  25% { opacity: 1; transform: scale(1.12); }
+  28%, 100% { opacity: 0; transform: scale(1.2); }
+}
+.flash {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 170px;
+  height: 170px;
+  margin: -85px 0 0 -85px;
+  background: var(--k-sun);
+  border: 3px solid var(--ink);
+  clip-path: polygon(50% 0, 61% 30%, 95% 18%, 72% 45%, 100% 62%, 66% 66%, 72% 100%, 50% 74%, 26% 98%, 32% 66%, 0 60%, 28% 45%, 6% 16%, 39% 30%);
+  animation-name: flash;
+}
+@keyframes flash {
+  0%, 24% { opacity: 0; transform: scale(0.2) rotate(0); }
+  30% { opacity: 1; transform: scale(1.1) rotate(8deg); }
+  55% { opacity: 1; transform: scale(1) rotate(12deg); }
+  70%, 100% { opacity: 0; transform: scale(1.2) rotate(14deg); }
+}
+.shard {
+  position: absolute;
+  left: calc(50% - 24px);
+  top: calc(50% - 18px);
+  width: 48px;
+  height: 36px;
+  background: var(--k-card);
+  border: 2px solid var(--k-ink);
+  box-shadow: var(--k-shadow);
+  clip-path: polygon(0 10%, 70% 0, 100% 55%, 40% 100%, 8% 70%);
+  animation-name: shard;
+  animation-timing-function: cubic-bezier(0.1, 0.7, 0.3, 1);
+}
+.shard:nth-child(3n) { width: 34px; height: 30px; background: var(--k-blue); clip-path: polygon(20% 0, 100% 30%, 70% 100%, 0 80%); }
+.shard:nth-child(4n) { background: var(--k-sun); }
+@keyframes shard {
+  0%, 26% { opacity: 0; transform: none; }
+  28% { opacity: 1; transform: none; }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--x), var(--y)) rotate(var(--r)); }
+}
+
+/* --- the word --- */
+.word {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  max-width: 94vw;
+  font-family: var(--impact);
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--k-coral);
+  -webkit-text-stroke: 2px var(--ink);
+  text-shadow: var(--k-shadow);
+  animation-name: word;
+}
+.word[data-color='green'] { color: var(--k-green); }
+.word[data-color='sun'] { color: var(--k-sun); }
+.word[data-color='lav'] { color: var(--k-lav); }
+:global([data-mantine-color-scheme='dark']) .word[data-color='lav'] { color: color-mix(in srgb, var(--k-lav) 35%, var(--k-ink)); }
+@keyframes word {
+  0%, 3% { opacity: 0; transform: translate(-50%, -50%) scale(0.3) rotate(-14deg); }
+  10% { opacity: 1; transform: translate(-50%, -50%) scale(1.2) rotate(-6deg); }
+  18%, 76% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-6deg); }
+  100% { opacity: 0; transform: translate(-50%, -70%) scale(1.1) rotate(-6deg); }
+}
+/* effects whose word lands late */
+.root[data-burst='balloon'] .word { --d: 0.42s; animation-duration: 1.08s; }
+.root[data-card='blast'] .word { --d: 0.3s; animation-duration: 1.2s; }
+.root[data-card='explode'] .word { --d: 0.36s; animation-duration: 1.14s; }
+.root[data-burst='sneeze'] .word { --d: 0.45s; animation-duration: 1.05s; }
+
+/* --- confetti --- */
+.confetti i {
+  position: absolute;
+  top: -20px;
+  left: var(--x);
+  width: 10px;
+  height: 15px;
+  border: 1px solid var(--ink);
+  background: var(--k-sun);
+  animation-name: fall;
+  animation-timing-function: linear;
+}
+.confetti i:nth-child(4n + 1) { background: var(--k-green); }
+.confetti i:nth-child(4n + 2) { background: var(--k-coral); }
+.confetti i:nth-child(4n + 3) { background: var(--k-lav); }
+@keyframes fall {
+  0%, 2% { opacity: 0; transform: translateY(0) rotate(0); }
+  5% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(105vh) rotate(540deg); }
+}
+
+/* --- coins fly from the card into the points counter, which bumps --- */
+.counter {
+  position: absolute;
+  right: 14px;
+  top: calc(var(--k-top, 0px) + 14px);
+  background: var(--k-sun);
+  color: var(--k-navy); /* on sun */
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: var(--k-shadow);
+  padding: 4px 12px;
+  font: 900 18px var(--font-body), system-ui, sans-serif;
+  animation-name: bump;
+}
+@keyframes bump {
+  0% { opacity: 0; transform: translateY(-10px); }
+  8%, 60% { opacity: 1; transform: none; }
+  66% { transform: scale(1.3); }
+  72%, 88% { opacity: 1; transform: none; }
+  100% { opacity: 0; }
+}
+.coin {
+  position: absolute;
+  z-index: 1; /* out of the card, not behind it */
+  left: calc(50% - 11px);
+  top: 26%;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--k-sun);
+  border: 2px solid var(--ink);
+  box-shadow: inset -3px -3px 0 var(--k-amber);
+  animation-name: coin;
+  animation-timing-function: cubic-bezier(0.5, 0, 0.6, 1);
+}
+@keyframes coin {
+  0%, 8% { opacity: 0; transform: none; }
+  14% { opacity: 1; transform: translate(var(--sx), -40px); }
+  58% { opacity: 1; transform: translate(calc(50vw - 60px), calc(var(--k-top, 0px) + 22px - 26vh)) scale(0.6); }
+  62%, 100% { opacity: 0; transform: translate(calc(50vw - 60px), calc(var(--k-top, 0px) + 22px - 26vh)) scale(0.6); }
+}
+
+/* --- balloon: inflates, wobbles, POP --- */
+.balloon {
+  position: absolute;
+  left: calc(50% - 55px);
+  top: calc(50% - 160px);
+  width: 110px;
+  height: 132px;
+  border-radius: 50% 50% 48% 48%;
+  background: var(--k-lav);
+  border: 3px solid var(--ink);
+  animation-name: balloon;
+}
+.balloon::after {
+  content: '';
+  position: absolute;
+  left: 53px;
+  bottom: -40px;
+  width: 2px;
+  height: 40px;
+  background: var(--ink);
+}
+@keyframes balloon {
+  0% { opacity: 0; transform: scale(0.4); }
+  6% { opacity: 1; transform: scale(0.6); }
+  16% { transform: scale(0.85) rotate(-4deg); }
+  24% { transform: scale(1) rotate(4deg); }
+  30% { opacity: 1; transform: scale(1.12) rotate(0); }
+  34%, 100% { opacity: 0; transform: scale(1.4); }
+}
+
+/* --- disco: ball drops, beams spin --- */
+.beams {
+  position: absolute;
+  inset: -20%;
+  background: repeating-conic-gradient(from 0deg at 50% 25%, color-mix(in srgb, var(--k-sun) 35%, transparent) 0 8deg, transparent 8deg 30deg);
+  animation-name: beams;
+}
+@keyframes beams {
+  0%, 10% { opacity: 0; transform: rotate(0); }
+  24%, 78% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(40deg); }
+}
+.ball {
+  position: absolute;
+  left: calc(50% - 32px);
+  top: 4%;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: conic-gradient(var(--k-blue) 0 25%, var(--k-card) 0 50%, var(--k-blue) 0 75%, var(--k-card) 0);
+  animation-name: drop;
+}
+@keyframes drop {
+  0% { transform: translateY(-200%); }
+  22%, 82% { transform: translateY(0) rotate(360deg); }
+  100% { transform: translateY(-200%) rotate(420deg); }
+}
+
+/* --- confetti sneeze: the cat winds up and sprays --- */
+.sneezer {
+  position: absolute;
+  left: max(4vw, calc(50% - 200px));
+  top: calc(22% + 92px);
+  width: 96px;
+  animation-name: sneeze;
+}
+.sneezer img { width: 100%; display: block; }
+@keyframes sneeze {
+  0% { opacity: 0; transform: scale(0.6); }
+  8%, 14% { opacity: 1; transform: none; }
+  24% { transform: rotate(-10deg) translateX(-4px); }
+  32% { transform: rotate(12deg) translateX(8px); }
+  44%, 86% { opacity: 1; transform: none; }
+  100% { opacity: 0; }
+}
+.sneezer i {
+  position: absolute;
+  left: 80px;
+  top: 40px;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid var(--ink);
+  background: var(--k-sun);
+  animation-name: spray;
+}
+.sneezer i:nth-of-type(4n + 1) { background: var(--k-coral); }
+.sneezer i:nth-of-type(4n + 2) { background: var(--k-green); }
+.sneezer i:nth-of-type(4n + 3) { background: var(--k-lav); }
+@keyframes spray {
+  0%, 30% { opacity: 0; transform: none; }
+  33% { opacity: 1; }
+  80% { opacity: 1; transform: translate(var(--x), var(--y)) rotate(360deg); }
+  100% { opacity: 0; transform: translate(var(--x), var(--y)) rotate(400deg); }
+}
+
+/* --- mascot: centred, rises so the image bottom stays below the screen edge (trex-tryout v5) --- */
+.mascot {
+  --w: min(60vw, 240px);
+  --peak: 4%; /* how much of the image stays under the edge at the top of the jump */
+  --rest: 7%;
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: var(--w);
+  margin-left: calc(var(--w) / -2);
+  transform-origin: 50% 100%;
+  animation-name: rise;
+}
+.mascot[data-art='emoji'] { --peak: 12%; --rest: 16%; } /* emoji art has a transparent margin */
+[data-mode='little'] .mascot { --w: min(68vw, 280px); }
+.mascotImg { display: block; width: 100%; }
+@keyframes rise {
+  0%, 8% { transform: translateY(105%); }
+  20% { transform: translateY(var(--peak)) rotate(-3deg); }
+  28% { transform: translateY(calc(var(--rest) + 4%)) rotate(2deg); }
+  36%, 76% { transform: translateY(var(--rest)) rotate(0); }
+  100% { transform: translateY(105%); }
+}
+.prop {
+  position: absolute;
+  left: -14%;
+  bottom: 30%;
+  width: 38%;
+  transform: rotate(-12deg);
+}
+.bubble {
+  position: absolute;
+  right: -6%;
+  top: -4%;
+  background: var(--k-card);
+  color: var(--k-ink);
+  border: 2px solid var(--k-ink);
+  border-radius: 14px;
+  box-shadow: var(--k-shadow);
+  padding: 6px 10px;
+  font: 900 20px var(--impact);
+  white-space: nowrap;
+  animation-name: bubble;
+}
+[data-mode='little'] .bubble { font-size: 26px; }
+@keyframes bubble {
+  0%, 22% { opacity: 0; transform: scale(0.4); }
+  30%, 74% { opacity: 1; transform: none; }
+  86%, 100% { opacity: 0; transform: none; }
+}
+
+/* --- legendary: parade or dance party --- */
+.legend .cast {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 6%;
+  display: flex;
+  justify-content: center;
+  gap: 2vw;
+}
+.legend .cast img { width: min(18vw, 120px); animation-name: dance; animation-timing-function: ease-in-out; }
+@keyframes dance {
+  0% { opacity: 0; transform: translateY(60px); }
+  10% { opacity: 1; transform: none; }
+  20%, 40%, 60% { transform: translateY(-24px) rotate(-8deg); }
+  30%, 50%, 70% { transform: translateY(0) rotate(8deg); }
+  86% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(60px); }
+}
+[data-legendary='parade'] .cast { justify-content: flex-start; gap: 3vw; }
+[data-legendary='parade'] .cast img {
+  animation: march var(--t) linear var(--d, 0s) both, bob 0.25s ease-in-out var(--d, 0s) infinite alternate;
+}
+@keyframes march {
+  0% { transform: translateX(-100vw); }
+  100% { transform: translateX(100vw); }
+}
+@keyframes bob {
+  to { translate: 0 -14px; rotate: 6deg; }
+}
+.popper { position: absolute; left: 4%; top: 12%; width: min(24vw, 140px); animation-name: dance; }
+
+@media (prefers-reduced-motion: reduce) {
+  .root * { animation: none !important; }
+}

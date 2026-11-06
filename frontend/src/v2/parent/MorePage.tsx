@@ -7,6 +7,8 @@ import { SETTINGS_SECTIONS } from '@/v2/manage/settingsSections'
 import { useBlocker } from '@/v2/hooks/useDevices'
 import { Icon } from './Icon'
 
+const NOTO_URL = 'https://googlefonts.github.io/noto-emoji-animation/'
+
 export function MorePage({ onLogout }: { onLogout: () => void }) {
   const { user } = useUnifiedAuth()
   const family = useFamily()
@@ -63,6 +65,16 @@ export function MorePage({ onLogout }: { onLogout: () => void }) {
           <Icon name="help" />
           Help & guide
         </Link>
+      </div>
+      <div className="p-more-section">
+        <h2 className="p-cap">About</h2>
+        <p className="p-cap">
+          {'Animated emoji: '}
+          <a href={NOTO_URL} target="_blank" rel="noopener noreferrer">
+            Noto Emoji Animation by Google
+          </a>
+          {', CC BY 4.0'}
+        </p>
       </div>
       <button type="button" onClick={onLogout} className="p-more-logout p-btn" data-variant="ghost">
         <Icon name="logout" />
