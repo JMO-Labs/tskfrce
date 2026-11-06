@@ -46,6 +46,7 @@ class FamilySettings(Base):
     screen_max_minutes = Column(Integer, nullable=True)  # NULL = no daily max
     screen_auto_approve = Column(Boolean, nullable=False, default=False, server_default="0")
     screen_only_allowed_hours = Column(Boolean, nullable=False, default=True, server_default="1")
+    group_pricing = Column(Boolean, nullable=False, default=False, server_default="0")  # opt-in
     quick_replies = Column(Text, nullable=True)  # JSON list; NULL = defaults
     blocker_last_seen = Column(DateTime, nullable=True)  # naive UTC; home box heartbeat
     quiet_start = Column(String(5), nullable=True)

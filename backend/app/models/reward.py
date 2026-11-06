@@ -51,6 +51,9 @@ class Redemption(Base):
         CheckConstraint(
             "(kind = 'screen_time') = (minutes IS NOT NULL)", name="ck_redemption_minutes"
         ),
+        CheckConstraint(
+            "screen_scope IN ('all','other','group')", name="ck_redemption_screen_scope"
+        ),
     )
 
     id = Column(Integer, primary_key=True)
@@ -68,7 +71,9 @@ class Redemption(Base):
     note = Column(String(200), nullable=True)
     # the device a screen-time request is about (kid's pick); gone device -> NULL
     device_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), nullable=True)
-    # the device group a screen-time request is for; deleted group -> NULL (unlocks all)
+    # the device group a screen-time request is for; deleted group -> NULL
     device_group_id = Column(
         Integer, ForeignKey("device_groups.id", ondelete="SET NULL"), nullable=True
     )
+    # screen time only: what was bought (all devices | ungrouped "other" | one group)
+    screen_scope = Column(String(8), nullable=True)

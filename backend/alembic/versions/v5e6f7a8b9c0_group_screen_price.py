@@ -29,10 +29,24 @@ def upgrade() -> None:
             ["id"],
             ondelete="SET NULL",
         )
+        b.add_column(sa.Column("screen_scope", sa.String(8), nullable=True))
+        b.create_check_constraint(
+            "ck_redemption_screen_scope", "screen_scope IN ('all','other','group')"
+        )
+    op.execute(
+        "UPDATE redemptions SET screen_scope = CASE WHEN device_group_id IS NULL"
+        " THEN 'all' ELSE 'group' END WHERE kind = 'screen_time'"
+    )
+    with op.batch_alter_table("family_settings") as b:
+        b.add_column(sa.Column("group_pricing", sa.Boolean(), nullable=False, server_default="0"))
 
 
 def downgrade() -> None:
+    with op.batch_alter_table("family_settings") as b:
+        b.drop_column("group_pricing")
     with op.batch_alter_table("redemptions") as b:
+        b.drop_constraint("ck_redemption_screen_scope", type_="check")
+        b.drop_column("screen_scope")
         b.drop_constraint("fk_redemptions_device_group_id", type_="foreignkey")
         b.drop_column("device_group_id")
     with op.batch_alter_table("device_groups") as b:

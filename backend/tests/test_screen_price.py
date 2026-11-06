@@ -7,7 +7,7 @@ from app.models.reward import Redemption
 from app.services import economy, screen_time
 from fastapi import HTTPException
 
-ALL = {"group_id": None, "name": "All my devices", "icon": "devices"}
+ALL = {"group_id": None, "scope": "all", "name": "All my devices", "icon": "devices"}
 
 
 def _dev(db, kid, n, groups=(), exempt=False):
@@ -28,7 +28,7 @@ def _grp(db, name, price=None, chore_lock=True):
 
 def _opts(db, kid):
     fam = get_family(db)
-    fam.screen_time_price = 20
+    fam.screen_time_price, fam.group_pricing = 20, True
     db.commit()
     return fam, screen_time.options(db, fam, kid)
 
@@ -45,8 +45,8 @@ def test_group_price_adds_option(db, kid):
     got = _opts(db, kid)[1]
     assert got == [
         {**ALL, "price": 40},
-        {"group_id": t.id, "name": "Tablets", "icon": "devices", "price": 20},
-        {"group_id": c.id, "name": "Consoles", "icon": "devices", "price": 40},
+        {"group_id": t.id, "scope": "group", "name": "Tablets", "icon": "devices", "price": 20},
+        {"group_id": c.id, "scope": "group", "name": "Consoles", "icon": "devices", "price": 40},
     ]
 
 
@@ -78,9 +78,9 @@ def test_price_for_rejects_foreign_group(db, kid):
     other = _grp(db, "Other", 40)
     _dev(db, kid, 1, [_grp(db, "Tablets")])
     fam, _ = _opts(db, kid)
-    assert screen_time.price_for(db, fam, kid, None) == 20
+    assert screen_time.price_for(db, fam, kid, "all", None) == 20
     with pytest.raises(HTTPException) as e:
-        screen_time.price_for(db, fam, kid, other.id)
+        screen_time.price_for(db, fam, kid, "group", other.id)
     assert (e.value.status_code, e.value.detail) == (400, "Pick one of your options.")
 
 
@@ -99,7 +99,7 @@ def _setup(db, kid, parent):
     dt, dc = _dev(db, kid, 1, [t]), _dev(db, kid, 2, [c])
     fam = get_family(db)
     fam.screen_time_price, fam.points_unlock_early = 20, True
-    fam.screen_auto_approve = False
+    fam.screen_auto_approve, fam.group_pricing = False, True
     db.add(Points(user_id=kid.id, points_type=PointsType.BONUS, amount=500, reason="bonus"))
     db.commit()
     return c, dt, dc
@@ -107,19 +107,19 @@ def _setup(db, kid, parent):
 
 def _setup_prices(db, kid):
     fam = get_family(db)
-    fam.screen_time_price, fam.points_unlock_early = 20, True
+    fam.screen_time_price, fam.points_unlock_early, fam.group_pricing = 20, True, True
     db.add(Points(user_id=kid.id, points_type=PointsType.BONUS, amount=500, reason="bonus"))
     db.commit()
 
 
-def _req(db, kid, gid=None):
-    return economy.request(db, kid, "screen_time", None, 30, group_id=gid)
+def _req(db, kid, gid=None, scope=None):
+    return economy.request(db, kid, "screen_time", None, 30, group_id=gid, scope=scope)
 
 
 def test_request_group_cost(db, kid, parent):
     c, _, _ = _setup(db, kid, parent)
     red = _req(db, kid, c.id)
-    assert (red.cost, red.device_group_id) == (80, c.id)
+    assert (red.cost, red.device_group_id, red.screen_scope) == (80, c.id, "group")
 
 
 def test_request_all_uses_max(db, kid, parent):
@@ -143,16 +143,6 @@ def test_decide_unlocks_only_group(db, kid, parent):
     assert {o.device_id for o in db.query(Override).filter_by(source="bonus")} == {dc.id}
 
 
-def test_decide_deleted_group_unlocks_all(db, kid, parent):
-    c, dt, dc = _setup(db, kid, parent)
-    red = _req(db, kid, c.id)
-    db.delete(db.get(DeviceGroup, c.id))
-    db.commit()
-    economy.decide(db, red, parent, True)
-    assert {o.device_id for o in db.query(Override).filter_by(source="bonus")} == {dt.id, dc.id}
-    assert db.query(Points).filter_by(reason="redemption").one().amount == -red.cost
-
-
 def test_redemption_name_group(db, kid, parent):
     c, _, _ = _setup(db, kid, parent)
     assert redemption_name(db, _req(db, kid, c.id)) == "30 min on Consoles"
@@ -170,17 +160,6 @@ def test_shared_device_not_unlocked_below_its_price(db, kid, parent):
     economy.decide(db, _req(db, kid, t.id), parent, True)
     assert _bonus_devs(db) == {only_t.id}
     assert shared.id not in _bonus_devs(db)
-
-
-def test_deleted_group_does_not_unlock_dearer_device(db, kid, parent):
-    t, c = _grp(db, "Tablets"), _grp(db, "Consoles", 40)
-    only_t, only_c = _dev(db, kid, 1, [t]), _dev(db, kid, 2, [c])
-    _setup_prices(db, kid)
-    red = _req(db, kid, t.id)
-    db.delete(db.get(DeviceGroup, t.id))
-    db.commit()
-    economy.decide(db, red, parent, True)
-    assert _bonus_devs(db) == {only_t.id}
 
 
 def test_buy_all_unlocks_everything(db, kid, parent):
