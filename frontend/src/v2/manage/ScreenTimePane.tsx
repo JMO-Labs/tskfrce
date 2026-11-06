@@ -19,6 +19,7 @@ function HowItWorks({ st }: { st: ScreenTime }) {
   const val = <K extends keyof ScreenPatch>(k: K) => (k in draft ? draft[k] : st[k]) as ScreenTime[K]
   const set = (p: ScreenPatch) => setDraft((d) => ({ ...d, ...p }))
   const priceErr = intError(price, 1, 1000)
+  const priceBad = !!val('enabled') && !!priceErr // a hidden field never blocks Save
   const [cap, setCap] = useState(st.bank_cap == null ? '' : String(st.bank_cap))
   const capErr = cap.trim() ? intError(cap, 15, 480) || (Number(cap) % 15 ? 'Use steps of 15.' : '') : ''
   const changed: ScreenPatch = Object.fromEntries(Object.entries(draft).filter(([k, v]) => v !== st[k as keyof ScreenPatch]))
@@ -98,7 +99,7 @@ function HowItWorks({ st }: { st: ScreenTime }) {
         </>
       )}
       <div className="pk-actions">
-        <button type="button" className="p-btn" data-variant="accent" disabled={!dirty || !!priceErr || capBad || patch.isPending} aria-busy={patch.isPending} onClick={save}>
+        <button type="button" className="p-btn" data-variant="accent" disabled={!dirty || priceBad || capBad || patch.isPending} aria-busy={patch.isPending} onClick={save}>
           <Icon name="check" />
           Save
         </button>
