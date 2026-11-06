@@ -8,6 +8,7 @@ export type OverrideAction = 'lock' | 'unlock'
 /** GET /setup */
 export interface SetupStatus {
   needed: boolean
+  claim?: boolean
 }
 
 export interface Override {

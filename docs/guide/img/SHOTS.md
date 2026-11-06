@@ -18,3 +18,6 @@ Taken with Playwright from a demo family (kids Bobby and Susan), read-only: ever
 | `kid-today.jpg` | Kid page (phone): internet paused, chore cards with points and due chips. |
 | `kid-chore.jpg` | Kid page: one chore opened with chained steps, "I'm done!" held back. |
 | `kid-locker.jpg` | Kid **Customize** (Locker): name card preview, slot tabs, locked items with unlock level. |
+| `setup-claim.jpg` | Box code screen (phone), empty, from the sticker's **Open my box** link. |
+| `setup-phones.jpg` | Setup wizard step 4 "Kids' phones" (phone). The QR is a mock pattern. |
+| `kid-welcome.jpg` | Kid welcome page after scanning a code (iPhone steps). |

@@ -86,6 +86,37 @@ If the link says it has expired, make a new one. Each new link cancels the old o
 1. Make sure the device is assigned to that kid on the **Devices** page. Kids can only sign in from their own devices.
 2. After too many wrong PINs the app says "Too many tries. Wait a minute and try again." Wait a minute.
 
+## The box code doesn't work
+
+1. Look at the sticker on the box again. Dashes and capital letters don't matter, but a 0 and an O look alike.
+2. Check you are scanning the sticker for this box.
+3. Still no luck? Ask the person who set the box up for the code.
+
+You should see: the page moves on to making your parent account.
+
+## Too many tries
+
+After too many wrong codes the app says to wait. Wait a few minutes, then try again with the code from the sticker.
+
+## The kid's code expired or was already used
+
+A kid's code works once and only for 24 hours. The phone says "Ask a parent for a new code."
+
+1. Sign in as a parent. Open the kid's page and find **Phones and tablets**, or use the **Kids' phones** step of setup.
+2. Tap **Show code** or **New code**, and scan it again on the kid's phone.
+
+## I can't add it to my home screen
+
+Adding to the home screen needs the box's secure address (starts with `https`). A box opened by its number address (an IP address such as `http://192.168.1.50:3000`) can't do it. Open it with the **Open my box** code on the sticker instead. See [Install](02-install.md).
+
+## The iPhone icon asks me to sign in
+
+An iPhone or iPad keeps the home-screen icon apart from Safari, so the icon starts empty. Open the icon, tap **I have a code**, and type the short code (like `AB3D-7KMN`) the welcome page showed after you scanned. The code works once and runs out after 15 minutes. If it ran out, a parent makes a new QR code (see above) and you scan it again.
+
+## A lost phone
+
+Open the kid's page, find **Phones and tablets**, and tap **Remove** next to the phone. It signs out right away. The phone shows "This phone was removed. Ask a parent for a new code." To add a phone back, scan a new code.
+
 ## Backups
 
 Your family's information lives in one data store on the box. Before any upgrade that changes the database, the app saves a copy in `backups`, named `pre-upgrade-<time>.db`, inside that data store.

@@ -7,6 +7,7 @@ import { useInbox } from '../hooks/useInbox'
 import { useMarkSeen } from '../hooks/useKid'
 import { askOnFirstClick, useOsNotify } from '../osNotify'
 import type { KidToday } from '../types'
+import { AlertsMoved } from './AlertsMoved'
 import { KidAlerts } from './KidAlerts'
 import { Locker } from './Locker'
 import { tally } from './kidChips'
@@ -120,6 +121,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
     <div className="k-app" data-mode={mode}>
       <KidNav mode={mode} tab={tab} onTab={onTab} badges={badges} avatar={avatar} />
       <main className="k-main">
+        {!preview && <AlertsMoved />}
         <div className="k-inner" hidden={tab === 'chat' && chat}>
           {body}
         </div>

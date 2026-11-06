@@ -10,9 +10,3 @@ https://{$BOX_ID}.{$BASE_DOMAIN}:443 {
 		header_up X-Edge-Token {$EDGE_TOKEN}
 	}
 }
-
-https://{$BOX_ID}.{$BASE_DOMAIN}:2443 {
-	tls /data/lego/certificates/{$BOX_ID}.{$BASE_DOMAIN}.crt /data/lego/certificates/{$BOX_ID}.{$BASE_DOMAIN}.key
-	# Note: ntfy sees Caddy's address for every client, so they share one rate-limit bucket.
-	reverse_proxy {$NTFY_UPSTREAM:127.0.0.1:2586}
-}

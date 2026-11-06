@@ -15,14 +15,30 @@ from app.services import inbox
 
 logger = get_logger(__name__)
 URGENT = {"due_soon", "missed_deadline", "lock_warning"}
+# Upstream (third-party ntfy) sees only these fixed lines, never names or titles.
+GENERIC = {
+    "chore_new": "You have a new chore",
+    "due_soon": "A chore is due soon",
+    "missed_deadline": "A chore is overdue",
+    "chore_approved": "A chore was approved",
+    "chore_sent_back": "A chore needs another look",
+    "points_taken": "Your points changed",
+    "lock_warning": "Screen time ends soon",
+    "chat_message": "You have a new message",
+    "redemption_decided": "A reward request was answered",
+    "badge_earned": "You earned a badge",
+    "level_up": "You reached a new level",
+}
 
 
 def public_url() -> str | None:
     if settings.NTFY_PUBLIC_URL:
         return settings.NTFY_PUBLIC_URL
-    host = urlparse(settings.BOX_URL or "").hostname
+    u = urlparse(settings.BOX_URL or "")
+    if u.scheme != "http" or not u.hostname:
+        return None  # never build the LAN ntfy URL from an https hostname
     port = settings.NTFY_PORT.rsplit(":", 1)[-1] or "2586"
-    return f"http://{host}:{port}" if host else None
+    return f"http://{u.hostname}:{port}"
 
 
 def enabled() -> bool:
@@ -55,22 +71,40 @@ def write_conf(fam) -> None:
 
 def queue(db: Session, user_id: int, kind: str, title: str, body: str | None, row=None) -> None:
     """Stage a push; sent after commit. `row` lets a savepoint rollback cancel it."""
-    if not enabled() or kind not in inbox.KID_KINDS:
+    if kind not in inbox.KID_KINDS:
+        return
+    lan = enabled()
+    up = bool(settings.NTFY_UPSTREAM_URL)
+    if not (lan or up):
         return
     u = db.get(User, user_id)
-    if not u or u.role != UserRole.KID or not u.push_topic:
+    if not u or u.role != UserRole.KID:
         return
-    base = settings.BOX_URL
-    db.info.setdefault("push_out", []).append(
-        {
-            "topic": u.push_topic,
-            "title": title,
-            "message": body or "",
-            "click": f"{base.rstrip('/')}/kid" if base else None,
-            "priority": 4 if kind in URGENT else 3,
-            "_row": row,
-        }
-    )
+    prio = 4 if kind in URGENT else 3
+    out = db.info.setdefault("push_out", [])
+    if lan and u.push_topic:
+        base = settings.BOX_URL
+        out.append(
+            {
+                "topic": u.push_topic,
+                "title": title,
+                "message": body or "",
+                "click": f"{base.rstrip('/')}/kid" if base else None,
+                "priority": prio,
+                "_row": row,
+            }
+        )
+    if up and u.alert_topic:
+        out.append(
+            {
+                "topic": u.alert_topic,
+                "title": "t@sk4ce",
+                "message": GENERIC[kind],
+                "priority": prio,
+                "_up": True,
+                "_row": row,
+            }
+        )
 
 
 def _spawn(fn, *args) -> None:
@@ -78,15 +112,24 @@ def _spawn(fn, *args) -> None:
 
 
 def send(item: dict) -> None:
+    item = dict(item)
+    up = item.pop("_up", False)
     try:
-        r = httpx.post(f"{settings.NTFY_URL}/", json=item, timeout=5)
+        if up:
+            headers = {}
+            if settings.NTFY_UPSTREAM_TOKEN:
+                headers["Authorization"] = f"Bearer {settings.NTFY_UPSTREAM_TOKEN}"
+            url = f"{settings.NTFY_UPSTREAM_URL.rstrip('/')}/"
+            r = httpx.post(url, json=item, headers=headers, timeout=5)
+        else:
+            r = httpx.post(f"{settings.NTFY_URL}/", json=item, timeout=5)
         r.raise_for_status()
     except Exception as e:
-        logger.warning("Push failed", error=str(e))
+        logger.warning("Upstream push failed" if up else "Push failed", error=type(e).__name__)
 
 
 def _send_all(items: list[dict]) -> None:
-    for i in items:
+    for i in sorted(items, key=lambda i: bool(i.get("_up"))):  # LAN first
         send(i)
 
 

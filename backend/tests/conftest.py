@@ -22,9 +22,14 @@ from sqlalchemy.pool import StaticPool  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def _reset_rate_limits():
+    from app.core import lockout
     from app.core.ratelimit import reset
 
     reset()
+    lockout.reset()
+    from app.services import kid_handoff
+
+    kid_handoff._store.clear()
 
 
 @pytest.fixture

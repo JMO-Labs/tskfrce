@@ -7,7 +7,17 @@ This module contains the User model for authentication and user management.
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import relationship
 
@@ -48,6 +58,7 @@ class User(Base):
     __tablename__ = "users"
     __table_args__ = (
         CheckConstraint("age_group IN ('little','kid','teen')", name="ck_user_age_group"),
+        UniqueConstraint("alert_topic", name="uq_users_alert_topic"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -68,6 +79,7 @@ class User(Base):
     celebrated_level = Column(Integer, nullable=False, default=1, server_default="1")
     age_group = Column(String(6), nullable=False, default="kid", server_default="kid")
     push_topic = Column(String(40), nullable=True, unique=True)
+    alert_topic = Column(String(64), nullable=True)  # upstream ntfy topic, 192-bit
     last_active_at = Column(DateTime, nullable=True)  # naive UTC; touched at most every 5 min
 
     # Relationships

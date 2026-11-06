@@ -1,7 +1,7 @@
 /**
  * @fileoverview Unified Authentication Context
  * @description Centralized authentication state with synchronized token management
- * @version 2.0.0
+ * @version 2.1.0
  */
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';

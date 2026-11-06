@@ -6,6 +6,7 @@ including database, authentication, and external service configurations.
 """
 
 import ipaddress
+import re
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,14 @@ from pydantic import ConfigDict, field_validator, model_validator, validator
 from pydantic_settings import BaseSettings
 
 from app.core.secrets import load_or_create_secrets
+
+CLAIM_CODE_RE = re.compile(r"^[0-9A-HJKMNP-TV-Z]{10}$")  # Crockford base32, 50 bits
+_LOOKALIKES = str.maketrans({"O": "0", "I": "1", "L": "1", "-": None})
+
+
+def normalize_claim_code(raw: str) -> str:
+    """Forgive typing: case, spaces, dashes and O/I/L lookalikes."""
+    return "".join(raw.split()).upper().translate(_LOOKALIKES)
 
 
 class Settings(BaseSettings):
@@ -31,9 +40,12 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str | None = None
     INTERNAL_TOKEN: str | None = None
     BOX_URL: str | None = None  # e.g. http://192.168.1.20:3000, used in reset links
+    CLAIM_CODE: str | None = None  # sticker code; claims the box until the owner exists
     NTFY_URL: str | None = None  # internal backend -> ntfy, e.g. http://ntfy:80
     NTFY_PUBLIC_URL: str | None = None  # what phones use
     NTFY_PORT: str = "2586"  # host port mapping ("2586" or "0.0.0.0:2586"); builds the phone URL
+    NTFY_UPSTREAM_URL: str = "https://ntfy.sh"  # generic kid alerts go here; "" = off
+    NTFY_UPSTREAM_TOKEN: str | None = None  # optional Bearer token for that server
     NTFY_CONF_FILE: str | None = None  # shared server.yml the ntfy container reads
     BLOCKER_URL: str = "http://127.0.0.1:7777"
     LOCK_INTERVAL_SECONDS: int = 30
@@ -79,6 +91,22 @@ class Settings(BaseSettings):
             if not getattr(self, name):
                 setattr(self, name, value)
         return self
+
+    @field_validator("NTFY_UPSTREAM_URL")
+    @classmethod
+    def strip_upstream_slash(cls, v: str) -> str:
+        return v.strip().rstrip("/")
+
+    @field_validator("CLAIM_CODE")
+    @classmethod
+    def check_claim_code(cls, v: str | None) -> str | None:
+        if not v:
+            return None  # compose passes CLAIM_CODE= on IP-mode boxes
+        # Whitespace-only is not empty: it normalizes to "" and fails at boot on purpose.
+        v = normalize_claim_code(v)
+        if not CLAIM_CODE_RE.match(v):
+            raise ValueError("CLAIM_CODE must be 10 Crockford base32 chars")
+        return v
 
     @validator("BACKEND_CORS_ORIGINS", pre=True)
     def assemble_cors_origins(cls, v: str | list[str]) -> list[str] | str:

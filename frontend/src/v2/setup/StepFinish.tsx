@@ -1,5 +1,6 @@
 import { useRouter } from 'next/router'
 import { Button } from '@mantine/core'
+import { InstallHint } from '../components/InstallHint'
 
 const n = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`
 
@@ -11,7 +12,9 @@ export const finishSummary = (kids: number, chores: number, devices: number, sch
 export function StepFinish() {
   const router = useRouter()
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+    <>
+    <InstallHint who="parent" />
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 14 }}>
       <Button variant="filled" leftSection={<span className="ms" aria-hidden="true">home</span>} onClick={() => router.push('/')}>Go to Today</Button>
       <Button
         variant="default"
@@ -21,5 +24,6 @@ export function StepFinish() {
         Set up notifications
       </Button>
     </div>
+    </>
   )
 }

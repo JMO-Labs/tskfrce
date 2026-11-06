@@ -125,6 +125,8 @@ import { makeQueryClient } from '../src/v2/queryClient';
 import { UnifiedAuthProvider } from '../src/contexts/UnifiedAuthContext'
 import { ThemeProvider } from '../src/contexts/ThemeContext'
 import { initBitwardenThemeFix, setBitwardenThemePreference } from '../src/utils/bitwarden-theme-fix'
+import { captureClaim } from '../src/v2/setup/claim'
+import { registerSw, listenInstallPrompt } from '../src/v2/pwa'
 import { FaviconManager } from '../src/components/ui/FaviconManager'
 // Suppress HMR ISR manifest warnings in development
 if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
@@ -152,12 +154,15 @@ if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
  */
 function AppContent({ Component, pageProps }: { Component: any; pageProps: any }) {
   const [queryClient] = React.useState(makeQueryClient);
+  React.useState(captureClaim); // lazy initializer: first client render, before any effect or request
   const { asPath } = useRouter();
 
   // Initialize Bitwarden theme fix
   React.useEffect(() => {
     setBitwardenThemePreference();
     initBitwardenThemeFix();
+    registerSw();
+    listenInstallPrompt();
   }, []);
 
   return (
@@ -175,7 +180,10 @@ function AppContent({ Component, pageProps }: { Component: any; pageProps: any }
         defaultColorScheme="auto"
         colorSchemeManager={colorSchemeManager}
       >
-        <Head><title>t@sk4ce</title></Head>
+        <Head>
+          <title>t@sk4ce</title>
+          <link rel="manifest" href="/manifest.webmanifest" key="manifest" />
+        </Head>
         <FaviconManager />
         <Notifications position="bottom-center" pauseResetOnHover="notification" />
         <UnifiedAuthProvider>

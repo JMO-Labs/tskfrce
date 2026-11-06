@@ -27,6 +27,9 @@ services:
       NTFY_PUBLIC_URL: ${NTFY_PUBLIC_URL:-http://task4ce.local:2586}
       NTFY_PORT: ${NTFY_PORT:-0.0.0.0:2586}
       NTFY_CONF_FILE: /ntfy-conf/server.yml
+      CLAIM_CODE: ${CLAIM_CODE:-}
+      NTFY_UPSTREAM_URL: ${NTFY_UPSTREAM_URL-https://ntfy.sh}
+      NTFY_UPSTREAM_TOKEN: ${NTFY_UPSTREAM_TOKEN:-}
     volumes:
       - task4ce_data:/app/data
       - ntfy_conf:/ntfy-conf
@@ -52,7 +55,6 @@ services:
       BACKEND_INTERNAL_URL: http://backend:8000
       EDGE_TOKEN: ${EDGE_TOKEN:-}
       FRONTEND_UPSTREAM: ${FRONTEND_UPSTREAM:-127.0.0.1:3000}
-      NTFY_UPSTREAM: ${NTFY_UPSTREAM:-127.0.0.1:2586}
     depends_on:
       backend:
         condition: service_healthy
@@ -134,7 +136,6 @@ services:
       BOX_SECRET: ${BOX_SECRET:-}
       EDGE_TOKEN: ${EDGE_TOKEN:-}
       FRONTEND_UPSTREAM: ${FRONTEND_UPSTREAM:-127.0.0.1:3000}
-      NTFY_UPSTREAM: ${NTFY_UPSTREAM:-127.0.0.1:2586}
     volumes:
       - edge_data:/data
     restart: unless-stopped

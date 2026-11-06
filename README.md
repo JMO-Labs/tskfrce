@@ -73,7 +73,7 @@ Or here's the short version:
    curl -fsSL https://jmo-labs.github.io/tskfrce/install.sh | sh
    ```
 
-3. [Do the first-time setup](https://jmo-labs.github.io/tskfrce/guide/03-first-setup.html): seven short steps for your family, kids, chores, devices and hours.
+3. [Do the first-time setup](https://jmo-labs.github.io/tskfrce/guide/03-first-setup.html): eight short steps for your family, kids, chores, devices and hours.
 4. [Learn the everyday routine](https://jmo-labs.github.io/tskfrce/guide/04-everyday-use.html): approve chores, answer requests, give rewards.
 5. [Show your kids](https://jmo-labs.github.io/tskfrce/guide/05-for-kids.html): a one-page guide you can hand over.
 

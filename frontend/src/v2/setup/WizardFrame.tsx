@@ -9,10 +9,11 @@ const STEPS = [
   { num: 1, title: 'You', sub: 'Parent account' },
   { num: 2, title: 'Family', sub: 'Name, time zone' },
   { num: 3, title: 'Kids', sub: 'Names, PINs' },
-  { num: 4, title: 'Chores', sub: 'Pick starters' },
-  { num: 5, title: 'Devices', sub: 'Who owns what' },
-  { num: 6, title: 'Hours', sub: 'Bedtime, school nights' },
-  { num: 7, title: 'Remote access', sub: 'Tailscale', opt: true },
+  { num: 4, title: "Kids' phones", sub: 'Scan to sign in', opt: true },
+  { num: 5, title: 'Chores', sub: 'Pick starters' },
+  { num: 6, title: 'Devices', sub: 'Who owns what' },
+  { num: 7, title: 'Hours', sub: 'Bedtime, school nights' },
+  { num: 8, title: 'Remote access', sub: 'Tailscale', opt: true },
 ]
 
 interface Props {
@@ -109,7 +110,7 @@ export function WizardFrame({
       >
         {title && (
           <>
-            {step <= STEPS.length && <div className={styles.eyebrow}>Step {step} of {STEPS.length}{step === 7 ? ' · optional' : ''}</div>}
+            {step <= STEPS.length && <div className={styles.eyebrow}>Step {step} of {STEPS.length}{STEPS[step - 1]?.opt ? ' · optional' : ''}</div>}
             {done && (
               <div className={styles.tile} aria-hidden="true">
                 <span className="ms">celebration</span>

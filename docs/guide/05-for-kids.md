@@ -20,6 +20,21 @@ On a shared device, tap **Me**, then **Not me** when you are finished, so the ne
 
 ![The kid screen: internet is paused, and the chores to do](img/kid-today.jpg)
 
+## Get it on your phone
+
+If you have your own phone, your parent shows you a square code. Do this:
+
+1. Scan the code with your phone's camera.
+2. You see "You're in" and your name. Follow the steps to tap **Add to Home Screen**, so t@sk4ce gets an icon like an app.
+3. Get the free **ntfy** app, then tap **Add my alerts**. Now you get alerts even when t@sk4ce is closed.
+4. Tap **Start**.
+
+![The welcome page on a kid's phone](img/kid-welcome.jpg)
+
+**On an iPhone or iPad**, the icon on your home screen starts empty, so it needs a short code. After you scan, the welcome page shows a code like `AB3D-7KMN`. Add t@sk4ce to your home screen, open it from there, tap **I have a code**, type the code and tap **Go**. The code works once and runs out after 15 minutes. If it ran out, ask a parent for a new QR code and scan it again.
+
+The QR code works once and runs out after a day. If it says it expired, ask a parent for a new code.
+
 ## Your screen
 
 Your parent picks the look that fits your age. All three work the same way.
@@ -60,7 +75,7 @@ Tap **Rewards** (**Prizes** in Little). Ask for screen time (you pick the minute
 
 In **Chat** you can talk to your parents (just you and them), to the whole family, or about a chore. Be kind. Parents can read the chats you are in.
 
-**Alerts** tells you when a chore is due soon, when a parent approved or sent something back, and when the internet is about to go off. Your parent can also set up your phone to get these alerts, by scanning a code in the free ntfy app.
+**Alerts** tells you when a chore is due soon, when a parent approved or sent something back, and when the internet is about to go off. You get them on your phone too, once you tap **Add my alerts**.
 
 Little mode has no chat or alerts tab.
 

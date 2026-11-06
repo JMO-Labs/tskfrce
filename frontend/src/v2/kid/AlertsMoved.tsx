@@ -1,0 +1,17 @@
+import { useSyncExternalStore } from 'react'
+import { alertLink, deviceKid, alertStored } from './kidDevice'
+import { alertsMoved, onAlertsMoved, setAlertsMoved } from './movedFlag'
+
+/** One line shown when a removed phone changed this kid's alert topic. Tapping reopens ntfy. */
+export function AlertsMoved() {
+  const moved = useSyncExternalStore(onAlertsMoved, alertsMoved, () => false)
+  const a = moved ? alertStored() : null
+  if (!a || !deviceKid()) return null
+  return (
+    <a className="k-moved" href={alertLink(a)} onClick={() => setAlertsMoved(false)}>
+      <span className="ms" aria-hidden="true">notifications</span>
+      Your alerts moved. Tap to reconnect.
+      <span className="ms" aria-hidden="true">chevron_right</span>
+    </a>
+  )
+}

@@ -10,8 +10,9 @@ from sqlalchemy import asc
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.user import UserCreate, UserUpdate
+from app.services.kid_revoke import revoke_kid_access
 
 logger = get_logger(__name__)
 
@@ -132,8 +133,11 @@ class UserService:
 
         # Update fields
         update_data = user_data.dict(exclude_unset=True)
+        was_kid = user.role == UserRole.KID
         for field, value in update_data.items():
             setattr(user, field, value)
+        if (was_kid and user.role != UserRole.KID) or not user.is_active:
+            revoke_kid_access(self.db, user)
 
         user.updated_at = datetime.utcnow()
 
