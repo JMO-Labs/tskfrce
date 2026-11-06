@@ -191,7 +191,7 @@
 .word {
   position: absolute;
   left: calc(var(--cl, 0px) + var(--cw, 100vw) / 2);
-  top: 50%;
+  top: var(--cel-word-y, 50%);
   font-family: var(--impact);
   font-weight: 900;
   line-height: 1;
