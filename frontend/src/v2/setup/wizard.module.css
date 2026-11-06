@@ -300,6 +300,7 @@
 .kv + .kv { border-top: 1px solid var(--p-line); }
 .kv input[type='time'] { font: inherit; color: var(--p-ink); background: var(--p-card); border: 1px solid var(--p-line); border-radius: 10px; padding: 6px 10px; }
 .kv input[type='time']:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
+.hint { margin: 2px 0 0; font-size: 12.5px; color: var(--p-sub); }
 
 /* step 4 starter cards (mockup 07 .sc / .scc) */
 .starters { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
@@ -320,3 +321,5 @@
 }
 .starter[aria-pressed='true'] .starterCb { background: var(--p-acc); border-color: var(--p-acc); }
 .picked { font-size: 13px; color: var(--p-sub); }
+.tip { margin-top: 14px; color: var(--p-sub); }
+.tip a { color: var(--p-ink); font-weight: 600; text-decoration: underline; }

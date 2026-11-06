@@ -5,7 +5,7 @@ import { useRouter } from 'next/router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext'
 import { api, ApiError } from '@/v2/api'
-import type { Device, HourRule, HoursPayload, Kid, LibChore, RuleBody, SetupStatus } from '@/v2/types'
+import type { Device, Family, HourRule, HoursPayload, Kid, LibChore, RuleBody, SetupStatus } from '@/v2/types'
 import { markSetupDone, STEP_KEY } from '@/v2/components/RequireParent'
 import { SetupResuming } from '@/v2/parent/states'
 import { LAST, saveStep } from '@/v2/setup/setupStep'
@@ -22,7 +22,6 @@ import { StepDevices } from '@/v2/setup/StepDevices'
 import { StepChores } from '@/v2/setup/StepChores'
 import { starter } from '@/v2/setup/starterChores'
 import { DEFAULT_DRAFTS, StepHours } from '@/v2/setup/StepHours'
-import { StepRemote } from '@/v2/setup/StepRemote'
 import { ClaimGate } from '@/v2/setup/ClaimGate'
 import { clearClaim, settleClaim } from '@/v2/setup/claim'
 import { finishSummary, StepFinish } from '@/v2/setup/StepFinish'
@@ -196,7 +195,7 @@ export default function SetupPage() {
                   body: {
                     kid_ids: kids.map((k) => k.id),
                     mode: 'each',
-                    repeat: { type: 'daily', days: [] },
+                    repeat: starter(title)?.days ? { type: 'weekly', days: starter(title)?.days ?? [] } : { type: 'daily', days: [] },
                     on_date: null,
                     due_time: null,
                   },
@@ -232,8 +231,7 @@ export default function SetupPage() {
     4: { title: "Kids' phones", sub: "Each kid scans their code with their phone's camera. No phone? Skip it. You can do this later from the kid's page." },
     5: { title: 'Pick some starter chores', sub: 'Tap to choose. Everything can be changed later.' },
     6: { title: 'Whose devices are these?', sub: 'Devices show up as the home box sees them on your Wi-Fi. Tap a kid to give it to them, or mark it Guest so it\'s never blocked.' },
-    7: { title: 'When can devices be online?', sub: 'A starting schedule. Add holidays, summer and per-kid hours later in Settings.' },
-    8: { title: 'Reach it from anywhere', sub: 'Approve chores when you\'re not home, using Tailscale (free, private).' },
+    7: { title: 'When can devices be online?', sub: 'Devices are on during these hours and off at bedtime. Add school hours, holidays and per-kid hours later in Settings.' },
   } as const
 
   // what really exists (a resumed wizard forgot what it made)
@@ -243,6 +241,7 @@ export default function SetupPage() {
     enabled: step > LAST,
     retry: false,
   })
+  const fam = useQuery({ queryKey: ['setup-family'], queryFn: () => api<Family>('/family'), enabled: step > LAST, retry: false })
   const devices = (qc.getQueryData<Device[]>(['setup-devices']) ?? []).filter((d) => d.status !== 'unassigned').length
 
   if (status.data?.claim && !claim && !accountDone) return <ClaimGate onClaimed={setClaim} />
@@ -289,8 +288,7 @@ export default function SetupPage() {
           {step === 5 && <StepChores selected={chores} made={addedStarters} hasKids={kids.length > 0} onChange={setChores} />}
           {step === 6 && <StepDevices kids={kids} />}
           {step === 7 && <StepHours drafts={hours} onChange={setHours} choresLock={choresLock} onChoresLock={setChoresLock} />}
-          {step === 8 && <StepRemote />}
-          {step > LAST && <StepFinish />}
+          {step > LAST && <StepFinish resetTime={fam.data?.reset_time} />}
           {err && <p role="alert">Something went wrong: {err} Try again.</p>}
         </WizardFrame>
       </div>

@@ -24,7 +24,7 @@ router = APIRouter(prefix="/api/v1/setup", tags=["setup"])
 
 DONE = "Setup is already done. Log in instead."
 RESUME_AFTER_ACCOUNT = 3  # the account exists from step 2 on; the wizard resumes at step 3
-LAST_STEP = 8
+LAST_STEP = 7
 CLAIM_WRONG = "That code doesn't match this box. Check the sticker and try again."
 
 

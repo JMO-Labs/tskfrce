@@ -68,9 +68,9 @@ def test_no_claim_code_setting_no_gate(client):
     assert client.post(URL, json=BODY).status_code == 201
 
 
-def test_step_8_accepted_9_rejected(client, parent_headers):
-    assert client.put(f"{URL}/step", json={"step": 8}, headers=parent_headers).status_code == 200
-    assert client.put(f"{URL}/step", json={"step": 9}, headers=parent_headers).status_code == 422
+def test_step_7_accepted_8_rejected(client, parent_headers):
+    assert client.put(f"{URL}/step", json={"step": 7}, headers=parent_headers).status_code == 200
+    assert client.put(f"{URL}/step", json={"step": 8}, headers=parent_headers).status_code == 422
 
 
 def test_claim_lockout_shared_with_setup(client, cfg):

@@ -8,7 +8,7 @@ import styles from './wizard.module.css'
 const base: Pick<RuleBody, 'kind' | 'start_date' | 'end_date' | 'everyone' | 'kid_ids' | 'group_ids'> = { kind: 'allowed', start_date: null, end_date: null, everyone: true, kid_ids: [], group_ids: [] }
 
 export const DEFAULT_DRAFTS: RuleBody[] = [
-  { ...base, name: 'School nights', category: 'school_night', days: '01236', times: [{ start: '06:00', end: '08:00' }, { start: '15:00', end: '20:00' }] },
+  { ...base, name: 'School nights', category: 'school_night', days: '01236', times: [{ start: '07:00', end: '20:00' }] },
   { ...base, name: 'Weekends', category: 'weekend', days: '45', times: [{ start: '08:00', end: '22:00' }] },
 ]
 
@@ -25,7 +25,7 @@ interface Props {
   onChoresLock: (v: boolean) => void
 }
 
-/** Setup step 6: starting hours as drafts; they are POSTed to /hours by Next. */
+/** Setup step 7: starting hours as drafts; they are POSTed to /hours by Next. */
 export function StepHours({ drafts, onChange, choresLock, onChoresLock }: Props) {
   const [editing, setEditing] = useState<number | null | undefined>(undefined) // undefined closed, null new
   const asRules: HourRule[] = drafts.map((d, i) => ({ ...d, id: i + 1 }))
@@ -66,6 +66,7 @@ export function StepHours({ drafts, onChange, choresLock, onChoresLock }: Props)
           <span id="setup-chores-lock">Lock until today&apos;s chores are done</span>
           <button type="button" role="switch" aria-checked={choresLock} aria-labelledby="setup-chores-lock" onClick={() => onChoresLock(!choresLock)} />
         </div>
+        <p className={styles.hint}>Starts tomorrow, so nobody is paused while you finish setting up.</p>
       </div>
       <RuleEditor
         opened={open}

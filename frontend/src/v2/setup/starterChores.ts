@@ -4,12 +4,13 @@ export interface Starter {
   type: string // built-in chore type name
   glyph: string
   points: number
+  days?: number[] // weekdays Mon=0; omitted = every day
 }
 
 export const STARTER_CHORES: Starter[] = [
   { title: 'Make bed', type: 'Personal', glyph: 'bed', points: 10 },
   { title: 'Unload dishwasher', type: 'Kitchen', glyph: 'restaurant', points: 20 },
-  { title: 'Homework', type: 'Schoolwork', glyph: 'school', points: 30 },
+  { title: 'Homework', type: 'Schoolwork', glyph: 'school', points: 30, days: [0, 1, 2, 3, 4] },
   { title: 'Feed the pet', type: 'Pets', glyph: 'pets', points: 10 },
   { title: 'Tidy room', type: 'Cleaning', glyph: 'cleaning_services', points: 25 },
   { title: 'Take out trash', type: 'Kitchen', glyph: 'delete', points: 15 },
