@@ -53,11 +53,10 @@ def test_window_expires(client, db, parent, clock):
 
 def test_cooldown(client, db, parent, clock):
     _bad(client, n=10)
-    n1 = len(_alerts(db))
-    assert n1 >= 1
+    assert len(_alerts(db)) == 1
     clock[0] += 3601
     _bad(client, n=5)
-    assert len(_alerts(db)) == 2 * n1
+    assert len(_alerts(db)) == 2
 
 
 def test_unknown_username_not_counted(client, db, parent, clock):
@@ -73,4 +72,18 @@ def test_kid_account_never_alerts(client, db, kid, parent, clock):
 
 def test_email_login_counts(client, db, parent, clock):
     _bad(client, "MOM@family.local", n=5)
-    assert len(_alerts(db)) >= 1
+    assert len(_alerts(db)) == 1
+
+
+def test_notify_failure_keeps_401_and_retries(client, db, parent, clock, monkeypatch):
+    from app.services import inbox
+
+    def boom(*a, **k):
+        raise RuntimeError("down")
+
+    with monkeypatch.context() as m:
+        m.setattr(inbox, "notify_parents", boom)
+        _bad(client, n=5)  # each asserts 401
+    assert not _alerts(db)
+    _bad(client, n=5)
+    assert len(_alerts(db)) == 1

@@ -41,20 +41,28 @@ def record_failure(db: Session, login: str, now: float | None = None) -> None:
     if not user or not user.is_active or user.role == UserRole.KID:
         return
     with _lock:
-        hits = _fails.setdefault(user.id, deque())
+        hits = _fails.setdefault(user.id, deque(maxlen=THRESHOLD))
         hits.append(now)
         while hits and hits[0] <= now - WINDOW:
             hits.popleft()
         last = _alerted.get(user.id)
         if len(hits) < THRESHOLD or (last is not None and now - last < COOLDOWN):
             return
-        _alerted[user.id] = now
+        _alerted[user.id] = now  # reserve so concurrent failures don't double-alert
         hits.clear()
     name = user.full_name or user.username
-    inbox.notify_parents(
-        db,
-        "password_guess",
-        f"Someone is guessing {name}'s password",
-        "5 wrong passwords in 15 minutes. If it wasn't you, change it in Settings.",
-    )
-    db.commit()
+    try:
+        inbox.notify_parents(
+            db,
+            "password_guess",
+            f"Someone is guessing {name}'s password",
+            "5 wrong passwords in 15 minutes. If it wasn't you, change it in Settings.",
+        )
+        db.commit()
+    except Exception:
+        with _lock:
+            if last is None:
+                _alerted.pop(user.id, None)
+            else:
+                _alerted[user.id] = last
+        raise
