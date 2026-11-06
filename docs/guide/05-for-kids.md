@@ -69,7 +69,7 @@ Tap **Me**, then **Customize**, to dress up your name card. Pick what to change,
 
 ## Spending points
 
-Tap **Rewards** (**Prizes** in Little). Ask for screen time (you pick the minutes, and sometimes **What for?**, like Tablets or Consoles. Some cost more), or save up for a reward and tap **Request** when the bar is full. Some rewards say **Get it**: those don't need a yes. Otherwise a parent has to say yes. If they say no, you keep your points.
+Tap **Rewards** (**Prizes** in Little). Ask for screen time (you pick the minutes, and sometimes what it's for, like Tablets or Consoles; some cost more), or save up for a reward and tap **Request** when the bar is full. Some rewards say **Get it**: those don't need a yes. Otherwise a parent has to say yes. If they say no, you keep your points.
 
 ![Asking for screen time: What for? and how many minutes](img/kid-screen-for.jpg)
 

@@ -141,16 +141,16 @@ Some screen time is worth more than other screen time. A group can have its own 
 
 You should see: the price on the group. Leave it empty and the group uses the family price. **Settings → Screen time** says "Groups can have their own price." and links to the groups.
 
-- **Free:** turn off **Locked by chores** on a group. Its devices never cost points, and kids can't buy time for them.
+- **Free:** turn off **Lock with the kids' chores** on a group. Its devices never cost points, and kids can't buy time for them.
 - **What kids see:** when prices differ, the rewards card asks "What for?" and the kid picks a group. **All my devices** costs the highest price among their groups.
 - **What it unlocks:** an approved request unlocks only the devices in that group. A device in several groups counts at its highest group price. Buying a cheaper group won't unlock it. The kid buys the pricier group or **All my devices**.
 - **Price is fixed when the kid asks.** If you change a price later, requests already waiting keep their old cost. If the group is deleted before you approve, the kid's devices at or below the price they paid unlock.
 - **One daily limit:** **Max per day** counts all purchases together.
 - **In your inbox:** requests and alerts read like "30 min on Consoles".
 
-The box sees devices, not apps. Two apps on one tablet can't have different prices. See [Troubleshooting](06-troubleshooting.md).
+The box sees devices, not apps. Two apps on one tablet can't have different prices. See [Troubleshooting](06-troubleshooting.md#why-cant-i-price-youtube-differently-from-homework-on-the-same-tablet).
 
-If the home box stops checking in, a red **Home box offline** message appears at the top. See [Troubleshooting](06-troubleshooting.md).
+If the home box stops checking in, a red **Home box offline** message appears at the top. See [Troubleshooting](06-troubleshooting.md#why-cant-i-price-youtube-differently-from-homework-on-the-same-tablet).
 
 ## Hours
 

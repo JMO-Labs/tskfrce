@@ -20,7 +20,7 @@ Speakers…). So "per-app pricing" becomes **per-device-group pricing**, which c
 | Wish | How |
 |------|-----|
 | Gaming costs more | Consoles group price 40 instead of 20 |
-| Music is free | Speakers group: turn off "Locked by chores" (exists today, `DeviceGroup.chore_lock`) |
+| Music is free | Speakers group: turn off "Lock with the kids' chores" (exists today, `DeviceGroup.chore_lock`) |
 | Buy time for one thing, not everything | Kid picks what the time is for |
 
 Not covered: different prices for different apps on the **same** phone. Documented as a limit.
@@ -35,7 +35,7 @@ Not covered: different prices for different apps on the **same** phone. Document
 ## Non-goals
 
 - Per-app or per-site metering, DPI, TLS interception, on-device agents.
-- A free price (0). "Free" is the existing "Locked by chores" switch.
+- A free price (0). "Free" is the existing "Lock with the kids' chores" switch.
 - Category passes over DNS ("music sites only while paused"), in the style of homework mode. That is possible later on top of homework mode
   (unmerged), and it has the same CDN-IP limits. Out of scope here.
 
