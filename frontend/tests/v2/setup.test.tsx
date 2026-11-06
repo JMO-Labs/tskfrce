@@ -413,7 +413,11 @@ describe('resuming an unfinished setup', () => {
     expect(await screen.findByText("You're all set")).toBeInTheDocument()
     expect(await screen.findByText(/Hours start now\. Chores, and the chore lock, start tomorrow at 6:00 AM\./)).toBeInTheDocument()
     expect(screen.getByText(/Want to approve chores away from home\? Set up Tailscale\. Takes 5 minutes\./)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Later' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'How to set it up' })).toBeInTheDocument()
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/setup/step', { method: 'PUT', body: { step: null } })) // self-heal
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Go to Today' }))
+    expect(push).toHaveBeenCalledWith('/')
+    expect(replace).not.toHaveBeenCalledWith('/setup')
   })
 
   test('a starter that already exists is locked as Added and not created again', async () => {

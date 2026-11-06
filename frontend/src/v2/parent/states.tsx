@@ -213,7 +213,7 @@ export const BoxStarting = () => (
 
 /** "Let's finish setting up": an unfinished wizard sends the parent back to its step. */
 export const SetupResuming = ({ step }: { step: number }) => (
-  <WaitingState icon="auto_fix_high" title="Let's finish setting up" body={`Taking you to setup, step ${step} of ${LAST}…`} bar />
+  <WaitingState icon="auto_fix_high" title="Let's finish setting up" body={`Taking you to setup, step ${Math.min(step, LAST)} of ${LAST}…`} bar />
 )
 
 /** "Opening Homework · Mia": a link from a notification, while its page loads. */

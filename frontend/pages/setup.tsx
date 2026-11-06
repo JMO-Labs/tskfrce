@@ -76,6 +76,7 @@ export default function SetupPage() {
     setAccountDone(true)
     setStep(at)
     setResumed(true)
+    if (at > LAST) saveStep(qc, at) // an old step-8 save: finish it so the guard stops sending us back
   })
   useEffect(() => {
     if (!resumed) return
@@ -190,12 +191,13 @@ export default function SetupPage() {
                   id = c.id
                   choreIds.current.set(title, id)
                 }
+                const days = starter(title)?.days
                 await api(`/chores/${id}/assignments`, {
                   method: 'POST',
                   body: {
                     kid_ids: kids.map((k) => k.id),
                     mode: 'each',
-                    repeat: starter(title)?.days ? { type: 'weekly', days: starter(title)?.days ?? [] } : { type: 'daily', days: [] },
+                    repeat: days ? { type: 'weekly', days } : { type: 'daily', days: [] },
                     on_date: null,
                     due_time: null,
                   },

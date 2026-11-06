@@ -101,7 +101,8 @@ class StepIn(BaseModel):
 @router.get("/step")
 def get_step(db: Session = Depends(get_db), _: User = Depends(require_parent)):
     """The wizard step an unfinished setup should resume at (None = nothing to resume)."""
-    return {"step": get_family(db).setup_step}
+    step = get_family(db).setup_step
+    return {"step": step if step is None or step <= LAST_STEP else None}  # old step-8 saves count as finished
 
 
 @router.put("/step")

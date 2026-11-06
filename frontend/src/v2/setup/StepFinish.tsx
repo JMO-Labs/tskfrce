@@ -6,7 +6,7 @@ import { InstallHint } from '../components/InstallHint'
 
 const n = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`
 
-/** "3 kids, 4 chores, 4 devices, 2 schedules." (mockup 07 finish subtitle) */
+/** "3 kids, 4 chores, 4 devices, 2 schedules." (finish subtitle) */
 export const finishSummary = (kids: number, chores: number, devices: number, schedules: number) =>
   `${n(kids, 'kid', 'kids')}, ${n(chores, 'chore', 'chores')}, ${n(devices, 'device', 'devices')}, ${n(schedules, 'schedule', 'schedules')}.`
 
@@ -33,7 +33,7 @@ export function StepFinish({ resetTime }: { resetTime?: string }) {
     </div>
     <p className={styles.tip}>
       Want to approve chores away from home? Set up Tailscale. Takes 5 minutes.{' '}
-      <a href={REMOTE_DOC} target="_blank" rel="noreferrer">Later</a>
+      <a href={REMOTE_DOC} target="_blank" rel="noreferrer">How to set it up</a>
     </p>
     </>
   )

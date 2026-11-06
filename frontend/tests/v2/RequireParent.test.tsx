@@ -122,6 +122,13 @@ describe('RequireParent states', () => {
     expect(screen.queryByText('secret')).toBeNull()
   })
 
+  test('an old step-8 save never reads "step 8 of 7"', async () => {
+    route({ '/setup': { needed: false }, '/setup/step': { step: 8 } })
+    auth({})
+    renderGuard()
+    expect(await screen.findByText('Taking you to setup, step 7 of 7…')).toBeTruthy()
+  })
+
   test('a finished setup (no saved step) shows the page', async () => {
     route({ '/setup': { needed: false }, '/setup/step': { step: null } })
     auth({})
