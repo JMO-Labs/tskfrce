@@ -112,10 +112,16 @@ Vis = visibility to a parent who never touched the item: **Shown**, **Hidden** (
 
 All 12 items shipped as specified, with these notes:
 
-- Wizard is 7 steps (`LAST_STEP` 7; PUT step 8 now returns 422). Remote access is a tip on Finish with a "How to set it up" link. Migration `w6f7a8b9c0d1` finishes families stored at old step 8; the client also self-heals by sending `step: null`.
-- Default hours: 07:00-20:00 Sun-Thu, 08:00-22:00 Fri-Sat, no school-hours block. Chores and the chore lock start tomorrow (no runs made while setup is open, including on edit); hours start now.
+- Wizard is 7 steps (`LAST_STEP` 7; PUT step 8 now returns 422). Remote access is a tip on Finish with a "How to set it up" link. Migration `w6f7a8b9c0d1` finishes families stored at old step 8 (sets `setup_step` to NULL), and `GET /setup/step` reports any step above 7 as finished; the client also self-heals by sending `step: null` (kept as a belt for pre-migration cached state).
+- Default hours: 07:00-20:00 Sun-Thu, 08:00-22:00 Fri-Sat, no school-hours block. Hours start now. Chores and the chore lock start at the next daily reset after Finish (no runs made while setup is open, including on edit).
 - Screen time on for new families (`points_unlock_early` set on first claim); `screen_auto_approve` stays off.
 - Default notification events: chore_ok, kid_note, reward_request, resisting, box_offline, workaround, summary. No `new_device` inbox row during setup. The summary time is a constant (19:00), not a setting.
 - Hidden until on: screen time fields, GIF rating/key, "Security alerts still send" (needs quiet hours). App address is under Advanced; early bonus cap under "Points rules"; guests do not show "Always allowed". Stored values are never cleared.
 - Kid phone alert copy: code-enrolled phones get only a short generic line (for example "You have a new chore") through a public relay (ntfy.sh by default). The pane's switch help says "Off skips this wake-up" (not "sends nothing outside"). The "See the guide" line links to "Alerts on a kid's phone".
-- Docs: guide 03/04, READMEs, Pages text and `setup-hours.jpg` updated.
+- Final fix wave:
+  - A reset that falls during setup rolls the chore day and cancels and retires as usual, but makes no runs (`run_reset` skips `generate` while `setup_step` is set). Nothing pauses a device during setup.
+  - The chore day follows the family's zone from day one. Claim and Finish set `last_reset_date` to the clock chore day in the family zone (`clock_chore_day`), so a box that ticked in UTC before a late-night Pacific claim still starts chores at the next local reset, and a Finish after reset time waits for tomorrow. A Finish between midnight and reset time starts chores at that morning's reset, so the copy says "the next daily reset (6:00 AM)", not "tomorrow".
+  - Wizard chores send no kid "New chore" alert.
+  - `GET /kids/{id}/push` returns `upstream`. The pane shows the relay line whenever it is on (even with LAN ntfy off), "Alert text stays in your home." when only LAN ntfy is on, and "Phone alerts aren't set up" when both are off.
+  - Finish copy: "Hours start now." alone when no chores were picked for kids; the chore lock clause only when the lock is on.
+- Docs: guide 03/04/07 (FAQ lists the default-on kid alert relay), READMEs, Pages text and `setup-hours.jpg` updated.
