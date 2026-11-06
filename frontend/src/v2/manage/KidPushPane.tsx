@@ -11,6 +11,8 @@ import { toastFail, toastOk } from '@/v2/notify'
 import { ConfirmDelete } from './ConfirmDelete'
 import { initial, nameOf } from './choreMeta'
 
+const GUIDE_DOC = 'https://github.com/JMO-Labs/tskfrce/blob/main/docs/guide/04-everyday-use.md#alerts-on-a-kids-phone'
+
 function KidPhone({ kid }: { kid: Kid }) {
   const push = useKidPush(kid.id)
   const reset = useResetKidPush()
@@ -59,11 +61,18 @@ export function KidPushPane() {
   return (
     <>
       {on === false ? (
-        <InfoBlock icon="info" text="Phone alerts aren't set up on this box. See the guide: Kid phone alerts." />
+        <InfoBlock
+          icon="info"
+          text={
+            <span className="pk-hint">
+              Phone alerts aren&apos;t set up on this box. See the guide: <a href={GUIDE_DOC} target="_blank" rel="noreferrer">Alerts on a kid&apos;s phone</a>
+            </span>
+          }
+        />
       ) : on === undefined ? null : (
         <InfoBlock
           icon="notifications"
-          text="Alert text stays in your home. Kid phones signed in with a code get a content-free 'check t@sk4ce' nudge through ntfy.sh."
+          text="Alert text stays in your home. Kid phones signed in with a code get only a short generic line, like 'You have a new chore', through a public relay (ntfy.sh by default)."
         />
       )}
       {on && fam && (

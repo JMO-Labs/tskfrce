@@ -59,7 +59,11 @@ describe('KidPushPane', () => {
   test('disabled: copy shown, relay switch hidden', async () => {
     serve(false)
     render(wrap(<KidPushPane />))
-    expect(await screen.findByText("Phone alerts aren't set up on this box. See the guide: Kid phone alerts.")).toBeInTheDocument()
+    expect(await screen.findByText(/Phone alerts aren't set up on this box\. See the guide:/)).toBeInTheDocument()
+    const link = screen.getByRole('link', { name: "Alerts on a kid's phone" })
+    expect(link).toHaveAttribute('href', 'https://github.com/JMO-Labs/tskfrce/blob/main/docs/guide/04-everyday-use.md#alerts-on-a-kids-phone')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noreferrer')
     expect(document.body.textContent).not.toMatch(/BOX_URL|NTFY_URL|NTFY_UPSTREAM/)
     expect(screen.queryByText(/Instant alerts on iPhones/)).toBeNull()
     expect(screen.queryByText(/unless you turn on iPhone alerts below/)).toBeNull()
@@ -70,7 +74,7 @@ describe('KidPushPane', () => {
     serve(true)
     render(wrap(<KidPushPane />))
     await screen.findByAltText('Kid phone code for Mia')
-    expect(screen.getByText("Alert text stays in your home. Kid phones signed in with a code get a content-free 'check t@sk4ce' nudge through ntfy.sh.")).toBeInTheDocument()
+    expect(screen.getByText("Alert text stays in your home. Kid phones signed in with a code get only a short generic line, like 'You have a new chore', through a public relay (ntfy.sh by default).")).toBeInTheDocument()
     expect(screen.queryByText(/Nothing leaves your home/)).toBeNull()
     const fold = screen.getByText('Use the ntfy app instead').closest('details')!
     expect(fold).not.toHaveAttribute('open')
