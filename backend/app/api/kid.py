@@ -165,9 +165,9 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
     deds = svc.deductions(db, runs)
     texts = svc.note_texts(db, runs)
     seen = kid_view.seen_ids(db, kid.id, {r.assignment_id for r in runs})
-    naive = now.replace(tzinfo=None)
-    hh = happy_hour.active_for(db, kid.id, naive)
-    team_hh = happy_hour.active_for(db, None, naive)  # team runs: all-kids only, as on submit
+    live = happy_hour.running(db, now.replace(tzinfo=None))  # one query for both picks
+    hh = happy_hour.best(live, kid.id)
+    team_hh = happy_hour.best(live, None)  # team runs: all-kids only, as on submit
 
     def mult(r: ChoreRun) -> int:  # display only: fixed on submit, else the live one
         if r.status != "todo":

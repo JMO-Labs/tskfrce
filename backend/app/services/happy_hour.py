@@ -31,10 +31,14 @@ def covers(hh: HappyHour, kid_id: int | None) -> bool:
     return hh.kid_ids is None or (kid_id is not None and kid_id in hh.kid_ids)
 
 
+def best(hhs: list[HappyHour], kid_id: int | None) -> HappyHour | None:
+    """The highest multiplier among `hhs` that covers this kid, or None."""
+    return max((h for h in hhs if covers(h, kid_id)), key=lambda h: h.mult_x10, default=None)
+
+
 def active_for(db: Session, kid_id: int | None, now: datetime) -> HappyHour | None:
     """The best Happy Hour covering this kid at `now` (naive UTC), or None."""
-    hits = [h for h in running(db, now) if covers(h, kid_id)]
-    return max(hits, key=lambda h: h.mult_x10, default=None)
+    return best(running(db, now), kid_id)
 
 
 def start(
