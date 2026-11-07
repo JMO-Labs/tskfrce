@@ -107,8 +107,6 @@ export function KidDetail({ kid, focusPin, onDeleted }: Props) {
         {(mode === 'bonus' || mode === 'deduct') && <PointsForm key={mode} kid={kid} kind={mode} onClose={() => closeForm(mode)} />}
         {mode === 'edit' && <KidEditor kid={kid} focusPin={focusPin} onDone={onDeleted} />}
 
-        <TrustSection kid={kid} />
-
         <section className="pk-panel" aria-label="Profile">
           <h3>
             <Icon name="badge" size={18} />
@@ -143,6 +141,8 @@ export function KidDetail({ kid, focusPin, onDeleted }: Props) {
             </div>
           ))}
         </section>
+
+        <TrustSection kid={kid} />
 
         <KidPhonesPanel kid={kid} />
 
