@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, test } from '@jest/globals'
+import { afterEach, beforeAll, beforeEach, describe, expect, test } from '@jest/globals'
 import type { Mock } from 'jest-mock'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -81,6 +81,23 @@ describe('trust card', () => {
     await userEvent.click(within(d).getByRole('button', { name: 'New' }))
     await userEvent.click(within(d).getByRole('button', { name: 'Cancel' }))
     expect(sent('/kids/7')).toBeUndefined()
+  })
+})
+
+describe('#trust jump', () => {
+  afterEach(() => window.history.replaceState(null, '', '/'))
+  test('scrolls the card into view when the URL hash is #trust', () => {
+    const spy = jest.fn()
+    Element.prototype.scrollIntoView = spy
+    window.location.hash = '#trust'
+    wrap(<TrustSection kid={kid()} />)
+    expect(spy).toHaveBeenCalledWith({ block: 'start' })
+  })
+  test('does not scroll without the hash', () => {
+    const spy = jest.fn()
+    Element.prototype.scrollIntoView = spy
+    wrap(<TrustSection kid={kid()} />)
+    expect(spy).not.toHaveBeenCalled()
   })
 })
 

@@ -38,6 +38,16 @@ describe('Kids & chores deep links and load states', () => {
     await waitFor(() => expect(mockRoute.replace).toHaveBeenCalledWith({ pathname: '/kids', query: { section: 'kids', item: '7', pin: '1' } }))
   })
 
+  test('?kid=N#trust keeps the hash through the redirect', async () => {
+    window.history.replaceState(null, '', '/kids?kid=7#trust')
+    mockRoute.query = { kid: '7' }
+    render(wrap(<KidsPage />))
+    await waitFor(() =>
+      expect(mockRoute.replace).toHaveBeenCalledWith(expect.objectContaining({ query: expect.objectContaining({ item: '7' }), hash: '#trust' })),
+    )
+    window.history.replaceState(null, '', '/')
+  })
+
   test('a failing chore library shows an error with Retry', async () => {
     serve()
     apiMock.mockImplementation(async (path) => {
