@@ -160,6 +160,8 @@
 [data-look='parent'] .pn-box { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 [data-look='parent'] .pn-h + .pn-kv { border-top: 0; }
 [data-look='parent'] .pn-kv .mantine-Switch-label { color: var(--p-sub); font-size: 13px; }
+[data-look='parent'] .pn-kv .mantine-Switch-root:has(.mantine-Switch-description) .mantine-Switch-label { color: var(--p-ink); font-size: 14px; font-weight: 600; }
+[data-look='parent'] .pn-kv .mantine-Switch-description { color: var(--p-sub); font-size: 13px; }
 [data-look='parent'] .pn-kv .mantine-Switch-body { justify-content: space-between; }
 [data-look='parent'] .pn-kv .mantine-Switch-root, [data-look='parent'] .pn-kv .mantine-Switch-labelWrapper { flex: 1; }
 [data-look='parent'] .pn-times { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
