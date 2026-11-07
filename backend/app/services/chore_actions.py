@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, object_session
 
 from app.models.chores import ChoreRun, RunStepTick
 from app.models.family import get_family
-from app.services import badges, chat, happy_hour, kid_events
+from app.services import badges, chat, happy_hour, kid_events, trust
 from app.services import chores as svc
 from app.services.economy import _recipients, award_chore
 
@@ -28,15 +28,19 @@ def submit(run: ChoreRun, by_id: int | None, now: datetime) -> None:
     run.hh_mult_x10 = hh.mult_x10 if hh else None
 
 
-def approve(db: Session, run: ChoreRun, by_id: int | None) -> int:
+def approve(db: Session, run: ChoreRun, by_id: int | None, via: str = "parent") -> int:
+    """via: parent | trust | bedtime | integration. Integrations don't count toward trust."""
     run.status = "done"
     run.approved_at = run.completed_at = datetime.utcnow()
     run.approved_by_id = by_id
+    run.approved_via = via
     svc.clear_note(run)
     fam = get_family(db)
     pts = award_chore(db, run, fam)
     chat.system(db, run, f"Approved · +{pts}")
     badges.check_for_run(db, run, fam)
+    if via != "integration":
+        trust.count_clean(db, trust.payees(run))
     kid_events.chore_decided(db, run, True)
     from app.integrations import events  # events -> apply -> this module
 
@@ -45,11 +49,20 @@ def approve(db: Session, run: ChoreRun, by_id: int | None) -> int:
     return pts
 
 
-def send_back(db: Session, run: ChoreRun, note: str) -> None:
+def send_back(db: Session, run: ChoreRun, note: str, by_id: int | None = None) -> None:
     run.status = "todo"
     run.attempt = (run.attempt or 1) + 1
     run.last_note = note
     submitter = run.submitted_by_id
+    if run.spot_check:  # a spot-checked chore sent back is a catch
+        who = trust.payees(run)
+        if submitter in who:
+            trust.catch(db, run, [submitter], by_id, lower=True)
+            who = [k for k in who if k != submitter]
+            trust.catch(db, run, who, by_id, lower=False)
+        else:
+            trust.catch(db, run, who, by_id, lower=True)
+        run.spot_check = False
     run.submitted_at = run.submitted_by_id = run.hh_mult_x10 = None
     chat.system(db, run, f"Sent back: {note}")
     kid_events.chore_decided(db, run, False, note, submitter)

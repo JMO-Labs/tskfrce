@@ -125,7 +125,8 @@ def mark_not_done(run_id: int, db: Session = Depends(get_db), _: User = Depends(
     db.query(Points).filter(Points.run_id == r.id, Points.amount > 0).delete()
     r.ticks.clear()
     r.status = "todo"
-    r.approved_at = r.completed_at = r.approved_by_id = None
+    r.approved_at = r.completed_at = r.approved_by_id = r.approved_via = None
+    r.spot_check = False
     r.submitted_at = r.submitted_by_id = r.hh_mult_x10 = None
     chat.system(db, r, "Marked not done")
     db.commit()
@@ -200,9 +201,9 @@ def send_back(
     run_id: int,
     body: SendBack,
     db: Session = Depends(get_db),
-    _: User = Depends(require_parent),
+    parent: User = Depends(require_parent),
 ):
     r = _waiting(db, run_id)
-    actions.send_back(db, r, body.note)
+    actions.send_back(db, r, body.note, parent.id)
     db.commit()
     return svc.chore_out(r, get_family(db))

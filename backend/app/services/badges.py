@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 
 from fastapi import HTTPException
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.flair.catalog import CATALOG as FLAIR
@@ -17,6 +18,8 @@ from app.models.reward import Redemption
 from app.models.user import User
 from app.services import chores as chore_svc
 from app.services import economy, inbox, progression
+
+TRUSTED = ("trust", "bedtime")  # approved_via values that count without a parent id
 
 TIERS = ("copper", "silver", "gold", "platinum", "mega-diamond")
 
@@ -87,7 +90,7 @@ def _task_metrics(db: Session, kid: User, fam: FamilySettings) -> dict[str, int]
         .filter(
             chore_svc.kid_runs_filter(kid.id),
             ChoreRun.status == "done",
-            ChoreRun.approved_by_id.isnot(None),
+            or_(ChoreRun.approved_by_id.isnot(None), ChoreRun.approved_via.in_(TRUSTED)),
         )
         .order_by(ChoreRun.day, ChoreRun.id)
         .all()

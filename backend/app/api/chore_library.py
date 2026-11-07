@@ -50,6 +50,7 @@ def chore_out(c: Chore) -> dict:
         title=c.title,
         points=c.points,
         needs_photo=c.needs_photo,
+        always_check=c.always_check,
         type_id=c.type_id,
         steps=[
             {
@@ -149,6 +150,7 @@ def create_chore(
         title=body.title,
         points=body.points,
         needs_photo=body.needs_photo,
+        always_check=body.always_check,
         created_by_id=parent.id,
         type_id=_type_id(db, body.type_id),
     )
@@ -164,7 +166,7 @@ def create_chore(
 def patch_chore(chore_id: int, body: ChorePatch, db: Session = Depends(get_db)):
     c = _chore(db, chore_id)
     ch = body.model_dump(exclude_unset=True)
-    for k in ("title", "points", "needs_photo"):
+    for k in ("title", "points", "needs_photo", "always_check"):
         if ch.get(k) is not None:
             setattr(c, k, ch[k])
     if ch.get("type_id") is not None:
@@ -186,6 +188,7 @@ def copy_chore(
         title=f"{c.title} (copy)"[:100],
         points=c.points,
         needs_photo=c.needs_photo,
+        always_check=c.always_check,
         created_by_id=parent.id,
         type_id=c.type_id,
     )

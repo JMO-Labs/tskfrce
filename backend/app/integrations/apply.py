@@ -85,7 +85,7 @@ def _chore_complete(
             title=svc.chore_of(run).title,
         )
         return "pending", None, refs
-    chore_actions.approve(db, run, by_id=None)
+    chore_actions.approve(db, run, None, via="integration")
     return "applied", None, refs
 
 
@@ -193,7 +193,7 @@ def _decide_chore(db, install, grant, a) -> Outcome:
     if run.status != "submitted" or not _claim_decision(db, run, "done" if a.approve else "todo"):
         return "rejected", "already answered", refs
     if a.approve:
-        chore_actions.approve(db, run, by_id=None)
+        chore_actions.approve(db, run, None, via="integration")
     else:
         chore_actions.send_back(db, run, a.note or f"Sent back by {install.name}")
     return "applied", None, refs

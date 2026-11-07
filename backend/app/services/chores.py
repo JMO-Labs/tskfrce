@@ -58,11 +58,10 @@ def chore_of(run: ChoreRun) -> Chore:
 
 
 def state(run: ChoreRun) -> str:
-    """done (parent-approved) | needs_you (submitted) | skipped | todo."""
-    if (
-        run.status == "done"
-        and run.approved_by is not None
-        and run.approved_by.role == UserRole.PARENT
+    """done (parent- or trust-approved) | needs_you (submitted) | skipped | todo."""
+    if run.status == "done" and (
+        run.approved_via in ("trust", "bedtime")
+        or (run.approved_by is not None and run.approved_by.role == UserRole.PARENT)
     ):
         return "done"
     if run.status == "skipped":
@@ -101,7 +100,7 @@ def with_detail(q, kids: bool = True, photos: bool = True):
 
 
 def counts(db: Session, kid_id: int, day: date) -> tuple[int, int]:
-    """(approved, total) for a kid today; approved needs a parent's approval."""
+    """(approved, total) for a kid today; approved needs a parent or trust approval."""
     runs = (
         day_runs(db, day)
         .options(joinedload(ChoreRun.approved_by))

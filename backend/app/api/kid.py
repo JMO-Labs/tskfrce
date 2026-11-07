@@ -34,6 +34,7 @@ from app.services import (
     inbox,
     kid_view,
     progression,
+    trust,
 )
 from app.services import chores as svc
 from app.services.chore_types import notes_for
@@ -298,23 +299,28 @@ def done(chore_id: int, db: Session = Depends(get_db), kid: User = Depends(requi
     if c.needs_photo and not svc.photo_count(r):
         raise HTTPException(status_code=409, detail="Add a photo first.")
     chore_actions.submit(r, kid.id, now)
-    inbox.notify_parents(
-        db,
-        "chore_submitted",
-        f"{kid.full_name} finished {c.title}",
-        "Take a look and approve it.",
-        run_id=r.id,
-    )
-    from app.integrations import events
+    verdict = trust.decide(db, r, trust.payees(r))
+    if verdict == "auto":
+        chore_actions.approve(db, r, None, via="trust")
+    else:
+        r.spot_check = verdict == "spot"
+        inbox.notify_parents(
+            db,
+            "chore_submitted",
+            f"{kid.full_name} finished {c.title}",
+            "Take a look and approve it.",
+            run_id=r.id,
+        )
+        from app.integrations import events
 
-    events.emit(
-        db, "request.created", [kid.id], chore_id=c.id, type="chore", id=r.id, title=c.title
-    )
+        events.emit(
+            db, "request.created", [kid.id], chore_id=c.id, type="chore", id=r.id, title=c.title
+        )
     db.commit()
     trigger()
     return {
         "id": r.id,
-        "status": "submitted_for_approval",
+        "status": "done" if verdict == "auto" else "submitted_for_approval",
         "submitted_for_approval_at": utc_z(r.submitted_at),
     }
 
