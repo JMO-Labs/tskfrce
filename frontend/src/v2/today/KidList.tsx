@@ -67,7 +67,7 @@ export function KidList({ onSelectKid, selectedKid }: { onSelectKid: (kid: Today
             </div>
           </Tabs.Panel>
           <Tabs.Panel value="needs">
-            <NeedsYouList items={data?.needs_you ?? []} />
+            <NeedsYouList items={data?.needs_you ?? []} today={data?.day} />
           </Tabs.Panel>
         </Tabs>
       </div>

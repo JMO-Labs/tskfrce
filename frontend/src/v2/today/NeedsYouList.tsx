@@ -144,7 +144,7 @@ export function NeedsYouList({ items, today }: { items: NeedsItem[]; today?: str
                 <Chip tone={k.tone} icon={k.icon}>
                   {k.label}
                 </Chip>
-                {older && <small>{older}</small>}
+                {older && <Chip tone="grey" icon="calendar_today">{older}</Chip>}
               </span>
             </div>
             {sending === i.id && (
