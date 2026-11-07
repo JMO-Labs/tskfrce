@@ -32,7 +32,7 @@ export function WasntDoneSheet({ run, today, kidName, level, trustOn = true, onC
   const go = () => take.mutate({ id: run.id, lower_trust: trustOn && !!level && lower }, { onSuccess: close })
   return (
     <Modal opened onClose={close} title="Wasn't done?" centered>
-      <div className="pt-hh-sheet">
+      <div className="pt-hh-sheet v2-sheet">
         <p className="v2-body">
           {older ? `This chore was from ${dayName(run.day, today)}, so it won't come back.` : `“${run.title}” goes back on ${kidName}'s list for today, and`}{' '}
           {older ? `${pts[0].toUpperCase()}${pts.slice(1)} it earned come off.` : `${pts} it earned come off.`} If {kidName} already spent them, the balance stops at zero.

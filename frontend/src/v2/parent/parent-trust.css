@@ -20,7 +20,6 @@
 [data-look='parent'] .v2-sub-t b { color: var(--p-ink); }
 [data-look='parent'] .pt-own { white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; vertical-align: bottom; }
 [data-look='parent'] .p-needs-kind { display: grid; justify-items: end; gap: 2px; flex: none; }
-[data-look='parent'] .p-needs-kind small { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--p-sub); }
 @media (max-width: 767px) {
   [data-look='parent'] .v2-level .pt-bar { flex-basis: 60%; }
   [data-look='parent'] .v2-next { margin-right: auto; }
@@ -31,11 +30,10 @@
 }
 [data-look='parent'] .v2-body { margin: 0; font-size: 14px; color: var(--p-ink); line-height: 1.5; }
 [data-look='parent'] .v2-end { justify-content: flex-end; }
-[data-look='parent'] .pt-hh-sheet .mantine-Checkbox-label { font-weight: 600; }
+[data-look='parent'] .v2-sheet .mantine-Checkbox-label { font-weight: 600; }
 [data-look='parent'] #trust { scroll-margin-top: 12px; }
-[data-look='parent'] .mantine-Switch-input:focus-visible + .f-switch { outline: 2px solid var(--p-ink); outline-offset: 2px; }
 @media (pointer: coarse), (max-width: 767px) {
-  [data-look='parent'] :is(.v2-level, .v2-sub, .ao-row, .pt-hh-sheet) .p-btn { min-height: 44px; }
+  [data-look='parent'] :is(.v2-level, .v2-sub, .ao-row, .v2-sheet) .p-btn { min-height: 44px; }
   [data-look='parent'] .v2-sw { position: relative; }
   [data-look='parent'] .v2-sw .mantine-Switch-input { inset: -12px -6px; width: auto; height: auto; }
 }

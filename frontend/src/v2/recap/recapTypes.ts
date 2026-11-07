@@ -62,6 +62,6 @@ export function lookText({ flag }: Look): { icon: string; title: string; sub: st
     case 'later':
       return { icon: 'schedule', title: 'finishing later', sub: `On time ${flag.now}%, was ${flag.was}%` }
     case 'streak_ended':
-      return { icon: 'local_fire_department', title: `${flag.count}‑day streak ended`, sub: 'This week' }
+      return { icon: 'local_fire_department', title: `${flag.count}-day streak ended`, sub: 'This week' }
   }
 }

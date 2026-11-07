@@ -8,6 +8,7 @@ import { useRecap } from '@/v2/hooks/useRecap'
 import { RecapKids } from './RecapKids'
 import { RecapLooks } from './RecapLooks'
 import { looksOf } from './recapTypes'
+import { useFamily } from '@/v2/hooks/useFamily'
 import { useDismissTip, useTips } from '@/v2/hooks/useTips'
 import styles from '../components/QuickTip.module.css'
 
@@ -21,6 +22,7 @@ export function RecapBody() {
   const q = useRecap(week)
   const tips = useTips().data
   const dismiss = useDismissTip()
+  const recapOff = useFamily().data?.recap_weekly === false
   const r = q.data
   if (q.isPending) return <Skeleton />
   if (q.isError || !r) return <ErrorPanel kind="unreachable" error={q.error} onRetry={() => q.refetch()} />
@@ -28,12 +30,16 @@ export function RecapBody() {
   return (
     <div className="rc">
       {tips && !tips.dismissed.includes('intro.recap') && (
-        <section className={`${styles.tip} ${styles.parentMode}`} aria-label="About the recap">
+        <section className={`rc-tip ${styles.tip} ${styles.parentMode}`} aria-label="About the recap">
           <span className={styles.icon} aria-hidden="true">
             <span className="material-symbols-rounded">calendar_month</span>
           </span>
-          <span className={styles.text}>New every Sunday at 7:30 PM. Turn it off in <Link href="/settings?section=family">Settings › Family</Link>.</span>
-          <button type="button" className="p-btn" onClick={() => dismiss.mutate('intro.recap')}>
+          <span className={styles.text}>{recapOff ? 'Weekly recap is off. Turn it on in' : 'New every Sunday at 7:30 PM. Turn it off in'} <Link href="/settings?section=family">Settings › Family</Link>.</span>
+          <button type="button" className="p-btn" onClick={() => {
+              dismiss.mutate('intro.recap')
+              // the tip unmounts: park focus on the week picker instead of <body>
+              requestAnimationFrame(() => document.querySelector<HTMLElement>('.rc-week .p-btn:not([disabled])')?.focus())
+            }}>
             Got it
           </button>
         </section>

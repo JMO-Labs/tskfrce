@@ -33,10 +33,10 @@ const FLAGGED = week([
   }),
   kid(2, 'Maya', { done: 20, enough_history: true, flags: [flag('streak_ended', "Maya's 9-day streak ended this week.", 'kid', { count: 9 })] }),
 ])
-const serve = (r: Recap) => apiMock.mockImplementation(async (p) => (p.startsWith('/recap') ? r : undefined))
-const show = async () => {
+const serve = (r: Recap) => apiMock.mockImplementation(async (p) => (p.startsWith('/recap') ? r : p === '/family' ? {} : undefined))
+const show = async (qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })) => {
   render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider client={qc}>
       <RecapBody />
     </QueryClientProvider>,
   )
@@ -57,6 +57,19 @@ describe('looksOf', () => {
   })
 })
 
+describe('first-recap intro details', () => {
+  test('Got it hands focus to the week picker', async () => {
+    apiMock.mockImplementation(async (p) => (p === '/me/tips' ? { dismissed: [] } : p.startsWith('/recap') ? FLAGGED : {}))
+    await show()
+    await userEvent.click(await screen.findByRole('button', { name: 'Got it' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Previous week' }).closest('.rc-week')?.contains(document.activeElement)).toBe(true))
+  })
+  test('says so when the weekly recap is off', async () => {
+    apiMock.mockImplementation(async (p) => (p === '/me/tips' ? { dismissed: [] } : p === '/family' ? { recap_weekly: false } : p.startsWith('/recap') ? FLAGGED : {}))
+    await show()
+    expect(await screen.findByText(/Weekly recap is off\. Turn it on in/)).toBeInTheDocument()
+  })
+})
 describe('Worth a look', () => {
   test('one family list, max 3, most serious first, with See all', async () => {
     serve(FLAGGED)
@@ -67,7 +80,7 @@ describe('Worth a look', () => {
     expect(within(card).getByText('6 a week, was 11')).toBeTruthy()
     await userEvent.click(within(card).getByRole('button', { name: 'See all' }))
     expect(within(card).getAllByRole('listitem')).toHaveLength(4)
-    expect(card.textContent).toContain('Maya: 9‑day streak ended')
+    expect(card.textContent).toContain('Maya: 9-day streak ended')
     expect(within(card).queryByRole('button', { name: 'See all' })).toBeNull()
   })
   test('hidden when no kid has flags', async () => {
@@ -181,8 +194,9 @@ describe('first-recap intro', () => {
   })
   test('hidden once dismissed', async () => {
     tips(['intro.recap'])
-    await show()
-    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/me/tips', expect.anything()))
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    await show(qc)
+    await waitFor(() => expect(qc.getQueryState(['tips', false])?.status).toBe('success'))
     expect(screen.queryByText(/New every Sunday at 7:30 PM/)).toBeNull()
   })
 })

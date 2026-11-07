@@ -67,7 +67,7 @@ export function TrustSection({ kid }: { kid: Kid }) {
       )}
       <SelfApprovedList kid={kid} today={day ?? ''} />
       <Modal opened={picking !== null} onClose={close} title="Trust level" centered>
-        <div className="pt-hh-sheet">
+        <div className="pt-hh-sheet v2-sheet">
           <SegmentedControl
             label="Trust level"
             value={String(p)}

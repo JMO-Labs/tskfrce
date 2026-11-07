@@ -27,7 +27,7 @@ export function RecapLooks({ looks }: { looks: Look[] }) {
               </span>
               <span className="v2-look-t">
                 <b>
-                  <span className="v2-nm">{l.kid.name}:</span> {t.title}
+                  <span className="v2-nm">{l.kid.name}:</span> {t.title.split(/(\d+-day)/).map((x, i) => (i % 2 ? <span key={i} className="v2-nm">{x}</span> : x))}
                 </b>
                 <small>{t.sub}</small>
               </span>
