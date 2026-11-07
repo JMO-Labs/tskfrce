@@ -102,6 +102,8 @@ def mark_done(run_id: int, db: Session = Depends(get_db), parent: User = Depends
         raise HTTPException(409, "This chore is already done or waiting for your OK.")
     if r.kid_id is None and r.assignment.mode == "race":
         raise HTTPException(409, "Race chores go to the kid who finishes first.")
+    if not actions.claim(db, r):  # the kid's /done may have landed since the check above
+        raise HTTPException(409, "That chore was already handled.")
     now = datetime.utcnow()
     actions.tick_all(r, parent.id, now)
     actions.submit(r, None, now)

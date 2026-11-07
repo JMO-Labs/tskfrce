@@ -282,3 +282,23 @@ def test_parent_loses_race_to_bedtime(
     db.expire_all()
     assert db.query(Points).filter(Points.run_id == r.id, Points.amount > 0).count() == 1
     assert _status(db, r) == ("done", "bedtime")
+
+
+def test_parent_mark_done_loses_race_to_kid(client, db, parent, kid, parent_headers, monkeypatch):
+    """The kid's finish lands between the parent's check and write: parent gets 409, no pay."""
+    from app.api import chores as api
+
+    r = make_run(db, parent, kid)
+    orig = api.actions.claim
+
+    def late(d, run, *a, **kw):
+        d.query(ChoreRun).filter(ChoreRun.id == run.id).update(
+            {"status": "submitted"}, synchronize_session=False
+        )  # the kid's /done claimed it first
+        return orig(d, run, *a, **kw)
+
+    monkeypatch.setattr(api.actions, "claim", late)
+    res = client.post(f"{API}/chores/{r.id}/done", headers=parent_headers)
+    assert res.status_code == 409 and "already handled" in res.json()["detail"]
+    db.expire_all()
+    assert db.query(Points).filter(Points.run_id == r.id, Points.amount > 0).count() == 0
