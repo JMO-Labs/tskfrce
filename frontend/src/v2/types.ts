@@ -355,6 +355,18 @@ export interface KidToday {
   celebrate?: CelebrateLevel
   /** active Happy Hour, if any */
   happy_hour?: { ends_at: string; multiplier: number } | null
+  /** trust mode: 0 New, 1 Trusted, 2 Proven; to_next null at Proven. null = trust mode off */
+  trust?: KidTrust | null
+}
+
+export interface KidTrust {
+  level: 0 | 1 | 2
+  to_next: number | null
+}
+
+/** POST /kid/chores/{id}/done: `done` = approved itself and paid; otherwise it waits (a spot check looks the same) */
+export interface KidDoneResult {
+  status: 'done' | 'submitted_for_approval'
 }
 
 /** GET /kids/{id}/push */

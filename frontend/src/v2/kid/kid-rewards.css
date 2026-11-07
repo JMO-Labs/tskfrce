@@ -135,3 +135,8 @@
   .r-view[data-mode='teen'] .r-act { grid-column: 1 / -1; width: auto; }
   .r-view[data-mode='teen'] .r-btn { width: 100%; }
 }
+
+/* Trust chip and one line (Me page) */
+.me-trust { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; font-weight: 700; color: var(--k-sub); font-size: 15px; line-height: 1.35; }
+.k-app[data-mode='little'] .me-trust { font-size: 20px; color: var(--k-ink); }
+.k-app[data-mode='teen'] .me-trust { font-size: 13px; font-weight: 600; }
