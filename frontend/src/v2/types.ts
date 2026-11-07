@@ -362,6 +362,8 @@ export interface KidToday {
 export interface KidTrust {
   level: 0 | 1 | 2
   to_next: number | null
+  /** chores needed for the next level; null at Proven */
+  goal: number | null
 }
 
 /** POST /kid/chores/{id}/done: `done` = approved itself and paid; otherwise it waits (a spot check looks the same) */

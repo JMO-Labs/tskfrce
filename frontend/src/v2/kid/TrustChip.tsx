@@ -5,17 +5,14 @@ import type { KidChipT } from './kidChips'
 
 const NAMES = ['New', 'Trusted', 'Proven'] as const
 const NEXT = ['Trusted', 'Proven'] as const
-/** clean chores to move up from each level (mirrors backend services/trust.py UP_AT) */
-const UP_AT = [10, 30] as const
 const TONES: KidChipT['tone'][] = ['today', 'done', 'sun']
 const SIZE: Record<KidAge, ChipSize> = { little: 'lg', kid: 'md', teen: 'sm' }
 
 /** The one line beside the chip. Teen is plain, no cheering. */
 export function trustLine(t: KidTrust, mode: KidAge): string {
-  if (t.to_next == null || t.level === 2) return mode === 'teen' ? 'You made it to Proven.' : 'You made it to Proven. Keep it up!'
+  if (t.to_next == null || t.goal == null || t.level === 2) return mode === 'teen' ? 'You made it to Proven.' : 'You made it to Proven. Keep it up!'
   const next = NEXT[t.level]
-  const total = UP_AT[t.level]
-  if (mode === 'teen') return `${total - t.to_next} of ${total} toward ${next}.`
+  if (mode === 'teen') return `${t.goal - t.to_next} of ${t.goal} toward ${next}.`
   const more = `${t.to_next} more ${t.to_next === 1 ? 'chore' : 'chores'} to ${next}`
   return t.level === 0 ? `${more}!` : `${more}. Nice going.`
 }

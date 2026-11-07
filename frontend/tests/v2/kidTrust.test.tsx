@@ -13,7 +13,8 @@ jest.mock('@/v2/api', () => ({ api: jest.fn(), AuthError: class extends Error {}
 jest.mock('@/v2/notify', () => ({ toastOk: jest.fn(), toastFail: jest.fn(), retryIfOffline: jest.fn() }))
 const apiMock = api as unknown as Mock<(p: string, i?: unknown) => Promise<unknown>>
 
-const tr = (level: 0 | 1 | 2, to_next: number | null): KidTrust => ({ level, to_next })
+const GOAL = [10, 30, null] as const
+const tr = (level: 0 | 1 | 2, to_next: number | null): KidTrust => ({ level, to_next, goal: GOAL[level] })
 const today = (trust: KidTrust | null | undefined, chore = 'todo'): KidToday => ({
   locked: false, points_balance: 0, age_group: 'kid', locks_at: null, trust,
   chores: [{ id: 1, title: 'Dishes', points: 10, state: chore as 'todo' }],
@@ -107,3 +108,7 @@ describe('useMarkDone', () => {
 })
 
 beforeEach(() => localStorage.clear())
+
+test('teen total comes from the API goal, not a copy of the backend thresholds', () => {
+  expect(trustLine({ level: 1, to_next: 10, goal: 12 }, 'teen')).toBe('2 of 12 toward Proven.')
+})

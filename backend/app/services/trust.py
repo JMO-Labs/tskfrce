@@ -102,11 +102,12 @@ def set_level(db: Session, kid: User, level: int, by_id: int) -> None:
 
 
 def badge(kid: User) -> dict | None:
-    """What the kid sees: level and chores to the next one (None at Proven). Off = None."""
+    """What the kid sees: level, chores to the next one and that level's goal (None at Proven). Off = None."""
     if not kid.trust_mode:
         return None
     need = UP_AT.get(kid.trust_level)
     return {
         "level": kid.trust_level,
         "to_next": None if need is None else max(need - kid.trust_clean, 0),
+        "goal": need,  # chores needed for the next level, so the UI never copies UP_AT
     }

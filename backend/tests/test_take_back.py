@@ -259,11 +259,11 @@ def test_kid_today_trust_block(client, db, parent, kid, kid_headers):
     get = lambda: client.get(f"{API}/kid/today", headers=kid_headers).json()["trust"]  # noqa: E731
     assert get() is None
     _trust(db, kid, level=0, clean=4)
-    assert get() == {"level": 0, "to_next": 6}
+    assert get() == {"level": 0, "to_next": 6, "goal": 10}
     _trust(db, kid, level=1, clean=5)
-    assert get() == {"level": 1, "to_next": 25}
+    assert get() == {"level": 1, "to_next": 25, "goal": 30}
     _trust(db, kid, level=2, clean=5)
-    assert get() == {"level": 2, "to_next": None}
+    assert get() == {"level": 2, "to_next": None, "goal": None}
     _trust(db, kid, on=False, level=2)
     assert get() is None
 
