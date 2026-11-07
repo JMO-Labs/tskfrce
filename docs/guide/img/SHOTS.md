@@ -29,6 +29,8 @@ Taken with Playwright from a demo family (kids Bobby and Susan), read-only: ever
 | `trust-kid.jpg` | Kid page (phone): **Trust mode** card, Trusted level, and **Approved on their own** with **Wasn't done**. Less parent work 2.7.0. |
 | `wasnt-done.jpg` | Kid page (phone): the **Wasn't done?** sheet with **Also lower trust level** ticked. |
 | `setup-extras.jpg` | Setup wizard step 8 "Optional extras" (phone): trust mode per kid and bedtime auto-approve, all off. |
-| `less-tapping.jpg` | **Settings → Family** (phone): the **Extras** card with bedtime auto-approve on. |
+| `extras.jpg` | **Settings → Family** (phone): the **Extras** card with bedtime auto-approve on. Retaken 2026-11-07 (renamed from `less-tapping.jpg`) from a mocked API. |
 | `recap.jpg` | **Your week** (phone): **Worth a look** list and the **This week** card. |
 | `kid-trust-chip.jpg` | Kid **Me** (phone, Little look): the Proven level chip and its friendly line. |
+
+Retaken 2026-11-07 after the polish passes: `trust-kid.jpg`, `wasnt-done.jpg`, `extras.jpg`, `recap.jpg`. These four came from a mocked API (Playwright `page.route`, parent logged in with a fake token), phone 390x844 at 2x, light, viewport only, resized to 600 px wide, JPEG quality 82. The real-backend shot process was not used.

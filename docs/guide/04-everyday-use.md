@@ -224,7 +224,7 @@ Every Sunday at 7:30 PM you get "Your week at (your family)" in your inbox, plus
 - **Kids & chores → the kid → Trust mode**, and **Always check** on each chore.
 - **Settings → Family → Extras**: **Bedtime auto-approve** (with its time) and **Weekly recap**.
 
-![The Extras card in Settings](img/less-tapping.jpg)
+![The Extras card in Settings](img/extras.jpg)
 
 ### "Try this" cards
 
