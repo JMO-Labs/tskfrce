@@ -13,7 +13,9 @@
 [data-look='parent'] .v2-sp polyline { fill: none; stroke: var(--p-meter); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 [data-look='parent'] .v2-sp .end { fill: var(--p-meter); stroke: var(--p-card); stroke-width: 2; }
 [data-look='parent'] .v2-sp .hit { fill: transparent; }
-[data-look='parent'] .v2-info { display: inline-flex; margin-left: auto; color: var(--p-sub); cursor: help; }
+[data-look='parent'] .v2-info { all: unset; display: inline-flex; margin-left: auto; padding: 4px; color: var(--p-sub); cursor: pointer; }
+[data-look='parent'] .v2-info:focus-visible { outline: 2px solid var(--p-ink); border-radius: 50%; }
+[data-look='parent'] .rc-note { margin: 0; color: var(--p-sub); font-size: 12.5px; }
 [data-look='parent'] .v2-kids { display: grid; }
 [data-look='parent'] .v2-kid { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--p-line); cursor: pointer; font: inherit; color: var(--p-ink); }
 [data-look='parent'] .v2-kid:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
@@ -29,12 +31,18 @@
 [data-look='parent'] .v2-look { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: var(--p-soft); }
 [data-look='parent'] .v2-look .p-needs-ic { background: var(--p-amb); color: var(--p-ambink); }
 [data-look='parent'] .v2-look-t { flex: 1; min-width: 0; display: grid; }
-[data-look='parent'] .v2-look-t b { font-size: 14px; }
+[data-look='parent'] .v2-look-t b { font-size: 14px; text-wrap: balance; }
 [data-look='parent'] .v2-look-t small { color: var(--p-sub); font-size: 12.5px; }
 [data-look='parent'] .v2-look .p-btn { padding: 7px 12px; flex: none; }
 @media (max-width: 767px) {
   [data-look='parent'] .rc-week h2 { font-size: 22px; }
   [data-look='parent'] .v2-sp { display: none; }
   [data-look='parent'] .v2-kid-t { flex: 1; }
+  [data-look='parent'] .v2-kid-t small { white-space: nowrap; }
+  [data-look='parent'] .v2-look-t { flex: 1 1 200px; }
+  [data-look='parent'] .v2-look { flex-wrap: wrap; }
+  [data-look='parent'] .v2-look .p-btn { margin-left: 50px; }
 }
 [data-look='parent'] .pk-panel > .p-btn { align-self: flex-start; margin-top: 8px; }
+[data-look='parent'] .v2-new { margin: 0; padding: 0 0 8px 48px; color: var(--p-sub); font-size: 12.5px; border-bottom: 1px solid var(--p-line); }
+[data-look='parent'] .v2-kid:has(+ .v2-new) { border-bottom: 0; }

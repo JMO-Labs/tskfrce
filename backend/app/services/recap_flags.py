@@ -31,21 +31,31 @@ def flags(name, b, catches, ended, history) -> list[dict]:
     name = clean(name)
     out = []
     if catches >= 2:
-        out.append(("catches", f"{name} had {catches} spot-check catches this week.", "trust"))
+        out.append(
+            (
+                "catches",
+                f"{name} had {catches} spot-check catches this week.",
+                "trust",
+                {"count": catches},
+            )
+        )
     if history:
         recent = _means(b["done"][4:], b["assigned"][4:])
         base = _means(b["done"][:4], b["assigned"][:4])
         if recent is not None and base is not None and base >= MIN_BASE:
             if recent <= base * (1 - DROP):
                 pct = round((1 - recent / base) * 100)
+                text = f"{name}'s chores are down {pct}% over 2 weeks."
                 out.append(
-                    ("dropping", f"{name}'s chores are down {pct}% over 2 weeks.", "happy_hour")
+                    ("dropping", text, "happy_hour", {"now": round(recent), "was": round(base)})
                 )
         r_pct, _ = _rate(b["ontime"][4:])
         b_pct, b_n = _rate(b["ontime"][:4])
         if r_pct is not None and b_pct is not None and b_n >= MIN_DEADLINES:
             if b_pct - r_pct >= LATER_PTS:
-                out.append(("later", f"{name} is finishing chores later than usual.", "kid"))
+                text = f"{name} is finishing chores later than usual."
+                out.append(("later", text, "kid", {"now": round(r_pct), "was": round(b_pct)}))
     if ended:
-        out.append(("streak_ended", f"{name}'s {ended}-day streak ended this week.", "kid"))
-    return [{"kind": k, "text": t, "action": a} for k, t, a in out[:MAX_FLAGS]]
+        text = f"{name}'s {ended}-day streak ended this week."
+        out.append(("streak_ended", text, "kid", {"count": ended}))
+    return [{"kind": k, "text": t, "action": a, **x} for k, t, a, x in out[:MAX_FLAGS]]

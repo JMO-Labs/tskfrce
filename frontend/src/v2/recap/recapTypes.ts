@@ -2,11 +2,11 @@
 export type FlagKind = 'catches' | 'dropping' | 'later' | 'streak_ended'
 export type FlagAction = 'happy_hour' | 'kid' | 'trust'
 
-export interface RecapFlag {
-  kind: FlagKind
-  text: string
-  action: FlagAction
-}
+/** The numbers each flag fired on, over the same windows the backend rule uses. */
+export type RecapFlag = { text: string; action: FlagAction } & (
+  | { kind: 'catches' | 'streak_ended'; count: number }
+  | { kind: 'dropping' | 'later'; now: number; was: number }
+)
 
 export interface RecapKid {
   id: number
@@ -52,23 +52,16 @@ export const avgDone = (k: RecapKid): number | null => {
   return w.length ? Math.round(w.reduce((a, b) => a + b, 0) / w.length) : null
 }
 
-const num = (text: string, re: RegExp) => re.exec(text)?.[1]
-
 /** Icon, title (after "Name: ") and muted line for a flag. */
-export function lookText({ kid, flag }: Look): { icon: string; title: string; sub: string } {
+export function lookText({ flag }: Look): { icon: string; title: string; sub: string } {
   switch (flag.kind) {
     case 'catches':
-      return { icon: 'undo', title: `${num(flag.text, / had (\d+) spot-check/) ?? 'Some'} needed another go`, sub: 'Spot check, wasn’t done' }
+      return { icon: 'undo', title: `${flag.count} needed another go`, sub: 'Spot check, wasn’t done' }
     case 'dropping':
-      return { icon: 'trending_down', title: 'fewer chores', sub: `${kid.done} this week${avgDone(kid) == null ? '' : `, was ${avgDone(kid)}`}` }
+      return { icon: 'trending_down', title: 'fewer chores', sub: `${flag.now} a week, was ${flag.was}` }
     case 'later':
-      return {
-        icon: 'schedule',
-        title: 'finishing later',
-        sub: kid.on_time_pct == null || kid.on_time_avg == null ? 'Later than usual' : `On time ${kid.on_time_pct}%, was ${kid.on_time_avg}%`,
-      }
+      return { icon: 'schedule', title: 'finishing later', sub: `On time ${flag.now}%, was ${flag.was}%` }
     case 'streak_ended':
-      const n = num(flag.text, /(\d+)-day streak/)
-      return { icon: 'local_fire_department', title: n ? `${n}-day streak ended` : 'streak ended', sub: 'This week' }
+      return { icon: 'local_fire_department', title: `${flag.count}-day streak ended`, sub: 'This week' }
   }
 }

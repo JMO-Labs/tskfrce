@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Modal, Switch } from '@mantine/core'
 import { usePatchKid } from '@/v2/hooks/useKids'
 import { useToday } from '@/v2/hooks/useToday'
@@ -23,9 +23,14 @@ export function TrustSection({ kid }: { kid: Kid }) {
   const save = (body: { trust_mode?: boolean; trust_level?: 0 | 1 | 2 }, done?: () => void) =>
     patch.mutate({ id: kid.id, body }, { onSuccess: done, onError: toastFail })
   const close = () => setPicking(null)
+  const ref = useRef<HTMLElement>(null)
+  // the recap links here with #trust; the kid page loads first, so scroll once this card exists
+  useEffect(() => {
+    if (window.location.hash === '#trust') ref.current?.scrollIntoView({ block: 'start' })
+  }, [])
 
   return (
-    <section className="pk-panel pk-span" aria-label="Trust mode">
+    <section id="trust" ref={ref} className="pk-panel pk-span" aria-label="Trust mode">
       <h3>
         <Icon name="verified_user" size={18} />
         Trust mode

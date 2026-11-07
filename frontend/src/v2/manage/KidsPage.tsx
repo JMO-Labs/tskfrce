@@ -62,7 +62,7 @@ function KidsBody() {
   const kidParam = first(query.kid)
   useEffect(() => {
     if (!kidParam || query.item) return
-    router.replace({ pathname: '/kids', query: want === 'chores' ? { section: 'chores', item: 'new' } : { section: 'kids', item: kidParam, pin: first(query.pin) } })
+    router.replace({ pathname: '/kids', query: want === 'chores' ? { section: 'chores', item: 'new' } : { section: 'kids', item: kidParam, pin: first(query.pin) }, ...(window.location.hash && { hash: window.location.hash }) })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kidParam, query.item])
 

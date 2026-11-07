@@ -100,7 +100,13 @@ def test_later_fires_at_20_points_and_not_under(db, parent, kid):
     _timed(db, parent, kid, 5, 5, late=1)  # 80% against 100%: 20 points down
     d = _week(db)
     assert d["kids"][0]["flags"] == [
-        {"kind": "later", "text": "Timmy is finishing chores later than usual.", "action": "kid"}
+        {
+            "kind": "later",
+            "text": "Timmy is finishing chores later than usual.",
+            "action": "kid",
+            "now": 80,
+            "was": 100,
+        }
     ]
 
 
@@ -186,6 +192,19 @@ def test_cap_three_flags_in_order():
     }
     out = flags("Sam", b, 3, 9, True)
     assert [f["kind"] for f in out] == ["catches", "dropping", "later"]
+
+
+def test_flags_carry_the_numbers_they_fired_on():
+    b = {
+        "done": [10, 10, 10, 10, 2, 2],
+        "assigned": [10] * 6,
+        "ontime": [(5, 5)] * 4 + [(0, 5)] * 2,
+    }
+    by = {f["kind"]: f for f in flags("Sam", b, 3, 9, True)}
+    assert by["catches"]["count"] == 3
+    assert (by["dropping"]["now"], by["dropping"]["was"]) == (2, 10)
+    assert (by["later"]["now"], by["later"]["was"]) == (0, 100)
+    assert flags("Sam", b, 0, 9, False)[0]["count"] == 9
 
 
 def test_all_good(db, parent, kid):

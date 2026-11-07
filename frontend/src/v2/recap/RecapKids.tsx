@@ -3,7 +3,7 @@ import { Icon } from '@/v2/parent/Icon'
 import { avgDone, type RecapKid } from './recapTypes'
 import { Sparkline } from './Sparkline'
 
-const NOTE = 'Each number against the average of the 4 weeks before. Screen time is minutes bought, not minutes watched.'
+const NOTE = 'Arrows compare with the average of the 4 weeks before. Screen time is minutes bought, not minutes watched.'
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
 
 /** "avg 10" with an arrow for above or below; nothing when equal arrows are skipped. */
@@ -39,15 +39,21 @@ function Detail({ k }: { k: RecapKid }) {
 /** This week: one line per kid; tap one to open its other numbers (one at a time). */
 export function RecapKids({ kids, line }: { kids: RecapKid[]; line: string | null }) {
   const [open, setOpen] = useState<number | null>(null)
+  const [note, setNote] = useState(false)
   return (
     <section className="pk-panel" aria-label="This week">
       <h3>
         <Icon name="insights" size={18} />
         This week
-        <span className="v2-info" role="img" tabIndex={0} title={NOTE} aria-label={NOTE}>
+        <button type="button" className="v2-info" aria-label="About these numbers" aria-expanded={note} aria-controls="rc-note" onClick={() => setNote(!note)}>
           <Icon name="info" size={16} />
-        </span>
+        </button>
       </h3>
+      {note && (
+        <p id="rc-note" className="rc-note">
+          {NOTE}
+        </p>
+      )}
       <div className="v2-kids">
         {kids.map((k) => {
           const isOpen = open === k.id
@@ -61,7 +67,6 @@ export function RecapKids({ kids, line }: { kids: RecapKid[]; line: string | nul
                     {plural(k.done, 'chore')}
                     {k.enough_history && <Cmp now={k.done} avg={avgDone(k)} />}
                   </small>
-                  {!k.enough_history && <small>Trends start after 2 weeks.</small>}
                 </span>
                 {k.enough_history && (
                   <span className="v2-sp">
@@ -75,6 +80,7 @@ export function RecapKids({ kids, line }: { kids: RecapKid[]; line: string | nul
                 )}
                 <Icon name={isOpen ? 'expand_less' : 'expand_more'} size={20} />
               </button>
+              {!k.enough_history && <p className="v2-new">Trends start after 2 weeks.</p>}
               {isOpen && <Detail k={k} />}
             </div>
           )
