@@ -67,7 +67,7 @@ export function TrustSection({ kid }: { kid: Kid }) {
               options={LEVELS.map((l, i) => ({ value: String(i), label: l }))}
             />
             <p className="v2-p">{LEVEL_TEXT[picking]}</p>
-            <div className="pk-actions">
+            <div className="pk-actions v2-end">
               <button type="button" className="p-btn" onClick={close}>
                 Cancel
               </button>

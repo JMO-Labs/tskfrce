@@ -60,7 +60,7 @@ export function ChoreRow({
               {sub}
               {own && (
                 <>
-                  {sub && ' · '}
+                  {sub && <span className="pt-own-sep"> · </span>}
                   <span className="pt-own">
                     <Icon name="verified" size={14} />
                     Approved on its own

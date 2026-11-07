@@ -27,7 +27,7 @@ export function WasntDoneSheet({ run, today, kidName, level, trustOn = true, onC
   return (
     <Modal opened onClose={onClose} title="Wasn't done?" centered>
       <div className="pt-hh-sheet">
-        <p>
+        <p className="v2-body">
           {older ? `This chore was from ${dayName(run.day, today)}, so it won't come back.` : `${run.title} goes back on ${kidName}'s list for today, and`}{' '}
           {older ? `${pts[0].toUpperCase()}${pts.slice(1)} it earned come off.` : `${pts} it earned come off.`} If {kidName} already spent them, the balance stops at zero.
         </p>
@@ -40,7 +40,7 @@ export function WasntDoneSheet({ run, today, kidName, level, trustOn = true, onC
           />
         )}
         <span className="pk-hint">{`${kidName} sees: "${kidMsg}"`}</span>
-        <div className="pk-actions">
+        <div className="pk-actions v2-end">
           <button type="button" className="p-btn" onClick={onClose}>
             Keep
           </button>

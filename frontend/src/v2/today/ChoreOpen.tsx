@@ -221,7 +221,7 @@ export function ChoreOpen({ chore, kid }: { chore: TodayChore; kid: TodayKid }) 
               Undo skip
             </button>
           )}
-          {chore.state !== 'skipped' && (
+          {chore.state !== 'skipped' && !own && (
             <button ref={dedBtn} className="p-btn" data-variant="red" aria-expanded={ded} onClick={() => setDed(!ded)}>
               <Icon name="remove_circle" size={17} />
               Deduct points

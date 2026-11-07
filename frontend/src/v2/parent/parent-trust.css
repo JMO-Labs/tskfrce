@@ -20,6 +20,12 @@
 [data-look='parent'] .p-needs-kind { display: grid; justify-items: end; gap: 2px; flex: none; }
 [data-look='parent'] .p-needs-kind small { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--p-sub); }
 @media (max-width: 767px) {
+  [data-look='parent'] .pt-own-sep { display: none; }
+  [data-look='parent'] .pt-own { display: flex; }
   [data-look='parent'] .v2-sub-t { display: grid; gap: 0; }
   [data-look='parent'] .v2-sub-t span { font-size: 12.5px; }
 }
+[data-look='parent'] .v2-body { margin: 0; font-size: 14px; color: var(--p-ink); line-height: 1.5; }
+[data-look='parent'] .v2-end { justify-content: flex-end; }
+[data-look='parent'] .pt-hh-sheet .mantine-Checkbox-label { font-weight: 600; }
+[data-look='parent'] #trust { scroll-margin-top: 12px; }
