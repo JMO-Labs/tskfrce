@@ -41,6 +41,8 @@ KINDS = (
     "workaround_try",
     "happy_hour",
     "boost",
+    "trust_up",
+    "trust_down",
 )
 
 

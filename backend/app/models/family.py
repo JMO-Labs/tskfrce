@@ -67,6 +67,12 @@ class FamilySettings(Base):
     hh_surprise_date = Column(Date, nullable=True)  # local day this week's surprise was planned
     hh_surprise_at = Column(DateTime, nullable=True)  # naive UTC start of the planned surprise
     streak_freeze = Column(Boolean, nullable=False, default=True, server_default="1")
+    bedtime_auto = Column(Boolean, nullable=False, default=False, server_default="0")
+    bedtime_auto_at = Column(String(5), nullable=False, default="21:00", server_default="21:00")
+    bedtime_date = Column(Date, nullable=True)  # local day bedtime auto-approve last ran
+    recap_weekly = Column(Boolean, nullable=False, default=True, server_default="1")
+    recap_date = Column(Date, nullable=True)  # local day the weekly recap last went out
+    waiting_reset_days = Column(Integer, nullable=False, default=0, server_default="0")
 
 
 def get_family(db: Session) -> FamilySettings:

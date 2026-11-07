@@ -26,6 +26,8 @@ KID_KINDS = frozenset(
         "badge_earned",
         "level_up",
         "happy_hour",
+        "trust_up",
+        "trust_down",
     }
 )
 
