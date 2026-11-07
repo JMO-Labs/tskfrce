@@ -106,7 +106,7 @@ def week_of(db: Session, week_start: date | None = None, now_utc: datetime | Non
     chore_today = svc.today(db, now_utc)  # the chore day, not the calendar date
 
     def streak(kid, end):  # a finished day that was missed breaks it; an open day pauses it
-        asof = end + timedelta(days=1) if end < chore_today else end
+        asof = min(end + timedelta(days=1), chore_today)
         part = {d: v for d, v in days[kid].items() if d <= end}
         return progression.streak_for(part, asof, fam.streak_freeze).current
 

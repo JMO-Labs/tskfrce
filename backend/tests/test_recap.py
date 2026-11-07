@@ -523,11 +523,16 @@ def test_thresholds_pure():
     # dropping: 27.5% down is quiet, 30% fires
     assert flags("A", _b([20] * 4 + [15, 14]), 0, 0, True) == []
     assert [f["kind"] for f in flags("A", _b([10] * 4 + [7, 7]), 0, 0, True)] == ["dropping"]
-    # later: 19 points is quiet, exactly 20 fires, 10 is quiet
-    quiet = _b([10] * 6, ontime=[(25, 30), (0, 0), (0, 0), (0, 0), (19, 30), (0, 0)])
-    assert [f["kind"] for f in flags("A", quiet, 0, 0, True)] == ["later"]  # 83.3 vs 63.3: exact 20
-    quiet["ontime"][4] = (20, 30)
-    assert flags("A", quiet, 0, 0, True) == []
+
+    def later(recent_ontime):
+        ot = [(100, 100), (0, 0), (0, 0), (0, 0), (recent_ontime, 100), (0, 0)]
+        return [f["kind"] for f in flags("A", _b([10] * 6, ontime=ot), 0, 0, True)]
+
+    assert later(90) == [] and later(81) == []  # 10 and 19 points down
+    assert later(80) == ["later"]  # exactly 20
+    # exact boundary where a float compare would miss: 25/30 against 19/30 is exactly 20 points
+    ot = [(25, 30), (0, 0), (0, 0), (0, 0), (19, 30), (0, 0)]
+    assert [f["kind"] for f in flags("A", _b([10] * 6, ontime=ot), 0, 0, True)] == ["later"]
 
 
 def test_names_are_cleaned_and_capped():
@@ -579,6 +584,7 @@ def test_week_param_snaps_to_monday_and_clamps(db):
     assert recap.week_of(db, date(2026, 11, 22), NOW)["week_start"] == "2026-11-02"
     far = recap.week_of(db, date(1, 1, 1), NOW)
     assert far["week_start"] == "2000-01-03" and far["prev"] is None
+    assert recap.week_of(db, date(2026, 10, 14), NOW)["week_start"] == "2026-10-12"  # a Wednesday
 
 
 def test_default_week_on_saturday_is_the_week_before(db):
@@ -619,3 +625,76 @@ def test_redemption_window_edges(db, parent, kid):
 def test_absurd_week_param_is_not_a_500(client, parent_headers):
     r = client.get("/api/v1/recap?week=0001-01-01", headers=parent_headers)
     assert r.status_code == 200 and r.json()["prev"] is None
+
+
+# --- fix round 2 -----------------------------------------------------------------------------
+
+
+def _long_streak(db, parent, kid, last_done):
+    for i in range(20):
+        make_run(db, parent, kid, status="done", approved=True, day=last_done - timedelta(days=i))
+
+
+def test_sunday_before_reset_with_saturday_open_is_not_a_miss(db, parent, kid):
+    _long_streak(db, parent, kid, date(2026, 11, 6))
+    make_run(db, parent, kid, day=date(2026, 11, 7))  # Saturday's chore, still open
+    sun_3am = datetime(2026, 11, 8, 3, 0, tzinfo=UTC)  # chore day is still Saturday
+    k = recap.week_of(db, None, sun_3am)["kids"][0]
+    assert (k["flags"], k["streak"]) == ([], 20)
+
+
+def test_late_reset_time_does_not_send_a_false_streak_end(db, parent, kid):
+    get_family(db).reset_time = "20:00"  # at 19:30 Sunday the chore day is still Saturday
+    _long_streak(db, parent, kid, date(2026, 11, 6))
+    make_run(db, parent, kid, day=date(2026, 11, 7))
+    _send(db, SUN)
+    assert _recaps(db)[0].body == "All good this week"
+
+
+def test_miss_on_the_last_day_of_the_week_ends_the_streak_that_week(db, parent, kid):
+    for i in range(10):
+        make_run(
+            db, parent, kid, status="done", approved=True, day=date(2026, 11, 7) - timedelta(days=i)
+        )
+    make_run(db, parent, kid, day=date(2026, 11, 8))  # Sunday missed
+    _reset(db, date(2026, 11, 9))
+    texts = [
+        f["text"]
+        for f in recap.week_of(db, W, datetime(2026, 11, 9, 12, tzinfo=UTC))["kids"][0]["flags"]
+    ]
+    assert "Timmy's 10-day streak ended this week." in texts
+
+
+def test_waiting_run_with_future_deadline_counts_as_on_time(db, parent, kid):
+    make_run(db, parent, kid, status="submitted", day=date(2026, 11, 8), due_time="23:00",
+             submitted_at=datetime(2026, 11, 8, 10))  # fmt: skip
+    assert _week(db)["kids"][0]["on_time_pct"] == 100
+
+
+def test_done_run_without_submit_time_uses_approval_time(db, parent, kid):
+    r = make_run(
+        db, parent, kid, status="done", approved=True, day=W + timedelta(days=1), due_time="12:00"
+    )
+    r.approved_at = datetime(2026, 11, 3, 11)
+    db.commit()
+    assert _week(db)["kids"][0]["on_time_pct"] == 100
+
+
+def test_points_and_catches_at_local_monday_midnight_belong_to_next_week(db, parent, kid):
+    edge = datetime(2026, 11, 9, 0, 0)  # exactly the start of the next week (UTC family)
+    db.add(
+        Points(
+            user_id=kid.id, points_type=PointsType.BONUS, amount=9, reason="bonus", created_at=edge
+        )
+    )
+    db.add(TrustEvent(kid_id=kid.id, kind="catch", at=edge))
+    db.add(TrustEvent(kid_id=kid.id, kind="catch", at=datetime(2026, 11, 8, 12)))
+    db.commit()
+    k = _week(db)["kids"][0]
+    assert k["points_earned"] == 0 and k["flags"] == []
+
+
+def test_body_of_exactly_300_chars_is_kept_whole():
+    lines = ["a" * 99, "b" * 99, "c" * 100]
+    assert recap._body(lines) == "\n".join(lines)
+    assert recap._body([*lines[:2], "c" * 101]).endswith("and 1 more")
