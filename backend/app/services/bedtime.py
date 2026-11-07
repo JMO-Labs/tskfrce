@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.logging import get_logger
 from app.models.chores import ChoreRun
 from app.models.family import get_family
-from app.services import chore_actions, inbox
+from app.services import chore_actions, inbox, trust
 from app.services import chores as svc
 
 log = get_logger(__name__)
@@ -42,7 +42,7 @@ def run(db: Session, now_utc: datetime) -> int:
     fam.bedtime_date = local.date()
     n = 0
     for r in list(svc.waiting_runs(db)):
-        if r.spot_check or svc.chore_of(r).always_check:
+        if r.spot_check or svc.chore_of(r).always_check or trust.was_caught(db, r.id):
             continue
         try:
             with db.begin_nested():

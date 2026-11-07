@@ -22,6 +22,7 @@ from app.models.points import Points
 from app.models.user import User, UserRole
 from app.schemas.chore import ChoreOut
 from app.schemas.lock import utc_z
+from app.services import trust
 from app.services.chore_types import notes_for
 from app.services.economy import deadline_utc
 
@@ -60,7 +61,7 @@ def chore_of(run: ChoreRun) -> Chore:
 def state(run: ChoreRun) -> str:
     """done (parent- or trust-approved) | needs_you (submitted) | skipped | todo."""
     if run.status == "done" and (
-        run.approved_via in ("trust", "bedtime")
+        run.approved_via in trust.SELF_APPROVED
         or (run.approved_by is not None and run.approved_by.role == UserRole.PARENT)
     ):
         return "done"
@@ -294,7 +295,8 @@ def run_reset(db: Session, day: date) -> int:
     for r in db.query(ChoreRun).filter(ChoreRun.day < day, ChoreRun.status == "todo"):
         r.status = "missed"  # counts against streaks and boost; cancelled doesn't
     if fam.setup_step is None and any(
-        not r.spot_check and not chore_of(r).always_check for r in waiting_runs(db)
+        not r.spot_check and not chore_of(r).always_check and not trust.was_caught(db, r.id)
+        for r in waiting_runs(db)
     ):
         fam.waiting_reset_days += 1  # days bedtime auto-approve would have cleared something
     created = 0 if fam.setup_step is not None else len(generate(db, day))

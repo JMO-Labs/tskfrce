@@ -17,9 +17,9 @@ from app.models.points import Points
 from app.models.reward import Redemption
 from app.models.user import User
 from app.services import chores as chore_svc
-from app.services import economy, inbox, progression
+from app.services import economy, inbox, progression, trust
 
-TRUSTED = ("trust", "bedtime")  # approved_via values that count without a parent id
+TRUSTED = trust.SELF_APPROVED  # approved_via values that count without a parent id
 
 TIERS = ("copper", "silver", "gold", "platinum", "mega-diamond")
 

@@ -19,7 +19,7 @@ from app.services import chores as svc
 
 router = APIRouter(prefix="/api/v1", tags=["trust"], dependencies=[Depends(require_parent)])
 
-SELF = ("trust", "bedtime")
+SELF = trust.SELF_APPROVED
 WINDOW = timedelta(days=7)
 
 

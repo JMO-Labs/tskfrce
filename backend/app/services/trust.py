@@ -14,11 +14,17 @@ from app.services import economy, inbox
 SPOT = {1: 5, 2: 20}  # level -> 1 in N finished chores stays waiting
 UP_AT = {0: 10, 1: 30}  # level -> clean chores needed to move up
 LEVELS = ("New", "Trusted", "Proven")
+SELF_APPROVED = ("trust", "bedtime")  # approved_via values: no parent looked at it
 
 
 def payees(run: ChoreRun) -> list[int]:
     """Kids paid for the run (same rule as approval points)."""
     return economy._recipients(run)
+
+
+def was_caught(db: Session, run_id: int) -> bool:
+    """A catch is on record for this run, so its redo always waits for a parent (owner ruling)."""
+    return db.query(TrustEvent.id).filter_by(run_id=run_id, kind="catch").first() is not None
 
 
 def decide(
@@ -28,8 +34,8 @@ def decide(
     kids = [db.get(User, k) for k in kid_ids]
     if run.assignment.chore.always_check or not kids or not all(k.trust_mode for k in kids):
         return "wait"
-    if db.query(TrustEvent.id).filter_by(run_id=run.id, kind="catch").first():
-        return "wait"  # caught once: the redo always waits for a parent (owner ruling)
+    if was_caught(db, run.id):
+        return "wait"
     lowest = min(k.trust_level for k in kids)
     if lowest == 0:
         return "wait"

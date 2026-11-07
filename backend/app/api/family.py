@@ -24,7 +24,7 @@ from app.models.points import Points
 from app.models.reward import Redemption, Reward
 from app.models.user import User, UserRole
 from app.schemas.lock import FamilyPatch, utc_z
-from app.services import bedtime, boost, inbox, progression, push
+from app.services import bedtime, boost, inbox, progression, push, trust
 from app.services import chores as svc
 
 router = APIRouter(prefix="/api/v1", tags=["family"], dependencies=[Depends(require_parent)])
@@ -278,7 +278,7 @@ def today(db: Session = Depends(get_db)):
     names = {k.id: k.full_name for k in kid_rows}
     notes = svc.note_texts(db, shown)
     deds = svc.deductions(db, shown)
-    own = [t.id for t in shown if t.status == "done" and t.approved_via in ("trust", "bedtime")]
+    own = [t.id for t in shown if t.status == "done" and t.approved_via in trust.SELF_APPROVED]
     paid = (
         {
             (rid, uid): int(total)

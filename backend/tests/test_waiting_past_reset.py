@@ -6,6 +6,7 @@ from app.lock.state import desired_blocked
 from app.models.chores import ChoreRun
 from app.models.family import get_family
 from app.models.points import Points
+from app.models.trust import TrustEvent
 from app.models.user import UserRole
 from app.services import chores as svc
 from app.services import notify, notify_jobs
@@ -117,6 +118,14 @@ def test_reset_ignores_waiting_chores_bedtime_would_skip(db, parent, kid):
     spot.spot_check = True
     always = make_run(db, parent, kid, status="submitted", day=OLD, title="A")
     always.assignment.chore.always_check = True
+    db.commit()
+    svc.run_reset(db, DAY)
+    assert get_family(db).waiting_reset_days == 0
+
+
+def test_reset_ignores_redo_after_a_catch(db, parent, kid):
+    redo = make_run(db, parent, kid, status="submitted", day=OLD, title="R")
+    db.add(TrustEvent(kid_id=kid.id, kind="catch", run_id=redo.id))
     db.commit()
     svc.run_reset(db, DAY)
     assert get_family(db).waiting_reset_days == 0

@@ -100,6 +100,15 @@ def test_skips_spot_and_always_check(db, parent, kid):
     assert _status(db, ok) == ("done", "bedtime")
 
 
+def test_skips_redo_after_a_catch(db, parent, kid):
+    _on(db)
+    [redo] = _wait(db, parent, kid)
+    db.add(TrustEvent(kid_id=kid.id, kind="catch", run_id=redo.id))
+    db.commit()
+    assert _run(db) == 0
+    assert _status(db, redo) == ("submitted", None)
+
+
 def test_clears_older_days_except_spot(db, parent, kid):
     _on(db)
     old, old_spot = _wait(db, parent, kid, n=2, day=D - timedelta(days=2))
