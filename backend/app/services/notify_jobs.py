@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
+from app.models.chores import ChoreRun
 from app.models.family import get_family
 from app.models.lock import Device
 from app.models.notify import NotifyHeld, NotifyPlace
@@ -127,8 +128,9 @@ def daily_summary(db: Session, now_utc: datetime) -> None:
     if local - local.replace(hour=h, minute=m, second=0, microsecond=0) > SUMMARY_CUTOFF:
         return  # backend was down at summary time: too stale to send
     stats: dict[int, list[int]] = {}  # kid id -> [done, total]
-    needs = 0
-    for r in svc.day_runs(db, svc.today(db, now_utc)):
+    day = svc.today(db, now_utc)
+    needs = db.query(ChoreRun).filter(ChoreRun.day < day, ChoreRun.status == "submitted").count()
+    for r in svc.day_runs(db, day):
         st = svc.state(r)
         needs += st == "needs_you"
         for kid_id in svc.run_kid_ids(r):

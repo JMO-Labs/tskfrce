@@ -142,6 +142,8 @@ def _needs_you(
                 "subtasks_done": sum(s["done"] for s in steps),
                 "subtasks_total": len(steps),
                 "submitted_at": utc_z(r.submitted_at),
+                "day": r.day.isoformat(),
+                "spot_check": bool(r.spot_check),
                 "mode": svc.mode_of(r),
                 **({"integration": via[r.id]} if r.id in via else {}),
             }
@@ -200,6 +202,7 @@ def _chore_out(
         "title": c.title,
         "points": c.points or 0,
         "state": st,
+        "day": r.day.isoformat(),
         "due_time": r.assignment.due_time,
         "due_at": utc_z(svc.due_at(r, fam)),
         "done_at": utc_z(r.submitted_at or r.approved_at),
@@ -237,11 +240,12 @@ def today(db: Session = Depends(get_db)):
     day = svc.today(db, now)
     tmrw = day + timedelta(days=1)
     shown = (
-        svc.with_detail(svc.day_runs(db, day, skipped=True), photos=False)
+        svc.with_detail(svc.day_or_waiting(db, day, skipped=True), photos=False)
         .order_by(ChoreRun.id)
         .all()
     )
-    tasks = [t for t in shown if t.status != "skipped"]  # skipped: listed, never counted
+    older = [t for t in shown if t.day != day]  # waiting since earlier days: listed, not counted
+    tasks = [t for t in shown if t.status != "skipped" and t.day == day]  # skipped: never counted
     kid_rows = db.query(User).filter(User.role == UserRole.KID).order_by(User.id).all()
     devices = (
         db.query(Device)
@@ -262,7 +266,7 @@ def today(db: Session = Depends(get_db)):
     deds = svc.deductions(db, shown)
     n_photos, n_msgs = svc.run_counts(db, shown)
     earned = svc.earned_today(db, shown)
-    needs = _needs_you(db, tasks, names, fam, balances)
+    needs = _needs_you(db, tasks + older, names, fam, balances)
     prices = sorted(p for (p,) in db.query(Reward.price).filter(Reward.active.is_(True)))
     now_local = local_now(fam.timezone, now)
     quiet = set(boost.quiet_kids(db, day))
@@ -308,7 +312,7 @@ def today(db: Session = Depends(get_db)):
         )
     out = {
         "day": day.isoformat(),
-        "pending_approvals": sum(t.status == "submitted" for t in tasks),
+        "pending_approvals": sum(t.status == "submitted" for t in tasks) + len(older),
         "new_devices": [device_out(db, d, fam, now, pre) for d in new],
         "needs_you": needs,
         "kids": kids,

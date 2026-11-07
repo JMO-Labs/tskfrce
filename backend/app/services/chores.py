@@ -7,7 +7,7 @@ status and history; title, points, steps and photo rule are read from its chore.
 from datetime import UTC, date, datetime, timedelta
 
 from fastapi import HTTPException
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
@@ -82,6 +82,23 @@ def day_runs(db: Session, day: date, skipped: bool = False):
     """Query: the day's runs, cancelled/missed (and, unless asked for, skipped) ones excluded."""
     gone = ["cancelled", "missed"] + ([] if skipped else ["skipped"])
     return db.query(ChoreRun).filter(ChoreRun.day == day, ChoreRun.status.notin_(gone))
+
+
+def day_or_waiting(db: Session, day: date, skipped: bool = False):
+    """Query: day_runs plus waiting runs from any other day, in one go."""
+    gone = ["cancelled"] if skipped else ["cancelled", "skipped"]
+    return db.query(ChoreRun).filter(
+        or_(
+            and_(ChoreRun.day == day, ChoreRun.status.notin_(gone)),
+            ChoreRun.status == "submitted",
+        )
+    )
+
+
+def waiting_runs(db: Session):
+    """Query: every run waiting on a parent, any day, oldest first, with detail loaded."""
+    q = db.query(ChoreRun).filter(ChoreRun.status == "submitted")
+    return with_detail(q, photos=False).order_by(ChoreRun.day, ChoreRun.id)
 
 
 def with_detail(q, kids: bool = True, photos: bool = True):
@@ -270,15 +287,12 @@ def generate(db: Session, day: date) -> list[ChoreRun]:
 
 
 def run_reset(db: Session, day: date) -> int:
-    """Past todo runs become missed, other unfinished ones cancelled; create today's, retire past one-time assignments.
+    """Older to-do runs become missed (waiting ones stay for a parent); create today's, retire past
+    one-time assignments.
     No new runs while the setup wizard is open: nothing pauses a device during setup."""
     fam = get_family(db)
-    for r in db.query(ChoreRun).filter(
-        ChoreRun.day < day,
-        ChoreRun.status.notin_(["done", "cancelled", "skipped", "missed"]),
-    ):
-        # missed counts against streaks and boost; cancelled (a submitted one too, for now) doesn't
-        r.status = "missed" if r.status == "todo" else "cancelled"
+    for r in db.query(ChoreRun).filter(ChoreRun.day < day, ChoreRun.status == "todo"):
+        r.status = "missed"  # counts against streaks and boost; cancelled doesn't
     created = 0 if fam.setup_step is not None else len(generate(db, day))
     for a in db.query(ChoreAssignment).filter(
         ChoreAssignment.repeat == "once", ChoreAssignment.on_date < day
