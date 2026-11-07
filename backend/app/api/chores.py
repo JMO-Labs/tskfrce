@@ -20,6 +20,7 @@ from app.services import chores as svc
 router = APIRouter(prefix="/api/v1/chores", tags=["chores"])
 
 NOT_WAITING = "This chore isn't waiting for approval."
+HANDLED = "That chore was already handled."
 
 
 def _waiting(db: Session, run_id: int) -> ChoreRun:
@@ -84,6 +85,8 @@ def run_detail(run_id: int, db: Session = Depends(get_db), _: User = Depends(req
 @router.post("/{run_id}/approve")
 def approve(run_id: int, db: Session = Depends(get_db), parent: User = Depends(require_parent)):
     r = _waiting(db, run_id)
+    if not actions.claim(db, r, "submitted", "done"):  # bedtime may have just approved it
+        raise HTTPException(409, HANDLED)
     actions.approve(db, r, parent.id)
     db.commit()
     return svc.chore_out(r, get_family(db))
@@ -204,6 +207,8 @@ def send_back(
     parent: User = Depends(require_parent),
 ):
     r = _waiting(db, run_id)
+    if not actions.claim(db, r, "submitted", "todo"):
+        raise HTTPException(409, HANDLED)
     actions.send_back(db, r, body.note, parent.id)
     db.commit()
     return svc.chore_out(r, get_family(db))

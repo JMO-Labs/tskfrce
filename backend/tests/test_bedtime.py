@@ -243,3 +243,28 @@ def test_recap_weekly_is_readable_and_settable(client, parent_headers):
     assert client.get(f"{API}/family", headers=parent_headers).json()["recap_weekly"] is True
     r = client.patch(f"{API}/family", json={"recap_weekly": False}, headers=parent_headers)
     assert r.json()["recap_weekly"] is False
+
+
+@pytest.mark.parametrize("path,body", [("approve", {}), ("send-back", {"note": "again"})])
+def test_parent_loses_race_to_bedtime(
+    client, db, parent, kid, parent_headers, monkeypatch, path, body
+):
+    """Bedtime approves between the parent's check and write: parent gets 409, kid paid once."""
+    from app.api import chores as api
+
+    [r] = _wait(db, parent, kid, points=5)
+    orig = api._waiting
+
+    def late(d, rid):
+        run = orig(d, rid)
+        chore_actions.approve(d, run, None, via="bedtime")  # bedtime got there first
+        d.commit()
+        run.status = "submitted"  # the parent's request still holds the stale row
+        return run
+
+    monkeypatch.setattr(api, "_waiting", late)
+    res = client.post(f"{API}/chores/{r.id}/{path}", json=body, headers=parent_headers)
+    assert res.status_code == 409 and "already handled" in res.json()["detail"]
+    db.expire_all()
+    assert db.query(Points).filter(Points.run_id == r.id, Points.amount > 0).count() == 1
+    assert _status(db, r) == ("done", "bedtime")

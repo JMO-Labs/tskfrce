@@ -18,12 +18,12 @@ def tick_all(run: ChoreRun, by_id: int | None, now: datetime) -> None:
             run.ticks.append(RunStepTick(step_id=s.id, done_by_id=by_id, done_at=now))
 
 
-def claim(db: Session, run: ChoreRun) -> bool:
-    """Compare-and-set todo -> submitted, so a racing completion cannot pay twice."""
+def claim(db: Session, run: ChoreRun, frm: str = "todo", to: str = "submitted") -> bool:
+    """Compare-and-set frm -> to, so a racing decision cannot pay twice."""
     n = (
         db.query(ChoreRun)
-        .filter(ChoreRun.id == run.id, ChoreRun.status == "todo")
-        .update({"status": "submitted"}, synchronize_session=False)
+        .filter(ChoreRun.id == run.id, ChoreRun.status == frm)
+        .update({"status": to}, synchronize_session=False)
     )
     return n == 1
 
