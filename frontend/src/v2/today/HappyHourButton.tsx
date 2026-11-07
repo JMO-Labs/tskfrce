@@ -28,7 +28,7 @@ function useMinutesLeft(endsAt: string | undefined) {
  * With `kidId`, only Happy Hours covering that kid show as running (with a Stop each).
  * `allKids`: the sheet starts on "All kids" (Today) instead of just `kidId`.
  */
-export function HappyHourButton({ kidId, allKids = false, label = 'Start Happy Hour' }: { kidId?: number; allKids?: boolean; label?: string }) {
+export function HappyHourButton({ kidId, allKids = false, label = 'Start Happy Hour', accent = false }: { kidId?: number; allKids?: boolean; label?: string; accent?: boolean }) {
   const hh = useHappyHours().data
   const kids = useKids().data ?? []
   const running = (hh?.active ?? []).filter((h) => kidId == null || !h.kid_ids || h.kid_ids.includes(kidId))
@@ -46,7 +46,7 @@ export function HappyHourButton({ kidId, allKids = false, label = 'Start Happy H
         <RunningHH key={h.id} h={h} who={who(h)} busy={stop.isPending} onStop={() => stopIt(h)} />
       ))}
       {!running.length && (
-        <button type="button" className="p-btn" onClick={() => setOpen(true)}>
+        <button type="button" className="p-btn" data-variant={accent ? 'accent' : undefined} onClick={() => setOpen(true)}>
           <Icon name="bolt" size={17} />
           {label}
         </button>

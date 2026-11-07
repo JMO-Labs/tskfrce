@@ -56,12 +56,12 @@ export const avgDone = (k: RecapKid): number | null => {
 export function lookText({ flag }: Look): { icon: string; title: string; sub: string } {
   switch (flag.kind) {
     case 'catches':
-      return { icon: 'undo', title: `${flag.count} needed another go`, sub: 'Spot check, wasn’t done' }
+      return { icon: 'undo', title: `${flag.count} needed another go`, sub: "Checked, wasn't done" }
     case 'dropping':
       return { icon: 'trending_down', title: 'fewer chores', sub: `${flag.now} a week, was ${flag.was}` }
     case 'later':
       return { icon: 'schedule', title: 'finishing later', sub: `On time ${flag.now}%, was ${flag.was}%` }
     case 'streak_ended':
-      return { icon: 'local_fire_department', title: `${flag.count}-day streak ended`, sub: 'This week' }
+      return { icon: 'local_fire_department', title: `${flag.count}‑day streak ended`, sub: 'This week' }
   }
 }

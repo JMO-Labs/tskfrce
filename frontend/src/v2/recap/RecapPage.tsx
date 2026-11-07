@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import Link from 'next/link'
 import { ParentShell } from '@/v2/parent/ParentShell'
 import { Icon } from '@/v2/parent/Icon'
-import { ErrorPanel, Skeleton } from '@/v2/parent/states'
+import { EmptyState, ErrorPanel, Skeleton } from '@/v2/parent/states'
 import { RequireParent } from '@/v2/components/RequireParent'
 import { useRecap } from '@/v2/hooks/useRecap'
 import { RecapKids } from './RecapKids'
@@ -31,7 +32,7 @@ export function RecapBody() {
           <span className={styles.icon} aria-hidden="true">
             <span className="material-symbols-rounded">calendar_month</span>
           </span>
-          <span className={styles.text}>This is your weekly recap. It comes Sundays at 7:30 PM, and you can switch it off in family settings.</span>
+          <span className={styles.text}>New every Sunday at 7:30 PM. Turn it off in <Link href="/settings?section=family">Settings › Family</Link>.</span>
           <button type="button" className="p-btn" onClick={() => dismiss.mutate('intro.recap')}>
             Got it
           </button>
@@ -49,6 +50,9 @@ export function RecapBody() {
           <Icon name="chevron_right" />
         </button>
       </div>
+      {r.kids.length === 0 && (
+        <EmptyState icon="insights" title="No kids yet" body="Add a kid and their week shows up here." actions={[{ label: 'Add a kid', icon: 'person_add', href: '/kids?section=kids' }]} />
+      )}
       {looks.length > 0 && <RecapLooks key={`l${r.week_start}`} looks={looks} />}
       {r.kids.length > 0 && (
         <RecapKids key={`k${r.week_start}`} kids={r.kids} line={r.all_good ? 'All good this week. Nothing needs a look.' : r.family_line} />

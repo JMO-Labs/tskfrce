@@ -10,7 +10,7 @@ import { FLAG_RANK, looksOf, type Recap, type RecapFlag, type RecapKid } from '@
 
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 jest.mock('@/v2/today/HappyHourButton', () => ({
-  HappyHourButton: ({ kidId, label }: { kidId?: number; label?: string }) => <button type="button">{label} for {kidId}</button>,
+  HappyHourButton: ({ kidId, label, accent }: { kidId?: number; label?: string; accent?: boolean }) => <button type="button" data-variant={accent ? 'accent' : undefined}>{label} for {kidId}</button>,
 }))
 const apiMock = api as unknown as Mock<(p: string) => Promise<unknown>>
 
@@ -67,7 +67,7 @@ describe('Worth a look', () => {
     expect(within(card).getByText('6 a week, was 11')).toBeTruthy()
     await userEvent.click(within(card).getByRole('button', { name: 'See all' }))
     expect(within(card).getAllByRole('listitem')).toHaveLength(4)
-    expect(within(card).getByText('Maya: 9-day streak ended')).toBeTruthy()
+    expect(card.textContent).toContain('Maya: 9‑day streak ended')
     expect(within(card).queryByRole('button', { name: 'See all' })).toBeNull()
   })
   test('hidden when no kid has flags', async () => {
@@ -131,6 +131,27 @@ describe('This week', () => {
   })
 })
 
+describe('Happy Hour action', () => {
+  test('is the accent button', async () => {
+    serve(FLAGGED)
+    await show()
+    expect(screen.getByRole('button', { name: /Happy Hour for 1/ }).getAttribute('data-variant')).toBe('accent')
+  })
+})
+
+describe('empty family', () => {
+  test('no kids: says so and offers Add a kid', async () => {
+    serve(week([]))
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <RecapBody />
+      </QueryClientProvider>,
+    )
+    expect(await screen.findByText('No kids yet')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Add a kid' }).getAttribute('href')).toBe('/kids?section=kids')
+  })
+})
+
 describe('week navigation', () => {
   test('prev loads the earlier week, next is disabled at latest', async () => {
     serve(FLAGGED)
@@ -154,7 +175,7 @@ describe('first-recap intro', () => {
   test('shows until Got it, which dismisses intro.recap', async () => {
     tips([])
     await show()
-    expect(await screen.findByText(/This is your weekly recap/)).toBeInTheDocument()
+    expect(await screen.findByText(/New every Sunday at 7:30 PM/)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Got it' }))
     expect(apiMock.mock.calls.some(([p, o]) => p === '/me/tips/intro.recap/dismiss' && (o as { method?: string })?.method === 'POST')).toBe(true)
   })
@@ -162,6 +183,6 @@ describe('first-recap intro', () => {
     tips(['intro.recap'])
     await show()
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/me/tips', expect.anything()))
-    expect(screen.queryByText(/This is your weekly recap/)).toBeNull()
+    expect(screen.queryByText(/New every Sunday at 7:30 PM/)).toBeNull()
   })
 })
