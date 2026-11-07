@@ -44,6 +44,7 @@ KINDS = (
     "trust_up",
     "trust_down",
     "bedtime_done",
+    "recap",
 )
 
 

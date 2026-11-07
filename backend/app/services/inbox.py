@@ -89,6 +89,8 @@ def path_for(kind: str, *, run_id=None, redemption_id=None, device_id=None) -> s
         return "/?tab=needs"
     if kind == "redemption_decided":
         return "/kids?section=rewards&item=history"
+    if kind == "recap":
+        return "/recap"
     return "/devices" if kind == "box_offline" else "/"
 
 

@@ -11,7 +11,7 @@ from app.models.family import get_family
 from app.models.lock import Device
 from app.models.notify import NotifyHeld, NotifyPlace
 from app.models.user import User, UserRole
-from app.services import bedtime, boost, inbox, notify
+from app.services import bedtime, boost, inbox, notify, recap
 from app.services import chores as svc
 
 log = get_logger(__name__)
@@ -39,6 +39,7 @@ def tick(db: Session, now_utc: datetime, blocked: list[str] | None = None) -> No
     box_offline(db, now_utc)
     daily_summary(db, now_utc)
     bedtime.run(db, now_utc)
+    recap.send(db, now_utc)
     boost.run(db, now_utc)
     lock_changes(db, blocked)
     db.commit()

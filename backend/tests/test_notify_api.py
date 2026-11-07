@@ -90,7 +90,7 @@ def test_settings(client, parent_headers):
     assert r.status_code == 200
     d = client.get("/api/v1/notify/settings", headers=h).json()
     assert d["app_address"] == "http://chores.local" and d["quiet_start"] == "21:30"
-    assert d["quiet_security"] is True and len(d["events"]) == 12
+    assert d["quiet_security"] is True and len(d["events"]) == 13
     assert {e["key"] for e in d["events"] if e["security"]} == {"resisting", "box_offline"}
     r = client.patch("/api/v1/notify/settings", json={"app_address": "chores.local"}, headers=h)
     assert r.status_code == 422

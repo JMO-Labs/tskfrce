@@ -96,11 +96,21 @@ def upgrade() -> None:
         sa.CheckConstraint("kind IN ('up','down','catch')", name="ck_trust_kind"),
     )
     op.create_index("ix_trust_events_kid_id", "trust_events", ["kid_id"])
-    _kinds((*OLD_INBOX, "trust_up", "trust_down", "bedtime_done"))
+    # existing places get the new event too
+    op.execute(
+        "UPDATE notify_places SET events = CASE WHEN events = '' THEN 'recap' "
+        "ELSE events || ',recap' END WHERE ',' || events || ',' NOT LIKE '%,recap,%'"
+    )
+    _kinds((*OLD_INBOX, "trust_up", "trust_down", "bedtime_done", "recap"))
 
 
 def downgrade() -> None:
-    op.execute("DELETE FROM notifications WHERE kind IN ('trust_up','trust_down','bedtime_done')")
+    op.execute(
+        "DELETE FROM notifications WHERE kind IN ('trust_up','trust_down','bedtime_done','recap')"
+    )
+    op.execute(
+        "UPDATE notify_places SET events = trim(replace(',' || events || ',', ',recap,', ','), ',')"
+    )
     _kinds(OLD_INBOX)
     op.drop_index("ix_trust_events_kid_id", "trust_events")
     op.drop_table("trust_events")
