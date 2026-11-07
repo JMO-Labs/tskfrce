@@ -8,6 +8,8 @@ import { CelebratePreview } from '@/v2/manage/CelebratePreview'
 import { toastFail } from '../notify'
 import { HappyHourButton } from './HappyHourButton'
 import { TRY_ORDER, nudgeKey, nudgeSnoozed, pickCard, snoozeNudge, writeShown } from './tryCards'
+import { wallClock } from '@/v2/clockText'
+import { bedtimeAt } from '@/v2/trustTypes'
 import styles from '../components/QuickTip.module.css'
 
 const TEXT: Record<Exclude<(typeof TRY_ORDER)[number], 'try.trust' | 'try.bedtime'>, { icon: string; text: string }> = {
@@ -56,7 +58,8 @@ export function TryCards() {
 
   const done = () => dismiss.mutate(key)
   const off = (turnOff: () => void) => () => (turnOff(), done())
-  const setFam = (body: { hh_auto_boost?: boolean; streak_freeze?: boolean; bedtime_auto?: boolean }) => patchFam.mutate(body, { onError: toastFail })
+  const setFam = (body: { hh_auto_boost?: boolean; streak_freeze?: boolean; bedtime_auto?: boolean; bedtime_auto_at?: string }, onSuccess?: () => void) =>
+    patchFam.mutate(body, { onSuccess, onError: toastFail })
   const gotIt = <Btn onClick={done}>Got it</Btn>
   let icon: string, text: string, actions: ReactNode
   if (key === 'try.celebrate') {
@@ -98,10 +101,10 @@ export function TryCards() {
     )
   } else if (key === 'try.bedtime') {
     icon = 'bedtime'
-    text = `Chores were still waiting at reset on ${today!.waiting_at_reset_days} days. Bedtime auto-approve can clear them at 9:00 PM each night.`
+    text = `Chores were still waiting at reset on ${today!.waiting_at_reset_days} days. Bedtime auto-approve can clear them at ${wallClock(bedtimeAt(fam!.bedtime_auto_at, fam!.reset_time))} each night.`
     actions = (
       <>
-        <Btn onClick={off(() => setFam({ bedtime_auto: true }))}>Turn on</Btn>
+        <Btn onClick={() => setFam({ bedtime_auto: true, bedtime_auto_at: bedtimeAt(fam!.bedtime_auto_at, fam!.reset_time) }, done)}>Turn on</Btn>
         {gotIt}
       </>
     )

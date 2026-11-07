@@ -31,7 +31,7 @@ beforeEach(() => {
 test('one Less tapping card holds both rows, each with a muted line', () => {
   show(fam())
   const card = screen.getByRole('region', { name: 'Less tapping' })
-  expect(card).toHaveTextContent('Chores still waiting approve themselves at this time.')
+  expect(card).toHaveTextContent('Chores still waiting approve themselves each night.')
   expect(card).toHaveTextContent("A short summary of each kid's week, Sundays at 7:30 PM.")
   expect(screen.queryByRole('region', { name: /^Bedtime auto-approve/ })).toBeNull()
   expect(screen.queryByRole('region', { name: /^Weekly recap/ })).toBeNull()
@@ -64,4 +64,14 @@ test('weekly recap switch saves', async () => {
   await userEvent.click(screen.getByRole('switch', { name: /^Weekly recap/ }))
   await userEvent.click(screen.getByRole('button', { name: 'Save settings' }))
   await waitFor(() => expect(patches()).toEqual([{ recap_weekly: false }]))
+})
+
+test('reset at 8 PM: turning bedtime on sends a valid time and says the latest', async () => {
+  show(fam({ reset_time: '20:00' }))
+  expect(screen.getByRole('region', { name: 'Less tapping' })).not.toHaveTextContent('Latest is')
+  await userEvent.click(screen.getByRole('switch', { name: /^Bedtime auto-approve/ }))
+  expect(screen.getByLabelText('Approve at')).toHaveValue('19:45')
+  expect(screen.getByText('Latest is 7:45 PM, 15 minutes before the day resets.')).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Save settings' }))
+  await waitFor(() => expect(patches()).toEqual([{ bedtime_auto: true, bedtime_auto_at: '19:45' }]))
 })

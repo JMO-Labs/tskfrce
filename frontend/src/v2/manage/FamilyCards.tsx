@@ -10,6 +10,8 @@ import { PaneCard, PaneHead } from './PaneParts'
 import { Chip } from '@/v2/parent/Chip'
 import { Fold } from '@/v2/parent/Fold'
 import { ago } from './settingsMeta'
+import { wallClock } from '@/v2/clockText'
+import { bedtimeAt, bedtimeLatest } from '@/v2/trustTypes'
 
 function zones(current: string): string[] {
   const all = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.('timeZone') ?? []
@@ -119,10 +121,12 @@ export function FamilyCard({ fam }: { fam: Family }) {
               <Switch
                 className="pn-sw"
                 label="Bedtime auto-approve"
-                description="Chores still waiting approve themselves at this time."
+                description="Chores still waiting approve themselves each night."
                 labelPosition="left"
                 checked={!!val('bedtime_auto')}
-                onChange={(e) => set({ bedtime_auto: e.currentTarget.checked })}
+                onChange={(e) =>
+                  set(e.currentTarget.checked ? { bedtime_auto: true, bedtime_auto_at: bedtimeAt(val('bedtime_auto_at'), val('reset_time')) } : { bedtime_auto: false })
+                }
               />
             </div>
             {val('bedtime_auto') && (
@@ -131,7 +135,8 @@ export function FamilyCard({ fam }: { fam: Family }) {
                   type="time"
                   label="Approve at"
                   min="18:00"
-                  max="23:30"
+                  max={bedtimeLatest(val('reset_time'))}
+                  description={bedtimeLatest(val('reset_time')) < '23:30' ? `Latest is ${wallClock(bedtimeLatest(val('reset_time')))}, 15 minutes before the day resets.` : undefined}
                   step={900}
                   value={val('bedtime_auto_at') ?? '21:00'}
                   onChange={(e) => set({ bedtime_auto_at: e.currentTarget.value })}

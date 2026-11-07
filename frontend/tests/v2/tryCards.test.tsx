@@ -219,7 +219,7 @@ test('bedtime card after 3 days of waiting chores; Turn on patches bedtime_auto'
   show()
   expect(await screen.findByText('Chores were still waiting at reset on 3 days. Bedtime auto-approve can clear them at 9:00 PM each night.')).toBeInTheDocument()
   await userEvent.click(screen.getByRole('button', { name: 'Turn on' }))
-  await waitFor(() => expect(patched('/family', { bedtime_auto: true })).toBe(true))
+  await waitFor(() => expect(patched('/family', { bedtime_auto: true, bedtime_auto_at: '21:00' })).toBe(true))
   await waitFor(() => expect(posted('/me/tips/try.bedtime/dismiss')).toBe(true))
 })
 
@@ -254,4 +254,21 @@ test('bedtime card shows the real day count', async () => {
   s.waiting = 5
   show()
   expect(await screen.findByText(/waiting at reset on 5 days\./)).toBeInTheDocument()
+})
+
+test('bedtime card: time follows the stored time, capped by the reset; a failed Turn on keeps the card', async () => {
+  s.dismissed = [...allSeen, 'try.trust']
+  s.waiting = 3
+  s.fam = { ...fam, reset_time: '20:00', bedtime_auto_at: '21:00' }
+  const base = apiMock.getMockImplementation()!
+  apiMock.mockImplementation(async (p, o) => {
+    if (p === '/family' && o?.method === 'PATCH') throw new Error('422')
+    return base(p, o)
+  })
+  show()
+  expect(await screen.findByText(/clear them at 7:45 PM each night/)).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Turn on' }))
+  await waitFor(() => expect(patched('/family', { bedtime_auto: true, bedtime_auto_at: '19:45' })).toBe(true))
+  expect(posted('/me/tips/try.bedtime/dismiss')).toBe(false)
+  expect(screen.getByRole('button', { name: 'Turn on' })).toBeInTheDocument()
 })

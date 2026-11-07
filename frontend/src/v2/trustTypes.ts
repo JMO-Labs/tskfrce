@@ -92,3 +92,17 @@ export interface TodayTryFields {
   /** days chores were still waiting at the daily reset */
   waiting_at_reset_days?: number
 }
+
+/** Latest bedtime the server accepts: 23:30, or 15 min before a reset that falls in 18:00–23:30. */
+export const bedtimeLatest = (reset = '06:00') => {
+  const [h, m] = reset.split(':').map(Number)
+  const r = h * 60 + m
+  const t = r >= 1080 && r <= 1410 ? r - 15 : 1410
+  return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`
+}
+/** The stored bedtime, pulled earlier when the reset would not allow it. */
+export const bedtimeAt = (at: string | undefined, reset?: string) => {
+  const l = bedtimeLatest(reset)
+  const a = at ?? '21:00'
+  return a > l ? l : a
+}
