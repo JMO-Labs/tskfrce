@@ -80,8 +80,8 @@ def can_move(run: ChoreRun, tmrw: date) -> bool:
 
 
 def day_runs(db: Session, day: date, skipped: bool = False):
-    """Query: the day's runs, cancelled (and, unless asked for, skipped) ones excluded."""
-    gone = ["cancelled"] if skipped else ["cancelled", "skipped"]
+    """Query: the day's runs, cancelled/missed (and, unless asked for, skipped) ones excluded."""
+    gone = ["cancelled", "missed"] + ([] if skipped else ["skipped"])
     return db.query(ChoreRun).filter(ChoreRun.day == day, ChoreRun.status.notin_(gone))
 
 
@@ -271,13 +271,15 @@ def generate(db: Session, day: date) -> list[ChoreRun]:
 
 
 def run_reset(db: Session, day: date) -> int:
-    """Cancel unfinished older runs, create today's, retire past one-time assignments.
+    """Past todo runs become missed, other unfinished ones cancelled; create today's, retire past one-time assignments.
     No new runs while the setup wizard is open: nothing pauses a device during setup."""
     fam = get_family(db)
     for r in db.query(ChoreRun).filter(
-        ChoreRun.day < day, ChoreRun.status.notin_(["done", "cancelled", "skipped"])
+        ChoreRun.day < day,
+        ChoreRun.status.notin_(["done", "cancelled", "skipped", "missed"]),
     ):
-        r.status = "cancelled"
+        # missed counts against streaks and boost; cancelled (a submitted one too, for now) doesn't
+        r.status = "missed" if r.status == "todo" else "cancelled"
     created = 0 if fam.setup_step is not None else len(generate(db, day))
     for a in db.query(ChoreAssignment).filter(
         ChoreAssignment.repeat == "once", ChoreAssignment.on_date < day

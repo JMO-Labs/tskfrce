@@ -106,7 +106,7 @@ class ChoreRun(Base):
     __tablename__ = "chore_runs"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('todo','submitted','done','cancelled','skipped')",
+            "status IN ('todo','submitted','done','cancelled','skipped','missed')",
             name="ck_run_status",
         ),
         Index(
