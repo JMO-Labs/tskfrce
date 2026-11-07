@@ -45,8 +45,9 @@
 [data-look='parent'] .v2-kid:has(+ .v2-new) { border-bottom: 0; }
 [data-look='parent'] .rc .rw-aside { margin-left: auto; }
 [data-look='parent'] .v2-nm { white-space: nowrap; }
-@media (pointer: coarse) {
-  [data-look='parent'] :is(.rc-week, .v2-look) .p-btn { min-height: 44px; }
+@media (pointer: coarse), (max-width: 767px) {
+  [data-look='parent'] .rc .p-btn { min-height: 44px; }
   [data-look='parent'] .rc-week .p-btn { min-width: 44px; }
-  [data-look='parent'] .v2-info { padding: 10px; margin: -10px -10px -10px auto; }
+  [data-look='parent'] .v2-info { padding: 14px; margin: -14px -14px -14px auto; }
 }
+[data-look='parent'] .rc section[aria-label='About the recap'] a { color: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }

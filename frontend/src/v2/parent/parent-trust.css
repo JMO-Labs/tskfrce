@@ -32,7 +32,7 @@
 [data-look='parent'] .pt-hh-sheet .mantine-Checkbox-label { font-weight: 600; }
 [data-look='parent'] #trust { scroll-margin-top: 12px; }
 [data-look='parent'] .mantine-Switch-input:focus-visible + .f-switch { outline: 2px solid var(--p-ink); outline-offset: 2px; }
-@media (pointer: coarse) {
+@media (pointer: coarse), (max-width: 767px) {
   [data-look='parent'] :is(.v2-level, .v2-sub, .ao-row, .pt-hh-sheet) .p-btn { min-height: 44px; }
   [data-look='parent'] .v2-sw { position: relative; }
   [data-look='parent'] .v2-sw .mantine-Switch-input { inset: -12px -6px; width: auto; height: auto; }
