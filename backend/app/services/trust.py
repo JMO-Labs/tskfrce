@@ -28,6 +28,8 @@ def decide(
     kids = [db.get(User, k) for k in kid_ids]
     if run.assignment.chore.always_check or not kids or not all(k.trust_mode for k in kids):
         return "wait"
+    if db.query(TrustEvent.id).filter_by(run_id=run.id, kind="catch").first():
+        return "wait"  # caught once: the redo always waits for a parent (owner ruling)
     lowest = min(k.trust_level for k in kids)
     if lowest == 0:
         return "wait"

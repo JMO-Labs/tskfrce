@@ -239,3 +239,14 @@ def test_racing_finishes_pay_once(tmp_path):
         s.commit()
     rows = S().query(Points).filter_by(run_id=rid, reason="chore").all()
     assert paid == 1 and len(rows) == 1
+
+
+def test_redo_after_catch_waits_for_parent(
+    client, db, parent, kid, kid_headers, parent_headers, monkeypatch
+):
+    _setup(monkeypatch, roll=0.99)  # would auto-approve without the catch
+    _kid(db, kid, level=2)
+    r = _submitted(db, parent, kid, True)
+    client.post(f"{API}/chores/{r.id}/send-back", json={"note": "redo"}, headers=parent_headers)
+    assert _finish(client, kid_headers, r).json()["status"] == "submitted_for_approval"
+    assert r.status == "submitted"

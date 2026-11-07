@@ -50,6 +50,15 @@ def test_decide_always_check_waits(db, parent, kid):
     assert trust.decide(db, r, [kid.id], rng=lambda: 0.99) == "wait"
 
 
+def test_decide_redo_after_catch_waits(db, parent, kid):
+    # owner ruling 2026-11-07: a chore caught once always waits for a parent next time
+    r = make_run(db, parent, kid)
+    _kid(db, kid, level=2)
+    trust.catch(db, r, [kid.id], parent.id, lower=False)
+    db.commit()  # catch and redo are separate requests
+    assert trust.decide(db, r, [kid.id], rng=lambda: 0.99) == "wait"
+
+
 def test_decide_rates(db, parent, kid):
     r = make_run(db, parent, kid)
     _kid(db, kid, level=1)
