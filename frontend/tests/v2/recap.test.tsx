@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from '@jest/globals'
 import type { Mock } from 'jest-mock'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { api } from '@/v2/api'
@@ -146,5 +146,22 @@ describe('Sparkline', () => {
   test('aria-label states the numbers', () => {
     render(<Sparkline name="Leo" values={[12, 11, 10, 11, 5]} />)
     expect(screen.getByRole('img', { name: 'Leo chores done per week, last 5 weeks: 12, 11, 10, 11, 5' })).toBeTruthy()
+  })
+})
+
+describe('first-recap intro', () => {
+  const tips = (dismissed: string[]) => apiMock.mockImplementation(async (p) => (p === '/me/tips' ? { dismissed } : p.startsWith('/recap') ? FLAGGED : {}))
+  test('shows until Got it, which dismisses intro.recap', async () => {
+    tips([])
+    await show()
+    expect(await screen.findByText(/This is your weekly recap/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Got it' }))
+    expect(apiMock.mock.calls.some(([p, o]) => p === '/me/tips/intro.recap/dismiss' && (o as { method?: string })?.method === 'POST')).toBe(true)
+  })
+  test('hidden once dismissed', async () => {
+    tips(['intro.recap'])
+    await show()
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/me/tips', expect.anything()))
+    expect(screen.queryByText(/This is your weekly recap/)).toBeNull()
   })
 })

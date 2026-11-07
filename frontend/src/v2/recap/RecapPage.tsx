@@ -7,6 +7,8 @@ import { useRecap } from '@/v2/hooks/useRecap'
 import { RecapKids } from './RecapKids'
 import { RecapLooks } from './RecapLooks'
 import { looksOf } from './recapTypes'
+import { useDismissTip, useTips } from '@/v2/hooks/useTips'
+import styles from '../components/QuickTip.module.css'
 
 const day = (iso: string) => {
   const [y, m, d] = iso.split('-').map(Number)
@@ -16,12 +18,25 @@ const day = (iso: string) => {
 export function RecapBody() {
   const [week, setWeek] = useState<string>()
   const q = useRecap(week)
+  const tips = useTips().data
+  const dismiss = useDismissTip()
   const r = q.data
   if (q.isPending) return <Skeleton />
   if (q.isError || !r) return <ErrorPanel kind="unreachable" error={q.error} onRetry={() => q.refetch()} />
   const looks = looksOf(r.kids)
   return (
     <div className="rc">
+      {tips && !tips.dismissed.includes('intro.recap') && (
+        <section className={`${styles.tip} ${styles.parentMode}`} aria-label="About the recap">
+          <span className={styles.icon} aria-hidden="true">
+            <span className="material-symbols-rounded">calendar_month</span>
+          </span>
+          <span className={styles.text}>This is your weekly recap. It comes Sundays at 7:30 PM, and you can switch it off in family settings.</span>
+          <button type="button" className="p-btn" onClick={() => dismiss.mutate('intro.recap')}>
+            Got it
+          </button>
+        </section>
+      )}
       <div className="rc-week">
         <button type="button" className="p-btn" aria-label="Previous week" disabled={!r.prev} onClick={() => setWeek(r.prev ?? undefined)}>
           <Icon name="chevron_left" />
