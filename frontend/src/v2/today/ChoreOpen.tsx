@@ -298,9 +298,10 @@ export function ChoreOpen({ chore, kid }: { chore: TodayChore; kid: TodayKid }) 
       )}
       {taking && (
         <WasntDoneSheet
-          run={{ id: chore.id, title: chore.title, day: chore.day ?? '', points: chore.earned_pts ?? null }}
+          // team: earned_pts is one kid's share but take-back removes everyone's, so drop the number
+          run={{ id: chore.id, title: chore.title, day: chore.day ?? '', points: chore.mode === 'team' ? null : chore.earned_pts ?? null }}
           today={todayDay ?? ''}
-          kidName={kid.name ?? 'They'}
+          kidName={kid.name ?? 'the kid'}
           level={trustKid?.trust_level}
           trustOn={!!trustKid?.trust_mode}
           onClose={() => setTaking(false)}
