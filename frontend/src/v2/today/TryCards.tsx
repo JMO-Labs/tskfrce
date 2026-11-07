@@ -56,7 +56,11 @@ export function TryCards() {
   }, [key])
   if (!key) return null
 
-  const done = () => dismiss.mutate(key)
+  const done = () => {
+    dismiss.mutate(key)
+    // the card unmounts: park focus on the first chore row instead of <body>
+    requestAnimationFrame(() => document.querySelector<HTMLElement>('.pt-chore .pt-row')?.focus())
+  }
   const off = (turnOff: () => void) => () => (turnOff(), done())
   const setFam = (body: { hh_auto_boost?: boolean; streak_freeze?: boolean; bedtime_auto?: boolean; bedtime_auto_at?: string }, onSuccess?: () => void) =>
     patchFam.mutate(body, { onSuccess, onError: toastFail })

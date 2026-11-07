@@ -1,5 +1,6 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, test } from '@jest/globals'
 import type { Mock } from 'jest-mock'
+import { useState } from 'react'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -197,4 +198,60 @@ describe('Today mark', () => {
     show(chore(via as string | undefined))
     expect(screen.queryByText('Approved on its own')).toBeNull()
   })
+})
+
+describe('focus returns after a sheet closes', () => {
+  test('Trust level sheet: Escape lands on Change', async () => {
+    wrap(<TrustSection kid={kid()} />)
+    const change = screen.getByRole('button', { name: 'Change' })
+    await userEvent.click(change)
+    await screen.findByRole('dialog', { name: 'Trust level' })
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(change).toHaveFocus())
+  })
+
+  test("Wasn't done sheet from See all: Keep lands on See all", async () => {
+    rows = [row(1), row(2), row(3)]
+    wrap(<TrustSection kid={kid()} />)
+    const seeAll = await screen.findByRole('button', { name: 'See all' })
+    await userEvent.click(seeAll)
+    const all = await screen.findByRole('dialog', { name: 'Approved on their own' })
+    await userEvent.click(within(all).getAllByRole('button', { name: "Wasn't done" })[0])
+    const sheet = await screen.findByRole('dialog', { name: "Wasn't done?" })
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Keep' }))
+    await waitFor(() => expect(seeAll).toHaveFocus())
+  })
+
+  test("Wasn't done sheet opened from a button: Escape refocuses that button", async () => {
+    const Host = () => {
+      const [o, setO] = useState(false)
+      return (
+        <>
+          <button type="button" onClick={() => setO(true)}>open</button>
+          {o && <WasntDoneSheet run={{ id: 9, title: 'Dishes', day: '2026-11-06', points: 5 }} today="2026-11-06" kidName="Maya" level={1} onClose={() => setO(false)} />}
+        </>
+      )
+    }
+    wrap(<Host />)
+    const btn = screen.getByRole('button', { name: 'open' })
+    await userEvent.click(btn)
+    await screen.findByRole('dialog', { name: "Wasn't done?" })
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(btn).toHaveFocus())
+  })
+
+  test('Trust switch keeps focus while saving', async () => {
+    wrap(<TrustSection kid={kid()} />)
+    const sw = screen.getByRole('switch', { name: 'Trust mode' })
+    sw.focus()
+    await userEvent.keyboard(' ')
+    await waitFor(() => expect(sent('/kids/7')).toEqual({ trust_mode: false }))
+    expect(sw).toHaveFocus()
+    expect(sw).not.toBeDisabled()
+  })
+})
+
+test('Trust and recap headings do not swallow their controls', () => {
+  wrap(<TrustSection kid={kid()} />)
+  expect(screen.getByRole('heading', { name: 'Trust mode' })).toBeInTheDocument()
 })

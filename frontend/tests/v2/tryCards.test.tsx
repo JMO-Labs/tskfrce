@@ -197,6 +197,18 @@ test('trust card for a kid with 10 approved chores, once the older cards are see
   await waitFor(() => expect(posted('/me/tips/try.trust/dismiss')).toBe(true))
 })
 
+test('acting on a card moves focus to the first chore row, not <body>', async () => {
+  s.dismissed = allSeen
+  s.trust = 1
+  const row = document.body.appendChild(document.createElement('div'))
+  row.className = 'pt-chore'
+  row.innerHTML = '<div class="pt-row" tabindex="0"></div>'
+  show()
+  await userEvent.click(await screen.findByRole('button', { name: 'Got it' }))
+  await waitFor(() => expect(document.activeElement).toBe(row.querySelector('.pt-row')))
+  row.remove()
+})
+
 test('trust card: Got it only dismisses', async () => {
   s.dismissed = allSeen
   s.trust = 1

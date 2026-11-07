@@ -23,9 +23,15 @@ export function WasntDoneSheet({ run, today, kidName, level, trustOn = true, onC
   const older = !!today && run.day < today
   const pts = run.points == null ? 'the points' : `the ${run.points} points`
   const kidMsg = older ? `A parent checked ${run.title} and took its points back.` : `A parent checked ${run.title} and it needs another go.`
-  const go = () => take.mutate({ id: run.id, lower_trust: trustOn && !!level && lower }, { onSuccess: onClose })
+  // mounted only while open, so Mantine can't return focus: put it back on the opener ourselves
+  const [opener] = useState(() => document.activeElement as HTMLElement | null)
+  const close = () => {
+    onClose()
+    requestAnimationFrame(() => opener?.isConnected && opener.focus())
+  }
+  const go = () => take.mutate({ id: run.id, lower_trust: trustOn && !!level && lower }, { onSuccess: close })
   return (
-    <Modal opened onClose={onClose} title="Wasn't done?" centered>
+    <Modal opened onClose={close} title="Wasn't done?" centered>
       <div className="pt-hh-sheet">
         <p className="v2-body">
           {older ? `This chore was from ${dayName(run.day, today)}, so it won't come back.` : `“${run.title}” goes back on ${kidName}'s list for today, and`}{' '}
@@ -42,7 +48,7 @@ export function WasntDoneSheet({ run, today, kidName, level, trustOn = true, onC
         )}
         <span className="pk-hint">{`${kidName} sees: "${kidMsg}"`}</span>
         <div className="pk-actions v2-end">
-          <button type="button" className="p-btn" onClick={onClose}>
+          <button type="button" className="p-btn" onClick={close}>
             Keep
           </button>
           <button type="button" className="p-btn" data-variant="red" disabled={take.isPending || !today} aria-busy={take.isPending} onClick={go}>

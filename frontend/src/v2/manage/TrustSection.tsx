@@ -23,6 +23,7 @@ export function TrustSection({ kid }: { kid: Kid }) {
   const save = (body: { trust_mode?: boolean; trust_level?: 0 | 1 | 2 }, done?: () => void) =>
     patch.mutate({ id: kid.id, body }, { onSuccess: done, onError: toastFail })
   const close = () => setPicking(null)
+  const p = picking ?? level // the sheet stays mounted so Mantine can hand focus back to Change
   const ref = useRef<HTMLElement>(null)
   // the recap links here with #trust; the kid page loads first, so scroll once this card exists
   useEffect(() => {
@@ -31,11 +32,19 @@ export function TrustSection({ kid }: { kid: Kid }) {
 
   return (
     <section id="trust" ref={ref} className="pk-panel pk-span" aria-label="Trust mode">
-      <h3>
-        <Icon name="verified_user" size={18} />
-        Trust mode
-        <Switch className="v2-sw" aria-label="Trust mode" checked={on} disabled={patch.isPending} onChange={(e) => save({ trust_mode: e.currentTarget.checked })} />
-      </h3>
+      <div className="v2-head">
+        <h3>
+          <Icon name="verified_user" size={18} />
+          Trust mode
+        </h3>
+        <Switch
+          className="v2-sw"
+          aria-label="Trust mode"
+          aria-busy={patch.isPending}
+          checked={on}
+          onChange={(e) => !patch.isPending && save({ trust_mode: e.currentTarget.checked })}
+        />
+      </div>
       {on ? (
         <div className="v2-level">
           <Chip tone="acc" icon="verified">
@@ -57,16 +66,16 @@ export function TrustSection({ kid }: { kid: Kid }) {
         <p className="v2-p">{`Off: you approve every chore. Turn on to let chores approve themselves as ${name} earns it.`}</p>
       )}
       <SelfApprovedList kid={kid} today={day ?? ''} />
-      {picking !== null && (
-        <Modal opened onClose={close} title="Trust level" centered>
+      {
+        <Modal opened={picking !== null} onClose={close} title="Trust level" centered>
           <div className="pt-hh-sheet">
             <SegmentedControl
               label="Trust level"
-              value={String(picking)}
+              value={String(p)}
               onChange={(v) => setPicking(Number(v))}
               options={LEVELS.map((l, i) => ({ value: String(i), label: l }))}
             />
-            <p className="v2-p">{LEVEL_TEXT[picking]}</p>
+            <p className="v2-p">{LEVEL_TEXT[p]}</p>
             <div className="pk-actions v2-end">
               <button type="button" className="p-btn" onClick={close}>
                 Cancel
@@ -76,14 +85,14 @@ export function TrustSection({ kid }: { kid: Kid }) {
                 className="p-btn"
                 data-variant="accent"
                 disabled={patch.isPending}
-                onClick={() => (picking === level ? close() : save({ trust_level: picking as 0 | 1 | 2 }, close))}
+                onClick={() => (p === level ? close() : save({ trust_level: p as 0 | 1 | 2 }, close))}
               >
                 Save
               </button>
             </div>
           </div>
         </Modal>
-      )}
+      }
     </section>
   )
 }

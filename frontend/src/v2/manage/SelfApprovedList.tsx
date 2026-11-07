@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Modal } from '@mantine/core'
 import { when } from '@/v2/components/bellRules'
 import { Icon } from '@/v2/parent/Icon'
@@ -36,9 +36,11 @@ function Row({ r, onTake }: { r: SelfApproved; onTake: () => void }) {
 export function SelfApprovedList({ kid, today }: { kid: Kid; today: string }) {
   const rows = useSelfApproved(kid.id).data
   const [all, setAll] = useState(false)
+  const seeAll = useRef<HTMLButtonElement>(null)
   const [taking, setTaking] = useState<TakeBackRun | null>(null)
   if (!Array.isArray(rows) || rows.length === 0) return null
   const take = (r: SelfApproved) => {
+    seeAll.current?.focus() // the sheet remembers this as its trigger; the list below is closing
     setAll(false)
     setTaking({ id: r.id, title: r.title, day: r.day, points: r.points })
   }
@@ -50,7 +52,7 @@ export function SelfApprovedList({ kid, today }: { kid: Kid; today: string }) {
           <span>{`${rows.length} this week`}</span>
         </span>
         {rows.length > 2 && (
-          <button type="button" className="p-btn" onClick={() => setAll(true)}>
+          <button ref={seeAll} type="button" className="p-btn" onClick={() => setAll(true)}>
             <Icon name="chevron_right" size={17} />
             See all
           </button>
@@ -61,15 +63,15 @@ export function SelfApprovedList({ kid, today }: { kid: Kid; today: string }) {
           <Row key={r.id} r={r} onTake={() => take(r)} />
         ))}
       </div>
-      {all && (
-        <Modal opened onClose={() => setAll(false)} title="Approved on their own" centered>
+      {
+        <Modal opened={all} onClose={() => setAll(false)} title="Approved on their own" centered>
           <div className="ao-list">
             {rows.map((r) => (
               <Row key={r.id} r={r} onTake={() => take(r)} />
             ))}
           </div>
         </Modal>
-      )}
+      }
       {taking && <WasntDoneSheet run={taking} today={today} kidName={nameOf(kid)} level={kid.trust_level} trustOn={!!kid.trust_mode} onClose={() => setTaking(null)} />}
     </>
   )
