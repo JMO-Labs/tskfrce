@@ -125,7 +125,7 @@ export function FamilyCard({ fam }: { fam: Family }) {
                 className="pn-sw"
                 label="Bedtime auto-approve"
                 description={
-                  bedtimePossible(val('reset_time')) || val('bedtime_auto')
+                  bedtimePossible(val('reset_time'))
                     ? 'Chores still waiting approve themselves each night.'
                     : 'Move the day reset later than 6:15 PM to use this.'
                 }
@@ -137,7 +137,7 @@ export function FamilyCard({ fam }: { fam: Family }) {
                 }
               />
             </div>
-            {val('bedtime_auto') && (
+            {val('bedtime_auto') && bedtimePossible(val('reset_time')) && (
               <div className="pn-fields">
                 <TextInput
                   type="time"

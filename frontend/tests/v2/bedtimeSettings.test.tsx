@@ -90,6 +90,15 @@ test('a reset with no room for a bedtime disables the switch and says why', () =
   expect(screen.getByText('Move the day reset later than 6:15 PM to use this.')).toBeInTheDocument()
 })
 
+test('bedtime on, then reset moved too early: hint shows, time field and description go', () => {
+  show(fam({ bedtime_auto: true, bedtime_auto_at: '21:00' }))
+  fireEvent.change(screen.getByLabelText('Day resets at'), { target: { value: '18:05' } })
+  expect(screen.getByText('Move the day reset later than 6:15 PM to use this.')).toBeInTheDocument()
+  expect(screen.queryByLabelText('Approve at')).toBeNull()
+  expect(screen.queryByText('Chores still waiting approve themselves each night.')).toBeNull()
+  expect(screen.getByRole('switch', { name: /^Bedtime auto-approve/ })).toBeEnabled()
+})
+
 test('bedtimeLatest stays on a 15-minute step', () => {
   expect(bedtimeLatest('20:10')).toBe('19:45')
   expect(bedtimeLatest('06:00')).toBe('23:30')
