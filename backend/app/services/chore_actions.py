@@ -65,13 +65,7 @@ def send_back(db: Session, run: ChoreRun, note: str, by_id: int | None = None) -
     run.last_note = note
     submitter = run.submitted_by_id
     if run.spot_check:  # a spot-checked chore sent back is a catch
-        who = trust.payees(run)
-        if submitter in who:
-            trust.catch(db, run, [submitter], by_id, lower=True)
-            who = [k for k in who if k != submitter]
-            trust.catch(db, run, who, by_id, lower=False)
-        else:
-            trust.catch(db, run, who, by_id, lower=True)
+        trust.catch_run(db, run, by_id, lower=True)
         run.spot_check = False
     run.submitted_at = run.submitted_by_id = run.hh_mult_x10 = None
     chat.system(db, run, f"Sent back: {note}")

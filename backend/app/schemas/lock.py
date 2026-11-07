@@ -66,6 +66,8 @@ class KidPatch(BaseModel):
     clear_pin: bool = False
     age_group: Literal["little", "kid", "teen"] | None = None
     celebrate: Literal["full", "small", "off"] | None = None
+    trust_mode: bool | None = None
+    trust_level: int | None = Field(default=None, ge=0, le=2)
 
     _pin = field_validator("pin")(_pin)
 

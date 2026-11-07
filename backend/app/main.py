@@ -55,6 +55,7 @@ from app.api.rewards import router as rewards_router
 from app.api.screen_time import router as screen_time_router
 from app.api.setup import router as setup_router
 from app.api.tips import router as tips_router
+from app.api.trust import router as trust_router
 from app.core.logging import configure_logging, get_logger
 from app.core.monitoring import (
     MetricsMiddleware,
@@ -161,6 +162,7 @@ fastapi_app.include_router(devices_router)
 fastapi_app.include_router(device_activity_router)
 fastapi_app.include_router(hours_router)
 fastapi_app.include_router(kids_router)
+fastapi_app.include_router(trust_router)
 fastapi_app.include_router(kid_push_router)
 fastapi_app.include_router(kid_enroll_parent_router)
 fastapi_app.include_router(kid_enroll_kid_router)

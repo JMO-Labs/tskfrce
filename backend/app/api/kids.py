@@ -24,7 +24,7 @@ from app.models.reward import Redemption
 from app.models.tips import DismissedTip
 from app.models.user import User, UserRole
 from app.schemas.lock import KidCreate, KidPatch, utc_z
-from app.services import chat, economy
+from app.services import chat, economy, trust
 from app.services import chores as svc
 from app.services.photos import storage
 
@@ -40,6 +40,9 @@ def _out(k: User) -> dict:
         "has_pin": bool(k.pin_hash),
         "age_group": k.age_group,
         "celebrate": k.celebrate,  # raw: null = mode default
+        "trust_mode": k.trust_mode,
+        "trust_level": k.trust_level,
+        "trust_clean": k.trust_clean,
     }
 
 
@@ -88,7 +91,12 @@ def create_kid(body: KidCreate, db: Session = Depends(get_db)):
 
 
 @router.patch("/{kid_id}")
-def patch_kid(kid_id: int, body: KidPatch, db: Session = Depends(get_db)):
+def patch_kid(
+    kid_id: int,
+    body: KidPatch,
+    db: Session = Depends(get_db),
+    parent: User = Depends(require_parent),
+):
     kid = _kid(db, kid_id)
     if body.full_name is not None:
         kid.full_name = body.full_name
@@ -100,6 +108,12 @@ def patch_kid(kid_id: int, body: KidPatch, db: Session = Depends(get_db)):
         kid.age_group = body.age_group
     if "celebrate" in body.model_fields_set:  # explicit null: back to the mode default
         kid.celebrate = body.celebrate
+    if body.trust_mode is not None:
+        if body.trust_mode and not kid.trust_mode:
+            kid.trust_clean = 0  # opting in always starts a fresh count
+        kid.trust_mode = body.trust_mode
+    if body.trust_level is not None and body.trust_level != kid.trust_level:
+        trust.set_level(db, kid, body.trust_level, parent.id)
     if body.clear_pin:
         kid.pin_hash = None
     db.commit()

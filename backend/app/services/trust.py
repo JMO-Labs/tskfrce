@@ -74,7 +74,7 @@ def catch(db: Session, run: ChoreRun, kid_ids: list[int], by_id: int, lower: boo
     """A self-approved or spot-checked chore wasn't done. Always resets the count."""
     for kid_id in kid_ids:
         kid = db.get(User, kid_id)
-        if not kid:
+        if not kid or not kid.trust_mode:  # trust off: nothing to lose or reset
             continue
         _event(db, kid.id, "catch", run.id, by_id)
         kid.trust_clean = 0
@@ -83,6 +83,28 @@ def catch(db: Session, run: ChoreRun, kid_ids: list[int], by_id: int, lower: boo
             _tell_down(db, kid)
 
 
+def catch_run(db: Session, run: ChoreRun, by_id: int | None, lower: bool) -> None:
+    """Catch every payee: only the submitter drops a level (everyone if none is recorded)."""
+    who = payees(run)
+    sub = run.submitted_by_id
+    if sub in who:
+        catch(db, run, [sub], by_id, lower)
+        catch(db, run, [k for k in who if k != sub], by_id, lower=False)
+    else:
+        catch(db, run, who, by_id, lower)
+
+
 def set_level(db: Session, kid: User, level: int, by_id: int) -> None:
     """A parent sets the level by hand."""
     _move(db, kid, level, "up" if level > kid.trust_level else "down", by_id=by_id)
+
+
+def badge(kid: User) -> dict | None:
+    """What the kid sees: level and chores to the next one (None at Proven). Off = None."""
+    if not kid.trust_mode:
+        return None
+    need = UP_AT.get(kid.trust_level)
+    return {
+        "level": kid.trust_level,
+        "to_next": None if need is None else max(need - kid.trust_clean, 0),
+    }

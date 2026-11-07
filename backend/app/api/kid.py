@@ -204,6 +204,7 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
         "points_balance": balances[kid.id],
         "points_held": economy.pending_cost(db, kid.id),
         "progress": prog,
+        "trust": trust.badge(kid),
         "timezone": fam.timezone,
         "happy_hour": (
             {"ends_at": utc_z(hh.ends_at), "multiplier": hh.mult_x10 / 10} if hh else None

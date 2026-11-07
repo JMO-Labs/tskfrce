@@ -55,6 +55,36 @@ def deduct(
         return take
 
 
+def take_back(db: Session, run) -> dict[int, int]:
+    """Remove the run's positive rows; a kid's balance never ends below min(0, before).
+    Returns points removed per kid. Commits."""
+    with SPEND_LOCK:
+        db.commit()  # fresh snapshot: see other threads' debits
+        rows = db.query(Points).filter(Points.run_id == run.id, Points.amount > 0).all()
+        removed: dict[int, int] = {}
+        for p in rows:
+            removed[p.user_id] = removed.get(p.user_id, 0) + p.amount
+        before = {k: balance(db, k) for k in removed}
+        for p in rows:
+            db.delete(p)
+        db.flush()
+        for kid_id, was in before.items():
+            short = min(0, was) - balance(db, kid_id)
+            if short > 0:
+                db.add(
+                    Points(
+                        user_id=kid_id,
+                        points_type=PointsType.BONUS,
+                        amount=short,
+                        reason="adjustment",
+                        description="Balance can't go below zero",
+                        seen_by_kid=False,
+                    )
+                )
+        db.commit()
+        return removed
+
+
 def deadline_utc(fam: FamilySettings, chore_day: date, due_time: str | None) -> datetime | None:
     """Chore deadline as naive UTC, or None when the chore has no due time.
     The chore day runs reset to reset, so a time before the reset time is the next morning."""
