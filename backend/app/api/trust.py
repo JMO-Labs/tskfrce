@@ -71,7 +71,7 @@ def take_back(
             r.approved_at = r.completed_at = r.approved_by_id = r.approved_via = None
             r.spot_check = False
             r.submitted_at = r.submitted_by_id = r.hh_mult_x10 = None
-            chat.system(db, r, "A parent checked this one again · points taken back")
+            chat.system(db, r, "A parent checked this one · points taken back")
             db.commit()  # one commit: ledger, run and trust change together
         except BaseException:
             db.rollback()

@@ -286,8 +286,7 @@ def test_older_day_message_and_chat_copy(client, db, parent, kid, parent_headers
     from app.models.chat import ThreadMessage
 
     assert any(
-        m.body == "A parent checked this one again · points taken back"
-        for m in db.query(ThreadMessage)
+        m.body == "A parent checked this one · points taken back" for m in db.query(ThreadMessage)
     )
 
 
