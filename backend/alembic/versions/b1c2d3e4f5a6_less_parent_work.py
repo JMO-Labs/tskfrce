@@ -96,11 +96,11 @@ def upgrade() -> None:
         sa.CheckConstraint("kind IN ('up','down','catch')", name="ck_trust_kind"),
     )
     op.create_index("ix_trust_events_kid_id", "trust_events", ["kid_id"])
-    _kinds((*OLD_INBOX, "trust_up", "trust_down"))
+    _kinds((*OLD_INBOX, "trust_up", "trust_down", "bedtime_done"))
 
 
 def downgrade() -> None:
-    op.execute("DELETE FROM notifications WHERE kind IN ('trust_up','trust_down')")
+    op.execute("DELETE FROM notifications WHERE kind IN ('trust_up','trust_down','bedtime_done')")
     _kinds(OLD_INBOX)
     op.drop_index("ix_trust_events_kid_id", "trust_events")
     op.drop_table("trust_events")

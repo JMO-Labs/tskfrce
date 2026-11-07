@@ -22,7 +22,7 @@ from app.models.lock import Device
 from app.models.reward import Redemption, Reward
 from app.models.user import User, UserRole
 from app.schemas.lock import FamilyPatch, utc_z
-from app.services import boost, inbox, progression, push
+from app.services import bedtime, boost, inbox, progression, push
 from app.services import chores as svc
 
 router = APIRouter(prefix="/api/v1", tags=["family"], dependencies=[Depends(require_parent)])
@@ -62,6 +62,8 @@ def _fam_out(fam) -> dict:
         "hh_weekly_surprise": fam.hh_weekly_surprise,
         "hh_auto_boost": fam.hh_auto_boost,
         "streak_freeze": fam.streak_freeze,
+        "bedtime_auto": fam.bedtime_auto,
+        "bedtime_auto_at": fam.bedtime_auto_at,
     }
 
 
@@ -80,6 +82,12 @@ def patch_family(body: FamilyPatch, db: Session = Depends(get_db)):
             ZoneInfo(body.timezone)
         except Exception:
             raise HTTPException(400, "Unknown time zone.") from None
+    if body.bedtime_auto_at is not None or body.reset_time is not None:
+        at = body.bedtime_auto_at or fam.bedtime_auto_at
+        if body.bedtime_auto_at is not None and not bedtime.valid_at(
+            at, body.reset_time or fam.reset_time
+        ):
+            raise HTTPException(422, "Pick 18:00 to 23:30 in 15-minute steps, before the reset.")
     # a time zone change takes effect at the next reset; no immediate reset
     for k, v in body.model_dump(exclude_unset=True).items():
         if k == "giphy_api_key" and v is not None:

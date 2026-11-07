@@ -43,6 +43,7 @@ KINDS = (
     "boost",
     "trust_up",
     "trust_down",
+    "bedtime_done",
 )
 
 
