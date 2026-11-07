@@ -41,23 +41,13 @@ def _todays_run(db: Session, a: Action, now: datetime) -> ChoreRun | None:
     )
 
 
-def _claim(db: Session, run: ChoreRun) -> bool:
-    """Compare-and-set todo -> submitted, so a racing completion cannot pay twice."""
-    n = (
-        db.query(ChoreRun)
-        .filter(ChoreRun.id == run.id, ChoreRun.status == "todo")
-        .update({"status": "submitted"}, synchronize_session=False)
-    )
-    return n == 1
-
-
 def _chore_complete(
     db: Session, install: IntegrationInstall, grant: Grant, a: Action, needs_approval: bool
 ) -> Outcome:
     now = datetime.now(UTC).replace(tzinfo=None)
     refs = {"kid_id": a.kid_id, "chore_id": a.chore_id, "created_at": now}
     run = _todays_run(db, a, now)
-    if run is None or run.status != "todo" or not _claim(db, run):
+    if run is None or run.status != "todo" or not chore_actions.claim(db, run):
         return "rejected", "nothing to do today", refs
     refs["run_id"] = run.id
     # Ruling: an integration completion skips the photo requirement. The signal is the proof.

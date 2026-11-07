@@ -2,6 +2,7 @@
 
 from datetime import UTC, date, datetime
 
+from app.models.chores import ChoreRun
 from app.models.family import get_family
 from app.models.inbox import Notification
 from app.models.points import Points
@@ -200,3 +201,41 @@ def test_always_check_round_trips_in_library(client, db, parent_headers):
     cid = r.json()["id"]
     r = client.patch(f"{API}/chores/{cid}", json={"always_check": False}, headers=parent_headers)
     assert r.json()["always_check"] is False
+
+
+def test_racing_finishes_pay_once(tmp_path):
+    from app.core.database import Base
+    from app.models.user import UserRole
+    from app.services.chore_types import seed
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+
+    from tests.conftest import _make_user
+
+    eng = create_engine(
+        f"sqlite:///{tmp_path}/t.db", connect_args={"check_same_thread": False, "timeout": 5}
+    )
+    Base.metadata.create_all(eng)
+    S = sessionmaker(bind=eng, autoflush=False)
+    a = S()
+    seed(a)
+    a.commit()
+    p = _make_user(a, "p", UserRole.PARENT)
+    k1, k2 = _make_user(a, "k1", UserRole.KID), _make_user(a, "k2", UserRole.KID)
+    for k in (k1, k2):
+        k.trust_mode, k.trust_level = True, 2
+    r = make_run(a, p, kids=[k1, k2], mode="race", points=10)
+    rid, ids = r.id, (k1.id, k2.id)
+    a.close()
+    s1, s2 = S(), S()
+    r1, r2 = s1.get(ChoreRun, rid), s2.get(ChoreRun, rid)
+    assert r1.status == r2.status == "todo"  # both pass the status guard
+    paid = 0
+    for s, r, kid_id in ((s1, r1, ids[0]), (s2, r2, ids[1])):
+        if chore_actions.claim(s, r):
+            chore_actions.submit(r, kid_id, datetime(2026, 10, 20, 12))
+            chore_actions.approve(s, r, None, via="trust")
+            paid += 1
+        s.commit()
+    rows = S().query(Points).filter_by(run_id=rid, reason="chore").all()
+    assert paid == 1 and len(rows) == 1

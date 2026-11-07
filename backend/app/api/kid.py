@@ -298,6 +298,8 @@ def done(chore_id: int, db: Session = Depends(get_db), kid: User = Depends(requi
         raise HTTPException(status_code=409, detail="Tick every step first.")
     if c.needs_photo and not svc.photo_count(r):
         raise HTTPException(status_code=409, detail="Add a photo first.")
+    if not chore_actions.claim(db, r):  # a racing finish already took it
+        raise HTTPException(status_code=403, detail="That isn't your chore to finish.")
     chore_actions.submit(r, kid.id, now)
     verdict = trust.decide(db, r, trust.payees(r))
     if verdict == "auto":
