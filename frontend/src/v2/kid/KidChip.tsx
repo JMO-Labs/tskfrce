@@ -16,11 +16,20 @@ export function KidChip({ chip, size = 'md' }: { chip: KidChipT; size?: ChipSize
 }
 
 /** Sun points chip: "+N", or "N points" when `long`. */
-export function PointsChip({ points, size = 'md', long }: { points: number; size?: ChipSize; long?: boolean }) {
+export function PointsChip({ points, size = 'md', long, now }: { points: number; size?: ChipSize; long?: boolean; now?: number }) {
   return (
     <span className="k-chip" data-tone="sun" data-size={size}>
       <Icon name="star" fill />
-      {long ? `${points} points` : `+${points}`}
+      {now != null ? (
+        <>
+          <s>{long ? `${points}` : `+${points}`}</s>
+          <span data-x2>{long ? `${now} points` : `+${now}`}</span>
+        </>
+      ) : long ? (
+        `${points} points`
+      ) : (
+        `+${points}`
+      )}
     </span>
   )
 }

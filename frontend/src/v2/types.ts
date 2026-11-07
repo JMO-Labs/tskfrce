@@ -1,3 +1,4 @@
+import type { CelebrateLevel } from './funTypes'
 import type { KidScreen } from './rewardTypes'
 /** Shapes of the v2 backend responses (backend/app/api/{family,kid,devices,kids,hours,chores,setup}.py). */
 
@@ -100,6 +101,8 @@ export interface Kid {
   avatar: string | null
   has_pin: boolean
   age_group: AgeGroup
+  /** the kid's own pick; null = mode default */
+  celebrate?: CelebrateLevel | null
 }
 
 /** GET/PATCH /family */
@@ -120,6 +123,11 @@ export interface Family {
   ntfy_upstream_relay: boolean
   chores_lock: boolean
   quick_replies: string[]
+  hh_default_mult_x10: 15 | 20 | 30
+  hh_default_minutes: 30 | 60 | 90
+  hh_weekly_surprise: boolean
+  hh_auto_boost: boolean
+  streak_freeze: boolean
 }
 
 /** GET /chore-types item */
@@ -212,6 +220,8 @@ export interface TodayKid {
   name: string | null
   avatar: string | null
   online_all: boolean
+  /** assigned on its last 2 run days and submitted none (same as the auto boost) */
+  quiet?: boolean
   done?: number
   total?: number
   needs_you_count?: number
@@ -325,6 +335,8 @@ export interface KidChore extends TodayChore {
   taken_by?: string | null
   notes?: ChoreNote[]
   deductions?: { amount: number; note: string | null; by_name: string | null; at: string }[]
+  /** points with the live (todo) or locked-in (submitted) Happy Hour multiplier */
+  points_now?: number
 }
 
 export interface KidToday {
@@ -339,6 +351,10 @@ export interface KidToday {
   age_group: AgeGroup
   /** UTC ISO when the kid next locks; null = not today */
   locks_at: string | null
+  /** celebration level; missing = mode default (teen small, else full) */
+  celebrate?: CelebrateLevel
+  /** active Happy Hour, if any */
+  happy_hour?: { ends_at: string; multiplier: number } | null
 }
 
 /** GET /kids/{id}/push */
@@ -359,21 +375,6 @@ export interface KidRewards {
   screen: KidScreen
   rewards: { id: number; name: string; price: number; icon: string | null; needs_approval: boolean }[]
   pending: { id: number; kind: 'reward' | 'screen_time'; reward_id: number | null; minutes: number | null; cost: number }[]
-}
-
-/** GET /kid/celebrations item. key: "r:<id>" | "b:<id>" | "l:<level>". */
-export interface KidCelebration {
-  key: string
-  kind: 'reward' | 'screen_time' | 'badge' | 'level' | 'bonus'
-  title: string
-  /** badge: tier name; bonus: the parent's note */
-  detail: string
-  /** custom badge: the parent's note */
-  note?: string | null
-  size: 'big' | 'small'
-  glyph?: string | null
-  /** level celebrations: flair newly unlocked */
-  unlocked?: { id: string; label: string; emblem: string | null }[]
 }
 
 /** GET /custom-badges item. */
@@ -421,6 +422,9 @@ export interface Progress {
   floor: number
   next: number
   streak: number
+  freezes_held?: number | null // null: family has streak freezes off
+  /** ISO dates a freeze covered in the current run */
+  frozen?: string[]
   flair?: Flair
 }
 
@@ -485,5 +489,6 @@ export interface FlairCatalog {
   equipped: Flair
 }
 
+export * from './funTypes'
 export * from './hoursTypes'
 export * from './rewardTypes'

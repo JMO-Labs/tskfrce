@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { boosted } from '../happyHour'
 import { kidSort } from '../kidChips'
 import { ChoreTile } from './ChoreTile'
 import { ChoreView } from './ChoreView'
@@ -28,6 +29,7 @@ export function KidMode({ d, name, now, onDone, busyId, onSeen, onChat, focusId 
               c={c}
               now={now}
               tz={d.timezone}
+              x2={boosted(c, d.happy_hour, now)}
               onOpen={() => {
                 if (c.new) onSeen(c.id)
                 setOpenId(c.id)

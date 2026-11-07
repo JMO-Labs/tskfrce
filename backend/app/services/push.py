@@ -28,6 +28,7 @@ GENERIC = {
     "redemption_decided": "A reward request was answered",
     "badge_earned": "You earned a badge",
     "level_up": "You reached a new level",
+    "happy_hour": "Happy Hour started!",
 }
 
 

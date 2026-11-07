@@ -25,6 +25,9 @@
   [data-look='parent'] .p-shell {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto 1fr auto;
+    /* celebration preview: mascots tuck behind the tab bar (its height), the word sits above mid-screen */
+    --k-navh: 78px;
+    --cel-word-y: 38%;
   }
 
   [data-look='parent'] .p-shell.p-with-list {

@@ -3,6 +3,16 @@ import { useEmblems } from '../hooks/useEmblems'
 import { NO_FLAIR } from '../flair/none'
 import type { Progress } from '../types'
 
+/** ❄ next to a streak that a freeze kept alive. */
+export function FreezeMark({ frozen }: { frozen?: string[] }) {
+  if (!frozen?.length) return null
+  return (
+    <span role="img" aria-label="A freeze saved this streak" title="A freeze saved this streak">
+      ❄
+    </span>
+  )
+}
+
 /** Flair name card with XP bar and streak for a kid card header. */
 export function ProgressHeader({
   name,
@@ -31,7 +41,9 @@ export function ProgressHeader({
           <span className="f-cap">
             <span className="f-num">{p.xp}</span> / <span className="f-num">{p.next}</span> XP
           </span>
-          <span className="f-cap">{p.streak > 0 ? `${p.streak} day streak` : 'No streak yet'}</span>
+          <span className="f-cap">
+            {p.streak > 0 ? `${p.streak} day streak` : 'No streak yet'} <FreezeMark frozen={p.frozen} />
+          </span>
         </div>
       </NameCard>
     </div>

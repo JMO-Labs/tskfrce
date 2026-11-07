@@ -1,0 +1,385 @@
+/* Comic celebrations (excitement-v2/v3, trex-tryout-v5 mockups), one-shot in about 1.5 s.
+   Kid tokens only (--k-*). Every delay goes through --d so the dev freeze hook can pause on a key frame. */
+.root {
+  --t: 1.5s;
+  --ink: var(--k-ink); /* outlines: navy in light, light in dark, like the kid cards */
+  --impact: Impact, 'Arial Black', var(--font-display), system-ui, sans-serif;
+  position: fixed;
+  inset: 0 0 var(--k-navh, 0px); /* phones: the bottom nav stays on top; mascots tuck in behind its top edge */
+  z-index: 999; /* under AwardOverlay (1000) */
+  overflow: hidden;
+  pointer-events: none;
+  contain: layout paint;
+}
+.root * {
+  pointer-events: none;
+  animation-duration: var(--t);
+  animation-fill-mode: both;
+  animation-timing-function: ease-out;
+  animation-delay: var(--d, 0s);
+}
+.root[data-freeze],
+.root[data-freeze] * {
+  animation-play-state: paused !important;
+  animation-delay: calc(var(--cel-freeze, 0ms) + var(--d, 0s)) !important;
+}
+
+/* --- reduced motion: a static badge, nothing moves --- */
+.badge {
+  position: absolute;
+  left: calc(var(--cl, 0px) + var(--cw, 100vw) / 2);
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: var(--k-sun);
+  color: var(--k-navy); /* on sun */
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: var(--k-shadow);
+  padding: 8px 16px;
+  font: 900 22px var(--impact);
+  white-space: nowrap;
+}
+
+/* --- the real chore tile, animated in place (mockup .hit); the layer lays the tag etc. over its rect --- */
+.tile { position: relative; z-index: 2; animation: t-pop 1.5s ease-out both; }
+.tile[data-cel-fx='wiggle'] { animation-name: t-wiggle; }
+.tile[data-cel-fx='stamp'] { animation-name: t-jolt; }
+.tile[data-cel-fx='blast'] { animation-name: t-launch; animation-timing-function: ease-in; }
+.tile[data-cel-fx='explode'] { animation-name: t-burst; }
+.tile[data-cel-freeze] { animation-play-state: paused !important; animation-delay: var(--cel-freeze) !important; }
+@keyframes t-pop {
+  0% { transform: none; }
+  8% { transform: scale(1.06); background-color: var(--k-blue); }
+  16% { transform: scale(0.98); }
+  24%, 90% { transform: none; background-color: var(--k-blue); }
+}
+@keyframes t-wiggle {
+  0% { transform: none; }
+  4% { transform: rotate(-3deg) scale(1.04); background-color: var(--k-blue); }
+  10% { transform: rotate(3deg) scale(1.04); }
+  16% { transform: rotate(-1.5deg); }
+  22%, 90% { transform: none; background-color: var(--k-blue); }
+}
+@keyframes t-jolt {
+  0%, 9% { transform: none; }
+  11% { transform: translateY(4px); }
+  14% { transform: translateY(-1px); }
+  18%, 100% { transform: none; }
+}
+@keyframes t-launch {
+  0% { transform: none; }
+  8% { transform: translate(-2px, 3px) rotate(-2deg); }
+  14% { transform: translate(2px, 4px) rotate(2deg); }
+  20% { transform: translateY(4px) rotate(-1deg); }
+  50% { opacity: 1; transform: translateY(-120vh); }
+  51%, 80% { opacity: 0; transform: translateY(-120vh); }
+  81% { opacity: 0; transform: translateY(40px); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes t-burst {
+  0% { transform: none; }
+  6% { transform: translate(-3px, 1px) rotate(-1deg); }
+  12% { transform: translate(3px, -1px) rotate(1deg); }
+  18% { transform: translate(-3px, 0) scale(1.03); }
+  24% { opacity: 1; transform: scale(1.1); }
+  27%, 78% { opacity: 0; transform: scale(1.15); }
+  79% { opacity: 0; transform: scale(0.6); }
+  100% { opacity: 1; transform: none; }
+}
+
+.anchor { position: absolute; }
+.tag {
+  position: absolute;
+  right: -6px;
+  top: -14px;
+  background: var(--k-sun);
+  color: var(--k-navy); /* on sun */
+  border: 2px solid var(--ink);
+  box-shadow: var(--k-shadow);
+  padding: 4px 9px;
+  font: 900 20px var(--impact);
+  animation-name: tag;
+}
+[data-mode='little'] .tag { font-size: 26px; }
+@keyframes tag {
+  0%, 2% { opacity: 0; transform: scale(0.2) rotate(0); }
+  8% { opacity: 1; transform: scale(1.25) rotate(10deg); }
+  14%, 80% { opacity: 1; transform: scale(1) rotate(6deg); }
+  100% { opacity: 0; transform: scale(1) rotate(6deg) translateY(-14px); }
+}
+.anchor[data-tile-fx='blast'] .tag { animation-name: tag-quick; } /* gone before the tile takes off */
+@keyframes tag-quick {
+  0%, 2% { opacity: 0; transform: scale(0.2); }
+  8% { opacity: 1; transform: scale(1.25) rotate(10deg); }
+  14%, 18% { opacity: 1; transform: rotate(6deg); }
+  24%, 100% { opacity: 0; transform: rotate(6deg) translateY(-14px); }
+}
+
+/* stamp: DONE! slams onto the tile, which jolts */
+.stamp {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  font: 900 34px var(--impact);
+  color: var(--k-coral);
+  border: 4px solid var(--k-coral);
+  border-radius: 8px;
+  padding: 2px 12px;
+  background: color-mix(in srgb, var(--k-card) 60%, transparent);
+  animation-name: stamp;
+}
+@keyframes stamp {
+  0%, 2% { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(3); }
+  10% { opacity: 1; transform: translate(-50%, -50%) rotate(-12deg) scale(0.9); }
+  15%, 84% { opacity: 1; transform: translate(-50%, -50%) rotate(-12deg) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) rotate(-12deg) scale(1); }
+}
+
+/* blast off: smoke puffs under the tile */
+.smoke {
+  position: absolute;
+  bottom: -18px;
+  left: calc(30% + var(--i) * 18%);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--k-line);
+  border: 2px solid var(--ink);
+  animation-name: puff;
+}
+@keyframes puff {
+  0%, 18% { opacity: 0; transform: scale(0.3); }
+  30% { opacity: 1; transform: scale(1); }
+  70%, 100% { opacity: 0; transform: scale(1.7) translateY(12px); }
+}
+
+/* explode: a star flash and the tile in pieces (it fades back in at the end).
+   The ink outline is a drop-shadow on the wrapper, since clip-path on the inner piece cuts borders off. */
+.flash,
+.shard {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  filter: drop-shadow(2px 0 0 var(--ink)) drop-shadow(-2px 0 0 var(--ink)) drop-shadow(0 2px 0 var(--ink)) drop-shadow(0 -2px 0 var(--ink));
+}
+.flash b,
+.shard b { display: block; width: 100%; height: 100%; }
+.flash { width: 170px; height: 170px; margin: -85px 0 0 -85px; animation-name: flash; }
+.flash b {
+  background: var(--k-sun);
+  clip-path: polygon(50% 0, 61% 30%, 95% 18%, 72% 45%, 100% 62%, 66% 66%, 72% 100%, 50% 74%, 26% 98%, 32% 66%, 0 60%, 28% 45%, 6% 16%, 39% 30%);
+}
+@keyframes flash {
+  0%, 24% { opacity: 0; transform: scale(0.2) rotate(0); }
+  30% { opacity: 1; transform: scale(1.1) rotate(8deg); }
+  55% { opacity: 1; transform: scale(1) rotate(12deg); }
+  70%, 100% { opacity: 0; transform: scale(1.2) rotate(14deg); }
+}
+.shard { width: 48px; height: 36px; margin: -18px 0 0 -24px; animation-name: shard; animation-timing-function: cubic-bezier(0.1, 0.7, 0.3, 1); }
+.shard b { background: var(--k-card); clip-path: polygon(0 10%, 70% 0, 100% 55%, 40% 100%, 8% 70%); }
+.shard:nth-of-type(3n) { width: 34px; height: 30px; }
+.shard:nth-of-type(3n) b { background: var(--k-blue); clip-path: polygon(20% 0, 100% 30%, 70% 100%, 0 80%); }
+.shard:nth-of-type(4n) b { background: var(--k-sun); }
+@keyframes shard {
+  0%, 25% { opacity: 0; transform: none; }
+  27% { opacity: 1; transform: none; }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--x), var(--y)) rotate(var(--r)); }
+}
+
+/* --- the word --- */
+.word {
+  position: absolute;
+  left: calc(var(--cl, 0px) + var(--cw, 100vw) / 2);
+  top: var(--cel-word-y, 50%);
+  font-family: var(--impact);
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--k-coral);
+  -webkit-text-stroke: 2px var(--ink);
+  text-shadow: var(--k-shadow);
+  animation-name: word;
+}
+.word[data-color='green'] { color: var(--k-green); }
+.word[data-color='sun'] { color: var(--k-sun); }
+.word[data-color='lav'] { color: var(--k-lav); }
+:global([data-mantine-color-scheme='dark']) .word[data-color='lav'] { color: color-mix(in srgb, var(--k-lav) 35%, var(--k-ink)); }
+@keyframes word {
+  0%, 3% { opacity: 0; transform: translate(-50%, -50%) scale(0.3) rotate(-14deg); }
+  10% { opacity: 1; transform: translate(-50%, -50%) scale(1.2) rotate(-6deg); }
+  18%, 76% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-6deg); }
+  100% { opacity: 0; transform: translate(-50%, -70%) scale(1.1) rotate(-6deg); }
+}
+/* effects whose word lands late */
+.root[data-burst='balloon'] .word { --d: 0.42s; animation-duration: 1.08s; }
+.root[data-card='blast'] .word { --d: 0.3s; animation-duration: 1.2s; }
+.root[data-card='explode'] .word { --d: 0.36s; animation-duration: 1.14s; }
+.root[data-burst='sneeze'] .word { --d: 0.45s; animation-duration: 1.05s; }
+
+/* --- confetti and beams stay in the content column (not over the desktop rail) --- */
+.confetti,
+.col { position: absolute; left: var(--cl, 0px); width: var(--cw, 100vw); top: 0; bottom: 0; overflow: hidden; }
+.confetti i {
+  position: absolute;
+  top: -20px;
+  left: var(--x);
+  width: 10px;
+  height: 15px;
+  border: 1px solid var(--ink);
+  background: var(--k-sun);
+  animation-name: fall;
+  animation-timing-function: linear;
+}
+.confetti i:nth-child(4n + 1) { background: var(--k-green); }
+.confetti i:nth-child(4n + 2) { background: var(--k-coral); }
+.confetti i:nth-child(4n + 3) { background: var(--k-lav); }
+@keyframes fall {
+  0%, 2% { opacity: 0; transform: translateY(0) rotate(0); }
+  5% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(105vh) rotate(540deg); }
+}
+
+/* --- coins fly from the card into the points counter, which bumps --- */
+.counter {
+  position: absolute;
+  right: 14px;
+  top: calc(var(--k-top, 0px) + 14px);
+  background: var(--k-sun);
+  color: var(--k-navy); /* on sun */
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: var(--k-shadow);
+  padding: 4px 12px;
+  font: 900 18px var(--font-body), system-ui, sans-serif;
+  animation-name: bump;
+}
+@keyframes bump {
+  0% { opacity: 0; transform: translateY(-10px); }
+  8%, 60% { opacity: 1; transform: none; }
+  66% { transform: scale(1.3); }
+  72%, 88% { opacity: 1; transform: none; }
+  100% { opacity: 0; }
+}
+.coin {
+  position: absolute;
+  z-index: 1; /* out of the card, not behind it */
+  left: calc(var(--ax, 50vw) - 11px);
+  top: calc(var(--ay, 30vh) - 11px);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--k-sun);
+  border: 2px solid var(--ink);
+  box-shadow: inset -3px -3px 0 var(--k-amber);
+  animation-name: coin;
+  animation-timing-function: cubic-bezier(0.5, 0, 0.6, 1);
+}
+@keyframes coin {
+  0%, 8% { opacity: 0; transform: none; }
+  14% { opacity: 1; transform: translate(var(--sx), -40px); }
+  58% { opacity: 1; transform: translate(calc(100vw - 60px - var(--ax, 50vw)), calc(var(--k-top, 0px) + 26px - var(--ay, 30vh))) scale(0.6); }
+  62%, 100% { opacity: 0; transform: translate(calc(100vw - 60px - var(--ax, 50vw)), calc(var(--k-top, 0px) + 26px - var(--ay, 30vh))) scale(0.6); }
+}
+
+/* --- balloon: inflates, wobbles, POP --- */
+.balloon {
+  position: absolute;
+  left: calc(var(--cl, 0px) + var(--cw, 100vw) / 2 - 55px);
+  top: calc(50% - 160px);
+  width: 110px;
+  height: 132px;
+  border-radius: 50% 50% 48% 48%;
+  background: var(--k-lav);
+  border: 3px solid var(--ink);
+  animation-name: balloon;
+}
+.balloon::after {
+  content: '';
+  position: absolute;
+  left: 53px;
+  bottom: -40px;
+  width: 2px;
+  height: 40px;
+  background: var(--ink);
+}
+@keyframes balloon {
+  0% { opacity: 0; transform: scale(0.4); }
+  6% { opacity: 1; transform: scale(0.6); }
+  16% { transform: scale(0.85) rotate(-4deg); }
+  24% { transform: scale(1) rotate(4deg); }
+  30% { opacity: 1; transform: scale(1.12) rotate(0); }
+  34%, 100% { opacity: 0; transform: scale(1.4); }
+}
+
+/* --- disco: ball drops, beams spin --- */
+.beams {
+  position: absolute;
+  inset: -20%;
+  background: repeating-conic-gradient(from 0deg at 50% 25%, color-mix(in srgb, var(--k-sun) 35%, transparent) 0 8deg, transparent 8deg 30deg);
+  animation-name: beams;
+}
+@keyframes beams {
+  0%, 10% { opacity: 0; transform: rotate(0); }
+  24%, 78% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(40deg); }
+}
+.ball {
+  position: absolute;
+  left: calc(var(--cl, 0px) + var(--cw, 100vw) / 2 - 32px);
+  top: 4%;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: conic-gradient(var(--k-blue) 0 25%, var(--k-card) 0 50%, var(--k-blue) 0 75%, var(--k-card) 0);
+  animation-name: drop;
+}
+@keyframes drop {
+  0% { transform: translateY(-200%); }
+  22%, 82% { transform: translateY(0) rotate(360deg); }
+  100% { transform: translateY(-200%) rotate(420deg); }
+}
+
+/* --- confetti sneeze: the cat winds up and sprays --- */
+.sneezer {
+  position: absolute;
+  left: calc(var(--cl, 0px) + 4%);
+  top: calc(var(--ay, 30vh) + 40px);
+  width: 96px;
+  animation-name: sneeze;
+}
+.sneezer img { width: 100%; display: block; }
+@keyframes sneeze {
+  0% { opacity: 0; transform: scale(0.6); }
+  8%, 14% { opacity: 1; transform: none; }
+  24% { transform: rotate(-10deg) translateX(-4px); }
+  32% { transform: rotate(12deg) translateX(8px); }
+  44%, 86% { opacity: 1; transform: none; }
+  100% { opacity: 0; }
+}
+.sneezer i {
+  position: absolute;
+  left: 80px;
+  top: 40px;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid var(--ink);
+  background: var(--k-sun);
+  animation-name: spray;
+}
+.sneezer i:nth-of-type(4n + 1) { background: var(--k-coral); }
+.sneezer i:nth-of-type(4n + 2) { background: var(--k-green); }
+.sneezer i:nth-of-type(4n + 3) { background: var(--k-lav); }
+@keyframes spray {
+  0%, 30% { opacity: 0; transform: none; }
+  33% { opacity: 1; }
+  80% { opacity: 1; transform: translate(var(--x), var(--y)) rotate(360deg); }
+  100% { opacity: 0; transform: translate(var(--x), var(--y)) rotate(400deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root * { animation: none !important; }
+}

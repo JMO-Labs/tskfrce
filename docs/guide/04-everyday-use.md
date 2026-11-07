@@ -127,6 +127,51 @@ Kids can save the screen time they didn't buy. It is on by default.
 
 In **Kids & chores → Badges** you see who has what (**All badges**), what was won lately (**Recent awards**), and **Custom badges**: make your own ("Did the dishes without being asked") and give them by hand. Each time you give the same badge, it moves up a tier.
 
+## Fun and motivation
+
+Chores can get dull after week one. These extras keep them fun. They are all optional and you can turn each one off.
+
+### Celebrations
+
+When a kid finishes a chore, a comic-book moment pops up on their screen: a random character, style, entrance, burst and word (like "YEEHAW!"). Now and then a rare "legendary" one shows up.
+
+![A celebration on a kid's phone: a cowboy dog, a coin burst and the word YEEHAW](img/celebrate.jpg)
+
+- **Levels** are **Full**, **Small** and **Off**, or **Mode default** (which means Small for teens, Full for the others).
+- Set the level for each kid on the kid's page, under **Celebrations**. **Preview a celebration** plays one so you can see it.
+- Phones and tablets set to reduce motion get a still badge instead.
+
+### Happy Hour
+
+A Happy Hour gives bonus points for a little while. Tap **Start Happy Hour** on **Today** or on a kid's page. Pick 30, 60 or 90 minutes and **×1.5**, **×2** or **×3**, for all kids or only the kids you choose.
+
+![The Start Happy Hour sheet: length, multiplier and kids](img/happy-hour-start.jpg)
+
+- Chores submitted during the hour earn the bonus on their base points, even if you approve them later.
+- Team chores only get the bonus from an all-kids Happy Hour.
+- Kids see a banner with a countdown, and their chores show doubled points.
+- You can stop it any time. A kid's page only stops the Happy Hours that cover that kid.
+
+![A kid's Today with the Happy Hour banner and doubled points](img/happy-hour-kid.jpg)
+
+**Auto boost** is on by default. If a kid has two quiet days in a row (days that had chores where none were done), a 1-hour ×2 Happy Hour starts for that kid at 4 pm the next day, and you get a calm notice. It runs at most once a day and twice a week per kid, and it skips kids who were active that day.
+
+**Weekly surprise** starts a surprise Happy Hour once a week. It is off by default.
+
+### Streak freezes
+
+On by default. A kid earns one freeze for every 7 days in a row and can hold 2. A freeze covers a missed day and keeps the streak alive, but it doesn't add a day. Badges count the streak with its freezes.
+
+### "Try this" cards
+
+Cards on **Today** introduce each of these features, at most one new card a day. Dismiss one and it stays gone. The celebrations card has **Turn off for all kids**. That switches celebrations off for your current kids only; kids you add later start with celebrations on.
+
+### Where the settings live
+
+- **Kids & chores → Rewards → Happy Hour**: lengths, multiplier, auto boost and weekly surprise.
+- **Settings → Family → Points rules → Streak freezes**.
+- **Kids & chores → Kids → a kid's page → Celebrations**.
+
 ## Devices
 
 ![The Devices page with one device open](img/devices.jpg)

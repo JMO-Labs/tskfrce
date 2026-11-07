@@ -155,6 +155,7 @@ def test_today_shape(client, db, parent, kid, parent_headers):
         "locks_at",
         "avatar",
         "online_all",
+        "quiet",
         "done",
         "total",
         "needs_you_count",

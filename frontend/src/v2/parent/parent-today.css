@@ -294,3 +294,7 @@
 [data-look='parent'] .pt-open-err { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 0; font-size: 13px; color: var(--p-red); }
 
 /* stale-data banner: the poll failed but the last good Today is still on screen */
+
+/* Happy Hour sheet */
+[data-look='parent'] .pt-hh-sheet { display: grid; gap: 10px; }
+[data-look='parent'] .pt-hh-sheet .p-btn[aria-pressed='true'] { border-color: var(--p-ink); background: var(--p-soft); color: var(--p-ink); }

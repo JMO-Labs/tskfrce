@@ -47,6 +47,11 @@ describe('ProgressHeader', () => {
     expect(screen.getByText('Lv 8 · Clutch')).toBeInTheDocument()
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '50')
     expect(screen.getByText('12 day streak')).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: /freeze/ })).toBeNull()
+  })
+  test('a ❄ sits next to the streak when a freeze saved it', () => {
+    wrap(<ProgressHeader name="Ana" progress={{ level: 8, title: 'Clutch', xp: 1200, floor: 1000, next: 1400, streak: 12, frozen: ['2026-11-05'] }} />)
+    expect(screen.getByRole('img', { name: 'A freeze saved this streak' })).toHaveTextContent('❄')
   })
 })
 

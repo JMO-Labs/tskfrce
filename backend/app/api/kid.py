@@ -1,6 +1,7 @@
 """Kid API: kids are identified by the device they use (no password)."""
 
 from datetime import UTC, datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
 from pydantic import BaseModel, Field
@@ -24,7 +25,16 @@ from app.models.points import Points
 from app.models.reward import Redemption
 from app.models.user import User, UserRole
 from app.schemas.lock import utc_z
-from app.services import badges, chat, chore_actions, economy, inbox, kid_view, progression
+from app.services import (
+    badges,
+    chat,
+    chore_actions,
+    economy,
+    happy_hour,
+    inbox,
+    kid_view,
+    progression,
+)
 from app.services import chores as svc
 from app.services.chore_types import notes_for
 from app.services.photos import save_photo
@@ -41,6 +51,10 @@ class SubtaskIn(BaseModel):
 class NoteIn(BaseModel):
     label: str
     text: str | None = Field(None, max_length=200)
+
+
+class MePatch(BaseModel):
+    celebrate: Literal["full", "small", "off"] | None  # required; null = mode default
 
 
 class KidLogin(BaseModel):
@@ -151,8 +165,19 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
     deds = svc.deductions(db, runs)
     texts = svc.note_texts(db, runs)
     seen = kid_view.seen_ids(db, kid.id, {r.assignment_id for r in runs})
+    live = happy_hour.running(db, now.replace(tzinfo=None))  # one query for both picks
+    hh = happy_hour.best(live, kid.id)
+    team_hh = happy_hour.best(live, None)  # team runs: all-kids only, as on submit
+
+    def mult(r: ChoreRun) -> int:  # display only: fixed on submit, else the live one
+        if r.status != "todo":
+            return r.hh_mult_x10 or 10
+        live = team_hh if r.kid_id is None and r.assignment.mode == "team" else hh
+        return live.mult_x10 if live else 10
+
     return {
         "age_group": kid.age_group,
+        "celebrate": kid.celebrate_level,
         "locks_at": kid_view.locks_at(db, kid, fam, now),
         "locked": _locked(
             db,
@@ -166,6 +191,7 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
                 "id": r.id,
                 "title": svc.chore_of(r).title,
                 "points": svc.chore_of(r).points or 0,
+                "points_now": (svc.chore_of(r).points or 0) * mult(r) // 10,
                 "state": svc.state(r),
                 "due_time": r.assignment.due_time,
                 **kid_view.extras(
@@ -178,7 +204,17 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
         "points_held": economy.pending_cost(db, kid.id),
         "progress": prog,
         "timezone": fam.timezone,
+        "happy_hour": (
+            {"ends_at": utc_z(hh.ends_at), "multiplier": hh.mult_x10 / 10} if hh else None
+        ),
     }
+
+
+@router.patch("/me")
+def patch_me(body: MePatch, db: Session = Depends(get_db), kid: User = Depends(require_kid)):
+    kid.celebrate = body.celebrate
+    db.commit()
+    return {"celebrate": kid.celebrate_level}
 
 
 def _open_run(db: Session, kid: User, run_id: int) -> ChoreRun:

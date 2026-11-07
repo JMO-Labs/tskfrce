@@ -26,18 +26,20 @@ export function TeenRow({
   now,
   tz,
   selected,
+  x2,
   onSelect,
 }: {
   c: KidChore
   now: number
   tz?: string
   selected: boolean
+  x2?: number
   onSelect: () => void
 }) {
   const dim = c.state === 'done' || c.state === 'needs_you'
   const chip = kidChips(c, now, tz, false, true)[0]
   return (
-    <button type="button" className="t-row" data-done={dim || undefined} aria-pressed={selected} onClick={onSelect}>
+    <button type="button" className="t-row" data-done={dim || undefined} data-celebrate-id={c.id} aria-pressed={selected} onClick={onSelect}>
       <span className="t-ck">{dim && <Icon name="check" />}</span>
       <span className="t-ty">
         <Icon name={glyph(c)} />
@@ -47,7 +49,16 @@ export function TeenRow({
         <small>{subline(c, now, tz)}</small>
       </span>
       <span className="t-chip">{chip && <KidChip chip={chip} size="sm" />}</span>
-      <span className="t-pts">{`+${c.points}`}</span>
+      <span className="t-pts">
+        {x2 != null ? (
+          <>
+            <s>{`+${c.points}`}</s>
+            <span data-x2>{`+${x2}`}</span>
+          </>
+        ) : (
+          `+${c.points}`
+        )}
+      </span>
     </button>
   )
 }
