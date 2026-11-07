@@ -293,8 +293,10 @@ def run_reset(db: Session, day: date) -> int:
     fam = get_family(db)
     for r in db.query(ChoreRun).filter(ChoreRun.day < day, ChoreRun.status == "todo"):
         r.status = "missed"  # counts against streaks and boost; cancelled doesn't
-    if fam.setup_step is None and db.query(ChoreRun).filter(ChoreRun.status == "submitted").first():
-        fam.waiting_reset_days += 1  # the bedtime auto-approve card counts these days
+    if fam.setup_step is None and any(
+        not r.spot_check and not chore_of(r).always_check for r in waiting_runs(db)
+    ):
+        fam.waiting_reset_days += 1  # days bedtime auto-approve would have cleared something
     created = 0 if fam.setup_step is not None else len(generate(db, day))
     for a in db.query(ChoreAssignment).filter(
         ChoreAssignment.repeat == "once", ChoreAssignment.on_date < day

@@ -77,3 +77,18 @@ export function dayName(day: string, today: string): string {
 export interface KidDoneResult {
   status: 'done' | 'submitted_for_approval'
 }
+
+/** Bedtime auto-approve and weekly recap fields on GET/PATCH /family */
+export interface FamilyExtrasFields {
+  bedtime_auto?: boolean
+  bedtime_auto_at?: string
+  recap_weekly?: boolean
+}
+
+/** What GET /today says about the "Try this" opt-in cards */
+export interface TodayTryFields {
+  /** first kid with 10 approved chores and trust mode off */
+  try_trust_kid?: number | null
+  /** days chores were still waiting at the daily reset */
+  waiting_at_reset_days?: number
+}

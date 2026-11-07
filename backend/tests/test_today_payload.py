@@ -229,3 +229,13 @@ def test_try_hints_trust_kid_and_waiting_days(client, db, parent, parent_headers
     a.trust_mode = True
     db.commit()
     assert _today(client, parent_headers)["try_trust_kid"] is None
+
+
+def test_try_trust_kid_none_when_every_kid_has_trust(client, db, parent, parent_headers):
+    a, _, _, _ = _setup(db)
+    for i in range(10):
+        make_run(db, parent, a, status="done", day=DAY - timedelta(days=i), title=f"c{i}")
+    for k in db.query(type(a)).filter_by(role=UserRole.KID):
+        k.trust_mode = True
+    db.commit()
+    assert _today(client, parent_headers)["try_trust_kid"] is None

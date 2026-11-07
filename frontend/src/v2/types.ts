@@ -1,6 +1,6 @@
 import type { CelebrateLevel } from './funTypes'
 import type { KidScreen } from './rewardTypes'
-import type { ChoreTrustFields, KidTrust, KidTrustFields, RunTrustFields } from './trustTypes'
+import type { ChoreTrustFields, FamilyExtrasFields, KidTrust, KidTrustFields, RunTrustFields, TodayTryFields } from './trustTypes'
 /** Shapes of the v2 backend responses (backend/app/api/{family,kid,devices,kids,hours,chores,setup}.py). */
 
 export type ChoreState = 'done' | 'needs_you' | 'todo' | 'skipped'
@@ -109,7 +109,7 @@ export interface Kid extends KidTrustFields {
 /** GET/PATCH /family */
 export type AccentKey = 'neon' | 'sun' | 'tangerine' | 'bubblegum' | 'lilac' | 'sky' | 'aqua' | 'mint' | 'peach' | 'ice'
 
-export interface Family {
+export interface Family extends FamilyExtrasFields {
   name: string
   timezone: string
   reset_time: string
@@ -129,9 +129,6 @@ export interface Family {
   hh_weekly_surprise: boolean
   hh_auto_boost: boolean
   streak_freeze: boolean
-  bedtime_auto?: boolean
-  bedtime_auto_at?: string
-  recap_weekly?: boolean
 }
 
 /** GET /chore-types item */
@@ -268,16 +265,12 @@ export interface NeedsItem extends RunTrustFields {
 }
 
 /** GET /today */
-export interface Today {
+export interface Today extends TodayTryFields {
   day: string
   pending_approvals: number
   new_devices: Device[]
   needs_you?: NeedsItem[]
   kids: TodayKid[]
-  /** first kid with 10 approved chores and trust mode off */
-  try_trust_kid?: number | null
-  /** days chores were still waiting at the daily reset */
-  waiting_at_reset_days?: number
 }
 
 /** POST /chores/ instance/definition, POST /chores/{id}/approve, GET /chores/today values */

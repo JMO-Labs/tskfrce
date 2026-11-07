@@ -295,14 +295,17 @@ def today(db: Session = Depends(get_db)):
     prices = sorted(p for (p,) in db.query(Reward.price).filter(Reward.active.is_(True)))
     now_local = local_now(fam.timezone, now)
     quiet = set(boost.quiet_kids(db, day))
-    approved = dict(
-        db.query(ChoreRun.kid_id, func.count())
-        .filter(ChoreRun.status == "done", ChoreRun.kid_id.isnot(None))
-        .group_by(ChoreRun.kid_id)
+    untrusted = [k.id for k in kid_rows if not k.trust_mode]
+    approved = (  # skipped when every kid already has trust on
+        dict(
+            db.query(ChoreRun.kid_id, func.count())
+            .filter(ChoreRun.status == "done", ChoreRun.kid_id.in_(untrusted))
+            .group_by(ChoreRun.kid_id)
+        )
+        if untrusted
+        else {}
     )
-    try_trust = next(
-        (k.id for k in kid_rows if not k.trust_mode and approved.get(k.id, 0) >= 10), None
-    )
+    try_trust = next((i for i in untrusted if approved.get(i, 0) >= 10), None)
     kids = []
     for k in kid_rows:
         devs = [device_out(db, d, fam, now, pre) for d in kid_devs[k.id]]

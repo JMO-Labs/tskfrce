@@ -110,3 +110,21 @@ def test_reset_counts_days_with_waiting_chores(db, parent, kid):
 def test_reset_without_waiting_chores_leaves_the_count(db, parent, kid):
     svc.run_reset(db, DAY)
     assert get_family(db).waiting_reset_days == 0
+
+
+def test_reset_ignores_waiting_chores_bedtime_would_skip(db, parent, kid):
+    spot = make_run(db, parent, kid, status="submitted", day=OLD, title="S")
+    spot.spot_check = True
+    always = make_run(db, parent, kid, status="submitted", day=OLD, title="A")
+    always.assignment.chore.always_check = True
+    db.commit()
+    svc.run_reset(db, DAY)
+    assert get_family(db).waiting_reset_days == 0
+
+
+def test_reset_does_not_count_while_setup_is_open(db, parent, kid):
+    make_run(db, parent, kid, status="submitted", day=OLD)
+    get_family(db).setup_step = 5
+    db.commit()
+    svc.run_reset(db, DAY)
+    assert get_family(db).waiting_reset_days == 0

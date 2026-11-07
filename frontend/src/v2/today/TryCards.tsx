@@ -10,13 +10,11 @@ import { HappyHourButton } from './HappyHourButton'
 import { TRY_ORDER, nudgeKey, nudgeSnoozed, pickCard, snoozeNudge, writeShown } from './tryCards'
 import styles from '../components/QuickTip.module.css'
 
-const TEXT: Record<(typeof TRY_ORDER)[number], { icon: string; text: string }> = {
+const TEXT: Record<Exclude<(typeof TRY_ORDER)[number], 'try.trust' | 'try.bedtime'>, { icon: string; text: string }> = {
   'try.celebrate': { icon: 'celebration', text: 'Kids now get a comic-book cheer when they finish a chore.' },
   'try.happyhour': { icon: 'bolt', text: 'Double points for an hour gets chores moving.' },
   'try.autoboost': { icon: 'auto_awesome', text: 'If a kid goes quiet for 2 days, we start a Happy Hour for them and let you know.' },
   'try.streakfreeze': { icon: 'ac_unit', text: 'Kids earn a freeze every 7 days in a row, so one missed day doesn\'t break their streak.' },
-  'try.trust': { icon: 'verified', text: '' },
-  'try.bedtime': { icon: 'bedtime', text: 'Chores were still waiting at reset on 3 days. Bedtime auto-approve can clear them at 9:00 PM each night.' },
 }
 
 /** "Double points for an hour…", or the family's own defaults ("×1.5 points for 30 minutes…"). */
@@ -90,7 +88,7 @@ export function TryCards() {
     )
   } else if (key === 'try.trust') {
     const name = trustKid!.full_name || trustKid!.username
-    icon = TEXT[key].icon
+    icon = 'verified'
     text = `${name} has 10 approved chores. Trust mode lets chores approve themselves as ${name} earns it.`
     actions = (
       <>
@@ -99,7 +97,8 @@ export function TryCards() {
       </>
     )
   } else if (key === 'try.bedtime') {
-    ;({ icon, text } = TEXT[key])
+    icon = 'bedtime'
+    text = `Chores were still waiting at reset on ${today!.waiting_at_reset_days} days. Bedtime auto-approve can clear them at 9:00 PM each night.`
     actions = (
       <>
         <Btn onClick={off(() => setFam({ bedtime_auto: true }))}>Turn on</Btn>

@@ -114,8 +114,17 @@ export function FamilyCard({ fam }: { fam: Family }) {
               />
             </div>
           </PaneCard>
-          <PaneCard icon="bedtime" title="Bedtime auto-approve">
-            <Switchy label="Bedtime auto-approve" checked={!!val('bedtime_auto')} onChange={(v) => set({ bedtime_auto: v })} />
+          <PaneCard icon="auto_awesome" title="Less tapping">
+            <div className="pn-kv">
+              <Switch
+                className="pn-sw"
+                label="Bedtime auto-approve"
+                description="Chores still waiting approve themselves at this time."
+                labelPosition="left"
+                checked={!!val('bedtime_auto')}
+                onChange={(e) => set({ bedtime_auto: e.currentTarget.checked })}
+              />
+            </div>
             {val('bedtime_auto') && (
               <div className="pn-fields">
                 <TextInput
@@ -129,9 +138,17 @@ export function FamilyCard({ fam }: { fam: Family }) {
                 />
               </div>
             )}
-          </PaneCard>
-          <PaneCard icon="insights" title="Weekly recap">
-            <Switchy label="Weekly recap" checked={val('recap_weekly') !== false} onChange={(v) => set({ recap_weekly: v })} />
+            <div className="pn-sp" />
+            <div className="pn-kv">
+              <Switch
+                className="pn-sw"
+                label="Weekly recap"
+                description="A short summary of each kid's week, Sundays at 7:30 PM."
+                labelPosition="left"
+                checked={val('recap_weekly') !== false}
+                onChange={(e) => set({ recap_weekly: e.currentTarget.checked })}
+              />
+            </div>
           </PaneCard>
           <Fold title="Points rules">
             <section className="pn-card" aria-label="Points rules">

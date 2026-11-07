@@ -248,3 +248,10 @@ test('trust comes before bedtime, one card a day', async () => {
   expect(await screen.findByText(/approved chores/)).toBeInTheDocument()
   expect(screen.queryByText(/still waiting at reset/)).toBeNull()
 })
+
+test('bedtime card shows the real day count', async () => {
+  s.dismissed = [...allSeen, 'try.trust']
+  s.waiting = 5
+  show()
+  expect(await screen.findByText(/waiting at reset on 5 days\./)).toBeInTheDocument()
+})

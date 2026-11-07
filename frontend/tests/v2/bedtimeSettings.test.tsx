@@ -28,15 +28,24 @@ beforeEach(() => {
   apiMock.mockReset().mockImplementation(async (_p, i) => (i?.method ? i.body : undefined))
 })
 
+test('one Less tapping card holds both rows, each with a muted line', () => {
+  show(fam())
+  const card = screen.getByRole('region', { name: 'Less tapping' })
+  expect(card).toHaveTextContent('Chores still waiting approve themselves at this time.')
+  expect(card).toHaveTextContent("A short summary of each kid's week, Sundays at 7:30 PM.")
+  expect(screen.queryByRole('region', { name: /^Bedtime auto-approve/ })).toBeNull()
+  expect(screen.queryByRole('region', { name: /^Weekly recap/ })).toBeNull()
+})
+
 test('bedtime time is hidden while the switch is off', () => {
   show(fam())
-  expect(screen.getByRole('switch', { name: 'Bedtime auto-approve' })).not.toBeChecked()
+  expect(screen.getByRole('switch', { name: /^Bedtime auto-approve/ })).not.toBeChecked()
   expect(screen.queryByLabelText('Approve at')).toBeNull()
 })
 
 test('turning bedtime on shows the time, and both save together', async () => {
   show(fam())
-  await userEvent.click(screen.getByRole('switch', { name: 'Bedtime auto-approve' }))
+  await userEvent.click(screen.getByRole('switch', { name: /^Bedtime auto-approve/ }))
   const t = screen.getByLabelText('Approve at')
   expect(t).toHaveValue('21:00')
   await userEvent.clear(t)
@@ -52,7 +61,7 @@ test('the time shows when bedtime is already on', () => {
 
 test('weekly recap switch saves', async () => {
   show(fam())
-  await userEvent.click(screen.getByRole('switch', { name: 'Weekly recap' }))
+  await userEvent.click(screen.getByRole('switch', { name: /^Weekly recap/ }))
   await userEvent.click(screen.getByRole('button', { name: 'Save settings' }))
   await waitFor(() => expect(patches()).toEqual([{ recap_weekly: false }]))
 })
