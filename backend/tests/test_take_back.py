@@ -67,6 +67,11 @@ def test_stops_at_zero_when_spent(client, db, parent, kid, parent_headers):
     assert economy.balance(db, kid.id) == 0
     fix = db.query(Points).filter(Points.reason == "adjustment").one()
     assert fix.amount == 5 and "below zero" in fix.description and fix.run_id is None
+    assert fix.seen_by_kid is True  # no bonus celebration
+    assert fix.points_type == PointsType.TRANSFER  # no XP or weekly score
+    from app.services import progression
+
+    assert progression.xp(db, kid.id) == 5  # only the 5 bonus; the correction adds no XP
 
 
 def test_older_debt_not_forgiven(client, db, parent, kid, parent_headers):
@@ -134,7 +139,7 @@ def test_badges_stay(client, db, parent, kid, parent_headers):
 
 def test_kid_told_gently_and_level_drops(client, db, parent, kid, parent_headers):
     _trust(db, kid, level=2)
-    r = _auto(db, parent, kid, title="Clean room")
+    r = _auto(db, parent, kid, title="Clean room", day=svc.today(db))
     _take(client, parent_headers, r)
     db.refresh(kid)
     assert (kid.trust_level, kid.trust_clean) == (1, 0)
@@ -261,3 +266,49 @@ def test_kid_today_trust_block(client, db, parent, kid, kid_headers):
     assert get() == {"level": 2, "to_next": None}
     _trust(db, kid, on=False, level=2)
     assert get() is None
+
+
+def test_attempt_bumped_old_photo_no_longer_counts(client, db, parent, kid, parent_headers):
+    r = _auto(db, parent, kid, day=svc.today(db), needs_photo=True)
+    db.add(ChorePhoto(run_id=r.id, uploaded_by_id=kid.id, path="a", thumb_path="b", attempt=1))
+    db.commit()
+    out = _take(client, parent_headers, r).json()
+    db.refresh(r)
+    assert r.attempt == 2 and svc.photo_count(r) == 0
+    assert out["sent_back"] is True
+
+
+def test_older_day_message_and_chat_copy(client, db, parent, kid, parent_headers):
+    r = _auto(db, parent, kid, title="Dishes")
+    _take(client, parent_headers, r)
+    n = db.query(Notification).filter_by(user_id=kid.id, kind="chore_sent_back").one()
+    assert n.title == "A parent checked Dishes and took its points back."
+    from app.models.chat import ThreadMessage
+
+    assert any(
+        m.body == "A parent checked this one again · points taken back"
+        for m in db.query(ThreadMessage)
+    )
+
+
+def test_failure_midway_leaves_run_and_ledger_unchanged(
+    client, db, parent, kid, parent_headers, monkeypatch
+):
+    import pytest
+    from app.services import trust
+
+    _trust(db, kid, level=2)
+    r = _auto(db, parent, kid, day=svc.today(db), points=10)
+    before = [(p.id, p.amount) for p in db.query(Points).order_by(Points.id)]
+
+    def boom(*a, **k):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(trust, "catch_run", boom)
+    with pytest.raises(RuntimeError):
+        _take(client, parent_headers, r)
+    db.expire_all()
+    assert (r.status, r.approved_via, r.attempt) == ("done", "trust", 1)
+    assert [(p.id, p.amount) for p in db.query(Points).order_by(Points.id)] == before
+    monkeypatch.undo()
+    assert _take(client, parent_headers, r).status_code == 200  # retry works, not 409

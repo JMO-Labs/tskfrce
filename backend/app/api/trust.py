@@ -42,34 +42,40 @@ def take_back(
         raise HTTPException(409, "Only a chore that approved itself can be taken back.")
     lower = body.lower_trust if body else True
     today = r.day == svc.today(db)
+    title = svc.chore_of(r).title
+    msg = (
+        f"A parent checked {title} and it needs another go."
+        if today
+        else f"A parent checked {title} and took its points back."
+    )
     with economy.SPEND_LOCK:
         db.commit()  # fresh snapshot, so a second tap sees the first
-        won = (  # compare-and-set: only one caller moves it out of done
-            db.query(ChoreRun)
-            .filter(ChoreRun.id == r.id, ChoreRun.status == "done", ChoreRun.approved_via.in_(SELF))
-            .update({"status": "todo" if today else "cancelled"}, synchronize_session=False)
-        )
-        if won != 1:
+        try:
+            won = (  # compare-and-set: only one caller moves it out of done
+                db.query(ChoreRun)
+                .filter(
+                    ChoreRun.id == r.id, ChoreRun.status == "done", ChoreRun.approved_via.in_(SELF)
+                )
+                .update({"status": "todo" if today else "cancelled"}, synchronize_session=False)
+            )
+            if won != 1:
+                raise HTTPException(409, "This chore was already taken back.")
+            db.refresh(r)
+            economy.take_back(db, r)
+            kids = trust.payees(r)
+            trust.catch_run(db, r, parent.id, lower)
+            inbox.notify(db, kids, "chore_sent_back", msg, run_id=r.id)
+            r.ticks.clear()
+            r.attempt = (r.attempt or 1) + 1  # old photos no longer count
+            r.last_note = "A parent checked this one again."
+            r.approved_at = r.completed_at = r.approved_by_id = r.approved_via = None
+            r.spot_check = False
+            r.submitted_at = r.submitted_by_id = r.hh_mult_x10 = None
+            chat.system(db, r, "A parent checked this one again · points taken back")
+            db.commit()  # one commit: ledger, run and trust change together
+        except BaseException:
             db.rollback()
-            raise HTTPException(409, "This chore was already taken back.")
-        db.refresh(r)
-        economy.take_back(db, r)
-    kids = trust.payees(r)
-    trust.catch_run(db, r, parent.id, lower)
-    title = svc.chore_of(r).title
-    inbox.notify(
-        db,
-        kids,
-        "chore_sent_back",
-        f"A parent checked {title} and it needs another go.",
-        run_id=r.id,
-    )
-    r.ticks.clear()
-    r.approved_at = r.completed_at = r.approved_by_id = r.approved_via = None
-    r.spot_check = False
-    r.submitted_at = r.submitted_by_id = r.hh_mult_x10 = None
-    chat.system(db, r, "Wasn't done: points taken back")
-    db.commit()
+            raise
     return svc.chore_out(r, get_family(db))
 
 

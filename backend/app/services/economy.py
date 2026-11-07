@@ -57,9 +57,8 @@ def deduct(
 
 def take_back(db: Session, run) -> dict[int, int]:
     """Remove the run's positive rows; a kid's balance never ends below min(0, before).
-    Returns points removed per kid. Commits."""
+    Returns points removed per kid. Flushes only: the caller commits (inside SPEND_LOCK)."""
     with SPEND_LOCK:
-        db.commit()  # fresh snapshot: see other threads' debits
         rows = db.query(Points).filter(Points.run_id == run.id, Points.amount > 0).all()
         removed: dict[int, int] = {}
         for p in rows:
@@ -74,14 +73,13 @@ def take_back(db: Session, run) -> dict[int, int]:
                 db.add(
                     Points(
                         user_id=kid_id,
-                        points_type=PointsType.BONUS,
+                        points_type=PointsType.TRANSFER,  # earns no XP or weekly score
                         amount=short,
                         reason="adjustment",
                         description="Balance can't go below zero",
-                        seen_by_kid=False,
                     )
                 )
-        db.commit()
+        db.flush()
         return removed
 
 
