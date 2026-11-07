@@ -83,7 +83,7 @@ Existing `/chores/{id}/undo` can leave a balance below zero; this path must not.
 
 **The page.** `/recap` shows the latest full week and can step back through earlier weeks. Computed on request from existing data; nothing is stored except trust events below. If a chore or kid is later edited or deleted, past weeks may shift; that's acceptable (my call). The job runs from `notify_jobs.tick`, guarded by `recap_date`.
 
-- **Flags first.** Up to 3 per kid, most serious first, each with a one-tap action.
+- **Flags first.** One "Worth a look" list for the whole family: at most 3 shown, most serious first, each with a one-tap action, "See all" if more (owner, 2026-11-07, simpler v2). Then one "This week" card with one line per kid; tap for the rest of the numbers.
 - **No flags:** "All good this week", so the parent can stop there.
 - **A trend card per kid**, this week against the average of the 4 weeks before:
   - chores done, with a small sparkline
