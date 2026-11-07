@@ -122,7 +122,7 @@ describe('This week', () => {
     await show()
     expect(screen.getByText('Trends start after 2 weeks.')).toBeTruthy()
     expect(screen.queryByText(/avg/)).toBeNull()
-    expect(screen.queryByRole('img', { name: /chores done per week/ })).toBeNull()
+    expect(screen.queryByRole('img', { name: /Last \d weeks/ })).toBeNull()
   })
   test('family line shows when not all good', async () => {
     serve({ ...FLAGGED, family_line: 'Best week in a month.' })
@@ -165,8 +165,8 @@ describe('week navigation', () => {
 
 describe('Sparkline', () => {
   test('aria-label states the numbers', () => {
-    render(<Sparkline name="Leo" values={[12, 11, 10, 11, 5]} />)
-    expect(screen.getByRole('img', { name: 'Leo chores done per week, last 5 weeks: 12, 11, 10, 11, 5' })).toBeTruthy()
+    render(<Sparkline values={[12, 11, 10, 11, 5]} />)
+    expect(screen.getByRole('img', { name: 'Last 5 weeks: 12, 11, 10, 11, 5' })).toBeTruthy()
   })
 })
 

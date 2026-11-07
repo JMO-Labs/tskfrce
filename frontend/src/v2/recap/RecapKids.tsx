@@ -42,13 +42,15 @@ export function RecapKids({ kids, line }: { kids: RecapKid[]; line: string | nul
   const [note, setNote] = useState(false)
   return (
     <section className="pk-panel" aria-label="This week">
-      <h3>
-        <Icon name="insights" size={18} />
-        This week
+      <div className="v2-head">
+        <h3>
+          <Icon name="insights" size={18} />
+          This week
+        </h3>
         <button type="button" className="v2-info" aria-label="About these numbers" aria-expanded={note} aria-controls="rc-note" onClick={() => setNote(!note)}>
           <Icon name="info" size={16} />
         </button>
-      </h3>
+      </div>
       {note && (
         <p id="rc-note" className="rc-note">
           {NOTE}
@@ -60,7 +62,7 @@ export function RecapKids({ kids, line }: { kids: RecapKid[]; line: string | nul
           return (
             <div key={k.id}>
               <button type="button" className="v2-kid" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : k.id)}>
-                <span className="pk-av" data-size="lg">{k.name.charAt(0).toUpperCase()}</span>
+                <span className="pk-av" data-size="lg" aria-hidden="true">{k.name.charAt(0).toUpperCase()}</span>
                 <span className="v2-kid-t">
                   <b>{k.name}</b>
                   <small>
@@ -70,7 +72,7 @@ export function RecapKids({ kids, line }: { kids: RecapKid[]; line: string | nul
                 </span>
                 {k.enough_history && (
                   <span className="v2-sp">
-                    <Sparkline name={k.name} values={k.done_trend} />
+                    <Sparkline values={k.done_trend} />
                   </span>
                 )}
                 {k.flags.length ? (

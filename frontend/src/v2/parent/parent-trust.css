@@ -5,6 +5,8 @@
 [data-look='parent'] .ao-row:last-child { padding-bottom: 0; }
 [data-look='parent'] .ao-row .pt-t { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; }
 [data-look='parent'] .ao-row .p-btn { flex: none; }
+[data-look='parent'] .v2-head { display: flex; align-items: center; gap: 8px; }
+[data-look='parent'] .v2-head h3 { margin: 0; }
 [data-look='parent'] .v2-sw { margin-left: auto; }
 [data-look='parent'] .v2-level { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 [data-look='parent'] .v2-level .pt-bar { flex: 1 1 120px; }
