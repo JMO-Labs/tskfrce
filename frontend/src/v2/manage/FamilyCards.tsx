@@ -116,7 +116,7 @@ export function FamilyCard({ fam }: { fam: Family }) {
               />
             </div>
           </PaneCard>
-          <PaneCard icon="auto_awesome" title="Less tapping">
+          <PaneCard icon="auto_awesome" title="Extras">
             <div className="pn-kv">
               <Switch
                 className="pn-sw"

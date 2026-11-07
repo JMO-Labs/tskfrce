@@ -191,7 +191,7 @@ test('trust card for a kid with 10 approved chores, once the older cards are see
   s.dismissed = allSeen
   s.trust = 1
   show()
-  expect(await screen.findByText('Mia has 10 or more approved chores. Trust mode lets chores approve themselves as Mia earns it.')).toBeInTheDocument()
+  expect(await screen.findByText("Mia has 10 approved chores. With Trust mode, Mia's chores can approve themselves, with spot checks.")).toBeInTheDocument()
   await userEvent.click(screen.getByRole('button', { name: 'Turn on for Mia' }))
   await waitFor(() => expect(patched('/kids/1', { trust_mode: true })).toBe(true))
   await waitFor(() => expect(posted('/me/tips/try.trust/dismiss')).toBe(true))

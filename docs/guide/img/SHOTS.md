@@ -29,6 +29,6 @@ Taken with Playwright from a demo family (kids Bobby and Susan), read-only: ever
 | `trust-kid.jpg` | Kid page (phone): **Trust mode** card, Trusted level, and **Approved on their own** with **Wasn't done**. Less parent work 2.7.0. |
 | `wasnt-done.jpg` | Kid page (phone): the **Wasn't done?** sheet with **Also lower trust level** ticked. |
 | `setup-extras.jpg` | Setup wizard step 8 "Optional extras" (phone): trust mode per kid and bedtime auto-approve, all off. |
-| `less-tapping.jpg` | **Settings → Family** (phone): the **Less tapping** card with bedtime auto-approve on. |
+| `less-tapping.jpg` | **Settings → Family** (phone): the **Extras** card with bedtime auto-approve on. |
 | `recap.jpg` | **Your week** (phone): **Worth a look** list and the **This week** card. |
 | `kid-trust-chip.jpg` | Kid **Me** (phone, Little look): the Proven level chip and its friendly line. |

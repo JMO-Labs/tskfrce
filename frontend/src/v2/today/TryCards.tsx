@@ -92,7 +92,7 @@ export function TryCards() {
   } else if (key === 'try.trust') {
     const name = trustKid!.full_name || trustKid!.username
     icon = 'verified'
-    text = `${name} has 10 or more approved chores. Trust mode lets chores approve themselves as ${name} earns it.`
+    text = `${name} has 10 approved chores. With Trust mode, ${name}'s chores can approve themselves, with spot checks.`
     actions = (
       <>
         <Btn onClick={off(() => patchKid.mutate({ id: trustKid!.id, body: { trust_mode: true } }, { onError: toastFail }))}>{`Turn on for ${name}`}</Btn>

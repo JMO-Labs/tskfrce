@@ -197,7 +197,7 @@ Trust mode is per kid. Turn it on from the **Trust mode** card on the kid's page
 - A spot check is in **Needs you**, marked **Spot check**. A kid sees it like any chore waiting for a parent.
 - A team chore approves itself only if every kid on it is in trust mode, and it follows the lowest level.
 
-**Wasn't done.** If a chore approved itself but wasn't really done, tap **Wasn't done** on it (on **Today**, or in **Approved on their own** on the kid's page, which covers the last 7 days). It takes the points back. If the kid already spent them, the balance stops at zero and nothing is owed. By default it also lowers the kid's level one step; untick **Also lower trust level** to keep it. The kid gets a gentle message. Badges already earned stay.
+**Wasn't done.** If a chore approved itself but wasn't really done, tap **Wasn't done** on it (on **Today**, or in **Approved on their own** on the kid's page, which covers the last 7 days). It takes the points back. If the kid already spent them, the balance stops at zero and nothing is owed. By default it also lowers the kid's level one step; untick **Also lower trust level** to keep it. A kid already at New has no level to lower, so the box is hidden, but their count toward Trusted still starts over. The kid gets a gentle message. Badges already earned stay.
 
 ![The Wasn't done sheet](img/wasnt-done.jpg)
 
@@ -222,9 +222,9 @@ Every Sunday at 7:30 PM you get "Your week at (your family)" in your inbox, plus
 ### Where the settings live
 
 - **Kids & chores → the kid → Trust mode**, and **Always check** on each chore.
-- **Settings → Family → Less tapping**: **Bedtime auto-approve** (with its time) and **Weekly recap**.
+- **Settings → Family → Extras**: **Bedtime auto-approve** (with its time) and **Weekly recap**.
 
-![The Less tapping card in Settings](img/less-tapping.jpg)
+![The Extras card in Settings](img/less-tapping.jpg)
 
 ### "Try this" cards
 
