@@ -139,9 +139,17 @@ describe("Wasn't done sheet", () => {
 
   test('unticked sends lower_trust false', async () => {
     open()
-    expect(screen.getByText(/Clean room goes back on Maya's list for today, and the 20 points it earned come off/)).toBeInTheDocument()
+    expect(screen.getByText(/“Clean room” goes back on Maya's list for today, and the 20 points it earned come off/)).toBeInTheDocument()
     expect(screen.getByText('Maya goes from Trusted to New.')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('checkbox', { name: /Also lower trust level/ }))
+    await userEvent.click(screen.getByRole('button', { name: "Wasn't done" }))
+    await waitFor(() => expect(sent('/chores/9/take-back', 'POST')).toEqual({ lower_trust: false }))
+  })
+
+  test('New kid: no lower-trust box, says the count starts over, sends false', async () => {
+    wrap(<WasntDoneSheet run={run} today="2026-11-06" kidName="Maya" level={0} onClose={() => {}} />)
+    expect(screen.queryByRole('checkbox')).toBeNull()
+    expect(screen.getByText("Maya's count toward Trusted starts over.")).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: "Wasn't done" }))
     await waitFor(() => expect(sent('/chores/9/take-back', 'POST')).toEqual({ lower_trust: false }))
   })

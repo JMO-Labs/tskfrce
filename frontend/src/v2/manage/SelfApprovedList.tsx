@@ -38,7 +38,10 @@ export function SelfApprovedList({ kid, today }: { kid: Kid; today: string }) {
   const [all, setAll] = useState(false)
   const [taking, setTaking] = useState<TakeBackRun | null>(null)
   if (!Array.isArray(rows) || rows.length === 0) return null
-  const take = (r: SelfApproved) => setTaking({ id: r.id, title: r.title, day: r.day, points: r.points })
+  const take = (r: SelfApproved) => {
+    setAll(false)
+    setTaking({ id: r.id, title: r.title, day: r.day, points: r.points })
+  }
   return (
     <>
       <div className="v2-sub">

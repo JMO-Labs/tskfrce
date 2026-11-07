@@ -13,7 +13,7 @@ export function useTakeBack() {
     mutationFn: ({ id, lower_trust }: { id: number; lower_trust: boolean }) =>
       api(`/chores/${id}/take-back`, { method: 'POST', body: { lower_trust } }),
     onSuccess: () => {
-      toastOk('Taken back')
+      toastOk('Points taken back')
       return Promise.all(['self-approved', 'today', 'kids', 'kid-points', 'chores-today'].map((k) => qc.invalidateQueries({ queryKey: [k] })))
     },
     onError: toastFail,

@@ -23,20 +23,21 @@ export function WasntDoneSheet({ run, today, kidName, level, trustOn = true, onC
   const older = !!today && run.day < today
   const pts = run.points == null ? 'the points' : `the ${run.points} points`
   const kidMsg = older ? `A parent checked ${run.title} and took its points back.` : `A parent checked ${run.title} and it needs another go.`
-  const go = () => take.mutate({ id: run.id, lower_trust: trustOn && lower }, { onSuccess: onClose })
+  const go = () => take.mutate({ id: run.id, lower_trust: trustOn && !!level && lower }, { onSuccess: onClose })
   return (
     <Modal opened onClose={onClose} title="Wasn't done?" centered>
       <div className="pt-hh-sheet">
         <p className="v2-body">
-          {older ? `This chore was from ${dayName(run.day, today)}, so it won't come back.` : `${run.title} goes back on ${kidName}'s list for today, and`}{' '}
+          {older ? `This chore was from ${dayName(run.day, today)}, so it won't come back.` : `“${run.title}” goes back on ${kidName}'s list for today, and`}{' '}
           {older ? `${pts[0].toUpperCase()}${pts.slice(1)} it earned come off.` : `${pts} it earned come off.`} If {kidName} already spent them, the balance stops at zero.
         </p>
-        {trustOn && (
+        {trustOn && !level && <span className="pk-hint">{`${kidName}'s count toward Trusted starts over.`}</span>}
+        {trustOn && !!level && (
           <Checkbox
             checked={lower}
             onChange={(e) => setLower(e.currentTarget.checked)}
             label="Also lower trust level"
-            description={level ? `${kidName} goes from ${LEVELS[level]} to ${LEVELS[level - 1]}.` : undefined}
+            description={`${kidName} goes from ${LEVELS[level]} to ${LEVELS[level - 1]}.`}
           />
         )}
         <span className="pk-hint">{`${kidName} sees: "${kidMsg}"`}</span>
