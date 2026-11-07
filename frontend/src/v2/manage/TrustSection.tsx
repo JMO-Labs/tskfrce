@@ -66,33 +66,31 @@ export function TrustSection({ kid }: { kid: Kid }) {
         <p className="v2-p">{`Off: you approve every chore. Turn on to let chores approve themselves as ${name} earns it.`}</p>
       )}
       <SelfApprovedList kid={kid} today={day ?? ''} />
-      {
-        <Modal opened={picking !== null} onClose={close} title="Trust level" centered>
-          <div className="pt-hh-sheet">
-            <SegmentedControl
-              label="Trust level"
-              value={String(p)}
-              onChange={(v) => setPicking(Number(v))}
-              options={LEVELS.map((l, i) => ({ value: String(i), label: l }))}
-            />
-            <p className="v2-p">{LEVEL_TEXT[p]}</p>
-            <div className="pk-actions v2-end">
-              <button type="button" className="p-btn" onClick={close}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="p-btn"
-                data-variant="accent"
-                disabled={patch.isPending}
-                onClick={() => (p === level ? close() : save({ trust_level: p as 0 | 1 | 2 }, close))}
-              >
-                Save
-              </button>
-            </div>
+      <Modal opened={picking !== null} onClose={close} title="Trust level" centered>
+        <div className="pt-hh-sheet">
+          <SegmentedControl
+            label="Trust level"
+            value={String(p)}
+            onChange={(v) => setPicking(Number(v))}
+            options={LEVELS.map((l, i) => ({ value: String(i), label: l }))}
+          />
+          <p className="v2-p">{LEVEL_TEXT[p]}</p>
+          <div className="pk-actions v2-end">
+            <button type="button" className="p-btn" onClick={close}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="p-btn"
+              data-variant="accent"
+              disabled={patch.isPending}
+              onClick={() => (p === level ? close() : save({ trust_level: p as 0 | 1 | 2 }, close))}
+            >
+              Save
+            </button>
           </div>
-        </Modal>
-      }
+        </div>
+      </Modal>
     </section>
   )
 }

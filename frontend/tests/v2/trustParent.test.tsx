@@ -86,17 +86,21 @@ describe('trust card', () => {
 })
 
 describe('#trust jump', () => {
-  afterEach(() => window.history.replaceState(null, '', '/'))
+  let spy: jest.SpyInstance
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = Element.prototype.scrollIntoView || (() => {}) // jsdom has none
+    spy = jest.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(() => {})
+  })
+  afterEach(() => {
+    spy.mockRestore()
+    window.history.replaceState(null, '', '/')
+  })
   test('scrolls the card into view when the URL hash is #trust', () => {
-    const spy = jest.fn()
-    Element.prototype.scrollIntoView = spy
     window.location.hash = '#trust'
     wrap(<TrustSection kid={kid()} />)
     expect(spy).toHaveBeenCalledWith({ block: 'start' })
   })
   test('does not scroll without the hash', () => {
-    const spy = jest.fn()
-    Element.prototype.scrollIntoView = spy
     wrap(<TrustSection kid={kid()} />)
     expect(spy).not.toHaveBeenCalled()
   })
@@ -222,6 +226,17 @@ describe('focus returns after a sheet closes', () => {
     await waitFor(() => expect(seeAll).toHaveFocus())
   })
 
+  test("Wasn't done sheet from an inline row: Keep lands on that row's button", async () => {
+    rows = [row(1), row(2), row(3)]
+    wrap(<TrustSection kid={kid()} />)
+    await screen.findByRole('button', { name: 'See all' })
+    const btn = screen.getAllByRole('button', { name: "Wasn't done" })[1]
+    await userEvent.click(btn)
+    const sheet = await screen.findByRole('dialog', { name: "Wasn't done?" })
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Keep' }))
+    await waitFor(() => expect(btn).toHaveFocus())
+  })
+
   test("Wasn't done sheet opened from a button: Escape refocuses that button", async () => {
     const Host = () => {
       const [o, setO] = useState(false)
@@ -251,7 +266,7 @@ describe('focus returns after a sheet closes', () => {
   })
 })
 
-test('Trust and recap headings do not swallow their controls', () => {
+test('the Trust heading does not swallow its controls', () => {
   wrap(<TrustSection kid={kid()} />)
   expect(screen.getByRole('heading', { name: 'Trust mode' })).toBeInTheDocument()
 })

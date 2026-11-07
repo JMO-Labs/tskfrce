@@ -40,7 +40,7 @@ export function SelfApprovedList({ kid, today }: { kid: Kid; today: string }) {
   const [taking, setTaking] = useState<TakeBackRun | null>(null)
   if (!Array.isArray(rows) || rows.length === 0) return null
   const take = (r: SelfApproved) => {
-    seeAll.current?.focus() // the sheet remembers this as its trigger; the list below is closing
+    if (all) seeAll.current?.focus() // the sheet remembers this as its trigger; the list below is closing
     setAll(false)
     setTaking({ id: r.id, title: r.title, day: r.day, points: r.points })
   }
@@ -63,15 +63,13 @@ export function SelfApprovedList({ kid, today }: { kid: Kid; today: string }) {
           <Row key={r.id} r={r} onTake={() => take(r)} />
         ))}
       </div>
-      {
-        <Modal opened={all} onClose={() => setAll(false)} title="Approved on their own" centered>
-          <div className="ao-list">
-            {rows.map((r) => (
-              <Row key={r.id} r={r} onTake={() => take(r)} />
-            ))}
-          </div>
-        </Modal>
-      }
+      <Modal opened={all} onClose={() => setAll(false)} title="Approved on their own" centered>
+        <div className="ao-list">
+          {rows.map((r) => (
+            <Row key={r.id} r={r} onTake={() => take(r)} />
+          ))}
+        </div>
+      </Modal>
       {taking && <WasntDoneSheet run={taking} today={today} kidName={nameOf(kid)} level={kid.trust_level} trustOn={!!kid.trust_mode} onClose={() => setTaking(null)} />}
     </>
   )
