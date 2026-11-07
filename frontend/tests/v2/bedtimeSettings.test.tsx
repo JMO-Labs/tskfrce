@@ -1,12 +1,13 @@
 import { beforeEach, expect, test } from '@jest/globals'
 import type { Mock } from 'jest-mock'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MantineProvider } from '@mantine/core'
 import { api } from '@/v2/api'
 import { FamilyCard } from '@/v2/manage/FamilyCards'
 import type { Family } from '@/v2/types'
+import { bedtimeLatest, bedtimePossible } from '@/v2/trustTypes'
 
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
@@ -74,4 +75,24 @@ test('reset at 8 PM: turning bedtime on sends a valid time and says the latest',
   expect(screen.getByText('Latest is 7:45 PM, 15 minutes before the day resets.')).toBeInTheDocument()
   await userEvent.click(screen.getByRole('button', { name: 'Save settings' }))
   await waitFor(() => expect(patches()).toEqual([{ bedtime_auto: true, bedtime_auto_at: '19:45' }]))
+})
+
+test('moving the reset past a saved bedtime pulls the bedtime earlier in the same save', async () => {
+  show(fam({ bedtime_auto: true, bedtime_auto_at: '21:00' }))
+  fireEvent.change(screen.getByLabelText('Day resets at'), { target: { value: '20:00' } })
+  await userEvent.click(screen.getByRole('button', { name: 'Save settings' }))
+  await waitFor(() => expect(patches()).toEqual([{ reset_time: '20:00', bedtime_auto_at: '19:45' }]))
+})
+
+test('a reset with no room for a bedtime disables the switch and says why', () => {
+  show(fam({ reset_time: '18:10' }))
+  expect(screen.getByRole('switch', { name: /^Bedtime auto-approve/ })).toBeDisabled()
+  expect(screen.getByText('Move the day reset later than 6:15 PM to use this.')).toBeInTheDocument()
+})
+
+test('bedtimeLatest stays on a 15-minute step', () => {
+  expect(bedtimeLatest('20:10')).toBe('19:45')
+  expect(bedtimeLatest('06:00')).toBe('23:30')
+  expect(bedtimePossible('18:14')).toBe(false)
+  expect(bedtimePossible('18:15')).toBe(true)
 })

@@ -97,9 +97,11 @@ export interface TodayTryFields {
 export const bedtimeLatest = (reset = '06:00') => {
   const [h, m] = reset.split(':').map(Number)
   const r = h * 60 + m
-  const t = r >= 1080 && r <= 1410 ? r - 15 : 1410
+  const t = r >= 1080 && r <= 1410 ? Math.floor((r - 15) / 15) * 15 : 1410
   return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`
 }
+/** False when the reset leaves no valid bedtime (just after 6:00 PM). */
+export const bedtimePossible = (reset = '06:00') => bedtimeLatest(reset) >= '18:00'
 /** The stored bedtime, pulled earlier when the reset would not allow it. */
 export const bedtimeAt = (at: string | undefined, reset?: string) => {
   const l = bedtimeLatest(reset)

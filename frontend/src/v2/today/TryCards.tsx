@@ -9,7 +9,7 @@ import { toastFail } from '../notify'
 import { HappyHourButton } from './HappyHourButton'
 import { TRY_ORDER, nudgeKey, nudgeSnoozed, pickCard, snoozeNudge, writeShown } from './tryCards'
 import { wallClock } from '@/v2/clockText'
-import { bedtimeAt } from '@/v2/trustTypes'
+import { bedtimeAt, bedtimePossible } from '@/v2/trustTypes'
 import styles from '../components/QuickTip.module.css'
 
 const TEXT: Record<Exclude<(typeof TRY_ORDER)[number], 'try.trust' | 'try.bedtime'>, { icon: string; text: string }> = {
@@ -47,7 +47,7 @@ export function TryCards() {
     'try.autoboost': !!fam?.hh_auto_boost,
     'try.streakfreeze': !!fam?.streak_freeze,
     'try.trust': !!trustKid,
-    'try.bedtime': (today?.waiting_at_reset_days ?? 0) >= 3 && !fam?.bedtime_auto,
+    'try.bedtime': (today?.waiting_at_reset_days ?? 0) >= 3 && !fam?.bedtime_auto && bedtimePossible(fam?.reset_time),
   }
   const eligible = ready ? [...TRY_ORDER.filter((k) => on[k] && !seen.has(k)), ...(quietKid ? [nudgeKey(quietKid.id)] : [])] : []
   const key = ready ? pickCard(eligible) : null
@@ -96,7 +96,7 @@ export function TryCards() {
   } else if (key === 'try.trust') {
     const name = trustKid!.full_name || trustKid!.username
     icon = 'verified'
-    text = `${name} has 10 approved chores. With Trust mode, ${name}'s chores can approve themselves, with spot checks.`
+    text = `${name} has 10+ approved chores. Trust mode lets ${name}'s chores approve themselves, with spot checks.`
     actions = (
       <>
         <Btn onClick={off(() => patchKid.mutate({ id: trustKid!.id, body: { trust_mode: true } }, { onError: toastFail }))}>{`Turn on for ${name}`}</Btn>
@@ -108,7 +108,7 @@ export function TryCards() {
     text = `Chores were still waiting at reset on ${today!.waiting_at_reset_days} days. Bedtime auto-approve can clear them at ${wallClock(bedtimeAt(fam!.bedtime_auto_at, fam!.reset_time))} each night.`
     actions = (
       <>
-        <Btn onClick={() => setFam({ bedtime_auto: true, bedtime_auto_at: bedtimeAt(fam!.bedtime_auto_at, fam!.reset_time) }, done)}>Turn on</Btn>
+        <Btn busy={patchFam.isPending} onClick={() => setFam({ bedtime_auto: true, bedtime_auto_at: bedtimeAt(fam!.bedtime_auto_at, fam!.reset_time) }, done)}>Turn on</Btn>
         {gotIt}
       </>
     )
@@ -134,8 +134,8 @@ export function TryCards() {
   )
 }
 
-const Btn = ({ onClick, children }: { onClick: () => void; children: ReactNode }) => (
-  <button type="button" className="p-btn" onClick={onClick}>
+const Btn = ({ onClick, busy, children }: { onClick: () => void; busy?: boolean; children: ReactNode }) => (
+  <button type="button" className="p-btn" onClick={onClick} disabled={busy} aria-busy={busy}>
     {children}
   </button>
 )
