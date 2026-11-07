@@ -43,12 +43,12 @@ def test_reset_marks_past_todo_missed_and_leaves_today(db, parent, kid):
     assert _status(db, today) == "todo"
 
 
-def test_reset_keeps_done_and_cancels_submitted(db, parent, kid):
+def test_reset_keeps_done_and_submitted(db, parent, kid):
     done = make_run(db, parent, kid, day=_ago(1), title="a", status="done")
     sub = make_run(db, parent, kid, day=_ago(2), title="b", status="submitted")
     svc.run_reset(db, T)
     assert _status(db, done) == "done"
-    assert _status(db, sub) == "cancelled"
+    assert _status(db, sub) == "submitted"
 
 
 def test_fully_missed_day_breaks_a_five_day_streak(db, parent, kid):

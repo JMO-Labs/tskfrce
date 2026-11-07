@@ -96,10 +96,10 @@ def upgrade() -> None:
         sa.CheckConstraint("kind IN ('up','down','catch')", name="ck_trust_kind"),
     )
     op.create_index("ix_trust_events_kid_id", "trust_events", ["kid_id"])
-    # existing places get the new event too
+    # places already getting the daily summary get the recap too; others stay as they are
     op.execute(
-        "UPDATE notify_places SET events = CASE WHEN events = '' THEN 'recap' "
-        "ELSE events || ',recap' END WHERE ',' || events || ',' NOT LIKE '%,recap,%'"
+        "UPDATE notify_places SET events = events || ',recap' "
+        "WHERE ',' || events || ',' LIKE '%,summary,%' AND ',' || events || ',' NOT LIKE '%,recap,%'"
     )
     _kinds((*OLD_INBOX, "trust_up", "trust_down", "bedtime_done", "recap"))
 

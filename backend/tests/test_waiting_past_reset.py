@@ -24,13 +24,13 @@ def _today(db, d=DAY):
     db.commit()
 
 
-def test_reset_keeps_submitted_cancels_todo(db, parent, kid):
+def test_reset_keeps_submitted_marks_todo_missed(db, parent, kid):
     waiting = make_run(db, parent, kid, status="submitted", day=OLD, title="W")
     todo = make_run(db, parent, kid, status="todo", day=OLD, title="T")
     svc.run_reset(db, DAY)
     db.commit()
     assert db.get(ChoreRun, waiting.id).status == "submitted"
-    assert db.get(ChoreRun, todo.id).status == "cancelled"
+    assert db.get(ChoreRun, todo.id).status == "missed"
     assert [r.id for r in svc.waiting_runs(db)] == [waiting.id]
 
 

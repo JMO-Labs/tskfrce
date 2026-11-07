@@ -45,7 +45,7 @@ EVENTS = {
     "recap": "Weekly recap",
 }
 SECURITY = {"resisting", "box_offline"}
-HELD = {"chore_ok", "kid_note", "reward_request", "new_device", "workaround"}
+HELD = {"chore_ok", "kid_note", "reward_request", "new_device", "workaround", "recap"}
 DEFAULT_EVENTS = (
     "chore_ok",
     "kid_note",

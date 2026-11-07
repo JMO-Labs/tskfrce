@@ -15,11 +15,12 @@ from app.models.trust import TrustEvent
 from app.models.user import User, UserRole
 from app.services import chores as svc
 from app.services import economy, inbox, progression
-from app.services.recap_flags import flags
+from app.services.recap_flags import MIN_STREAK, flags
 
 log = get_logger(__name__)
 SEND_AT = "19:30"
 SEND_CUTOFF = timedelta(hours=2)  # later than this after SEND_AT, skip the week
+EARLIEST = date(2000, 1, 3)  # a Monday; earlier weeks have no data
 WEEKS = 6  # 5 weeks of history plus the selected one
 
 
@@ -81,14 +82,17 @@ def week_of(db: Session, week_start: date | None = None, now_utc: datetime | Non
     fam = get_family(db)
     now_utc = now_utc or datetime.now(UTC)
     latest = latest_week(fam, now_utc)
-    ws = min(week_start - timedelta(days=week_start.weekday()), latest) if week_start else latest
+    if week_start:
+        week_start = max(week_start, EARLIEST)
+        week_start -= timedelta(days=week_start.weekday())
+    ws = min(week_start, latest) if week_start else latest
     we = ws + timedelta(days=6)
     kids = db.query(User).filter(User.role == UserRole.KID, User.is_active).order_by(User.id).all()
     ids = [k.id for k in kids]
     out = {
         "week_start": ws.isoformat(),
         "week_end": we.isoformat(),
-        "prev": (ws - timedelta(days=7)).isoformat(),
+        "prev": (ws - timedelta(days=7)).isoformat() if ws > EARLIEST else None,
         "next": (ws + timedelta(days=7)).isoformat() if ws < latest else None,
         "kids": [],
         "family_line": None,
@@ -99,11 +103,10 @@ def week_of(db: Session, week_start: date | None = None, now_utc: datetime | Non
     lo, hi = _utc(fam, ws), _utc(fam, we + timedelta(days=1))
     b = _buckets(db, fam, ids, ws - timedelta(weeks=WEEKS - 1), we, now_utc.replace(tzinfo=None))
     days = progression.chore_days_many(db, ids, we)
-    local_today = now_utc.astimezone(ZoneInfo(fam.timezone)).date()
-    prev_end = ws - timedelta(days=1)
+    chore_today = svc.today(db, now_utc)  # the chore day, not the calendar date
 
     def streak(kid, end):  # a finished day that was missed breaks it; an open day pauses it
-        asof = end + timedelta(days=1) if end < local_today else end
+        asof = end + timedelta(days=1) if end < chore_today else end
         part = {d: v for d, v in days[kid].items() if d <= end}
         return progression.streak_for(part, asof, fam.streak_freeze).current
 
@@ -137,8 +140,13 @@ def week_of(db: Session, week_start: date | None = None, now_utc: datetime | Non
         x = b[k.id]
         name = k.full_name or k.username
         history = sum(1 for a in x["assigned"][:5] if a) >= 2
-        now_streak = streak(k.id, we)
-        fl = flags(name, x, catches.get(k.id, 0), streak(k.id, prev_end), now_streak, history)
+        steps = [streak(k.id, ws - timedelta(days=1) + timedelta(days=i)) for i in range(8)]
+        ended = max(
+            (a for a, c in zip(steps, steps[1:], strict=False) if c < a and a >= MIN_STREAK),
+            default=0,
+        )
+        now_streak = steps[-1]
+        fl = flags(name, x, catches.get(k.id, 0), ended, history)
         o, t = x["ontime"][5]
         base = [100 * o2 / t2 for o2, t2 in x["ontime"][1:5] if t2]
         out["kids"].append(
@@ -164,6 +172,17 @@ def week_of(db: Session, week_start: date | None = None, now_utc: datetime | Non
     return out
 
 
+def _body(lines: list[str], limit: int = 300) -> str:
+    """Whole lines up to the limit, then "and N more"."""
+    if not lines:
+        return "All good this week"
+    for n in range(len(lines), 0, -1):
+        text = "\n".join(lines[:n]) + (f"\nand {len(lines) - n} more" if n < len(lines) else "")
+        if len(text) <= limit:
+            return text
+    return f"{len(lines)} things to look at"
+
+
 def send(db: Session, now_utc: datetime) -> None:
     """Sunday 19:30 local, once per day, skipped if the box was down for over 2 hours."""
     fam = get_family(db)
@@ -182,5 +201,4 @@ def send(db: Session, now_utc: datetime) -> None:
         return
     data = week_of(db, local.date() - timedelta(days=6), now_utc)
     lines = [f["text"] for k in data["kids"] for f in k["flags"]]
-    body = "\n".join(lines) if lines else "All good this week"
-    inbox.notify_parents(db, "recap", f"Your week at {fam.name}"[:120], body[:300])
+    inbox.notify_parents(db, "recap", f"Your week at {fam.name}"[:120], _body(lines))
