@@ -67,7 +67,7 @@ def take_back(
             inbox.notify(db, kids, "chore_sent_back", msg, run_id=r.id)
             r.ticks.clear()
             r.attempt = (r.attempt or 1) + 1  # old photos no longer count
-            r.last_note = "A parent checked this one again."
+            r.last_note = "A parent checked this one again. Do it again and mark it done!"
             r.approved_at = r.completed_at = r.approved_by_id = r.approved_via = None
             r.spot_check = False
             r.submitted_at = r.submitted_by_id = r.hh_mult_x10 = None
