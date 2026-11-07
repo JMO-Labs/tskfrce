@@ -67,7 +67,6 @@ const pick = async (name: string) => {
   await userEvent.click(more)
   const items = await screen.findAllByRole('menuitem')
   await userEvent.click(items.find((e) => e.textContent?.endsWith(name))!)
-  await waitFor(() => expect(more).toHaveFocus()) // the menu hands focus back to its button
 }
 setupLibrary()
 
@@ -166,6 +165,7 @@ describe('kids', () => {
     mockRoute.query = { section: 'kids', item: '8' }
     render(wrap(<KidsPage />))
     await pick('Bonus')
+    await waitFor(() => expect(within(detail()).getByLabelText(/^Points \(/)).toHaveFocus())
     expect(
       within(detail()).getByRole('button', { name: 'Send points' }),
     ).toBeDisabled()
@@ -188,6 +188,7 @@ describe('kids', () => {
     mockRoute.query = { section: 'kids', item: '8' }
     render(wrap(<KidsPage />))
     await pick('Deduct')
+    await waitFor(() => expect(within(detail()).getByRole('button', { name: '−5' })).toHaveFocus())
     await userEvent.type(within(detail()).getByLabelText(/^Points \(/), '5')
     await userEvent.type(
       within(detail()).getByLabelText('Why?'),
@@ -270,7 +271,6 @@ describe('kids: create, delete, points', () => {
     const todayCalls = () =>
       apiMock.mock.calls.filter(([p]) => p === '/today').length
     await waitFor(() => expect(todayCalls()).toBeGreaterThan(0))
-    await new Promise((r) => setTimeout(r, 50)) // let the first load settle
     const before = todayCalls()
     await userEvent.click(
       within(detail()).getByRole('button', { name: 'Send points' }),

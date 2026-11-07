@@ -80,7 +80,7 @@ export function KidDetail({ kid, focusPin, onDeleted }: Props) {
             <Icon name="edit" />
             Edit
           </button>
-          <Menu position="bottom-end" withinPortal>
+          <Menu position="bottom-end" withinPortal returnFocus={false}>
             <Menu.Target>
               <button type="button" id="kid-act-more" className="p-btn" aria-label="More">
                 <Icon name="more_horiz" />
@@ -106,6 +106,8 @@ export function KidDetail({ kid, focusPin, onDeleted }: Props) {
       <div className="pk-grid">
         {(mode === 'bonus' || mode === 'deduct') && <PointsForm key={mode} kid={kid} kind={mode} onClose={() => closeForm(mode)} />}
         {mode === 'edit' && <KidEditor kid={kid} focusPin={focusPin} onDone={onDeleted} />}
+
+        <TrustSection kid={kid} />
 
         <section className="pk-panel" aria-label="Profile">
           <h3>
@@ -141,8 +143,6 @@ export function KidDetail({ kid, focusPin, onDeleted }: Props) {
             </div>
           ))}
         </section>
-
-        <TrustSection kid={kid} />
 
         <KidPhonesPanel kid={kid} />
 

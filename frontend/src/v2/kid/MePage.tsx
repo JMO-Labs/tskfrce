@@ -1,6 +1,7 @@
 import { Icon } from '../parent/Icon'
 import { ProgressHeader } from '../components/ProgressHeader'
-import type { CelebrateLevel, KidTrust, Progress } from '../types'
+import type { CelebrateLevel, Progress } from '../types'
+import type { KidTrust } from '../trustTypes'
 import { FunSettings } from './FunSettings'
 import type { KidAge } from './modes/types'
 import { IntegrationWidgets } from '../integrations/WidgetFrame'

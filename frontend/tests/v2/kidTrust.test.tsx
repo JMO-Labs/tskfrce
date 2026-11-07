@@ -7,7 +7,8 @@ import { useMarkDone } from '@/v2/hooks/useKid'
 import { TrustChip, trustLine } from '@/v2/kid/TrustChip'
 import { detect } from '@/v2/kid/celebrate/triggers'
 import { planShow } from '@/v2/kid/celebrate/plan'
-import type { KidToday, KidTrust } from '@/v2/types'
+import type { KidToday } from '@/v2/types'
+import type { KidTrust } from '@/v2/trustTypes'
 
 jest.mock('@/v2/api', () => ({ api: jest.fn(), AuthError: class extends Error {}, ApiError: class extends Error {}, kidToken: () => null }))
 jest.mock('@/v2/notify', () => ({ toastOk: jest.fn(), toastFail: jest.fn(), retryIfOffline: jest.fn() }))

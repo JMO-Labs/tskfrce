@@ -45,7 +45,7 @@ export function ChoreOpen({ chore, kid }: { chore: TodayChore; kid: TodayKid }) 
   const own = ownApproved(chore.approved_via)
   const todayDay = useToday().data?.day
   const kidList = useKids().data
-  const trustLevel = (Array.isArray(kidList) ? kidList : []).find((k) => k.id === kid.id)?.trust_level
+  const trustKid = (Array.isArray(kidList) ? kidList : []).find((k) => k.id === kid.id)
   const [note, setNote] = useState('')
   const [photo, setPhoto] = useState<number | null>(null) // index of the enlarged proof photo
   const [approving, setApproving] = useState(false)
@@ -298,10 +298,11 @@ export function ChoreOpen({ chore, kid }: { chore: TodayChore; kid: TodayKid }) 
       )}
       {taking && (
         <WasntDoneSheet
-          run={{ id: chore.id, title: chore.title, day: chore.day ?? '', points: Math.max(0, chore.points - (chore.deducted ?? 0)) }}
+          run={{ id: chore.id, title: chore.title, day: chore.day ?? '', points: chore.earned_pts ?? null }}
           today={todayDay ?? ''}
           kidName={kid.name ?? 'They'}
-          level={trustLevel}
+          level={trustKid?.trust_level}
+          trustOn={!!trustKid?.trust_mode}
           onClose={() => setTaking(false)}
         />
       )}

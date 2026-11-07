@@ -323,3 +323,31 @@ def test_kid_payload_trust_goal_and_today_approved_via(client, db, parent, kid, 
     kids = client.get(f"{API}/today", headers=parent_headers).json()["kids"]
     chores = next(k for k in kids if k["id"] == kid.id)["chores"]
     assert [c["approved_via"] for c in chores if c["title"] == "Own"] == ["trust"]
+
+
+def test_today_earned_pts_counts_all_positive_rows(client, db, parent, kid, parent_headers):
+    r = _auto(db, parent, kid, day=svc.today(db), title="Own", points=10)
+    _row(db, kid, 4, r, "early_bonus")
+    _row(db, kid, -3, r, "deduction")
+    plain = make_run(db, parent, kid, day=svc.today(db), title="Plain")
+    kids = client.get(f"{API}/today", headers=parent_headers).json()["kids"]
+    chores = {c["id"]: c for c in next(k for k in kids if k["id"] == kid.id)["chores"]}
+    paid = db.query(Points).filter(Points.run_id == r.id, Points.amount > 0)
+    assert chores[r.id]["earned_pts"] == sum(p.amount for p in paid) >= 14
+    assert chores[plain.id]["earned_pts"] is None
+
+
+def test_spot_rates_match_ui_copy():
+    """The parent level sheet says "1 in N"; it must follow trust.SPOT."""
+    import re
+    from pathlib import Path
+
+    from app.services import trust
+
+    src = Path(__file__).parents[2] / "frontend/src/v2/trustTypes.ts"
+    if not src.exists():  # backend-only checkout
+        return
+    assert [int(n) for n in re.findall(r"1 in (\d+) waits", src.read_text())] == [
+        trust.SPOT[1],
+        trust.SPOT[2],
+    ]

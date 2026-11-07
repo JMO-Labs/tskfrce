@@ -37,7 +37,7 @@ beforeAll(() => {
 })
 beforeEach(() => {
   rows = []
-  apiMock.mockReset().mockImplementation(async (p) => (p.endsWith('/self-approved') ? rows : {}))
+  apiMock.mockReset().mockImplementation(async (p) => (p.endsWith('/self-approved') ? rows : p === '/today' ? { day: '2026-11-06' } : {}))
 })
 
 describe('trust card', () => {
@@ -132,6 +132,23 @@ describe("Wasn't done sheet", () => {
   test('an older day says it will not come back', () => {
     open({ ...run, day: '2026-11-02' }, '2026-11-06')
     expect(screen.getByText(/This chore was from Monday, so it won't come back\./)).toBeInTheDocument()
+  })
+
+  test('no amount known: the sentence drops the number', () => {
+    open({ ...run, points: null })
+    expect(screen.getByText(/and the points it earned come off\./)).toBeInTheDocument()
+  })
+
+  test('trust off: no lower-trust box and lower_trust false', async () => {
+    wrap(<WasntDoneSheet run={run} today="2026-11-06" kidName="Maya" level={1} trustOn={false} onClose={() => {}} />)
+    expect(screen.queryByRole('checkbox')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: "Wasn't done" }))
+    await waitFor(() => expect(sent('/chores/9/take-back', 'POST')).toEqual({ lower_trust: false }))
+  })
+
+  test('confirm waits until today is known', () => {
+    open(run, '')
+    expect(screen.getByRole('button', { name: "Wasn't done" })).toBeDisabled()
   })
 
   test('Keep closes without a request', async () => {

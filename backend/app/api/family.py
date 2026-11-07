@@ -5,6 +5,7 @@ from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_db, require_parent
@@ -19,6 +20,7 @@ from app.models.chore_extra import ChorePhoto
 from app.models.chores import ChoreRun
 from app.models.family import get_family
 from app.models.lock import Device
+from app.models.points import Points
 from app.models.reward import Redemption, Reward
 from app.models.user import User, UserRole
 from app.schemas.lock import FamilyPatch, utc_z
@@ -199,6 +201,7 @@ def _chore_out(
     notes: dict,
     tmrw: date,
     deds: list[dict],
+    paid: int | None = None,
     photos: int = 0,
     messages: int = 0,
 ) -> dict:
@@ -212,6 +215,7 @@ def _chore_out(
         "state": st,
         "day": r.day.isoformat(),
         "approved_via": r.approved_via,
+        "earned_pts": paid,  # what Wasn't done would take back (self-approved runs only)
         "due_time": r.assignment.due_time,
         "due_at": utc_z(svc.due_at(r, fam)),
         "done_at": utc_z(r.submitted_at or r.approved_at),
@@ -273,6 +277,17 @@ def today(db: Session = Depends(get_db)):
     names = {k.id: k.full_name for k in kid_rows}
     notes = svc.note_texts(db, shown)
     deds = svc.deductions(db, shown)
+    own = [t.id for t in shown if t.status == "done" and t.approved_via in ("trust", "bedtime")]
+    paid = (
+        {
+            (rid, uid): int(total)
+            for rid, uid, total in db.query(Points.run_id, Points.user_id, func.sum(Points.amount))
+            .filter(Points.run_id.in_(own), Points.amount > 0)
+            .group_by(Points.run_id, Points.user_id)
+        }
+        if own
+        else {}
+    )
     n_photos, n_msgs = svc.run_counts(db, shown)
     earned = svc.earned_today(db, shown)
     needs = _needs_you(db, tasks + older, names, fam, balances)
@@ -308,6 +323,7 @@ def today(db: Session = Depends(get_db)):
                         notes,
                         tmrw,
                         [d for d in deds.get(t.id, []) if d["kid_id"] == k.id],
+                        paid.get((t.id, k.id), 0) if t.id in own else None,
                         n_photos.get(t.id, 0),
                         n_msgs.get(t.id, 0),
                     )

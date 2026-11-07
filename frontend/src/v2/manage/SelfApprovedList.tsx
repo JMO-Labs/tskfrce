@@ -67,7 +67,7 @@ export function SelfApprovedList({ kid, today }: { kid: Kid; today: string }) {
           </div>
         </Modal>
       )}
-      {taking && <WasntDoneSheet run={taking} today={today} kidName={nameOf(kid)} level={kid.trust_level} onClose={() => setTaking(null)} />}
+      {taking && <WasntDoneSheet run={taking} today={today} kidName={nameOf(kid)} level={kid.trust_level} trustOn={!!kid.trust_mode} onClose={() => setTaking(null)} />}
     </>
   )
 }

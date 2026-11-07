@@ -1,4 +1,4 @@
-import type { KidTrust } from '../types'
+import type { KidTrust } from '../trustTypes'
 import type { KidAge } from './modes/types'
 import { KidChip, type ChipSize } from './KidChip'
 import type { KidChipT } from './kidChips'

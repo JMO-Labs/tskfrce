@@ -1,5 +1,6 @@
 import type { CelebrateLevel } from './funTypes'
 import type { KidScreen } from './rewardTypes'
+import type { ChoreTrustFields, KidTrust, KidTrustFields, RunTrustFields } from './trustTypes'
 /** Shapes of the v2 backend responses (backend/app/api/{family,kid,devices,kids,hours,chores,setup}.py). */
 
 export type ChoreState = 'done' | 'needs_you' | 'todo' | 'skipped'
@@ -94,7 +95,7 @@ export interface Group {
 /** GET /kids item */
 export type AgeGroup = 'little' | 'kid' | 'teen'
 
-export interface Kid {
+export interface Kid extends KidTrustFields {
   id: number
   full_name: string | null
   username: string
@@ -103,11 +104,6 @@ export interface Kid {
   age_group: AgeGroup
   /** the kid's own pick; null = mode default */
   celebrate?: CelebrateLevel | null
-  trust_mode?: boolean
-  trust_level?: 0 | 1 | 2
-  trust_clean?: number
-  /** clean chores needed for the next level; null at Proven */
-  trust_goal?: number | null
 }
 
 /** GET/PATCH /family */
@@ -165,7 +161,7 @@ export interface RunStep {
 }
 
 /** Chore entry inside /today and /kid/today */
-export interface TodayChore {
+export interface TodayChore extends RunTrustFields {
   id: number
   title: string
   points: number
@@ -192,10 +188,6 @@ export interface TodayChore {
   messages?: number
   /** kid hasn't opened it yet (kid view) */
   new?: boolean
-  /** day it was for, YYYY-MM-DD */
-  day?: string
-  /** who approved it: parent | trust | bedtime */
-  approved_via?: string | null
 }
 
 /** GET /api/v1/chores/{run_id} - run detail with steps and photos */
@@ -249,7 +241,7 @@ export interface TodayKid {
 }
 
 /** Item in GET /today needs_you. */
-export interface NeedsItem {
+export interface NeedsItem extends RunTrustFields {
   type: 'chore' | 'redo' | 'screen_time' | 'reward' | 'note' | 'integration'
   id: number
   kid_id: number | null
@@ -270,9 +262,6 @@ export interface NeedsItem {
   note?: string
   /** type 'integration': the service that checked the chore off */
   integration?: { id: number; name: string; icon: string }
-  /** run day, YYYY-MM-DD; spot_check = a trust-mode kid's chore picked for a parent look */
-  day?: string
-  spot_check?: boolean
 }
 
 /** GET /today */
@@ -309,12 +298,11 @@ export interface Assignment {
 }
 
 /** GET /chores: a chore in the library with its assignments */
-export interface LibChore {
+export interface LibChore extends ChoreTrustFields {
   id: number
   title: string
   points: number
   needs_photo: boolean
-  always_check?: boolean
   type_id: number
   steps: { id: number; title: string; due_time: string | null; after_previous: boolean }[]
   assignments: Assignment[]
@@ -368,20 +356,8 @@ export interface KidToday {
   celebrate?: CelebrateLevel
   /** active Happy Hour, if any */
   happy_hour?: { ends_at: string; multiplier: number } | null
-  /** trust mode: 0 New, 1 Trusted, 2 Proven; to_next null at Proven. null = trust mode off */
+  /** null = trust mode off */
   trust?: KidTrust | null
-}
-
-export interface KidTrust {
-  level: 0 | 1 | 2
-  to_next: number | null
-  /** chores needed for the next level; null at Proven */
-  goal: number | null
-}
-
-/** POST /kid/chores/{id}/done: `done` = approved itself and paid; otherwise it waits (a spot check looks the same) */
-export interface KidDoneResult {
-  status: 'done' | 'submitted_for_approval'
 }
 
 /** GET /kids/{id}/push */
