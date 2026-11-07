@@ -142,7 +142,15 @@ def test_today_shape(client, db, parent, kid, parent_headers):
     mkchore(db, parent, kid, "done", approved=False, title="c")  # not approved
     mkchore(db, parent, kid, "todo", title="d")
     j = client.get("/api/v1/today", headers=parent_headers).json()
-    assert set(j) == {"day", "pending_approvals", "new_devices", "needs_you", "kids"}
+    assert set(j) == {
+        "day",
+        "pending_approvals",
+        "new_devices",
+        "needs_you",
+        "kids",
+        "try_trust_kid",
+        "waiting_at_reset_days",
+    }
     assert j["day"] == "2026-10-20" and j["pending_approvals"] == 1
     assert len(j["new_devices"]) == 1
     k = j["kids"][0]

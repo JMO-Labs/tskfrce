@@ -21,6 +21,7 @@ import { StepKids } from '@/v2/setup/StepKids'
 import { StepDevices } from '@/v2/setup/StepDevices'
 import { StepChores } from '@/v2/setup/StepChores'
 import { starter } from '@/v2/setup/starterChores'
+import { StepExtras } from '@/v2/setup/StepExtras'
 import { DEFAULT_DRAFTS, StepHours } from '@/v2/setup/StepHours'
 import { ClaimGate } from '@/v2/setup/ClaimGate'
 import { clearClaim, settleClaim } from '@/v2/setup/claim'
@@ -48,6 +49,8 @@ export default function SetupPage() {
   const [chores, setChores] = useState<string[]>([])
   const [addedStarters, setAdded] = useState<string[]>([]) // starters a resumed wizard already created: shown as Added, not editable
   const [hours, setHours] = useState<RuleBody[]>(DEFAULT_DRAFTS)
+  const [trustKids, setTrustKids] = useState<number[]>([])
+  const [bedtimeAuto, setBedtimeAuto] = useState(false)
   const [choresLock, setChoresLock] = useState(true)
   const applied = useRef(new Set<string>())
   const [schedules, setSchedules] = useState(0) // applied schedule rules, mirrored for render
@@ -76,8 +79,8 @@ export default function SetupPage() {
     setAccountDone(true)
     setStep(at)
     setResumed(true)
-    // ponytail: belt for pre-migration cached state; the step-8 migration and GET /setup/step already finish these
-    if (at > LAST) saveStep(qc, at) // an old step-8 save: finish it so the guard stops sending us back
+    // ponytail: belt for cached state past the last step; GET /setup/step already reads those as finished
+    if (at > LAST) saveStep(qc, at) // a save past the last step: finish it so the guard stops sending us back
   })
   useEffect(() => {
     if (!resumed) return
@@ -220,6 +223,12 @@ export default function SetupPage() {
         { key: `chores_lock:${choresLock}`, run: () => api('/family', { method: 'PATCH', body: { chores_lock: choresLock } }) },
       ])
     }
+    if (step === 8) {
+      return run([
+        ...trustKids.map((id) => ({ key: `trust:${id}`, run: () => api(`/kids/${id}`, { method: 'PATCH', body: { trust_mode: true } }) })),
+        ...(bedtimeAuto ? [{ key: 'bedtime', run: () => api('/family', { method: 'PATCH', body: { bedtime_auto: true } }) }] : []),
+      ])
+    }
     if (step > LAST) return
     if (step === 3 && kidDraft.trim()) return setTried(true)
     go(step + 1)
@@ -235,6 +244,7 @@ export default function SetupPage() {
     5: { title: 'Pick some starter chores', sub: 'Tap to choose. Everything can be changed later.' },
     6: { title: 'Whose devices are these?', sub: 'Devices show up as the home box sees them on your Wi-Fi. Tap a kid to give it to them, or mark it Guest so it\'s never blocked.' },
     7: { title: 'When can devices be online?', sub: 'Devices are on during these hours and off at bedtime. Add school hours, holidays and per-kid hours later in Settings.' },
+    8: { title: 'Optional extras', sub: 'Two ways to do less tapping. All off unless you switch them on.' },
   } as const
 
   // what really exists (a resumed wizard forgot what it made)
@@ -291,6 +301,7 @@ export default function SetupPage() {
           {step === 5 && <StepChores selected={chores} made={addedStarters} hasKids={kids.length > 0} onChange={setChores} />}
           {step === 6 && <StepDevices kids={kids} />}
           {step === 7 && <StepHours drafts={hours} onChange={setHours} choresLock={choresLock} onChoresLock={setChoresLock} />}
+          {step === 8 && <StepExtras kids={kids} trust={trustKids} bedtime={bedtimeAuto} onTrust={setTrustKids} onBedtime={setBedtimeAuto} />}
           {step > LAST && (
             <StepFinish resetTime={fam.data?.reset_time} chores={made.data?.chores ?? chores.length} kids={kids.length} lock={fam.data?.chores_lock ?? choresLock} />
           )}

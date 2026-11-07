@@ -228,3 +228,9 @@ def test_parent_approved_mid_job_pays_once(db, parent, kid, monkeypatch):
     assert _status(db, a) == ("done", "parent")
     assert _status(db, b) == ("done", "bedtime")
     assert db.query(ChoreRun).filter_by(status="submitted").count() == 0
+
+
+def test_recap_weekly_is_readable_and_settable(client, parent_headers):
+    assert client.get(f"{API}/family", headers=parent_headers).json()["recap_weekly"] is True
+    r = client.patch(f"{API}/family", json={"recap_weekly": False}, headers=parent_headers)
+    assert r.json()["recap_weekly"] is False

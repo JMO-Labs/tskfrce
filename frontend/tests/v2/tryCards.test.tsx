@@ -15,11 +15,11 @@ const apiMock = api as unknown as Mock<(p: string, o?: { method?: string; body?:
 const TODAY = new Date().toLocaleDateString('en-CA')
 const fam = { hh_auto_boost: true, streak_freeze: true, hh_default_mult_x10: 20, hh_default_minutes: 60 }
 const mia = { id: 1, full_name: 'Mia', username: 'mia', age_group: 'kid', celebrate: null }
-let s: { dismissed: string[]; fam: Record<string, unknown>; kids: unknown[]; active: unknown[]; quiet: boolean }
+let s: { dismissed: string[]; fam: Record<string, unknown>; kids: unknown[]; active: unknown[]; quiet: boolean; trust: number | null; waiting: number }
 
 beforeEach(() => {
   localStorage.clear()
-  s = { dismissed: [], fam: { ...fam }, kids: [mia], active: [], quiet: false }
+  s = { dismissed: [], fam: { ...fam }, kids: [mia], active: [], quiet: false, trust: null, waiting: 0 }
   apiMock.mockReset()
   apiMock.mockImplementation(async (p, o) => {
     if (p === '/me/tips') return { dismissed: s.dismissed }
@@ -27,7 +27,7 @@ beforeEach(() => {
     if (p === '/family') return o?.method === 'PATCH' ? { ...s.fam, ...(o.body as object) } : s.fam
     if (p === '/kids') return s.kids
     if (p === '/happy-hour') return { active: s.active, recent: [] }
-    if (p === '/today') return { kids: [{ id: 1, name: 'Mia', quiet: s.quiet }] }
+    if (p === '/today') return { kids: [{ id: 1, name: 'Mia', quiet: s.quiet }], try_trust_kid: s.trust, waiting_at_reset_days: s.waiting }
     return {}
   })
 })
@@ -184,4 +184,67 @@ test('Not now hides the nudge for today without a tips dismissal', async () => {
   show()
   await new Promise((r) => setTimeout(r, 50))
   expect(screen.queryByText(/quiet couple/)).toBeNull()
+})
+
+
+test('trust card for a kid with 10 approved chores, once the older cards are seen', async () => {
+  s.dismissed = allSeen
+  s.trust = 1
+  show()
+  expect(await screen.findByText('Mia has 10 approved chores. Trust mode lets chores approve themselves as Mia earns it.')).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Turn on for Mia' }))
+  await waitFor(() => expect(patched('/kids/1', { trust_mode: true })).toBe(true))
+  await waitFor(() => expect(posted('/me/tips/try.trust/dismiss')).toBe(true))
+})
+
+test('trust card: Got it only dismisses', async () => {
+  s.dismissed = allSeen
+  s.trust = 1
+  show()
+  await userEvent.click(await screen.findByRole('button', { name: 'Got it' }))
+  await waitFor(() => expect(posted('/me/tips/try.trust/dismiss')).toBe(true))
+  expect(patched('/kids/1', { trust_mode: true })).toBe(false)
+})
+
+test('no trust card without a qualifying kid', async () => {
+  s.dismissed = allSeen
+  show()
+  await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/today'))
+  expect(screen.queryByText(/approved chores/)).toBeNull()
+})
+
+test('bedtime card after 3 days of waiting chores; Turn on patches bedtime_auto', async () => {
+  s.dismissed = [...allSeen, 'try.trust']
+  s.waiting = 3
+  show()
+  expect(await screen.findByText('Chores were still waiting at reset on 3 days. Bedtime auto-approve can clear them at 9:00 PM each night.')).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Turn on' }))
+  await waitFor(() => expect(patched('/family', { bedtime_auto: true })).toBe(true))
+  await waitFor(() => expect(posted('/me/tips/try.bedtime/dismiss')).toBe(true))
+})
+
+test('no bedtime card at 2 days, or when it is already on', async () => {
+  s.dismissed = [...allSeen, 'try.trust']
+  s.waiting = 2
+  show()
+  await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/today'))
+  expect(screen.queryByText(/still waiting at reset/)).toBeNull()
+})
+
+test('bedtime card stays off when auto-approve is on', async () => {
+  s.dismissed = [...allSeen, 'try.trust']
+  s.waiting = 5
+  s.fam = { ...fam, bedtime_auto: true }
+  show()
+  await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/today'))
+  expect(screen.queryByText(/still waiting at reset/)).toBeNull()
+})
+
+test('trust comes before bedtime, one card a day', async () => {
+  s.dismissed = allSeen
+  s.trust = 1
+  s.waiting = 3
+  show()
+  expect(await screen.findByText(/approved chores/)).toBeInTheDocument()
+  expect(screen.queryByText(/still waiting at reset/)).toBeNull()
 })

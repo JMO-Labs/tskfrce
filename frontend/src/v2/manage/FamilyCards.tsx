@@ -114,6 +114,25 @@ export function FamilyCard({ fam }: { fam: Family }) {
               />
             </div>
           </PaneCard>
+          <PaneCard icon="bedtime" title="Bedtime auto-approve">
+            <Switchy label="Bedtime auto-approve" checked={!!val('bedtime_auto')} onChange={(v) => set({ bedtime_auto: v })} />
+            {val('bedtime_auto') && (
+              <div className="pn-fields">
+                <TextInput
+                  type="time"
+                  label="Approve at"
+                  min="18:00"
+                  max="23:30"
+                  step={900}
+                  value={val('bedtime_auto_at') ?? '21:00'}
+                  onChange={(e) => set({ bedtime_auto_at: e.currentTarget.value })}
+                />
+              </div>
+            )}
+          </PaneCard>
+          <PaneCard icon="insights" title="Weekly recap">
+            <Switchy label="Weekly recap" checked={val('recap_weekly') !== false} onChange={(v) => set({ recap_weekly: v })} />
+          </PaneCard>
           <Fold title="Points rules">
             <section className="pn-card" aria-label="Points rules">
               <div className="pn-fields">

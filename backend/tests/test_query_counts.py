@@ -20,7 +20,7 @@ from tests.factories import DAY, api_chore
 
 LIMIT = 16  # +1 batched deductions
 LIMITS = {
-    "/api/v1/today": 24,  # +1 quiet kids (try-this nudge); +1 integration-pending runs, per-device lock facts and per-kid progress are batched; +1 reward prices, +1 deductions, +3 photo/message counts and earned
+    "/api/v1/today": 25,  # +1 approved-chore counts (trust try card); +1 quiet kids (try-this nudge); +1 integration-pending runs, per-device lock facts and per-kid progress are batched; +1 reward prices, +1 deductions, +3 photo/message counts and earned
     "/api/v1/kid/today": 20,  # +1 seen set, +1 locks_at, +1 held points, +1 Happy Hour
 }
 

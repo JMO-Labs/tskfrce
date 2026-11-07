@@ -13,6 +13,7 @@ const STEPS = [
   { num: 5, title: 'Chores', sub: 'Pick starters' },
   { num: 6, title: 'Devices', sub: 'Who owns what' },
   { num: 7, title: 'Hours', sub: 'Bedtime, school nights' },
+  { num: 8, title: 'Optional extras', sub: 'Trust, bedtime', opt: true },
 ]
 
 interface Props {

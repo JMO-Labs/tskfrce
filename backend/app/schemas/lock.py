@@ -97,6 +97,7 @@ class FamilyPatch(BaseModel):
     streak_freeze: bool | None = None
     bedtime_auto: bool | None = None
     bedtime_auto_at: str | None = None
+    recap_weekly: bool | None = None
     accent: (
         Literal[
             "neon", "sun", "tangerine", "bubblegum", "lilac", "sky", "aqua", "mint", "peach", "ice"

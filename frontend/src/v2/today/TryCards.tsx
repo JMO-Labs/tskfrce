@@ -15,6 +15,8 @@ const TEXT: Record<(typeof TRY_ORDER)[number], { icon: string; text: string }> =
   'try.happyhour': { icon: 'bolt', text: 'Double points for an hour gets chores moving.' },
   'try.autoboost': { icon: 'auto_awesome', text: 'If a kid goes quiet for 2 days, we start a Happy Hour for them and let you know.' },
   'try.streakfreeze': { icon: 'ac_unit', text: 'Kids earn a freeze every 7 days in a row, so one missed day doesn\'t break their streak.' },
+  'try.trust': { icon: 'verified', text: '' },
+  'try.bedtime': { icon: 'bedtime', text: 'Chores were still waiting at reset on 3 days. Bedtime auto-approve can clear them at 9:00 PM each night.' },
 }
 
 /** "Double points for an hour…", or the family's own defaults ("×1.5 points for 30 minutes…"). */
@@ -36,6 +38,7 @@ export function TryCards() {
   const [, bump] = useState(0) // re-pick after a local "Not now"
 
   const quietKid = !fam?.hh_auto_boost ? today?.kids.find((k) => k.quiet && !nudgeSnoozed(k.id)) : undefined
+  const trustKid = kids?.find((k) => k.id === today?.try_trust_kid)
   const ready = !!(tips && fam && kids && hh && today)
   const seen = new Set(tips?.dismissed)
   const on: Record<string, boolean> = {
@@ -43,6 +46,8 @@ export function TryCards() {
     'try.happyhour': !hh?.active.length,
     'try.autoboost': !!fam?.hh_auto_boost,
     'try.streakfreeze': !!fam?.streak_freeze,
+    'try.trust': !!trustKid,
+    'try.bedtime': (today?.waiting_at_reset_days ?? 0) >= 3 && !fam?.bedtime_auto,
   }
   const eligible = ready ? [...TRY_ORDER.filter((k) => on[k] && !seen.has(k)), ...(quietKid ? [nudgeKey(quietKid.id)] : [])] : []
   const key = ready ? pickCard(eligible) : null
@@ -53,7 +58,7 @@ export function TryCards() {
 
   const done = () => dismiss.mutate(key)
   const off = (turnOff: () => void) => () => (turnOff(), done())
-  const setFam = (body: { hh_auto_boost?: boolean; streak_freeze?: boolean }) => patchFam.mutate(body, { onError: toastFail })
+  const setFam = (body: { hh_auto_boost?: boolean; streak_freeze?: boolean; bedtime_auto?: boolean }) => patchFam.mutate(body, { onError: toastFail })
   const gotIt = <Btn onClick={done}>Got it</Btn>
   let icon: string, text: string, actions: ReactNode
   if (key === 'try.celebrate') {
@@ -80,6 +85,24 @@ export function TryCards() {
     actions = (
       <>
         <Btn onClick={off(() => setFam(body))}>Turn off</Btn>
+        {gotIt}
+      </>
+    )
+  } else if (key === 'try.trust') {
+    const name = trustKid!.full_name || trustKid!.username
+    icon = TEXT[key].icon
+    text = `${name} has 10 approved chores. Trust mode lets chores approve themselves as ${name} earns it.`
+    actions = (
+      <>
+        <Btn onClick={off(() => patchKid.mutate({ id: trustKid!.id, body: { trust_mode: true } }, { onError: toastFail }))}>{`Turn on for ${name}`}</Btn>
+        {gotIt}
+      </>
+    )
+  } else if (key === 'try.bedtime') {
+    ;({ icon, text } = TEXT[key])
+    actions = (
+      <>
+        <Btn onClick={off(() => setFam({ bedtime_auto: true }))}>Turn on</Btn>
         {gotIt}
       </>
     )

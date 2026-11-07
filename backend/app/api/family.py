@@ -66,6 +66,7 @@ def _fam_out(fam) -> dict:
         "streak_freeze": fam.streak_freeze,
         "bedtime_auto": fam.bedtime_auto,
         "bedtime_auto_at": fam.bedtime_auto_at,
+        "recap_weekly": fam.recap_weekly,
     }
 
 
@@ -294,6 +295,14 @@ def today(db: Session = Depends(get_db)):
     prices = sorted(p for (p,) in db.query(Reward.price).filter(Reward.active.is_(True)))
     now_local = local_now(fam.timezone, now)
     quiet = set(boost.quiet_kids(db, day))
+    approved = dict(
+        db.query(ChoreRun.kid_id, func.count())
+        .filter(ChoreRun.status == "done", ChoreRun.kid_id.isnot(None))
+        .group_by(ChoreRun.kid_id)
+    )
+    try_trust = next(
+        (k.id for k in kid_rows if not k.trust_mode and approved.get(k.id, 0) >= 10), None
+    )
     kids = []
     for k in kid_rows:
         devs = [device_out(db, d, fam, now, pre) for d in kid_devs[k.id]]
@@ -341,6 +350,8 @@ def today(db: Session = Depends(get_db)):
         "new_devices": [device_out(db, d, fam, now, pre) for d in new],
         "needs_you": needs,
         "kids": kids,
+        "try_trust_kid": try_trust,
+        "waiting_at_reset_days": fam.waiting_reset_days,
     }
     db.commit()  # after the payload is built: commit expires every loaded row
     return out

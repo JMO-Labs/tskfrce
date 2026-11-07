@@ -98,3 +98,15 @@ def test_kid_delete_handles_older_waiting(client, db, parent, kid, parent_header
     assert client.delete(f"{H}/kids/{kid.id}", headers=parent_headers).status_code == 200
     db.expire_all()
     assert db.get(ChoreRun, run.id).status == "submitted"  # still waits for the other kid
+
+
+def test_reset_counts_days_with_waiting_chores(db, parent, kid):
+    make_run(db, parent, kid, status="submitted", day=OLD)
+    svc.run_reset(db, DAY)
+    svc.run_reset(db, DAY + timedelta(days=1))
+    assert get_family(db).waiting_reset_days == 2
+
+
+def test_reset_without_waiting_chores_leaves_the_count(db, parent, kid):
+    svc.run_reset(db, DAY)
+    assert get_family(db).waiting_reset_days == 0

@@ -9,7 +9,7 @@ from app.models.reward import Redemption
 from app.models.user import UserRole
 
 from tests.conftest import _headers, _make_user
-from tests.factories import api_chore, make_rule
+from tests.factories import api_chore, make_rule, make_run
 
 DAY = date(2026, 10, 20)
 
@@ -214,3 +214,18 @@ def test_kid_earned_is_ledger_net(client, db, parent_headers):
     ledger = sum(p.amount for p in db.query(Points).filter(Points.run_id == cid))
     assert ledger >= 6
     assert _today(client, parent_headers)["kids"][0]["earned"] == ledger
+
+
+def test_try_hints_trust_kid_and_waiting_days(client, db, parent, parent_headers):
+    a, b, _, _ = _setup(db)
+    for i in range(10):
+        make_run(db, parent, a, status="done", day=DAY - timedelta(days=i), title=f"c{i}")
+    for i in range(9):
+        make_run(db, parent, b, status="done", day=DAY - timedelta(days=i), title=f"d{i}")
+    get_family(db).waiting_reset_days = 3
+    db.commit()
+    t = _today(client, parent_headers)
+    assert (t["try_trust_kid"], t["waiting_at_reset_days"]) == (a.id, 3)
+    a.trust_mode = True
+    db.commit()
+    assert _today(client, parent_headers)["try_trust_kid"] is None

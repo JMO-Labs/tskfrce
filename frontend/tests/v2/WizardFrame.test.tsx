@@ -36,7 +36,7 @@ describe('WizardFrame', () => {
         <div>Content</div>
       </WizardFrame>,
     )
-    expect(screen.getByText(/Step 2 of 7/)).toBeInTheDocument()
+    expect(screen.getByText(/Step 2 of 8/)).toBeInTheDocument()
   })
 
   test('tracks maxStepReached when stepping forward', () => {
@@ -67,7 +67,7 @@ describe('WizardFrame', () => {
     )
 
     // Should show step 3 of 7
-    expect(screen.getByText(/Step 3 of 7/)).toBeInTheDocument()
+    expect(screen.getByText(/Step 3 of 8/)).toBeInTheDocument()
   })
 
   test('steps clickable and mark earlier steps done', () => {
@@ -99,7 +99,7 @@ describe('WizardFrame', () => {
 
     // Steps 1 and 2 should be marked as done (have check icon)
     const stepElements = container.querySelectorAll('[data-step]')
-    expect(stepElements.length).toBe(7)
+    expect(stepElements.length).toBe(8)
 
     // Step 1 should be done
     const step1 = stepElements[0]
@@ -211,8 +211,8 @@ describe('WizardFrame', () => {
       </WizardFrame>
     )
     const { rerender } = wrap(at(4))
-    expect(screen.getByText('Step 4 of 7 · optional')).toBeInTheDocument()
+    expect(screen.getByText('Step 4 of 8 · optional')).toBeInTheDocument()
     rerender(<MantineProvider>{at(5)}</MantineProvider>)
-    expect(screen.getByText('Step 5 of 7')).toBeInTheDocument()
+    expect(screen.getByText('Step 5 of 8')).toBeInTheDocument()
   })
 })

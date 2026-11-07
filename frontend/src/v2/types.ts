@@ -129,6 +129,9 @@ export interface Family {
   hh_weekly_surprise: boolean
   hh_auto_boost: boolean
   streak_freeze: boolean
+  bedtime_auto?: boolean
+  bedtime_auto_at?: string
+  recap_weekly?: boolean
 }
 
 /** GET /chore-types item */
@@ -271,6 +274,10 @@ export interface Today {
   new_devices: Device[]
   needs_you?: NeedsItem[]
   kids: TodayKid[]
+  /** first kid with 10 approved chores and trust mode off */
+  try_trust_kid?: number | null
+  /** days chores were still waiting at the daily reset */
+  waiting_at_reset_days?: number
 }
 
 /** POST /chores/ instance/definition, POST /chores/{id}/approve, GET /chores/today values */
