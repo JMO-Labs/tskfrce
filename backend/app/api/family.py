@@ -85,10 +85,14 @@ def patch_family(body: FamilyPatch, db: Session = Depends(get_db)):
             ZoneInfo(body.timezone)
         except Exception:
             raise HTTPException(400, "Unknown time zone.") from None
-    if body.bedtime_auto_at is not None or body.bedtime_auto:  # switching on checks the stored time
+    keeps_on = bool(body.reset_time) and fam.bedtime_auto and body.bedtime_auto is not False
+    if (
+        body.bedtime_auto_at is not None or body.bedtime_auto or keeps_on
+    ):  # stored time must stay valid
         at = body.bedtime_auto_at or fam.bedtime_auto_at
-        if not bedtime.valid_at(at, body.reset_time or fam.reset_time):
-            raise HTTPException(422, "Pick 18:00 to 23:30 in 15-minute steps, before the reset.")
+        reset = body.reset_time or fam.reset_time
+        if not bedtime.valid_at(at, reset):
+            raise HTTPException(422, bedtime.invalid_msg(reset))
     # a time zone change takes effect at the next reset; no immediate reset
     for k, v in body.model_dump(exclude_unset=True).items():
         if k == "giphy_api_key" and v is not None:

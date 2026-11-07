@@ -28,6 +28,17 @@ def valid_at(at: str, reset_time: str) -> bool:
     return EARLIEST <= m <= latest and m % STEP == 0
 
 
+def invalid_msg(reset_time: str) -> str:
+    """Plain 12-hour 422 text for a bedtime the day reset does not allow."""
+    reset = _mins(reset_time)
+    latest = reset - STEP if EARLIEST <= reset <= LATEST else LATEST
+    if latest < EARLIEST:
+        return "Move the day reset later than 6:15 PM to use bedtime auto-approve."
+    h, m = divmod(latest, 60)
+    end = f"{h % 12 or 12}:{m:02d} {'PM' if h >= 12 else 'AM'}"
+    return f"Pick a bedtime from 6:00 PM to {end}, in 15-minute steps, before the day resets."
+
+
 def run(db: Session, now_utc: datetime) -> int:
     """Approve every waiting chore that isn't a spot check or 'Always check'. Returns the count."""
     fam = get_family(db)

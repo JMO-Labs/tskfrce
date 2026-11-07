@@ -202,8 +202,8 @@ def test_time_validation(client, db, parent_headers):
     assert patch(bedtime_auto_at="18:00").status_code == 200
     assert patch(bedtime_auto_at="23:30").status_code == 200
     # a reset inside the range caps the latest time at 15 minutes before it
-    assert patch(reset_time="22:00").status_code == 200
-    assert patch(bedtime_auto_at="21:45").status_code == 200
+    assert patch(reset_time="22:00").status_code == 422  # stored 23:30 would pass the reset
+    assert patch(reset_time="22:00", bedtime_auto_at="21:45").status_code == 200
     assert patch(bedtime_auto_at="22:00").status_code == 422
     assert patch(reset_time="22:00", bedtime_auto_at="21:30").status_code == 200
 
@@ -302,3 +302,21 @@ def test_parent_mark_done_loses_race_to_kid(client, db, parent, kid, parent_head
     assert res.status_code == 409 and "already handled" in res.json()["detail"]
     db.expire_all()
     assert db.query(Points).filter(Points.run_id == r.id, Points.amount > 0).count() == 0
+
+
+def test_reset_change_validates_stored_bedtime(client, db, parent_headers):
+    fam = get_family(db)
+    fam.bedtime_auto, fam.bedtime_auto_at, fam.reset_time = True, "21:00", "06:00"
+    db.commit()
+
+    def patch(**b):
+        return client.patch(f"{API}/family", json=b, headers=parent_headers)
+
+    bad = patch(reset_time="20:00")
+    assert bad.status_code == 422
+    assert (
+        bad.json()["detail"]
+        == "Pick a bedtime from 6:00 PM to 7:45 PM, in 15-minute steps, before the day resets."
+    )
+    assert patch(reset_time="22:00", bedtime_auto_at="21:30").status_code == 200
+    assert patch(bedtime_auto=False, reset_time="19:00").status_code == 200
