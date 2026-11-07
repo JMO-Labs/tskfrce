@@ -312,3 +312,14 @@ def test_failure_midway_leaves_run_and_ledger_unchanged(
     assert [(p.id, p.amount) for p in db.query(Points).order_by(Points.id)] == before
     monkeypatch.undo()
     assert _take(client, parent_headers, r).status_code == 200  # retry works, not 409
+
+
+def test_kid_payload_trust_goal_and_today_approved_via(client, db, parent, kid, parent_headers):
+    for level, goal in ((0, 10), (1, 30), (2, None)):
+        _trust(db, kid, level=level)
+        ks = client.get(f"{API}/kids", headers=parent_headers).json()
+        assert next(k for k in ks if k["id"] == kid.id)["trust_goal"] == goal
+    _auto(db, parent, kid, day=svc.today(db), title="Own")
+    kids = client.get(f"{API}/today", headers=parent_headers).json()["kids"]
+    chores = next(k for k in kids if k["id"] == kid.id)["chores"]
+    assert [c["approved_via"] for c in chores if c["title"] == "Own"] == ["trust"]

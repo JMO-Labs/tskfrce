@@ -5,6 +5,7 @@ import { ChoreOpen } from './ChoreOpen'
 import { ChoreNote, NoteLine } from './ChoreNote'
 import { threadGlyph } from './choreIcon'
 import { statusChip } from './statusChip'
+import { ownApproved } from '../trustTypes'
 import { useClock, useNow } from './useClock'
 
 const wall = (d: Date) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
@@ -14,7 +15,7 @@ export function choreSub(c: TodayChore, clock: (iso: string) => string = (i) => 
   const bits: string[] = []
   if (c.done_at) bits.push(`Done ${clock(c.done_at)}`)
   else if (c.due_time) bits.push(`Due ${wall(new Date(`2000-01-01T${c.due_time}`))}`)
-  if (c.state === 'done') bits.push('approved')
+  if (c.state === 'done' && !ownApproved(c.approved_via)) bits.push('approved')
   if ((c.subtasks_total ?? 0) > 1) bits.push(`${c.subtasks_done ?? 0} of ${c.subtasks_total} steps`)
   if (c.photos) bits.push(`${c.photos} photo${c.photos > 1 ? 's' : ''}`)
   if (c.messages) bits.push(`${c.messages} message${c.messages > 1 ? 's' : ''}`)
@@ -38,6 +39,7 @@ export function ChoreRow({
   const ticked = chore.state === 'done' || chore.state === 'needs_you'
   const sub = choreSub(chore, useClock())
   const chips = statusChip(chore, useNow())
+  const own = chore.state === 'done' && ownApproved(chore.approved_via)
   const kept = Math.max(0, chore.points - (chore.deducted ?? 0))
   return (
     <div data-testid="chore-row" data-open={isOpen} data-state={chore.state} data-flag={!!chore.note} className="pt-chore">
@@ -53,7 +55,20 @@ export function ChoreRow({
         </span>
         <span className="pt-t">
           <span className="pt-title">{chore.title}</span>
-          {sub && <small>{sub}</small>}
+          {(sub || own) && (
+            <small>
+              {sub}
+              {own && (
+                <>
+                  {sub && ' · '}
+                  <span className="pt-own">
+                    <Icon name="verified" size={14} />
+                    Approved on its own
+                  </span>
+                </>
+              )}
+            </small>
+          )}
           <NoteLine chore={chore} />
         </span>
         <span className="pt-chips">

@@ -43,6 +43,7 @@ def _out(k: User) -> dict:
         "trust_mode": k.trust_mode,
         "trust_level": k.trust_level,
         "trust_clean": k.trust_clean,
+        "trust_goal": trust.UP_AT.get(k.trust_level),  # None at Proven
     }
 
 

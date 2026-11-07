@@ -13,6 +13,7 @@ import { notifications } from '@mantine/notifications'
 import { errorText } from '../errorText'
 import { toastFail, toastOk } from '../notify'
 import { PhotoViewer, useAuthImage } from './PhotoViewer'
+import { dayName } from '../trustTypes'
 import { useClock } from './useClock'
 
 const KIND: Record<NeedsItem['type'], { label: string; icon: string; tone: 'lav' | 'red' | 'amb' | 'acc' }> = {
@@ -23,6 +24,7 @@ const KIND: Record<NeedsItem['type'], { label: string; icon: string; tone: 'lav'
   note: { label: 'Note', icon: 'flag', tone: 'amb' },
   integration: { label: 'From an integration', icon: 'extension', tone: 'lav' },
 }
+const SPOT = { label: 'Spot check', icon: 'visibility', tone: 'lav' as const }
 const isChore = (i: NeedsItem) => i.type === 'chore' || i.type === 'redo' || i.type === 'integration'
 const ordinal = (n: number) => (n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`)
 
@@ -38,7 +40,7 @@ function Thumb({ item, onOpen }: { item: NeedsItem; onOpen: () => void }) {
 
 /** "Needs you": chores, redos, screen time, reward requests and kid notes waiting on a parent, all kids.
  *  The server decides what is listed (a note leaves once its flag clears). */
-export function NeedsYouList({ items }: { items: NeedsItem[] }) {
+export function NeedsYouList({ items, today }: { items: NeedsItem[]; today?: string }) {
   const clock = useClock()
   const router = useRouter()
   const qc = useQueryClient()
@@ -108,7 +110,8 @@ export function NeedsYouList({ items }: { items: NeedsItem[] }) {
         </button>
       )}
       {items.map((i) => {
-        const k = KIND[i.type]
+        const k = i.spot_check && i.type === 'chore' ? SPOT : KIND[i.type]
+        const older = today && i.day && i.day < today && isChore(i) ? dayName(i.day, today) : null
         const chore = isChore(i)
         return (
           <div key={`${i.type}-${i.id}`} className="p-needs-item">
@@ -137,9 +140,12 @@ export function NeedsYouList({ items }: { items: NeedsItem[] }) {
                   )}
                 </small>
               </span>
-              <Chip tone={k.tone} icon={k.icon}>
-                {k.label}
-              </Chip>
+              <span className="p-needs-kind">
+                <Chip tone={k.tone} icon={k.icon}>
+                  {k.label}
+                </Chip>
+                {older && <small>{older}</small>}
+              </span>
             </div>
             {sending === i.id && (
               <input

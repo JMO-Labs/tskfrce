@@ -23,7 +23,7 @@ interface Props {
   onSelect: (id: number | null) => void
 }
 
-interface Draft { title: string; points: string; typeId?: number; steps: Step[]; next: string; photo: boolean }
+interface Draft { title: string; points: string; typeId?: number; steps: Step[]; next: string; photo: boolean; check: boolean }
 /** Unsaved edits per chore id ('new' for a chore not saved yet), kept while the editor is unmounted. */
 const drafts = new Map<string, Draft>()
 /** Forget all kept drafts (tests). */
@@ -57,6 +57,7 @@ export function ChoreDetail({ kids, chore, onSelect }: Props) {
   const [steps, setSteps] = useState<Step[]>(kept?.steps ?? stepsOf(chore))
   const [next, setNext] = useState(kept?.next ?? '')
   const [photo, setPhoto] = useState(kept?.photo ?? chore?.needs_photo ?? false)
+  const [check, setCheck] = useState(kept?.check ?? chore?.always_check ?? false)
   const pointsErr = intError(points, 0)
   // Who & when forms report their pending changes here so one Save sends everything
   const [pending, setPending] = useState<Record<string, PendingAssignment>>({})
@@ -88,6 +89,7 @@ export function ChoreDetail({ kids, chore, onSelect }: Props) {
     setGen((g) => g + 1)
     setNext('')
     setPhoto(chore?.needs_photo ?? false)
+    setCheck(chore?.always_check ?? false)
   }
 
   // the first step has nothing above it to wait for
@@ -101,7 +103,7 @@ export function ChoreDetail({ kids, chore, onSelect }: Props) {
     try {
       const c = await save.mutateAsync({
         id: chore?.id,
-        body: { title: title.trim(), points: Number(points), needs_photo: photo, type_id: typeId, steps: stepBody },
+        body: { title: title.trim(), points: Number(points), needs_photo: photo, always_check: check, type_id: typeId, steps: stepBody },
       })
       for (const f of forms.filter((f) => f.dirty)) await saveAssignment.mutateAsync({ choreId: chore?.id ?? c.id, id: f.id, body: f.body })
       drafts.delete(key)
@@ -129,15 +131,16 @@ export function ChoreDetail({ kids, chore, onSelect }: Props) {
     ? title.trim() !== chore.title ||
       !!pointsErr || Number(points) !== chore.points ||
       photo !== chore.needs_photo ||
+      check !== (chore.always_check ?? false) ||
       (picked !== undefined && picked !== chore.type_id) ||
       !sameSteps(steps, stepsOf(chore))
     : !!(title.trim() || steps.length || picked !== undefined))
 
   // Switching tabs or chores unmounts this editor: keep what was typed so it isn't lost silently.
   useEffect(() => {
-    if (dirty) drafts.set(key, { title, points, typeId: picked, steps, next, photo })
+    if (dirty) drafts.set(key, { title, points, typeId: picked, steps, next, photo, check })
     else drafts.delete(key)
-  }, [dirty, key, title, points, picked, steps, next, photo])
+  }, [dirty, key, title, points, picked, steps, next, photo, check])
   useEffect(() => {
     if (!dirty) return
     const warn = (e: BeforeUnloadEvent) => e.preventDefault()
@@ -231,6 +234,10 @@ export function ChoreDetail({ kids, chore, onSelect }: Props) {
           <div className="pk-switch">
             <span id="photo-label">Needs a photo</span>
             <button type="button" role="switch" aria-checked={photo} aria-labelledby="photo-label" onClick={() => setPhoto(!photo)} />
+          </div>
+          <div className="pk-switch">
+            <span id="check-label">Always check</span>
+            <button type="button" role="switch" aria-checked={check} aria-labelledby="check-label" onClick={() => setCheck(!check)} />
           </div>
         </section>
 

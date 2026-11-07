@@ -211,6 +211,7 @@ def _chore_out(
         "points": c.points or 0,
         "state": st,
         "day": r.day.isoformat(),
+        "approved_via": r.approved_via,
         "due_time": r.assignment.due_time,
         "due_at": utc_z(svc.due_at(r, fam)),
         "done_at": utc_z(r.submitted_at or r.approved_at),

@@ -137,3 +137,32 @@ test('the photo viewer pages through every photo of the run, latest first, and f
   await userEvent.click(screen.getByRole('button', { name: 'Previous photo' }))
   expect(screen.getByText(/Photo 1 of 2 · Earlier try/)).toBeInTheDocument()
 })
+
+test('spot check shows its own mark instead of Needs OK', () => {
+  show([{ ...chore, id: 12, title: 'Make bed', attempt: 1, spot_check: true }, { ...chore, id: 13, title: 'Plain', attempt: 1 }])
+  expect(within(card('Make bed')).getByText('Spot check')).toBeInTheDocument()
+  expect(within(card('Make bed')).queryByText('Needs OK')).toBeNull()
+  expect(within(card('Plain')).getByText('Needs OK')).toBeInTheDocument()
+})
+
+test('an older waiting chore is labelled with its day; today and unknown are not', () => {
+  const items = [
+    { ...chore, id: 14, title: 'Old', attempt: 1, day: '2026-11-02' },
+    { ...chore, id: 15, title: 'New', attempt: 1, day: '2026-11-06' },
+  ]
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <MantineProvider>
+        <NeedsYouList items={items} today="2026-11-06" />
+      </MantineProvider>
+    </QueryClientProvider>,
+  )
+  expect(within(card('Old')).getByText('Monday')).toBeInTheDocument()
+  expect(within(card('New')).queryByText('Monday')).toBeNull()
+})
+
+test('Approve all counts spot-checked items too', async () => {
+  show([{ ...chore, id: 12, attempt: 1, spot_check: true }, { ...chore, id: 13, title: 'Other', attempt: 1 }])
+  await userEvent.click(screen.getByRole('button', { name: 'Approve all 2' }))
+  await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/chores/12/approve', expect.anything()))
+})

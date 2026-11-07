@@ -1,0 +1,26 @@
+/* Trust mode card, self-approved rows, Today mark (mockups less-parent-work v2 #s2, v1 #s4) */
+[data-look='parent'] .ao-list { display: flex; flex-direction: column; }
+[data-look='parent'] .ao-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--p-line); }
+[data-look='parent'] .ao-row:first-child { border-top: 0; padding-top: 0; }
+[data-look='parent'] .ao-row:last-child { padding-bottom: 0; }
+[data-look='parent'] .ao-row .pt-t { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; }
+[data-look='parent'] .ao-row .p-btn { flex: none; }
+[data-look='parent'] .v2-sw { margin-left: auto; }
+[data-look='parent'] .v2-level { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+[data-look='parent'] .v2-level .pt-bar { flex: 1 1 120px; }
+[data-look='parent'] .v2-next { font-size: 13px; font-weight: 600; color: var(--p-ink); }
+[data-look='parent'] .v2-level .p-btn { padding: 6px 12px; }
+[data-look='parent'] .v2-sub { display: flex; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid var(--p-line); font-size: 13.5px; }
+[data-look='parent'] .v2-sub span { color: var(--p-sub); }
+[data-look='parent'] .v2-sub .p-btn { margin-left: auto; padding: 6px 10px; }
+[data-look='parent'] .v2-p { margin: 0; color: var(--p-sub); font-size: 13.5px; }
+[data-look='parent'] .v2-sub-t { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
+[data-look='parent'] .v2-sub-t b { color: var(--p-ink); }
+[data-look='parent'] .pt-own { display: inline-flex; align-items: center; gap: 3px; vertical-align: bottom; }
+[data-look='parent'] .p-needs-kind { display: grid; justify-items: end; gap: 2px; flex: none; }
+[data-look='parent'] .p-needs-kind small { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--p-sub); }
+@media (max-width: 767px) {
+  [data-look='parent'] .v2-sub-t { display: grid; gap: 0; }
+  [data-look='parent'] .v2-sub-t span { font-size: 12.5px; }
+  [data-look='parent'] .pk-panel[aria-label='Trust mode'] { order: -1; }
+}

@@ -94,7 +94,7 @@ export function TodayPage() {
       {!data && !isError && <Skeleton rows={4} />}
       {showNeeds && (
         <div className="p-today-detail">
-          <NeedsYouList items={needs} />
+          <NeedsYouList items={needs} today={data?.day} />
           <IntegrationWidgets surface="parent" />
         </div>
       )}

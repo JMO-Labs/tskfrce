@@ -176,3 +176,18 @@ describe('chore editor: type, steps, notes', () => {
     expect(text.slice(text.indexOf('Misc'))).toMatch(/Misc.*2/)
   })
 })
+
+describe('chore editor: Always check', () => {
+  test('the switch sends always_check on save', async () => {
+    await show()
+    const sw = screen.getByRole('switch', { name: 'Always check' })
+    expect(sw).toHaveAttribute('aria-checked', 'false')
+    await userEvent.click(sw)
+    expect(((await saveBody()) as unknown as { always_check: boolean }).always_check).toBe(true)
+  })
+
+  test('a chore already set shows it on', async () => {
+    await show(chore({ always_check: true }))
+    expect(screen.getByRole('switch', { name: 'Always check' })).toHaveAttribute('aria-checked', 'true')
+  })
+})

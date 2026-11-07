@@ -103,6 +103,11 @@ export interface Kid {
   age_group: AgeGroup
   /** the kid's own pick; null = mode default */
   celebrate?: CelebrateLevel | null
+  trust_mode?: boolean
+  trust_level?: 0 | 1 | 2
+  trust_clean?: number
+  /** clean chores needed for the next level; null at Proven */
+  trust_goal?: number | null
 }
 
 /** GET/PATCH /family */
@@ -187,6 +192,10 @@ export interface TodayChore {
   messages?: number
   /** kid hasn't opened it yet (kid view) */
   new?: boolean
+  /** day it was for, YYYY-MM-DD */
+  day?: string
+  /** who approved it: parent | trust | bedtime */
+  approved_via?: string | null
 }
 
 /** GET /api/v1/chores/{run_id} - run detail with steps and photos */
@@ -261,6 +270,9 @@ export interface NeedsItem {
   note?: string
   /** type 'integration': the service that checked the chore off */
   integration?: { id: number; name: string; icon: string }
+  /** run day, YYYY-MM-DD; spot_check = a trust-mode kid's chore picked for a parent look */
+  day?: string
+  spot_check?: boolean
 }
 
 /** GET /today */
@@ -302,6 +314,7 @@ export interface LibChore {
   title: string
   points: number
   needs_photo: boolean
+  always_check?: boolean
   type_id: number
   steps: { id: number; title: string; due_time: string | null; after_previous: boolean }[]
   assignments: Assignment[]

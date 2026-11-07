@@ -159,6 +159,8 @@ describe('chore detail', () => {
             title: 'Laundry',
             points: 10,
             needs_photo: true,
+            always_check: false,
+            type_id: undefined,
             steps: [
               { title: 'Fold clothes', due_time: null, after_previous: false },
               { title: 'Make bed', due_time: null, after_previous: false },
@@ -191,6 +193,8 @@ describe('chore detail', () => {
           title: 'Clean room',
           points: 15,
           needs_photo: false,
+          always_check: false,
+          type_id: undefined,
           steps: [
             { title: 'Make bed', due_time: null, after_previous: false },
             { title: 'Fold clothes', due_time: null, after_previous: false },

@@ -61,6 +61,14 @@ jest.mock('@/v2/components/RequireParent', () => ({
 }))
 
 const { push, replace } = mockRoute
+/** Bonus and Deduct live in the kid header's More menu. */
+const pick = async (name: string) => {
+  const more = await within(detail()).findByRole('button', { name: 'More' })
+  await userEvent.click(more)
+  const items = await screen.findAllByRole('menuitem')
+  await userEvent.click(items.find((e) => e.textContent?.endsWith(name))!)
+  await waitFor(() => expect(more).toHaveFocus()) // the menu hands focus back to its button
+}
 setupLibrary()
 
 describe('kids', () => {
@@ -78,16 +86,18 @@ describe('kids', () => {
     expect(document.body.textContent).not.toContain('🦊')
   })
 
-  test('detail has View as kid, Bonus, Deduct, Edit, plus chores and devices', async () => {
+  test('detail has View as kid, Edit and a More menu with Bonus and Deduct, plus chores and devices', async () => {
     mockRoute.query = { section: 'kids', item: '8' }
     render(wrap(<KidsPage />))
     expect(
       await within(detail()).findByRole('link', { name: 'View as kid' }),
     ).toHaveAttribute('href', '/kid?as=8')
-    for (const name of ['Bonus', 'Deduct', 'Edit'])
-      expect(
-        within(detail()).getByRole('button', { name }),
-      ).toBeInTheDocument()
+    expect(
+      within(detail()).getByRole('button', { name: 'Edit' }),
+    ).toBeInTheDocument()
+    await userEvent.click(within(detail()).getByRole('button', { name: 'More' }))
+    const items = (await screen.findAllByRole('menuitem')).map((e) => e.textContent)
+    expect(items).toEqual(['add_circleBonus', 'remove_circleDeduct'])
     expect(await within(detail()).findByText('Leo iPad')).toBeInTheDocument()
     expect(
       within(detail()).getByRole('region', { name: 'Chores assigned' }),
@@ -142,9 +152,7 @@ describe('kids', () => {
     serve({ '/kids/8/points': { balance: 50 } })
     mockRoute.query = { section: 'kids', item: '8' }
     render(wrap(<KidsPage />))
-    await userEvent.click(
-      await within(detail()).findByRole('button', { name: 'Bonus' }),
-    )
+    await pick('Bonus')
     await userEvent.type(within(detail()).getByLabelText(/^Points \(/), '8')
     await userEvent.type(within(detail()).getByLabelText('Why?'), 'Helped out')
     const send = within(detail()).getByRole('button', { name: 'Send points' })
@@ -153,16 +161,11 @@ describe('kids', () => {
     await waitFor(() => expect(calls('POST')).toHaveLength(1))
   })
 
-  test('Bonus POSTs /points and Deduct POSTs /deduct with amount and note', async () => {
-    serve({
-      '/kids/8/points': { balance: 50 },
-      '/kids/8/deduct': { balance: 10, deducted: 5 },
-    })
+  test('Bonus POSTs /points with amount and note', async () => {
+    serve({ '/kids/8/points': { balance: 50 } })
     mockRoute.query = { section: 'kids', item: '8' }
     render(wrap(<KidsPage />))
-    await userEvent.click(
-      await within(detail()).findByRole('button', { name: 'Bonus' }),
-    )
+    await pick('Bonus')
     expect(
       within(detail()).getByRole('button', { name: 'Send points' }),
     ).toBeDisabled()
@@ -178,9 +181,13 @@ describe('kids', () => {
       ]),
     )
 
-    await userEvent.click(
-      within(detail()).getByRole('button', { name: 'Deduct' }),
-    )
+  })
+
+  test('Deduct POSTs /deduct with amount and note', async () => {
+    serve({ '/kids/8/deduct': { balance: 10, deducted: 5 } })
+    mockRoute.query = { section: 'kids', item: '8' }
+    render(wrap(<KidsPage />))
+    await pick('Deduct')
     await userEvent.type(within(detail()).getByLabelText(/^Points \(/), '5')
     await userEvent.type(
       within(detail()).getByLabelText('Why?'),
@@ -190,7 +197,7 @@ describe('kids', () => {
       within(detail()).getByRole('button', { name: 'Take points' }),
     )
     await waitFor(() =>
-      expect(calls('POST')[1]).toEqual([
+      expect(calls('POST')[0]).toEqual([
         '/kids/8/deduct',
         { method: 'POST', body: { amount: 5, note: 'Broke a rule' } },
       ]),
@@ -257,13 +264,13 @@ describe('kids: create, delete, points', () => {
     serve({ '/kids/8/points': { balance: 50 } })
     mockRoute.query = { section: 'kids', item: '8' }
     render(wrap(<KidsPage />))
-    await userEvent.click(
-      await within(detail()).findByRole('button', { name: 'Bonus' }),
-    )
+    await pick('Bonus')
     await userEvent.type(within(detail()).getByLabelText(/^Points \(/), '8')
     await userEvent.type(within(detail()).getByLabelText('Why?'), 'Nice')
     const todayCalls = () =>
       apiMock.mock.calls.filter(([p]) => p === '/today').length
+    await waitFor(() => expect(todayCalls()).toBeGreaterThan(0))
+    await new Promise((r) => setTimeout(r, 50)) // let the first load settle
     const before = todayCalls()
     await userEvent.click(
       within(detail()).getByRole('button', { name: 'Send points' }),

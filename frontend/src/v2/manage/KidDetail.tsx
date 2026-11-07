@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useMediaQuery } from '@mantine/hooks'
+import { Menu } from '@mantine/core'
 import { useRouter } from 'next/router'
 import { viewAs } from '@/v2/kid/viewAs'
 import Link from 'next/link'
@@ -6,7 +8,6 @@ import { useDevices } from '@/v2/hooks/useDevices'
 import { useLibrary } from '@/v2/hooks/useChores'
 import { useToday } from '@/v2/hooks/useToday'
 import { useKidPoints } from '@/v2/hooks/useKids'
-import { when } from '@/v2/components/bellRules'
 import { Chip } from '@/v2/parent/Chip'
 import { HeaderChips } from '@/v2/parent/HeaderChips'
 import { Icon } from '@/v2/parent/Icon'
@@ -18,6 +19,8 @@ import { HappyHourButton } from '@/v2/today/HappyHourButton'
 import { KidCelebrations } from './KidCelebrations'
 import { KidEditor } from './KidEditor'
 import { KidPhonesPanel } from './KidPhonesPanel'
+import { dayTime } from './SelfApprovedList'
+import { TrustSection } from './TrustSection'
 import { PointsForm } from './PointsForm'
 import { initial, nameOf, schedules } from './choreMeta'
 import { DEVICE_TYPE_ICON, getDeviceType } from './deviceMeta'
@@ -43,10 +46,17 @@ export function KidDetail({ kid, focusPin, onDeleted }: Props) {
   // closing an inline form hands focus back to the button that opened it
   const closeForm = (m: Mode) => {
     setMode(null)
-    requestAnimationFrame(() => document.getElementById(`kid-act-${m}`)?.focus())
+    requestAnimationFrame(() => document.getElementById(m === 'edit' ? 'kid-act-edit' : 'kid-act-more')?.focus())
   }
   const toggle = (m: Mode) => setMode(mode === m ? null : m)
   const name = nameOf(kid)
+  const phone = !!useMediaQuery('(max-width: 767px)')
+  const view = (
+    <Link className="p-btn" href={viewAs(kid.id, asPath)}>
+      <Icon name="visibility" />
+      View as kid
+    </Link>
+  )
 
   return (
     <div className="pk-detail">
@@ -60,28 +70,36 @@ export function KidDetail({ kid, focusPin, onDeleted }: Props) {
             items={[
               t?.points !== undefined && { icon: 'stars', text: `${t.points} pts`, tone: 'acc' as const },
               t?.progress && { icon: 'trending_up', text: `Level ${t.progress.level}` },
-              { icon: kid.has_pin ? 'lock' : 'lock_open', text: kid.has_pin ? 'PIN set' : 'No PIN' },
             ].filter((c) => !!c)}
           />
         </div>
         <div className="pk-actions">
-          <Link className="p-btn" href={viewAs(kid.id, asPath)}>
-            <Icon name="visibility" />
-            View as kid
-          </Link>
+          {!phone && view}
           <HappyHourButton kidId={kid.id} />
-          <button type="button" id="kid-act-bonus" className="p-btn" aria-pressed={mode === 'bonus'} onClick={() => toggle('bonus')}>
-            <Icon name="add_circle" />
-            Bonus
-          </button>
-          <button type="button" id="kid-act-deduct" className="p-btn" data-variant="red" aria-pressed={mode === 'deduct'} onClick={() => toggle('deduct')}>
-            <Icon name="remove_circle" />
-            Deduct
-          </button>
           <button type="button" id="kid-act-edit" className="p-btn" data-variant="accent" aria-pressed={mode === 'edit'} onClick={() => toggle('edit')}>
             <Icon name="edit" />
             Edit
           </button>
+          <Menu position="bottom-end" withinPortal>
+            <Menu.Target>
+              <button type="button" id="kid-act-more" className="p-btn" aria-label="More">
+                <Icon name="more_horiz" />
+              </button>
+            </Menu.Target>
+            <Menu.Dropdown>
+              {phone && (
+                <Menu.Item component={Link} href={viewAs(kid.id, asPath)} leftSection={<Icon name="visibility" size={17} />}>
+                  View as kid
+                </Menu.Item>
+              )}
+              <Menu.Item leftSection={<Icon name="add_circle" size={17} />} onClick={() => setMode('bonus')}>
+                Bonus
+              </Menu.Item>
+              <Menu.Item color="red" leftSection={<Icon name="remove_circle" size={17} />} onClick={() => setMode('deduct')}>
+                Deduct
+              </Menu.Item>
+            </Menu.Dropdown>
+          </Menu>
         </div>
       </header>
 
@@ -124,6 +142,8 @@ export function KidDetail({ kid, focusPin, onDeleted }: Props) {
           ))}
         </section>
 
+        <TrustSection kid={kid} />
+
         <KidPhonesPanel kid={kid} />
 
         <KidCelebrations kid={kid} />
@@ -148,12 +168,6 @@ export function KidDetail({ kid, focusPin, onDeleted }: Props) {
       </div>
     </div>
   )
-}
-
-/** "Today 5:40 PM", "Yesterday", else "Mon, Oct 20" (mockup 02). */
-const dayTime = (iso: string) => {
-  const w = when(iso)
-  return /^\d/.test(w) ? `Today ${w}` : w
 }
 
 function PointsHistory({ kidId }: { kidId: number }) {
