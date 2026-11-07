@@ -62,6 +62,12 @@ export function MorePage({ onLogout }: { onLogout: () => void }) {
         </ul>
       </div>
       <div className="p-more-section">
+        <Link href="/recap" className="p-more-link">
+          <Icon name="insights" />
+          Weekly recap
+        </Link>
+      </div>
+      <div className="p-more-section">
         <Link href={HELP_URL} target="_blank" rel="noopener noreferrer" className="p-more-link">
           <Icon name="help" />
           Help & guide
