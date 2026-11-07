@@ -27,9 +27,12 @@ Pick a kid to see their day: how many chores are done, their points, streak, nex
 - **Redo**: a chore you sent back, done again ("2nd try").
 - **Screen time**: a kid asks to spend points on extra minutes.
 - **Reward**: a kid asks to cash in points for a reward.
+- **Spot check**: a chore that would have approved itself, held back for a quick look. It only appears for kids in trust mode. See [Less tapping](#less-tapping).
 - **Note**: a kid tapped **Tell Mom or Dad** on a chore, for example "Need help". Tap **Reply** to answer in the chore's chat.
 
 When more than one thing is waiting, **Approve all** approves them in one go.
+
+A chore a kid finished stays here until you answer it, even after the daily reset. If it is from an earlier day, it shows that day. Approving it later pays the kid as normal, with any Happy Hour bonus from when it was finished. (Before 2.7.0 these were dropped at the reset and the kid got nothing.)
 
 ### Approve a chore or send it back
 
@@ -62,7 +65,7 @@ On a phone the bell opens as a sheet from the bottom of the screen.
 1. Tap **Kids & chores**, then **Chores**, then **New chore**.
 2. Type a **Chore name** and the number of **Points**. Pick a type, like Kitchen or Schoolwork.
 3. Add **steps** if you like (for example "Rinse", "Load", "Wipe"). Each step can have its own due time. Tap **Any order** under a step to make it **Must be done after the step above**. The kid can't say a chore is done until every step is ticked.
-4. Turn on **Needs a photo** if the kid must show proof.
+4. Turn on **Needs a photo** if the kid must show proof. Turn on **Always check** if you always want to look at this chore yourself, even for a kid in trust mode.
 5. Tap **Save chore**.
 
 You should see: "Added. Now choose who does it."
@@ -86,10 +89,9 @@ If you change a chore's name, points or steps, the change shows up everywhere, i
 
 Open a kid to see their devices, chores and points history. The buttons at the top:
 
-- **View as kid**: see their screen.
-- **Bonus**: give 1 to 500 points with a short note. They get a celebration.
-- **Deduct**: take points away, with a reason the kid can see.
+- **Start Happy Hour**, **Edit** and a **More** (three dots) menu.
 - **Edit**: change their name, avatar, PIN or **Age group** (Little, Kid or Teen).
+- **More** holds **Bonus** (give 1 to 500 points with a short note; they get a celebration), **Deduct** (take points away, with a reason the kid can see) and, on a phone, **View as kid**. On a computer **View as kid** is its own button.
 
 ## Rewards and screen time
 
@@ -171,6 +173,62 @@ Cards on **Today** introduce each of these features, at most one new card a day.
 - **Kids & chores → Rewards → Happy Hour**: lengths, multiplier, auto boost and weekly surprise.
 - **Settings → Family → Points rules → Streak freezes**.
 - **Kids & chores → Kids → a kid's page → Celebrations**.
+
+## Less tapping
+
+Two optional ways to approve less by hand, and a weekly summary. Trust mode and bedtime auto-approve are off until you switch them on. You can offer them in setup (step 8) or later. A card on **Today** suggests each one when it fits.
+
+### Trust mode
+
+Trust mode is per kid. Turn it on from the **Trust mode** card on the kid's page (**Kids & chores → the kid**). Its level then decides what happens when that kid finishes a chore:
+
+| Level | When the kid finishes a chore |
+|---|---|
+| **New** | Waits for you, as usual. |
+| **Trusted** | Approves itself. 1 chore in 5 stays waiting as a spot check. |
+| **Proven** | Approves itself. 1 chore in 20 stays waiting as a spot check. |
+
+![The Trust mode card: level, progress and chores that approved on their own](img/trust-kid.jpg)
+
+- Everyone starts at **New** with a count of 0. Each chore approved after that counts, whether you approved it or it approved itself. After 10, a New kid becomes **Trusted**. After 30 more, a Trusted kid becomes **Proven**. You and the kid both get a message.
+- **Change** sets any level by hand, including Proven on day one.
+- Chores with **Always check** always wait for you, at every level.
+- A chore that approves itself sends you no alert and isn't in **Needs you**. On **Today** it has a small **Approved on its own** mark. The kid's points, badges and chat line work as normal.
+- A spot check is in **Needs you**, marked **Spot check**. A kid sees it like any chore waiting for a parent.
+- A team chore approves itself only if every kid on it is in trust mode, and it follows the lowest level.
+
+**Wasn't done.** If a chore approved itself but wasn't really done, tap **Wasn't done** on it (on **Today**, or in **Approved on their own** on the kid's page, which covers the last 7 days). It takes the points back. If the kid already spent them, the balance stops at zero and nothing is owed. By default it also lowers the kid's level one step; untick **Also lower trust level** to keep it. The kid gets a gentle message. Badges already earned stay.
+
+![The Wasn't done sheet](img/wasnt-done.jpg)
+
+If it is still that chore's day, the chore goes back on the kid's list. When it is done again it always waits for you. On an older day it is closed. Sending back a spot check counts the same way: the kid drops a level. Kids with trust mode off never lose a level.
+
+Kids see their level as a small chip on their **Me** page. See [For kids](05-for-kids.md#trust-level).
+
+### Bedtime auto-approve
+
+At the time you choose (9:00 PM unless you change it), chores still waiting approve themselves. Spot checks and **Always check** chores stay waiting. The kid gets the points, and each one counts as clean for trust mode and can be taken back with **Wasn't done**. It runs once a day. The next morning you get one line in your inbox, like "Bedtime approved 3 chores." It also clears waiting chores from earlier days.
+
+### Weekly recap
+
+Every Sunday at 7:30 PM you get "Your week at (your family)" in your inbox, plus your push and other notification places that already get the daily summary. It is on by default, and quiet hours hold it like any alert. Open it from the link in that message, or any time from **More → Weekly recap**. Use the arrows to see earlier weeks.
+
+![Your week: Worth a look and a card for each kid](img/recap.jpg)
+
+- **Worth a look**: at most 3 things for the whole family, most serious first, each with one tap to act. **See all** shows the rest. If there is nothing, it says "All good this week."
+- **This week**: one line for each kid. Tap a kid for chores done, on-time rate, points earned and spent, screen time bought and streak, against the 4 weeks before. A new kid shows the week's numbers and "Trends start after 2 weeks."
+- What gets flagged: chores dropping, chores finishing later, 2 or more catches (a **Wasn't done** or a spot check sent back) in a week, and a streak of 7 or more that ended.
+
+### Where the settings live
+
+- **Kids & chores → the kid → Trust mode**, and **Always check** on each chore.
+- **Settings → Family → Less tapping**: **Bedtime auto-approve** (with its time) and **Weekly recap**.
+
+![The Less tapping card in Settings](img/less-tapping.jpg)
+
+### "Try this" cards
+
+Two more cards on **Today**: one offers trust mode for a kid after 10 approved chores, and one offers bedtime auto-approve if chores were still waiting at the reset on 3 days.
 
 ## Devices
 

@@ -153,3 +153,20 @@ Today `run_reset` cancels any chore still waiting from an older day, so the kid 
 - Older waiting chores don't hold the current day's chore lock. Confirm this in the lock code and test it.
 
 This is the one change to default behavior in this project. It's in the 2.7.0 release notes.
+
+## As built
+
+- Trust mode, bedtime auto-approve and the recap work as specced. Where the build differs:
+- **Redo after a catch.** When a chore is put back on the list after **Wasn't done**, it always waits for a parent when the kid does it again (owner).
+- **Catches skip trust-off kids.** No opt-in means no level drop, even if a parent switched trust mode off after the chore approved itself.
+- **Older-day Wasn't done.** The chore can't be redone, so the kid sees "A parent checked {title} and took its points back." The chat line reads "A parent checked this one again · points taken back".
+- **Points taken back** are the real sum of that run's positive ledger rows. If the number isn't available, the message leaves it out.
+- **Chores waiting past the reset.** The reset marks past-day chores that were never done as `missed` instead of `cancelled`, with no migration, so nobody's streak drops on upgrade. A missed day now breaks a streak (as designed, with freezes). The kid's own Today doesn't show older waiting chores yet; only the parent's Needs list does.
+- **Recap delivery.** The migration adds `recap` only to notification places that already get `summary`, not to places with empty events, so nothing new reaches a third party against a parent's choice. Some places may need recap switched on by hand; the inbox always gets it. This differs from the spec line "adds it to existing places".
+- **Recap text.** Kid names in flag text lose control characters and newlines and are cut at 40 characters. The message is cut by line. A bad `week` parameter is rejected. Quiet hours hold it.
+- **Worth a look** is one list for the family, at most 3, most serious first, with **See all**. Catches stay first in the order. The flags carry structured fields; the page doesn't parse text.
+- **Setup.** Optional extras is step 8 of 8 and Hours stays step 7. No new migration (the server never stored a step above 7). The plan said "step 7".
+- **Settings.** One **Less tapping** card with two rows (bedtime auto-approve with its time, weekly recap), not two cards.
+- **Kid header.** 3 buttons plus a **More** menu (Bonus, Deduct; on a phone also View as kid).
+- **"Try this" for trust** is dismissed once for the whole family.
+- **Proven** wording approved by the owner. The parent-app declutter is a separate later project.

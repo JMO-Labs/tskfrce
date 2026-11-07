@@ -2,7 +2,7 @@
 
 "Open t@sk4ce" means: in a web browser on your phone or computer, type the address from the install step (like `http://192.168.1.50:3000`) into the address bar. Not working? See [Troubleshooting](06-troubleshooting.md).
 
-The first time you open t@sk4ce, a short wizard asks a few questions. It has seven steps: **You**, **Family**, **Kids**, **Kids' phones**, **Chores**, **Devices** and **Hours**. It takes about 7 minutes, and you can change every answer later.
+The first time you open t@sk4ce, a short wizard asks a few questions. It has eight steps: **You**, **Family**, **Kids**, **Kids' phones**, **Chores**, **Devices**, **Hours** and **Optional extras**. The last one is optional. It takes about 7 minutes, and you can change every answer later.
 
 If you stop partway, just open t@sk4ce again and log in. It picks up where you left off.
 
@@ -76,6 +76,17 @@ There is no separate school-hours block, so devices are not cut off during the s
 **Lock until today's chores are done** is on. That means devices stay paused, even inside these hours, until the day's chores are approved. Turn it off if you only want the schedule. Chores from step 5 start at the next daily reset after you finish, so nobody is paused while you finish setting up.
 
 You should see: the hours as bars on the timeline.
+
+Tap **Next**.
+
+## Step 8. Optional extras
+
+![Step 8: optional extras, all off](img/setup-extras.jpg)
+
+Two ways to tap less. Both are off. You can **Skip** this step or switch on only what you want. Each one is explained in [Everyday use](04-everyday-use.md#less-tapping).
+
+- **Trust mode**: one switch for each kid. Chores approve themselves as that kid earns it, with random spot checks.
+- **Bedtime auto-approve**: at 9:00 PM, chores still waiting approve themselves.
 
 Tap **Finish**.
 
