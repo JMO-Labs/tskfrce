@@ -349,3 +349,4 @@ html[data-look='parent'] .pn-addr .f-input.f-input { font: 12.5px ui-monospace, 
 [data-look='parent'] .pn-t2 small { display: block; color: var(--p-sub); font-size: 12px; font-weight: 400; }
 @media (max-width: 1023px) { [data-look='parent'] .pn-fields { grid-template-columns: 1fr; } }
 @media (max-width: 767px) { [data-look='parent'] .pn-fields, [data-look='parent'] .pn-prev { grid-template-columns: 1fr; } }
+[data-look='parent'] .pn-sp { height: 14px; }

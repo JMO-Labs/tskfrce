@@ -1,6 +1,8 @@
 import { Icon } from '../parent/Icon'
 import { ProgressHeader } from '../components/ProgressHeader'
-import type { Progress } from '../types'
+import type { CelebrateLevel, Progress } from '../types'
+import { FunSettings } from './FunSettings'
+import type { KidAge } from './modes/types'
 import { IntegrationWidgets } from '../integrations/WidgetFrame'
 import { FamilySection } from './FamilySection'
 
@@ -15,6 +17,9 @@ export function MePage({
   onExit,
   kidId,
   little = false,
+  mode = 'kid',
+  celebrate = 'full',
+  freezes,
 }: {
   name: string
   avatar: string | null
@@ -25,6 +30,9 @@ export function MePage({
   onExit: () => void
   kidId?: number | null
   little?: boolean
+  mode?: KidAge
+  celebrate?: CelebrateLevel
+  freezes?: number | null
 }) {
   return (
     <section className="me-view">
@@ -40,6 +48,7 @@ export function MePage({
           )}
         </div>
       )}
+      {!preview && <FunSettings level={celebrate} mode={mode} freezes={freezes} />}
       <FamilySection meId={kidId} little={little} />
       {!preview && <IntegrationWidgets surface="kid" />}
       {canSwitch && (

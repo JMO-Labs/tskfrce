@@ -59,9 +59,9 @@ def test_streak_counts_and_breaks(db):
     k = _kid(db)
     for i in (1, 2, 3):
         _day(db, k, T - timedelta(days=i), D)
-    assert pr.streak(db, k.id, T).current == 3
+    assert pr.streak_for(pr.chore_days(db, k.id, T), T, False).current == 3
     _day(db, k, T - timedelta(days=2), TODO)  # same day, one chore open
-    s = pr.streak(db, k.id, T)
+    s = pr.streak_for(pr.chore_days(db, k.id, T), T, False)
     assert s.current == 1 and s.longest == 1 and s.runs == [1]
 
 
@@ -69,30 +69,30 @@ def test_streak_submitted_counts_and_gaps_skipped(db):
     k = _kid(db)
     _day(db, k, T - timedelta(days=1), S)
     _day(db, k, T - timedelta(days=4), D)  # 2 and 3 have no chores
-    assert pr.streak(db, k.id, T).current == 2
+    assert pr.streak_for(pr.chore_days(db, k.id, T), T, False).current == 2
 
 
 def test_streak_today_open_never_breaks(db):
     k = _kid(db)
     _day(db, k, T - timedelta(days=1), D)
     _day(db, k, T, TODO)
-    assert pr.streak(db, k.id, T).current == 1
+    assert pr.streak_for(pr.chore_days(db, k.id, T), T, False).current == 1
     _day(db, k, T, D)  # today's second chore, done -> still open day
-    assert pr.streak(db, k.id, T).current == 1
+    assert pr.streak_for(pr.chore_days(db, k.id, T), T, False).current == 1
 
 
 def test_streak_today_complete_counts(db):
     k = _kid(db)
     _day(db, k, T - timedelta(days=1), D)
     _day(db, k, T, S)
-    assert pr.streak(db, k.id, T).current == 2
+    assert pr.streak_for(pr.chore_days(db, k.id, T), T, False).current == 2
 
 
 def test_streak_runs_chronological(db):
     k = _kid(db)
     for off, st in [(6, D), (5, D), (4, TODO), (3, D), (2, TODO), (1, D)]:
         _day(db, k, T - timedelta(days=off), st)
-    s = pr.streak(db, k.id, T)
+    s = pr.streak_for(pr.chore_days(db, k.id, T), T, False)
     assert s.runs == [2, 1] and s.current == 1 and s.longest == 2
 
 
@@ -103,6 +103,16 @@ def test_progress_in_today_payloads(client, db, parent_headers):
     db.commit()
     kid_p = client.get("/api/v1/kid/today", headers=_headers(db, k)).json()["progress"]
     assert kid_p["level"] == 2 and kid_p["title"] == "Rookie" and kid_p["xp"] == 60
-    assert set(kid_p) == {"level", "title", "xp", "floor", "next", "streak", "flair"}
+    assert set(kid_p) == {
+        "level",
+        "title",
+        "xp",
+        "floor",
+        "next",
+        "streak",
+        "freezes_held",
+        "frozen",
+        "flair",
+    }
     par = client.get("/api/v1/today", headers=parent_headers).json()["kids"][0]
     assert par["progress"] == kid_p

@@ -2,11 +2,11 @@
 
 from datetime import datetime
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from app.models.chores import ChoreRun, RunStepTick
 from app.models.family import get_family
-from app.services import badges, chat, kid_events
+from app.services import badges, chat, happy_hour, kid_events
 from app.services import chores as svc
 from app.services.economy import _recipients, award_chore
 
@@ -22,6 +22,10 @@ def submit(run: ChoreRun, by_id: int | None, now: datetime) -> None:
     run.status = "submitted"
     run.submitted_at = now
     run.submitted_by_id = by_id
+    # team runs pay every member, so only an all-kids Happy Hour may apply (None = all-kids)
+    who = None if run.kid_id is None and run.assignment.mode == "team" else by_id
+    hh = happy_hour.active_for(object_session(run), who, now)
+    run.hh_mult_x10 = hh.mult_x10 if hh else None
 
 
 def approve(db: Session, run: ChoreRun, by_id: int | None) -> int:
@@ -46,6 +50,6 @@ def send_back(db: Session, run: ChoreRun, note: str) -> None:
     run.attempt = (run.attempt or 1) + 1
     run.last_note = note
     submitter = run.submitted_by_id
-    run.submitted_at = run.submitted_by_id = None
+    run.submitted_at = run.submitted_by_id = run.hh_mult_x10 = None
     chat.system(db, run, f"Sent back: {note}")
     kid_events.chore_decided(db, run, False, note, submitter)

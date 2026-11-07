@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/v2/api'
 import { retryIfOffline, toastFail, toastOk } from '@/v2/notify'
-import type { AgeGroup, Kid } from '@/v2/types'
+import type { AgeGroup, CelebrateLevel, Kid } from '@/v2/types'
 
 export interface KidBody {
   full_name?: string
@@ -9,6 +9,8 @@ export interface KidBody {
   pin?: string
   clear_pin?: boolean
   age_group?: AgeGroup
+  /** null = back to the mode default */
+  celebrate?: CelebrateLevel | null
 }
 
 export const useKids = (enabled = true) => useQuery({ queryKey: ['kids'], queryFn: () => api<Kid[]>('/kids'), enabled })

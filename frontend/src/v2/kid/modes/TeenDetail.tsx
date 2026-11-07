@@ -8,6 +8,7 @@ import { KidChip } from '../KidChip'
 import { clock, kidChips, stepBadge } from '../kidChips'
 import { KidSteps } from '../KidSteps'
 import { TellParentSheet } from '../TellParent'
+import { boosted } from '../happyHour'
 import { glyph } from './ChoreTile'
 
 /** "Steps · in order 1 → 3", or "Steps" when nothing is chained. */
@@ -52,6 +53,7 @@ export function TeenDetail({ c, d, now, onBack, onDone, busyId, onChat }: TeenDe
   const act = c.state === 'todo' && !c.taken_by
   const ready = isReady(c)
   const chat = onChat ? () => onChat(c.id) : undefined
+  const x2 = boosted(c, d.happy_hour, now)
   const wait = c.taken_by ? `Taken by ${c.taken_by}` : c.state === 'needs_you' ? 'Waiting for Mom or Dad' : null
   return (
     <div className="t-detail">
@@ -61,7 +63,7 @@ export function TeenDetail({ c, d, now, onBack, onDone, busyId, onChat }: TeenDe
           All chores
         </button>
       )}
-      <div className="t-dh">
+      <div className="t-dh" data-celebrate-id={c.id}>
         <span className="t-ty">
           <Icon name={glyph(c)} />
         </span>
@@ -71,7 +73,16 @@ export function TeenDetail({ c, d, now, onBack, onDone, busyId, onChat }: TeenDe
             {kidChips(c, now, d.timezone, false, true).map((k) => (
               <KidChip key={k.tone} chip={k} size="sm" />
             ))}
-            <span className="k-chip" data-tone="today" data-size="sm">{`+${c.points} pts`}</span>
+            <span className="k-chip" data-tone="today" data-size="sm">
+              {x2 != null ? (
+                <>
+                  <s>{`+${c.points} pts`}</s>
+                  <span data-x2>{`+${x2} pts`}</span>
+                </>
+              ) : (
+                `+${c.points} pts`
+              )}
+            </span>
           </div>
         </div>
       </div>

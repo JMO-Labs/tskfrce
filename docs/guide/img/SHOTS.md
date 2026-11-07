@@ -23,3 +23,6 @@ Taken with Playwright from a demo family (kids Bobby and Susan), read-only: ever
 | `kid-welcome.jpg` | Kid welcome page after scanning a code (iPhone steps). |
 | `group-price.jpg` | **Devices → Groups**, one group open with **Screen time price** filled in (phone). Mocked API. |
 | `kid-screen-for.jpg` | Kid **Rewards** (phone): **What for?** picker with Consoles selected. Mocked API. |
+| `celebrate.jpg` | Kid page (phone): a cowboy-dog celebration with coins and "YEEHAW!". Excitement pack 2.6.0. |
+| `happy-hour-kid.jpg` | Kid page (phone): Happy Hour banner with countdown and doubled chore points. |
+| `happy-hour-start.jpg` | Parent **Today** (phone): the **Start Happy Hour** sheet (60 min, ×2, all kids). |

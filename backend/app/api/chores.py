@@ -126,7 +126,7 @@ def mark_not_done(run_id: int, db: Session = Depends(get_db), _: User = Depends(
     r.ticks.clear()
     r.status = "todo"
     r.approved_at = r.completed_at = r.approved_by_id = None
-    r.submitted_at = r.submitted_by_id = None
+    r.submitted_at = r.submitted_by_id = r.hh_mult_x10 = None
     chat.system(db, r, "Marked not done")
     db.commit()
     return svc.chore_out(r, get_family(db))

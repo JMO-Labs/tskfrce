@@ -34,14 +34,14 @@ def test_generate_twice_is_idempotent_for_each_and_shared(db, parent, kid):
     assert db.query(ChoreRun).count() == 3
 
 
-def test_reset_cancels_unfinished_yesterday(db, parent, kid):
+def test_reset_misses_unfinished_yesterday(db, parent, kid):
     make_chore(db, parent, kids=[kid])
     run_reset(db, D - timedelta(days=1))
     old = db.query(ChoreRun).one()
     done = make_run(db, parent, kid, status="done", approved=True, day=D - timedelta(days=1))
     run_reset(db, D)
     db.refresh(old)
-    assert old.status == "cancelled"
+    assert old.status == "missed"
     assert done.status == "done"
     assert svc.counts(db, kid.id, D) == (0, 1)
 

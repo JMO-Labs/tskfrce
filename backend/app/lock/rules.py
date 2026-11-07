@@ -8,7 +8,7 @@ from app.lock.schedule import Window, in_window
 
 @dataclass(frozen=True)
 class OwnerChores:
-    total: int  # today's chore instances, excluding cancelled
+    total: int  # today's chore instances, excluding cancelled and missed
     approved: int  # status done
 
 

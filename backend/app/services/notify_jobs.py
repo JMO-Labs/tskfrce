@@ -10,8 +10,8 @@ from app.models.family import get_family
 from app.models.lock import Device
 from app.models.notify import NotifyHeld, NotifyPlace
 from app.models.user import User, UserRole
+from app.services import boost, inbox, notify
 from app.services import chores as svc
-from app.services import inbox, notify
 
 log = get_logger(__name__)
 SUMMARY_AT = "19:00"
@@ -37,6 +37,7 @@ def tick(db: Session, now_utc: datetime, blocked: list[str] | None = None) -> No
     overdue(db, now_utc)
     box_offline(db, now_utc)
     daily_summary(db, now_utc)
+    boost.run(db, now_utc)
     lock_changes(db, blocked)
     db.commit()
 

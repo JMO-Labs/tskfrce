@@ -56,6 +56,7 @@ def test_default_events():
         "box_offline",
         "workaround",
         "summary",
+        "boost",
     )
 
 

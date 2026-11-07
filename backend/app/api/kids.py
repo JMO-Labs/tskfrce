@@ -39,6 +39,7 @@ def _out(k: User) -> dict:
         "avatar": k.avatar,
         "has_pin": bool(k.pin_hash),
         "age_group": k.age_group,
+        "celebrate": k.celebrate,  # raw: null = mode default
     }
 
 
@@ -97,6 +98,8 @@ def patch_kid(kid_id: int, body: KidPatch, db: Session = Depends(get_db)):
         kid.pin_hash = AuthService(db).get_password_hash(body.pin)
     if body.age_group is not None:
         kid.age_group = body.age_group
+    if "celebrate" in body.model_fields_set:  # explicit null: back to the mode default
+        kid.celebrate = body.celebrate
     if body.clear_pin:
         kid.pin_hash = None
     db.commit()

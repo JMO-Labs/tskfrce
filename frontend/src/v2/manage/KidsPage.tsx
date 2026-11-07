@@ -21,6 +21,7 @@ import { RewardsCatalogue } from './RewardsCatalogue'
 import { RewardsHistory } from './RewardsHistory'
 import { RewardsNav } from './RewardsNav'
 import { RewardsRequests } from './RewardsRequests'
+import { HappyHourPane } from './HappyHourPane'
 import { ScreenTimePane } from './ScreenTimePane'
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
@@ -91,6 +92,8 @@ function KidsBody() {
         <RewardsCatalogue pick={first(query.pick)} onPick={pickIn('catalogue')} />
       ) : item === 'screen' ? (
         <ScreenTimePane />
+      ) : item === 'happy' ? (
+        <HappyHourPane />
       ) : item === 'history' ? (
         <RewardsHistory />
       ) : null,

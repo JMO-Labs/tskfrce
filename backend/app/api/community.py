@@ -17,7 +17,9 @@ router = APIRouter(
 )
 
 
-def _profiles(db: Session, kids: list[User], today) -> list[dict]:
+def _profiles(db: Session, kids: list[User]) -> list[dict]:
+    fam = get_family(db)
+    today = current_chore_day(fam, datetime.now(UTC))
     ids = [k.id for k in kids]
     totals = progression.xp_many(db, ids)
     days = progression.chore_days_many(db, ids, today)
@@ -32,7 +34,10 @@ def _profiles(db: Session, kids: list[User], today) -> list[dict]:
                 "avatar": kid.avatar,
                 "level": lv.level,
                 "title": lv.title,
-                "streak": progression.streak_of(days[kid.id], today).current,
+                **progression.streak_fields(
+                    progression.streak_for(days[kid.id], today, fam.streak_freeze),
+                    fam.streak_freeze,
+                ),
                 "badges": badge_rows[kid.id],
                 "flair": flair[kid.id],
             }
@@ -53,9 +58,8 @@ def get_leaderboard(db: Session = Depends(get_db)):
 
 @router.get("/profiles")
 def list_profiles(db: Session = Depends(get_db)):
-    today = current_chore_day(get_family(db), datetime.now(UTC))
     kids = db.query(User).filter(User.role == UserRole.KID, User.is_active).order_by(User.id).all()
-    return _profiles(db, kids, today)
+    return _profiles(db, kids)
 
 
 @router.get("/profiles/{kid_id}")
@@ -63,4 +67,4 @@ def get_profile(kid_id: int, db: Session = Depends(get_db)):
     kid = db.get(User, kid_id)
     if kid is None or kid.role != UserRole.KID:
         raise HTTPException(404, "We couldn't find that kid.")
-    return _profiles(db, [kid], current_chore_day(get_family(db), datetime.now(UTC)))[0]
+    return _profiles(db, [kid])[0]

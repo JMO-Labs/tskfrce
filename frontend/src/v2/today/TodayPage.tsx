@@ -17,6 +17,8 @@ import { KidStrip } from "./KidStrip";
 import { NeedsYouList } from "./NeedsYouList";
 import { IntegrationWidgets } from "../integrations/WidgetFrame";
 import { SegmentedControl } from "../parent/SegmentedControl";
+import { HappyHourButton } from "./HappyHourButton";
+import { TryCards } from "./TryCards";
 import { KidFacts } from "./KidFacts";
 import { ChoreRow } from "./ChoreRow";
 import { useClock } from "./useClock";
@@ -109,10 +111,12 @@ export function TodayPage() {
       )}
       {data && kid && !showNeeds && (
         <div className="p-today-detail">
+          {small && <TryCards />}
           <GetStartingChecklistCard kids={data.kids} />
           <div className="pt-head">
             <h2>{kid.name}&apos;s day</h2>
             <div className="pt-head-acts">
+              <HappyHourButton kidId={kid.id} allKids />
               <Link href={viewAs(kid.id, router.asPath)} className="p-btn">
                 <Icon name="visibility" size={17} />
                 View as kid
@@ -135,6 +139,7 @@ export function TodayPage() {
             <KidFacts kid={kid} />
           </div>
 
+          {!small && <TryCards />}
           <TipsContainer tips={PARENT_TIPS} maxTips={1} />
 
           {kid.chores.length === 0 && (

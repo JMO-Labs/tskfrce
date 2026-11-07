@@ -124,7 +124,7 @@ def _task_metrics(db: Session, kid: User, fam: FamilySettings) -> dict[str, int]
 def metrics(db: Session, kid: User, fam: FamilySettings) -> dict[str, int]:
     today = current_chore_day(fam, datetime.now(UTC))
     days = progression.chore_days(db, kid.id, today)
-    st = progression.streak(db, kid.id, today)
+    st = progression.streak_for(days, today, fam.streak_freeze)  # the streak the UI shows
     all_runs = [*st.runs, st.current] if st.current else st.runs
     reds = db.query(Redemption).filter(Redemption.kid_id == kid.id, Redemption.status == "approved")
     reds = reds.all()

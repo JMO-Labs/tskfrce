@@ -24,7 +24,7 @@ beforeEach(() => {
   localStorage.setItem('task4ce-tip:onboard.parent', '1')
   apiMock.mockReset()
   apiMock.mockImplementation(async (p) =>
-    p === '/today' ? { day: '2026-10-24', pending_approvals: 1, new_devices: [], kids: [kid], needs_you: [item] } : { total: 0, threads: [], rules: [] },
+    p === '/kids' ? [] : p === '/happy-hour' ? { active: [], recent: [] } : p === '/me/tips' ? { dismissed: [] } : p === '/family' ? { hh_auto_boost: true, streak_freeze: true } : p === '/today' ? { day: '2026-10-24', pending_approvals: 1, new_devices: [], kids: [kid], needs_you: [item] } : { total: 0, threads: [], rules: [] },
   )
 })
 
