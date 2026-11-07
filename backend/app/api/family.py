@@ -85,11 +85,9 @@ def patch_family(body: FamilyPatch, db: Session = Depends(get_db)):
             ZoneInfo(body.timezone)
         except Exception:
             raise HTTPException(400, "Unknown time zone.") from None
-    if body.bedtime_auto_at is not None or body.reset_time is not None:
+    if body.bedtime_auto_at is not None or body.bedtime_auto:  # switching on checks the stored time
         at = body.bedtime_auto_at or fam.bedtime_auto_at
-        if body.bedtime_auto_at is not None and not bedtime.valid_at(
-            at, body.reset_time or fam.reset_time
-        ):
+        if not bedtime.valid_at(at, body.reset_time or fam.reset_time):
             raise HTTPException(422, "Pick 18:00 to 23:30 in 15-minute steps, before the reset.")
     # a time zone change takes effect at the next reset; no immediate reset
     for k, v in body.model_dump(exclude_unset=True).items():
@@ -305,6 +303,7 @@ def today(db: Session = Depends(get_db)):
         if untrusted
         else {}
     )
+    # solo runs only: team chores do not count toward the 10
     try_trust = next((i for i in untrusted if approved.get(i, 0) >= 10), None)
     kids = []
     for k in kid_rows:

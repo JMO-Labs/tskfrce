@@ -208,6 +208,20 @@ def test_time_validation(client, db, parent_headers):
     assert patch(reset_time="22:00", bedtime_auto_at="21:30").status_code == 200
 
 
+def test_switch_on_alone_validates_stored_time(client, db, parent_headers):
+    fam = get_family(db)
+    fam.reset_time, fam.bedtime_auto_at = "20:00", "21:00"  # default time sits after the reset
+    db.commit()
+    res = client.patch(f"{API}/family", json={"bedtime_auto": True}, headers=parent_headers)
+    assert res.status_code == 422
+    assert (
+        client.patch(
+            f"{API}/family", json={"bedtime_auto": False}, headers=parent_headers
+        ).status_code
+        == 200
+    )
+
+
 def test_tz_local_day(db, parent, kid):
     fam = get_family(db)
     fam.timezone = "America/Los_Angeles"
