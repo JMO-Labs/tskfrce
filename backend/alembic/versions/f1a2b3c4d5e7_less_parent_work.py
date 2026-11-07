@@ -1,7 +1,7 @@
 """trust mode, bedtime auto-approve, weekly recap
 
-Revision ID: b1c2d3e4f5a6
-Revises: a0b1c2d3e4f5
+Revision ID: f1a2b3c4d5e7
+Revises: b1c2d3e4f5a6
 Create Date: 2026-11-06 23:00:00.000000
 """
 
@@ -11,8 +11,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "b1c2d3e4f5a6"
-down_revision: str | Sequence[str] | None = "a0b1c2d3e4f5"
+revision: str = "f1a2b3c4d5e7"
+down_revision: str | Sequence[str] | None = "b1c2d3e4f5a6"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

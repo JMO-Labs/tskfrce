@@ -17,7 +17,7 @@
 - Rebase onto main after PR #66 merges. Target version 2.7.0, in the four version files (`frontend/package.json`, `frontend/package-lock.json`, `backend/tests/test_health.py`, `backend/app/__init__.py`).
 - Default stays: a parent approves every chore. Everything here is opt-in except the recap (on by default) and waiting chores surviving the reset.
 - Levels: 0 New (no self-approval), 1 Trusted (1 in 5 spot check), 2 Proven (1 in 20). Clean count: 10 from New to Trusted, 30 more from Trusted to Proven. It resets at every level change.
-- Latest migration is `a0b1c2d3e4f5`. Add `b1c2d3e4f5a6`.
+- Latest migration is `b1c2d3e4f5a6`. Add `f1a2b3c4d5e7` (down_revision b1c2d3e4f5a6, the missed-status migration from PR #66).
 - Use existing theme tokens. UI tasks need mockups the owner approved (Task 7) and light and dark screenshots on phone (390×844 @2x) and desktop (1280×900), compared against them.
 - CI: `cd backend && python -m pytest tests -q`, `ruff check .` and `ruff format --check .` on the whole backend, plus jest. Query budgets: `/kid/today` 20, `/today` 24; raise only with a written reason.
 - Files under 500 lines. `frontend/src/v2/types.ts` is at 494, so new types go in `frontend/src/v2/trustTypes.ts`.
@@ -40,7 +40,7 @@
 ### Task 1: Data and trust rules
 
 **Files:**
-- Create: `backend/alembic/versions/b1c2d3e4f5a6_less_parent_work.py`, `backend/app/models/trust.py` (`TrustEvent`), `backend/app/services/trust.py`, `backend/tests/test_trust.py`
+- Create: `backend/alembic/versions/f1a2b3c4d5e7_less_parent_work.py`, `backend/app/models/trust.py` (`TrustEvent`), `backend/app/services/trust.py`, `backend/tests/test_trust.py`
 - Modify: `backend/app/models/user.py`, `models/chores.py`, `models/family.py`, `models/__init__.py`
 
 **Columns:** exactly the spec's Data section, with server defaults, plus `family_settings.waiting_reset_days` (int, default 0; Task 10). `trust_events`: `id, kid_id (FK cascade), at, kind ('up'|'down'|'catch'), run_id (FK SET NULL), by_id (FK SET NULL)`.
@@ -134,7 +134,7 @@
 
 ### Task 6: Weekly recap backend
 
-**Files:** `services/recap.py`, `api/recap.py` (prefix `/api/v1/recap`, parent-only), `services/notify.py`, `services/inbox.py` (`path_for`), `services/notify_jobs.py`, a second migration step for the `recap` event in `b1c2d3e4f5a6`, `tests/test_recap.py`
+**Files:** `services/recap.py`, `api/recap.py` (prefix `/api/v1/recap`, parent-only), `services/notify.py`, `services/inbox.py` (`path_for`), `services/notify_jobs.py`, a second migration step for the `recap` event in `f1a2b3c4d5e7`, `tests/test_recap.py`
 
 **Interfaces:**
 - `recap.week_of(db, week_start: date | None) -> dict`: `{week_start, week_end, prev, next, kids: [{id, name, flags: [{kind, text, action}], done, done_trend: [int x5], on_time_pct, on_time_avg, points_earned, points_spent, screen_minutes_bought, streak, enough_history}], family_line, all_good}`.
