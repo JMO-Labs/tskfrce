@@ -73,6 +73,14 @@ test('opening scrolls nearest, smooth unless reduced motion', () => {
   expect(Element.prototype.scrollIntoView).toHaveBeenLastCalledWith({ block: 'nearest', behavior: 'auto' })
 })
 
+test('closing returns focus to the head button', () => {
+  render(<Page />)
+  click(head(/^Trust/))
+  expect(document.activeElement).not.toBe(head(/^Trust/))
+  click(head(/^Trust/))
+  expect(document.activeElement).toBe(head(/^Trust/))
+})
+
 test('tapping the open head closes it', () => {
   render(<Page />)
   click(head(/^Trust/))
@@ -128,6 +136,11 @@ test('focus area is labelled and flags focus state', () => {
   expect(area).not.toHaveAttribute('data-focused')
   click(head(/^Trust/))
   expect(area).toHaveAttribute('data-focused')
+})
+
+test('summary value ellipsizes and may shrink', () => {
+  expect(css).toMatch(/\.p-srow-val\s*{[^}]*text-overflow:\s*ellipsis/)
+  expect(css).toMatch(/\.p-srow-val\s*{[^}]*min-width:\s*0/)
 })
 
 test('kid names never break mid-word', () => {
