@@ -43,7 +43,7 @@ export function GroupDetail(p: Props) {
 function Existing({ group, devices, kids, groups, rules, onSelect, onRequestOverride, timeZone, pendingAction = null }: Props & { group: Group }) {
   const del = useDeleteGroup()
   const [confirm, { open, close }] = useDisclosure(false)
-  const rows = useFocusParam('open', { valid: (id) => ROWS.includes(id) })
+  const rows = useFocusParam('open', { group: ['net'], valid: (id) => ROWS.includes(id) })
   const st = useScreenTime().data
   // one save guard for every row: each save sends the whole device list, so two at once could undo each other
   const saver = { save: useSaveGroup(), once: useSingleFlight() }

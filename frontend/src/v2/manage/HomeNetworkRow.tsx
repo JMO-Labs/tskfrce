@@ -10,7 +10,7 @@ import { ago } from './settingsMeta'
 
 /** Family-wide network settings as one calm row at the top of the Devices list (opens in place). */
 export function HomeNetworkRow() {
-  const focus = useFocusParam('net', { valid: (id) => id === 'net' })
+  const focus = useFocusParam('net', { group: ['open'], valid: (id) => id === 'net' })
   const fam = useFamily().data
   const box = useBlocker().data
   const patch = usePatchFamily()

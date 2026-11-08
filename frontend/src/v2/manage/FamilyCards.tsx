@@ -6,6 +6,7 @@ import type { Family } from '@/v2/types'
 import { PasswordEye } from '@/v2/components/PasswordEye'
 import { toastFail, toastOk } from '../notify'
 import { PaneCard, PaneHead } from './PaneParts'
+import { DetailHeader } from '@/v2/parent/DetailHeader'
 import { Icon } from '@/v2/parent/Icon'
 import { FocusArea, SummaryRow } from '@/v2/parent/SummaryRow'
 import { useFocusParam } from '@/v2/parent/useFocusParam'
@@ -80,7 +81,7 @@ export function FamilyCard({ fam }: { fam: Family }) {
   const line = (id: string, t: string) => (focus.isOpen(id) ? undefined : t) // the open row shows its form instead
   return (
     <section aria-label="Family" className="pn fam-rows">
-      <PaneHead title="Family" sub="The basics for your household." />
+      <DetailHeader media={<span className="pk-tile pk-tile-lg"><Icon name="home" size={30} /></span>} title="Family" sub="The basics for your household." />
       <FocusArea focus={focus} label="Family settings" grouped>
         <SummaryRow id="hh" icon={ico('home')} title="Household" summary="" line2={line("hh", householdLine(fam))} focus={focus}>
           <HouseholdBody fam={fam} save={save} />

@@ -87,19 +87,22 @@ export function BedtimeBody({ fam, save }: Props) {
   const [at, setAt] = useResetState(saved)
   const [asked, setAsked] = useState(false) // the hint waits until the parent has tried
   const okAt = (t: string) => hhmm.test(t) && t >= '18:00' && t <= latest
-  const undo = () => { setOn(!!fam.bedtime_auto); setAt(saved) }
+  const undo = (p: Partial<Family>) => { // revert only what that save carried
+    if ('bedtime_auto' in p) setOn(!!fam.bedtime_auto)
+    if ('bedtime_auto_at' in p) setAt(saved)
+  }
   /** The pair (switch + time) saves only when both are good; until then it stays a local draft. */
   const commit = (nextOn: boolean, nextAt: string) => {
     if (!okAt(nextAt)) return
     const p: Partial<Family> = {}
     if (nextOn !== !!fam.bedtime_auto) p.bedtime_auto = nextOn
     if (nextAt !== fam.bedtime_auto_at) p.bedtime_auto_at = nextAt
-    if (Object.keys(p).length) void save(p).then((ok) => ok || undo())
+    if (Object.keys(p).length) void save(p).then((ok) => ok || undo(p))
   }
   const flip = (v: boolean) => {
     setOn(v)
     setAsked(true)
-    if (!v) void save({ bedtime_auto: false }).then((ok) => ok || undo())
+    if (!v) void save({ bedtime_auto: false }).then((ok) => ok || undo({ bedtime_auto: false }))
     else commit(true, at)
   }
   const hint = on && possible && !okAt(at) && asked

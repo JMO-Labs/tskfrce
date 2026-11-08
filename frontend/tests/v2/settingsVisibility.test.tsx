@@ -110,7 +110,7 @@ describe('family cards (items 7, 8)', () => {
     expect(screen.getByLabelText('GIPHY key')).toBeTruthy()
     expect(screen.queryByText(/^Off\. Turn on/)).toBeNull()
   })
-  test('Family opens calm: four-row values are lines, no fields, no Network', () => {
+  test('Family opens calm: three-row values are lines, no fields, no Network', () => {
     fakeRouter.reset('/settings', { section: 'family' })
     wrap(<FamilyCard fam={fam()} />)
     expect(screen.getByRole('button', { name: /^Household/ })).toBeTruthy()
