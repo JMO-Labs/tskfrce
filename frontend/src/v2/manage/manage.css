@@ -368,15 +368,12 @@ html[data-look='parent'] .pn-addr .f-input.f-input { font: 12.5px ui-monospace, 
 }
 
 /* Rewards history (mockup declutter-v3 history-calm) */
-[data-look='parent'] .rh { display: flex; flex-direction: column; gap: 12px; max-width: 720px; }
+[data-look='parent'] .rh { display: flex; flex-direction: column; gap: 12px; max-width: 720px; margin: 0 auto; width: 100%; }
 [data-look='parent'] .rh-chips { display: flex; }
 [data-look='parent'] .rh .p-dhead-meta { min-width: 110px; }
-[data-look='parent'] .rh .pk-pill[aria-pressed='true'] { background: var(--p-acc); border: 1px solid var(--p-acc); padding: 4px 14px 4px 4px; color: #292928; }
-[data-look='parent'] .rh .pk-pill[aria-pressed='true'] .pk-av { background: var(--p-card); }
-[data-look='parent'] .rh .pk-pills > .pk-pill:first-child { padding-left: 14px; }
 [data-look='parent'] .rh-row .pk-av { width: 26px; height: 26px; border: 1px solid var(--p-line); background: var(--p-soft); color: var(--p-ink); }
 @media (max-width: 767px) {
-  [data-look='parent'] .rh :is(.pk-pill, .p-segmented-button, .p-dhead-act .p-btn) { min-height: 44px; }
+  [data-look='parent'] .rh :is(.pk-pill, .rh-chips .p-pill, .p-segmented-button, .p-dhead-act .p-btn) { min-height: 44px; }
 }
 [data-look='parent'] .rh-panel { padding: 0; overflow: hidden; }
 [data-look='parent'] .rh-list { margin: 0; padding: 0; list-style: none; }

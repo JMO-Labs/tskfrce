@@ -40,7 +40,7 @@ function Row({ r }: { r: HistoryRow }) {
   )
   return (
     <li className="rh-li">
-      <InfoPop label={`${r.name}, details`} target={
+      <InfoPop label="Details" target={
         <button type="button" className="rh-row">
           <span className="pk-av" aria-hidden="true">{initial(kid)}</span>
           <span className="rh-t">{r.name}<small>{kid} · {whenAt(r.decided_at ?? r.created_at)}</small></span>
