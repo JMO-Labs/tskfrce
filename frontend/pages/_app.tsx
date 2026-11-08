@@ -59,6 +59,7 @@ import '../src/v2/kid/kid-gate.css';
 import '../src/v2/kid/happy-hour.css';
 import '../src/v2/components/bell.css';
 import '../src/v2/interactions.css';
+import '../src/v2/parent/declutter.css';
 
 // Suppress WebSocket connection errors in console since HTTP notifications work as fallback
 if (typeof window !== 'undefined') {
