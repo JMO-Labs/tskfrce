@@ -25,10 +25,12 @@ export function KidsList({ kids, selected, onSelect }: Props) {
               {initial(nameOf(k))}
             </span>
             <span className="pk-card-t">
-              <b>{nameOf(k)}</b>
+              <span className="kl-line">
+                <b>{nameOf(k)}</b>
+                {t && <ProgressRing done={t.done ?? 0} total={t.total ?? 0} />}
+              </span>
               <small>{bits.filter(Boolean).join(' · ')}</small>
             </span>
-            {t && <ProgressRing done={t.done ?? 0} total={t.total ?? 0} />}
             {t?.online_all ? (
               <Chip tone="acc" icon="cloud_done">
                 Online

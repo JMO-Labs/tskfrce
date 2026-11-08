@@ -15,6 +15,8 @@ const sync = () => {
   notify()
 }
 
+type Handler = (...a: unknown[]) => void
+const handlers: Record<string, Set<Handler>> = {}
 /** Stand-in for next/router. push appends to stack, replace overwrites the top, back pops. */
 export const fakeRouter = {
   pathname: '/x',
@@ -25,6 +27,12 @@ export const fakeRouter = {
   replace: jest.fn((t: Target) => { fakeRouter.pathname = t.pathname ?? fakeRouter.pathname; fakeRouter.stack[fakeRouter.stack.length - 1] = clean(t.query); sync() }),
   beforePopState: jest.fn((cb: PopHandler) => { fakeRouter.popHandler = cb }),
   popHandler: (() => true) as PopHandler,
+  events: {
+    on: (e: string, f: Handler) => { (handlers[e] ??= new Set()).add(f) },
+    off: (e: string, f: Handler) => { handlers[e]?.delete(f) },
+    // like Next: a handler that throws aborts the navigation
+    emit: (e: string, ...a: unknown[]) => { handlers[e]?.forEach((f) => f(...a)) },
+  },
   back: jest.fn(() => { if (!fakeRouter.popHandler({})) return; if (fakeRouter.stack.length > 1) fakeRouter.stack.pop(); sync() }),
   reset(pathname = '/x', query: Query = {}) {
     fakeRouter.push.mockClear(); fakeRouter.replace.mockClear(); fakeRouter.back.mockClear(); fakeRouter.beforePopState.mockClear(); fakeRouter.popHandler = () => true

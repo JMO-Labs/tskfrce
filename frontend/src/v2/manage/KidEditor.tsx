@@ -129,14 +129,18 @@ export function KidProfileForm({ kid, focusPin, onSaved, onCancel, onDirty, tail
   const [age, setAge] = useState<AgeGroup>(kid.age_group ?? 'kid')
   const pin = usePin()
   const pinRef = useRef<HTMLInputElement>(null)
+  const nameRef = useRef<HTMLInputElement>(null)
 
   const dirty = name.trim() !== (kid.full_name ?? '') || avatar !== (kid.avatar ?? '') || age !== (kid.age_group ?? 'kid') || pin.pin !== ''
   useEffect(() => { onDirty?.(dirty) }, [dirty, onDirty])
   useEffect(() => () => onDirty?.(false), [onDirty])
-  // the row body takes focus when it opens; move on to the PIN after that
+  // Edit can start with the row already open (nothing else moves focus then, and Edit hides): land on Name, or the PIN for the PIN nudge
   useEffect(() => {
-    if (!focusPin) return
-    const f = requestAnimationFrame(() => pinRef.current?.focus())
+    const f = requestAnimationFrame(() => {
+      const a = document.activeElement
+      if (focusPin) pinRef.current?.focus()
+      else if (!(a instanceof HTMLInputElement || a instanceof HTMLSelectElement)) nameRef.current?.focus() // never pull focus out of a field already being typed in
+    })
     return () => cancelAnimationFrame(f)
   }, [focusPin])
 
@@ -153,7 +157,7 @@ export function KidProfileForm({ kid, focusPin, onSaved, onCancel, onDirty, tail
   return (
     <>
       <div className="kd-list kd-kvs">
-        {row('Name', <input className="pk-input kd-in" aria-label="Name" value={name} maxLength={100} onChange={(e) => setName(e.currentTarget.value)} />)}
+        {row('Name', <input ref={nameRef} className="pk-input kd-in" aria-label="Name" value={name} maxLength={100} onChange={(e) => setName(e.currentTarget.value)} />)}
         {row('Age group', <AgeSelect value={age} onChange={setAge} />)}
         {row(kid.has_pin ? 'New PIN (4 digits)' : 'PIN (4 digits)', <input ref={pinRef} className="pk-input kd-in" aria-invalid={pin.bad || pin.letters} {...pin.props} />)}
         {(pin.bad || pin.letters) && <div className="kd-kv">{pinError(pin)}</div>}

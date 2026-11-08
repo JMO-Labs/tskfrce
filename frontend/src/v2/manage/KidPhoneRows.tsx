@@ -61,7 +61,7 @@ export function KidPhoneRows({ kid }: { kid: Kid }) {
             Add a phone
           </button>
         </span>
-        <InfoPop label="About phones">No phones yet. Not every kid has one, and that&apos;s fine.</InfoPop>
+        <InfoPop label="About phones">{rows.length === 0 ? 'No phones yet. Not every kid has one, and that\u2019s fine.' : 'Not every kid has a phone, and that\u2019s fine.'}</InfoPop>
       </div>
       {code && <EnrollQr kid={kid} code={code} busy={enroll.isPending} onNew={make} />}
       <ConfirmDelete
