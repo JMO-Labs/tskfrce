@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MantineProvider } from '@mantine/core'
 import { api } from '@/v2/api'
-import { TrustSection } from '@/v2/manage/TrustSection'
+import { TrustBody, TrustLine } from '@/v2/manage/TrustSection'
 import { WasntDoneSheet } from '@/v2/today/WasntDoneSheet'
 import { ChoreRow } from '@/v2/today/ChoreRow'
 import type { Kid, TodayChore, TodayKid } from '@/v2/types'
@@ -30,6 +30,13 @@ const wrap = (ui: React.ReactNode) =>
       <MantineProvider>{ui}</MantineProvider>
     </QueryClientProvider>,
   )
+// the Trust row: calm line plus body, as KidDetail lays them out
+const TrustSection = ({ kid: k }: { kid: Kid }) => (
+  <>
+    <TrustLine kid={k} />
+    <TrustBody kid={k} />
+  </>
+)
 const sent = (path: string, method = 'PATCH') => apiMock.mock.calls.find(([p, i]) => p === path && i?.method === method)?.[1]?.body
 
 beforeAll(() => {
@@ -53,7 +60,8 @@ describe('trust card', () => {
   test('on: chip, progress text from trust_goal, Change; switch off PATCHes false', async () => {
     wrap(<TrustSection kid={kid()} />)
     expect(screen.getByText('Trusted')).toBeInTheDocument()
-    expect(screen.getByText('18 of 30 to Proven')).toBeInTheDocument()
+    expect(screen.getByText('18/30')).toBeInTheDocument()
+    expect(screen.getByText('Next level: Proven')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('switch', { name: 'Trust mode' }))
     await waitFor(() => expect(sent('/kids/7')).toEqual({ trust_mode: false }))
   })
@@ -61,7 +69,7 @@ describe('trust card', () => {
   test('Proven has no progress line', () => {
     wrap(<TrustSection kid={kid({ trust_level: 2, trust_goal: null })} />)
     expect(screen.getByText('Proven')).toBeInTheDocument()
-    expect(screen.queryByText(/to Proven|to Trusted/)).toBeNull()
+    expect(screen.queryByText(/^\d+\/\d+$|Next level/)).toBeNull()
   })
 
   test('Change opens the level sheet; the line follows the pick; Save PATCHes trust_level', async () => {
@@ -82,27 +90,6 @@ describe('trust card', () => {
     await userEvent.click(within(d).getByRole('button', { name: 'New' }))
     await userEvent.click(within(d).getByRole('button', { name: 'Cancel' }))
     expect(sent('/kids/7')).toBeUndefined()
-  })
-})
-
-describe('#trust jump', () => {
-  let spy: jest.SpyInstance
-  beforeEach(() => {
-    Element.prototype.scrollIntoView = Element.prototype.scrollIntoView || (() => {}) // jsdom has none
-    spy = jest.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(() => {})
-  })
-  afterEach(() => {
-    spy.mockRestore()
-    window.history.replaceState(null, '', '/')
-  })
-  test('scrolls the card into view when the URL hash is #trust', () => {
-    window.location.hash = '#trust'
-    wrap(<TrustSection kid={kid()} />)
-    expect(spy).toHaveBeenCalledWith({ block: 'start' })
-  })
-  test('does not scroll without the hash', () => {
-    wrap(<TrustSection kid={kid()} />)
-    expect(spy).not.toHaveBeenCalled()
   })
 })
 
@@ -264,9 +251,4 @@ describe('focus returns after a sheet closes', () => {
     expect(sw).toHaveFocus()
     expect(sw).not.toBeDisabled()
   })
-})
-
-test('the Trust heading does not swallow its controls', () => {
-  wrap(<TrustSection kid={kid()} />)
-  expect(screen.getByRole('heading', { name: 'Trust mode' })).toBeInTheDocument()
 })

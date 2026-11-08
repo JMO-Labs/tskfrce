@@ -7,7 +7,7 @@ import { MantineProvider } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { api } from '@/v2/api'
 import { fridgeTheme } from '@/v2/theme'
-import { KidPhonesPanel } from '@/v2/manage/KidPhonesPanel'
+import { KidPhoneRows } from '@/v2/manage/KidPhonesPanel'
 import type { Kid } from '@/v2/types'
 
 jest.mock('@/v2/api', () => ({ ...(jest.requireActual('@/v2/api') as object), api: jest.fn() }))
@@ -41,22 +41,25 @@ beforeEach(() => {
   })
 })
 
-describe('KidPhonesPanel', () => {
+describe('KidPhoneRows', () => {
   test('rows show label and times', async () => {
-    render(wrap(<KidPhonesPanel kid={kid} />))
+    render(wrap(<KidPhoneRows kid={kid} />))
     expect(await screen.findByText('iPhone')).toBeInTheDocument()
     expect(screen.getByText(/^Added .+ · last used today$/)).toBeInTheDocument()
     expect(screen.getByText(/last used 3 days ago/)).toBeInTheDocument()
   })
 
-  test('empty state', async () => {
+  test('no phones: the help sits behind the i button', async () => {
     phones = []
-    render(wrap(<KidPhonesPanel kid={kid} />))
+    render(wrap(<KidPhoneRows kid={kid} />))
+    await screen.findByRole('button', { name: /Add a phone/ })
+    expect(screen.queryByText(/^Added /)).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'About phones' }))
     expect(await screen.findByText(/No phones yet\. Not every kid has one/)).toBeInTheDocument()
   })
 
   test('Remove confirms, deletes, refetches and toasts', async () => {
-    render(wrap(<KidPhonesPanel kid={kid} />))
+    render(wrap(<KidPhoneRows kid={kid} />))
     await userEvent.click(await screen.findByRole('button', { name: 'Remove iPhone' }))
     const dlg = await screen.findByRole('dialog')
     expect(within(dlg).getByText("Remove Mia's iPhone?")).toBeInTheDocument()
@@ -69,7 +72,7 @@ describe('KidPhonesPanel', () => {
 
   test('a single phone: no mention of other phones', async () => {
     phones = phones.slice(0, 1)
-    render(wrap(<KidPhonesPanel kid={kid} />))
+    render(wrap(<KidPhoneRows kid={kid} />))
     await userEvent.click(await screen.findByRole('button', { name: 'Remove iPhone' }))
     const dlg = await screen.findByRole('dialog')
     expect(within(dlg).getByText('It signs out right away. Scan a new code to add it back.')).toBeInTheDocument()
@@ -78,7 +81,7 @@ describe('KidPhonesPanel', () => {
   test('QR closes with a toast when the phone signs in', async () => {
     jest.useFakeTimers({ advanceTimers: true })
     try {
-      render(wrap(<KidPhonesPanel kid={kid} />))
+      render(wrap(<KidPhoneRows kid={kid} />))
       await userEvent.click(await screen.findByRole('button', { name: /Add a phone/ }))
       await screen.findByAltText('Sign-in code for Mia')
       phones = [{ id: 9, label: 'Galaxy', created_at: new Date().toISOString(), last_seen_at: new Date().toISOString() }, ...phones]
@@ -92,7 +95,7 @@ describe('KidPhonesPanel', () => {
   })
 
   test('Add a phone shows the QR', async () => {
-    render(wrap(<KidPhonesPanel kid={kid} />))
+    render(wrap(<KidPhoneRows kid={kid} />))
     await userEvent.click(await screen.findByRole('button', { name: /Add a phone/ }))
     expect(await screen.findByAltText('Sign-in code for Mia')).toBeInTheDocument()
     expect(apiMock).toHaveBeenCalledWith('/kids/3/enroll', { method: 'POST' })

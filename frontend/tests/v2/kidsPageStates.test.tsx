@@ -6,7 +6,7 @@ import { apiMock, detail, kids, mockRoute, serve, setupLibrary, wrap } from './l
 
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
 jest.mock('next/router', () => ({
-  useRouter: () => ({ query: mockRoute.query, push: mockRoute.push, replace: mockRoute.replace, pathname: '/kids' }),
+  useRouter: () => ({ query: mockRoute.query, push: mockRoute.push, replace: mockRoute.replace, beforePopState: jest.fn(), pathname: '/kids' }),
 }))
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 jest.mock('@/v2/parent/ParentShell', () => ({
@@ -24,27 +24,28 @@ jest.mock('@/v2/components/RequireParent', () => ({
 }))
 
 setupLibrary()
+const NAV = { shallow: true, scroll: false }
 
 describe('Kids & chores deep links and load states', () => {
   test('?section=chores&kid=N opens a new chore, not the kid profile', async () => {
     mockRoute.query = { section: 'chores', kid: '7' }
     render(wrap(<KidsPage />))
-    await waitFor(() => expect(mockRoute.replace).toHaveBeenCalledWith({ pathname: '/kids', query: { section: 'chores', item: 'new' } }))
+    await waitFor(() => expect(mockRoute.replace).toHaveBeenCalledWith({ pathname: '/kids', query: { section: 'chores', item: 'new' } }, undefined, NAV))
   })
 
-  test('?section=kids&kid=N still selects that kid', async () => {
+  test('?section=kids&kid=N&pin=1 opens that kid\'s Settings in edit with the PIN focused', async () => {
     mockRoute.query = { kid: '7', pin: '1' }
     render(wrap(<KidsPage />))
-    await waitFor(() => expect(mockRoute.replace).toHaveBeenCalledWith({ pathname: '/kids', query: { section: 'kids', item: '7', pin: '1' } }))
+    await waitFor(() =>
+      expect(mockRoute.replace).toHaveBeenCalledWith({ pathname: '/kids', query: { section: 'kids', item: '7', open: 'settings', edit: '1', pin: '1' } }, undefined, NAV),
+    )
   })
 
-  test('?kid=N#trust keeps the hash through the redirect', async () => {
+  test('?kid=N#trust opens that kid\'s Trust row', async () => {
     window.history.replaceState(null, '', '/kids?kid=7#trust')
     mockRoute.query = { kid: '7' }
     render(wrap(<KidsPage />))
-    await waitFor(() =>
-      expect(mockRoute.replace).toHaveBeenCalledWith(expect.objectContaining({ query: expect.objectContaining({ item: '7' }), hash: '#trust' })),
-    )
+    await waitFor(() => expect(mockRoute.replace).toHaveBeenCalledWith({ pathname: '/kids', query: { section: 'kids', item: '7', open: 'trust' } }, undefined, NAV))
     window.history.replaceState(null, '', '/')
   })
 
