@@ -13,7 +13,7 @@ const n: InboxItem = {
 describe('InboxRow', () => {
   test('integration_done: Approve is the one main button, Send back is in the menu', async () => {
     const f = () => {}
-    render(<MantineProvider env="test"><InboxRow n={n} live busy={false} sending={false} note="" onNote={f} onApprove={f} onSendBack={f} onDecide={f} onDismiss={f} onOpen={f} go={async () => {}} /></MantineProvider>)
+    render(<MantineProvider env="test"><InboxRow n={n} live busy={false} sending={false} note="" onNote={f} onApprove={f} onSendBack={f} onDecide={f} onDismiss={f} onLock={f} onOpen={f} go={async () => {}} /></MantineProvider>)
     expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument()
     expect(screen.queryByRole('menuitem', { name: 'Send back' })).toBeNull()
     await userEvent.click(screen.getByRole('button', { name: 'More for Dishes' }))

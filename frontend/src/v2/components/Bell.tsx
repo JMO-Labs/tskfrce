@@ -14,6 +14,8 @@ import { toastFail, toastOk } from '../notify'
 import { api } from '../api'
 import { isAlert, isNeedsYou, isToday } from './bellRules'
 import { InboxRow } from './InboxRow'
+import { useEscClose, useInboxLock } from './useInboxLock'
+import { MenuPortalContext } from '../parent/MoreMenu'
 
 type FilterKind = 'all' | 'needs-you' | 'alerts'
 const TABS: { key: FilterKind; label: string }[] = [
@@ -36,6 +38,7 @@ export function List({ onGo, sheet, page }: { onGo: () => void; sheet?: boolean;
   const approve = useApproveChore()
   const sendBack = useSendBack()
   const decideRedemption = useDecideRedemption()
+  const lock = useInboxLock()
   // the server sends the newest page; "Show older" appends further pages (the 30 s poll only refreshes the first)
   const [older, setOlder] = useState<{ items: InboxItem[]; more: boolean } | null>(null)
   const [loadingOlder, setLoadingOlder] = useState(false)
@@ -128,6 +131,7 @@ export function List({ onGo, sheet, page }: { onGo: () => void; sheet?: boolean;
       onSendBack={() => void handleSendBack(n)}
       onDecide={(yes) => handleDecide(n, yes)}
       onDismiss={() => dismiss.mutate(n.id)}
+      onLock={() => lock(n)}
       onOpen={() => (dest(n) ? goTo(n, dest(n)) : markRead(n))}
       go={(to) => goTo(n, to)}
     />
@@ -216,6 +220,7 @@ export function List({ onGo, sheet, page }: { onGo: () => void; sheet?: boolean;
 /** Parent notification bell: popover on desktop, full sheet under 768 px. */
 export function Bell({ placement = 'header' }: { placement?: 'rail' | 'header' }) {
   const [opened, setOpened] = useState(false)
+  const [dropdown, setDropdown] = useState<HTMLElement | null>(null)
   const small = useMediaQuery('(max-width: 767px)')
   const inbox = useInbox(false)
   const unread = inbox.data?.unread ?? 0
@@ -227,13 +232,8 @@ export function Bell({ placement = 'header' }: { placement?: 'rail' | 'header' }
   useOsNotify(inbox.data?.items, fromOs)
   useEffect(askOnFirstClick, [])
 
-  // Escape closes the desktop popover wherever focus is (focus stays on the bell)
-  useEffect(() => {
-    if (!opened) return
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpened(false) }
-    window.addEventListener('keydown', esc, true)
-    return () => window.removeEventListener('keydown', esc, true)
-  }, [opened])
+  const close = useCallback(() => setOpened(false), [])
+  useEscClose(opened, close)
 
   // On mobile, don't render bell for rail placement (header only)
   if (placement === 'rail' && small) {
@@ -251,7 +251,6 @@ export function Bell({ placement = 'header' }: { placement?: 'rail' | 'header' }
       {unread > 0 && <span className="p-bell-count">{unread > 9 ? '9+' : unread}</span>}
     </button>
   )
-  const close = () => setOpened(false)
   if (small)
     return (
       <>
@@ -276,6 +275,7 @@ export function Bell({ placement = 'header' }: { placement?: 'rail' | 'header' }
       position={placement === 'rail' ? 'right-start' : 'bottom-end'}
       width={400}
       trapFocus
+      closeOnEscape={false} // useEscClose handles Esc so a row menu can take it first
       returnFocus
       // §2.2 pointer and sticker shadow (CSS)
       withArrow
@@ -287,8 +287,10 @@ export function Bell({ placement = 'header' }: { placement?: 'rail' | 'header' }
       <Tooltip label="Notifications" openDelay={400} disabled={opened}>
         <Popover.Target>{btn}</Popover.Target>
       </Tooltip>
-      <Popover.Dropdown aria-label="Notifications" className="p-pop p-bell-pop">
-        <List onGo={close} />
+      <Popover.Dropdown ref={setDropdown} aria-label="Notifications" className="p-pop p-bell-pop">
+        <MenuPortalContext.Provider value={dropdown}>
+          <List onGo={close} />
+        </MenuPortalContext.Provider>
       </Popover.Dropdown>
     </Popover>
   )

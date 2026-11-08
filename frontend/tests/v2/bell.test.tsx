@@ -109,6 +109,28 @@ describe('Bell', () => {
     expect(heads[1].textContent).not.toContain('Mark all read')
   })
 
+  test('Esc in a "..." menu closes the menu, not the bell, and focus returns to "..."', async () => {
+    serve([item(1, { kind: 'level_up' })], 1)
+    wrap(<Bell />)
+    await userEvent.click(await screen.findByRole('button', { name: /^Notifications/ }))
+    const more = await screen.findByRole('button', { name: 'More for Item 1', hidden: true })
+    await userEvent.click(more)
+    await screen.findByRole('menuitem', { name: 'Dismiss', hidden: true })
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('menuitem', { name: 'Dismiss', hidden: true })).toBeNull())
+    expect(screen.getByRole('button', { name: 'More for Item 1', hidden: true })).toBeTruthy()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'More for Item 1', hidden: true })).toHaveFocus())
+  })
+
+  test('a bypass alert can lock all of the kid\'s devices from "..."', async () => {
+    serve([item(1, { kind: 'device_bypass', device_id: 9, kid_id: 4, kid_name: 'Mia' })])
+    wrap(<Bell />)
+    await userEvent.click(await screen.findByRole('button', { name: /Notifications/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'More for Item 1', hidden: true }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: "Lock all Mia's devices", hidden: true }))
+    expect(apiMock).toHaveBeenCalledWith('/kids/4/override', expect.objectContaining({ method: 'POST', body: { action: 'lock' } }))
+  })
+
   test('lists items in order', async () => {
     serve([
       item(3, { run_id: 7, kind: 'chore_submitted' }),
