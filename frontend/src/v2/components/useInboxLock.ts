@@ -20,7 +20,7 @@ export function useInboxLock() {
 export function useEscClose(opened: boolean, close: () => void) {
   useEffect(() => {
     if (!opened) return
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && !(e.target as Element | null)?.closest?.('[role="menu"], [aria-expanded="true"], [data-mantine-stop-propagation]')) close() }
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape' && !(e.target as Element | null)?.closest?.('[role="menu"], [aria-haspopup="menu"][aria-expanded="true"], [data-mantine-stop-propagation]')) close() }
     window.addEventListener('keydown', esc, true)
     return () => window.removeEventListener('keydown', esc, true)
   }, [opened, close])

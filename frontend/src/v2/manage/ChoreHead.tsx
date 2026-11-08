@@ -21,7 +21,7 @@ export function ChoreHead({ title, sub, type, onDuplicate, onDelete, onEditType 
       label={`Notes kids can send, ${type.name}`}
       width={280}
       target={
-        <button type="button" className="kd-pill" aria-label={`${type.name} type, notes kids can send`} aria-haspopup="dialog">
+        <button type="button" className="kd-pill" aria-label={`${type.name} type, notes kids can send`}>
           <Icon name={type.glyph} size={16} />
           {type.name}
         </button>
