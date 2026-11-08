@@ -36,7 +36,7 @@ export function KidDetail({ kid, onDeleted, guardRef }: { kid: Kid; onDeleted: (
   const edit = useFocusParam('edit') // '1' = Profile as inputs (second level)
   const editing = edit.open === '1' && rows.open === 'settings'
   const [dirty, setDirty] = useState(false)
-  const { guard, sheet } = useDiscardGuard(dirty)
+  const { guard, release, sheet } = useDiscardGuard(dirty)
   const [points, setPoints] = useState<'bonus' | 'deduct' | null>(null)
   const [removing, setRemoving] = useState(false)
   const del = useSingle(useDeleteKid())
@@ -159,7 +159,7 @@ export function KidDetail({ kid, onDeleted, guardRef }: { kid: Kid; onDeleted: (
         title={`Remove ${name}?`}
         body={`Removing ${name} deletes their chores and frees their devices.`}
         confirmLabel="Remove"
-        onConfirm={() => del(kid.id, { onSuccess: onDeleted, onError: toastFail })}
+        onConfirm={() => del(kid.id, { onSuccess: () => { release(); onDeleted() }, onError: toastFail })}
         onClose={() => setRemoving(false)}
       />
       {sheet}
