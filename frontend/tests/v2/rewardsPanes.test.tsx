@@ -261,37 +261,80 @@ const hist = {
 }
 
 describe('rewards: history', () => {
-  test('KPIs, chips, amounts; a kid filter refetches with kid_id', async () => {
-    data({ '/redemptions/history?days=30': hist, '/redemptions/history?days=30&kid_id=8': { ...hist, rows: [hist.rows[1]] } })
+  const open = () => {
     mockRoute.query = { section: 'rewards', item: 'history' }
     render(wrap(<KidsPage />))
-    const pane = detail()
-    expect(await within(pane).findByText('6h 15m')).toBeInTheDocument()
-    expect(within(pane).getByText('2,140')).toBeInTheDocument()
+    return detail()
+  }
+
+  test('calm: one totals chip, no KPI tiles; rows show name, kid and when, Auto and Declined chips, amounts', async () => {
+    data({ '/redemptions/history?days=30': hist })
+    const pane = open()
+    expect(await within(pane).findByRole('button', { name: /2,140 pts spent/ })).toBeInTheDocument()
+    expect(within(pane).queryByText('Screen time bought')).toBeNull()
     const maya = within(pane).getByText('15 min screen time').closest('li') as HTMLElement
-    expect(maya).toHaveTextContent('auto-approved')
+    expect(maya).toHaveTextContent('Maya')
     expect(maya).toHaveTextContent('Auto')
     expect(maya).toHaveTextContent('−20')
+    expect(maya).not.toHaveTextContent('auto-approved')
     const leo = within(pane).getByText('New game').closest('li') as HTMLElement
-    expect(leo).toHaveTextContent('declined by Mom · “let\'s talk Sat”')
     expect(leo).toHaveTextContent('Declined')
+    expect(leo).not.toHaveTextContent('Mom')
+  })
+
+  test('totals pop-over holds all four figures', async () => {
+    data({ '/redemptions/history?days=30': hist })
+    const pane = open()
+    await userEvent.click(await within(pane).findByRole('button', { name: /pts spent/ }))
+    const pop = await screen.findByText('Screen time bought')
+    expect(pop.parentElement).toHaveTextContent('6h 15m')
+    expect(screen.getByText('Approved').parentElement).toHaveTextContent('18')
+    expect(screen.getByText('Declined', { selector: 'div' }).parentElement).toHaveTextContent('3')
+  })
+
+  test('a row opens a pop-over with who decided and the note', async () => {
+    data({ '/redemptions/history?days=30': hist })
+    const pane = open()
+    await userEvent.click((await within(pane).findByText('New game')).closest('button') as HTMLElement)
+    expect(await screen.findByText('Declined by Mom')).toBeInTheDocument()
+    expect(screen.getByText('“let\'s talk Sat”')).toBeInTheDocument()
+  })
+
+  test('a kid pill refetches with kid_id; All kids resets', async () => {
+    data({ '/redemptions/history?days=30': hist, '/redemptions/history?days=30&kid_id=8': { ...hist, rows: [hist.rows[1]] } })
+    const pane = open()
+    await within(pane).findByText('15 min screen time')
     await userEvent.click(within(pane).getByRole('button', { name: 'Leo' }))
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/redemptions/history?days=30&kid_id=8'))
     await waitFor(() => expect(within(pane).queryByText('15 min screen time')).toBeNull())
+    expect(within(pane).getByRole('button', { name: 'Leo' })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(within(pane).getByRole('button', { name: 'All kids' }))
+    expect(await within(pane).findByText('15 min screen time')).toBeInTheDocument()
   })
 
-  test('Export CSV downloads rewards-history.csv with a header line', async () => {
+  test('type switch All / Rewards / Screen time refetches with kind', async () => {
+    data({ '/redemptions/history?days=30': hist, '/redemptions/history?days=30&kind=reward': { ...hist, rows: [hist.rows[1]] } })
+    const pane = open()
+    await within(pane).findByText('15 min screen time')
+    const group = within(pane).getByRole('group', { name: 'Type' })
+    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(['All', 'Rewards', 'Screen time'])
+    await userEvent.click(within(group).getByRole('button', { name: 'Rewards' }))
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/redemptions/history?days=30&kind=reward'))
+    await userEvent.click(within(group).getByRole('button', { name: 'All' }))
+    expect(await within(pane).findByText('15 min screen time')).toBeInTheDocument()
+  })
+
+  test('CSV export is reachable and downloads rewards-history.csv with a header line', async () => {
     data({ '/redemptions/history?days=30': hist })
-    mockRoute.query = { section: 'rewards', item: 'history' }
-    render(wrap(<KidsPage />))
-    await userEvent.click(await within(detail()).findByRole('button', { name: 'Export CSV' }))
+    const pane = open()
+    await userEvent.click(await within(pane).findByRole('button', { name: 'Export CSV' }))
     expect(mockDownload).toHaveBeenCalledWith('rewards-history.csv', expect.stringMatching(/^date,kid,item,kind,status,points,decided_by,note\n/))
   })
 
-  test('no rows shows Nothing yet', async () => {
+  test('no rows shows Nothing yet and disables Export CSV', async () => {
     data({ '/redemptions/history?days=30': { totals: { spent: 0, screen_minutes: 0, approved: 0, declined: 0 }, rows: [] } })
-    mockRoute.query = { section: 'rewards', item: 'history' }
-    render(wrap(<KidsPage />))
-    expect(await within(detail()).findByText('Nothing yet')).toBeInTheDocument()
+    const pane = open()
+    expect(await within(pane).findByText('Nothing yet')).toBeInTheDocument()
+    expect(within(pane).getByRole('button', { name: 'Export CSV' })).toBeDisabled()
   })
 })
