@@ -94,6 +94,10 @@ Parents get overwhelmed when a screen shows too much at once (owner). The audit 
 - **Scope** (my call): the 14 busy screens in the audit's ranked table, rows 1–17 except More. The 10 screens the audit calls calm keep their layout, and only swap in shared widgets where that changes nothing visible (for example InfoPop for help text).
 - **Busy screens without a mockup** (my call, from the owner's mockups-first rule): setup step 3, the notifications inbox, Settings › Family and rewards history. They get a v3 mockup for the owner after the shared widgets are built and before those screens change. The other screens go ahead in the meantime.
 - **Two levels of focus at most** (my call). A section plus one item inside it, for example `/?kid=maya&chore=12`. The item opens as today's chore sheet. Old links (`/?tab=needs`, `/?item=`, `/?chore=`, `/kids?kid=`) keep working through aliases. On the Kid page, the Chores row expands in place to the kid's chore list, and each chore links to the chore editor.
+- **v3 mockup approved** (owner, 2026-11-08). Setup step 3, the notifications inbox, Settings › Family and rewards history are built to `declutter-v3.html`. Owner answers:
+  - Inbox rows carry one main button (Approve, View or Who's this?). Send back, Decline and Dismiss live in the row's "…" menu.
+  - Rewards history rows are a name with a small "kid · when" line, and the type filter is an All / Rewards / Screen time switch, as drawn.
+  - **Network moves to Devices** (owner). The family-wide Network row (block new devices, Home box status) leaves Settings › Family. It becomes one calm "Home network" summary row at the top of the Devices list, with the same summary and body as the v3 Network row (my call on where in Devices). Settings › Family keeps Household, Bedtime & recap and Points rules.
 - **Autosave for fields that depend on each other** (my call). A pair of fields, such as a time range or a limit against a budget, saves when the pair is complete and valid. Until then it shows an inline hint and nothing is sent. The backend is unchanged because it already validates the whole update.
 
 ## Screens (as in the mockups)
