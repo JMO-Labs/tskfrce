@@ -128,7 +128,7 @@ export function ChoreDetail({ kids, chore, onSelect, onGuard }: Props) {
       // Due by is the chore's own field: it overrides a closed form's stale copy, and reaches assignments no form changed
       const dirtyForms = forms.filter((f) => f.dirty)
       for (const f of dirtyForms) await saveAssignment.mutateAsync({ choreId: chore?.id ?? c.id, id: f.id, body: dueEdit === undefined ? f.body : { ...f.body, due_time: dueEdit || null } })
-      if (dueEdit !== undefined) for (const a of chore?.assignments ?? []) if (!dirtyForms.some((f) => f.id === a.id)) await saveAssignment.mutateAsync({ choreId: c.id, id: a.id, body: dueBody(a, dueEdit) })
+      if (dueEdit !== undefined) for (const a of chore?.assignments ?? []) if (!dirtyForms.some((f) => f.id === a.id) && (a.due_time?.slice(0, 5) ?? '') !== dueEdit) await saveAssignment.mutateAsync({ choreId: c.id, id: a.id, body: dueBody(a, dueEdit) })
       drafts.delete(key)
       setDue(undefined)
       setPending({}) // saved; an open form reports again if it changes
@@ -164,15 +164,16 @@ export function ChoreDetail({ kids, chore, onSelect, onGuard }: Props) {
   }, [dirty, key, gen, title, points, picked, steps, next, photo, check])
 
   const duplicate = () =>
-    guard(() =>
+    guard(() => {
+      discard() // Discard was chosen: start clean, so a failed copy leaves no skip-the-prompt flag behind
       copyOnce(chore!.id, {
         onError: toastFail,
         onSuccess: (c) => {
           toastOk('Copied')
           onSelect(c.id)
         },
-      }),
-    )
+      })
+    })
 
   const byId = new Map(kids.map((k) => [k.id, k]))
   const names = (chore ? usedBy(chore) : []).flatMap((id) => (byId.has(id) ? [nameOf(byId.get(id)!)] : []))
@@ -238,7 +239,7 @@ export function ChoreDetail({ kids, chore, onSelect, onGuard }: Props) {
         onCancel={cancel}
         saveLabel="Save chore"
         disabled={!title.trim() || !!pointsErr || formsBad || saving}
-        note={restored ? 'Unsaved changes (restored)' : undefined}
+        note={formsBad ? 'Finish Who & when to save' : restored ? 'Unsaved changes (restored)' : undefined}
       />
       {sheet}
     </div>

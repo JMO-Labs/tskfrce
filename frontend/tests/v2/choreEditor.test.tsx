@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, test } from '@jest/globals'
 import type { Mock } from 'jest-mock'
 import type { ReactNode } from 'react'
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MantineProvider } from '@mantine/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -83,7 +83,7 @@ const editor = async (query: Record<string, string> = {}, c: LibChore | null = l
   fakeRouter.reset('/kids', { section: 'chores', item: String(c?.id ?? 'new'), ...query })
   const view = render(wrapUi(<ChoreDetail kids={kids} chore={c ?? undefined} onSelect={jest.fn()} />))
   await screen.findAllByText(/pts/)
-  if (c) await screen.findAllByRole('button', { name: 'School' }) // the type chip: types have landed
+  if (c) await screen.findAllByRole('button', { name: /School type, notes kids can send/ }) // the type chip: types have landed
   return view
 }
 const head = (id: string) => document.querySelector<HTMLElement>(`[data-focus-head="${id}"]`)!
@@ -135,7 +135,7 @@ describe('calm, then focus', () => {
 
   test('type chip pop-over holds the notes kids can send', async () => {
     await editor()
-    await userEvent.click(await screen.findByRole('button', { name: 'School' }))
+    await userEvent.click(await screen.findByRole('button', { name: /School type, notes kids can send/ }))
     expect(await screen.findByText('Notes kids can send')).toBeInTheDocument()
     expect(screen.getByText("From the School type. Kids pick one when they're stuck.")).toBeInTheDocument()
     for (const n of ["Don't understand it", 'Need help', 'Ran out of time']) expect(screen.getByText(n)).toBeInTheDocument()
@@ -165,9 +165,26 @@ describe('calm, then focus', () => {
     expect(calls('PATCH').map(([p]) => p)).toEqual(['/chores/404', '/assignments/504'])
   })
 
+  test('the type chip announces a pop-over', async () => {
+    await editor()
+    const chip = await screen.findByRole('button', { name: 'School type, notes kids can send' })
+    expect(chip).toHaveAttribute('aria-haspopup', 'dialog')
+    expect(chip).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(chip)
+    expect(chip).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  test('an unfinished Who & when form in a closed row says why Save is off', async () => {
+    await editor({ open: 'who' })
+    await userEvent.click(await screen.findByRole('button', { name: 'Some days' }))
+    await userEvent.click(head('opts'))
+    expect(screen.getByText('Finish Who & when to save')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save chore' })).toBeDisabled()
+  })
+
   test('Edit type in the chip pop-over opens the type panel', async () => {
     await editor()
-    await userEvent.click(await screen.findByRole('button', { name: 'School' }))
+    await userEvent.click(await screen.findByRole('button', { name: /School type, notes kids can send/ }))
     await userEvent.click(await screen.findByRole('button', { name: 'Edit School type' }))
     expect(await screen.findByDisplayValue('School')).toBeInTheDocument()
   })
@@ -207,6 +224,16 @@ describe('calm, then focus', () => {
     expect(fakeRouter.query.open).toBe('basics')
     expect(fakeRouter.push).not.toHaveBeenCalled()
     expect(fakeRouter.stack).toHaveLength(1)
+  })
+})
+
+describe('Due by only touches assignments whose time changes', () => {
+  test('the assignment already at the new time is not PATCHed', async () => {
+    const two = { ...library[0], assignments: [{ ...asg(504, 404), due_time: '18:00' }, { ...asg(505, 404), due_time: '07:30' }] }
+    await editor({ open: 'opts' }, two)
+    fireEvent.change(screen.getByLabelText(/Due by/), { target: { value: '07:30' } })
+    await userEvent.click(screen.getByRole('button', { name: 'Save chore' }))
+    await waitFor(() => expect(calls('PATCH').map(([p]) => p)).toEqual(['/chores/404', '/assignments/504']))
   })
 })
 
@@ -250,6 +277,37 @@ describe('leaving with unsaved edits', () => {
     await page({ item: '404', open: 'basics' })
     expect(screen.getByLabelText('Chore name')).toHaveValue('Homework')
     expect(screen.queryByText('Unsaved changes (restored)')).toBeNull()
+  })
+
+  test('a failed Duplicate after Discard leaves no skip-the-prompt flag behind', async () => {
+    apiMock.mockImplementation(async (path, init) => {
+      if (init?.method === 'POST') throw new Error('copy failed')
+      if (path === '/chore-types') return types
+      return path === '/kids' ? kids : path === '/chores/' ? library : { kids: [] }
+    })
+    await dirty()
+    await userEvent.click(within(screen.getByTestId('detail')).getByRole('button', { name: 'More' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Duplicate' }))
+    await userEvent.click(within(await screen.findByRole('dialog', { name: 'Discard changes?' })).getByRole('button', { name: 'Discard' }))
+    await waitFor(() => expect(calls('POST')).toHaveLength(1))
+    await userEvent.type(screen.getByLabelText('Chore name'), 'y')
+    await userEvent.click(within(screen.getByTestId('list')).getByRole('button', { name: /Dishes/ }))
+    expect(await screen.findByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument()
+  })
+
+  test('Duplicate while dirty asks once, then opens the copy', async () => {
+    const copy = chore(406, 'Homework (copy)')
+    apiMock.mockImplementation(async (path, init) => {
+      if (init?.method === 'POST') return copy
+      if (path === '/chore-types') return types
+      return path === '/kids' ? kids : path === '/chores/' ? [...library, copy] : { kids: [] }
+    })
+    await dirty()
+    await userEvent.click(within(screen.getByTestId('detail')).getByRole('button', { name: 'More' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Duplicate' }))
+    await userEvent.click(within(await screen.findByRole('dialog', { name: 'Discard changes?' })).getByRole('button', { name: 'Discard' }))
+    await waitFor(() => expect(fakeRouter.query.item).toBe('406'))
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   test('a clean editor switches straight away', async () => {

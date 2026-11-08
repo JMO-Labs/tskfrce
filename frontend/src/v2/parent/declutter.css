@@ -35,9 +35,11 @@
 [data-look='parent'] .p-srow-aside { flex: none; padding-right: 14px; }
 /* (i) right after the title: a hidden copy of the title keeps it beside the text, whatever the font */
 [data-look='parent'] .p-srow-top { position: relative; }
-[data-look='parent'] .p-srow-info { position: absolute; top: 0; bottom: 0; left: 42px; display: flex; align-items: center; gap: 2px; pointer-events: none; font-size: 14.5px; font-weight: 700; }
+/* same padding/gap as .p-srow-l1: hidden icon slot, hidden title, then the button */
+[data-look='parent'] .p-srow-info { position: absolute; inset: 0; display: flex; align-items: center; gap: 10px; padding: 0 14px; pointer-events: none; font-size: 14.5px; font-weight: 700; }
 [data-look='parent'] .p-srow-info > span { visibility: hidden; white-space: nowrap; }
-[data-look='parent'] .p-srow-info > button { pointer-events: auto; }
+[data-look='parent'] .p-srow-info-i { width: 18px; flex: none; }
+[data-look='parent'] .p-srow-info > button { pointer-events: auto; margin-left: -8px; }
 [data-look='parent'] .p-srow-l2 { display: flex; align-items: center; gap: 10px; padding: 0 14px 12px 42px; }
 [data-look='parent'] .p-srow-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; outline: none; }
 

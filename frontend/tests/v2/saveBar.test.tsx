@@ -48,6 +48,21 @@ test('useDiscardGuard asks before leaving a dirty form', async () => {
   expect(go).toHaveBeenCalledTimes(1)
 })
 
+test('after Discard a second guard() goes through without asking again', async () => {
+  const user = userEvent.setup()
+  const go = jest.fn(), go2 = jest.fn()
+  function Twice() {
+    const { guard, sheet } = useDiscardGuard(true)
+    return <><button onClick={() => guard(go)}>first</button><button onClick={() => guard(go2)}>second</button>{sheet}</>
+  }
+  wrap(<Twice />)
+  await user.click(screen.getByRole('button', { name: 'first' }))
+  await user.click(await screen.findByRole('button', { name: 'Discard' }))
+  await user.click(screen.getByRole('button', { name: 'second' }))
+  expect(go2).toHaveBeenCalledTimes(1)
+  expect(screen.queryByRole('dialog')).toBeNull()
+})
+
 test('useDiscardGuard passes straight through when clean', async () => {
   const user = userEvent.setup()
   const go = jest.fn()
