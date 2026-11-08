@@ -19,7 +19,7 @@ export function LockHistory({ history, timeZone, now }: { history: DeviceEvent[]
             return (
               <div key={e.id} className="pk-kv">
                 <span>
-                  <Icon name={t.icon} size={16} />
+                  <span className="da-tile"><Icon name={t.icon} size={16} /></span>
                   {t.title}
                 </span>
                 <b>{whenLabel(e.at, timeZone, now)}</b>

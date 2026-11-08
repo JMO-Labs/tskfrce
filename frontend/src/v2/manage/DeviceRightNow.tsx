@@ -1,6 +1,5 @@
 import { clockText } from '@/v2/clockText'
 import { useExpired } from '@/v2/hooks/useDevices'
-import { Chip } from '@/v2/parent/Chip'
 import type { Device } from '@/v2/types'
 import { whyText } from './activityText'
 import { ago } from './deviceMeta'
@@ -12,19 +11,11 @@ export function DeviceRightNow({ device, timeZone }: { device: Device; timeZone?
   // an override that ran out while the screen was open no longer counts
   const expired = useExpired(device.override?.expires_at)
   const ov = expired ? null : device.override
-  const state =
-    device.status === 'guest' ? (['grey', 'person', 'Guest'] as const)
-    : device.online ? (['acc', 'lock_open', 'Open'] as const)
-    : (['red', 'lock', 'Locked'] as const)
   const verb = ov?.action === 'lock' ? 'Locked' : 'Unlocked'
   const override = !ov ? 'None · on schedule' : ov.expires_at ? `${verb} until ${clock(ov.expires_at, timeZone)}` : verb
   const why = whyText(device)
   return (
     <div className="dv-now">
-      <div className="pk-kv">
-        <span>State</span>
-        <Chip tone={state[0]} icon={state[1]}>{state[2]}</Chip>
-      </div>
       {why && (
         <div className="pk-kv">
           <span>Why</span>

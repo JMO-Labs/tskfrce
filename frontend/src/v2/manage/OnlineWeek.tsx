@@ -17,10 +17,12 @@ export function WeekBars({ device }: { device: Device }) {
   )
 }
 
-/** Mean online hours per day, rounded, from the activity feed (null until it loads). */
-export function useDailyHours(device: Device): number | null {
+/** Mean online time per day as text ("~3 h", "<1 h"), from the activity feed; null until it loads. */
+export function useDailyHours(device: Device): string | null {
   const days = useDeviceActivity(device.id).data?.days
-  return days?.length ? Math.round(days.reduce((n, d) => n + d.online_minutes, 0) / days.length / 60) : null
+  if (!days?.length) return null
+  const h = Math.round(days.reduce((n, d) => n + d.online_minutes, 0) / days.length / 60)
+  return h < 1 ? '<1 h' : `~${h} h`
 }
 
 /** "Online by hour": one 24 h bar per day (online / locked), newest first. */
