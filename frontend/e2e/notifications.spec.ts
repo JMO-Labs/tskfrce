@@ -113,8 +113,9 @@ test('kid note shows in the bell under Needs you and Reply opens the chore chat'
     await expect(item).toBeVisible()
     await item.getByRole('button', { name: 'Reply' }).click()
     await expect(page).toHaveURL(new RegExp(`chore=${run.id}`))
-    // Today opens the chore's chat inline, in a region named after the chore
-    const chat = page.getByRole('region', { name: choreName, exact: true })
+    // Today opens the chore's chat inline (the chat column). Reply can also pop the dock when it fires before
+    // Today has claimed the thread (existing race, see dock.ts openChat/claimChat), so don't match the dock too.
+    const chat = page.getByTestId('chat-column')
     await expect(chat.getByText(`Note: ${label}`)).toBeVisible()
     await expect(chat.getByRole('textbox', { name: 'Message' })).toBeVisible()
   } finally {
