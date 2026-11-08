@@ -11,7 +11,7 @@ import { KidCelebrations } from '@/v2/manage/KidCelebrations'
 import { FamilyCard } from '@/v2/manage/FamilyCards'
 import { KidAlerts } from '@/v2/kid/KidAlerts'
 import { severity } from '@/v2/components/bellRules'
-import { BellActions } from '@/v2/components/BellActions'
+import { InboxRow } from '@/v2/components/InboxRow'
 import type { Family, Kid } from '@/v2/types'
 
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
@@ -199,8 +199,10 @@ describe('alerts', () => {
     const n = { id: 1, kind: 'boost', glyph: null } as never
     expect(severity(n)).toEqual({ name: 'bolt', tone: 'ok' })
     const go = jest.fn(async () => {})
-    render(<BellActions n={{ ...n, pending: false } as never} busy={false} sending={false} note="" onNote={() => {}} onApprove={() => {}} onSendBack={() => {}} onDecide={() => {}} go={go} />)
-    await userEvent.click(screen.getByRole('button', { name: 'See Happy Hour' }))
+    const f = () => {}
+    render(<MantineProvider env="test"><InboxRow n={{ ...n, pending: false, title: 'Boost', created_at: new Date().toISOString() } as never} live busy={false} sending={false} note="" onNote={f} onApprove={f} onSendBack={f} onDecide={f} onDismiss={f} onOpen={f} go={go} /></MantineProvider>)
+    await userEvent.click(screen.getByRole('button', { name: 'More for Boost' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'See Happy Hour' }))
     expect(go).toHaveBeenCalledWith('/')
   })
 
