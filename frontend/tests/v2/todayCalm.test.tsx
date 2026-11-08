@@ -29,6 +29,7 @@ const need = (id: number): NeedsItem => ({ type: 'chore', id, kid_id: 3, kid_nam
 const base = (o: Partial<Today> = {}): Today => ({ day: '2026-10-24', pending_approvals: 0, new_devices: [], kids: [maya, leo], needs_you: [1, 2, 3, 4, 5, 6, 7].map(need), ...o })
 const dev = (id: number, seen: boolean) => ({ id, name: `Dev${id}`, mac: 'm', vendor: null, status: 'assigned', owner_ids: [3], group_ids: [], online: seen, override: null, last_seen: null, seen_now: seen, resisting: false, exempt: false })
 
+const NEEDS = /^Needs you/
 const MAYA = /^Maya(?! details)/
 const LEO = /^Leo(?! details)/
 let state: { fam: Record<string, unknown>; today: Today | Promise<never>; devices: unknown[]; widgets: unknown[]; hh: unknown[]; dismissed: string[] }
@@ -80,7 +81,7 @@ describe('calm Today', () => {
     const { unmount } = wrap()
     const strip = await screen.findByRole('button', { name: /^Needs you · 7/ })
     expect(strip).toHaveAttribute('aria-expanded', 'false')
-    expect(strip).toHaveAttribute('aria-controls', 'needs-body')
+    expect(strip).not.toHaveAttribute('aria-controls') // its body is not in the DOM while closed
     unmount()
     state.today = base({ needs_you: [] })
     wrap()
@@ -95,6 +96,21 @@ describe('calm Today', () => {
     expect(fakeRouter.query.focus).toBe('needs')
     const region = screen.getByRole('region', { name: 'Needs you' })
     expect(within(region).getByText('Chore 1')).toBeInTheDocument()
+  })
+
+  test('aria-controls is set only while the body exists, and then points at it', async () => {
+    state.devices = [dev(1, true)]
+    wrap()
+    for (const name of [NEEDS, MAYA, /Devices/]) {
+      const h = await screen.findByRole('button', { name }) // rows remount while a kid is open, so look up each time
+      expect(h).not.toHaveAttribute('aria-controls')
+      await userEvent.click(h)
+      const id = h.getAttribute('aria-controls')
+      expect(id).toBeTruthy()
+      expect(document.getElementById(id!)).not.toBeNull()
+      await userEvent.click(h)
+      expect(h).not.toHaveAttribute('aria-controls')
+    }
   })
 
   test('there are no Today / Needs you tabs', async () => {

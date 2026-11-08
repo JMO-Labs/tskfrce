@@ -51,7 +51,7 @@ export function SummaryRow({ id, icon, title, summary, line2, aside, focus, chil
           type="button"
           className="p-srow-head"
           aria-expanded={open}
-          aria-controls={`srow-${id}-body`}
+          aria-controls={open ? `srow-${id}-body` : undefined}
           data-focus-head={id}
           onClick={() => focus.toggle(id)}
           onTouchStart={onTouchStart}
