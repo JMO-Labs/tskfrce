@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from '@jest/globals'
 import type { Mock } from 'jest-mock'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MantineProvider } from '@mantine/core'
@@ -219,6 +219,17 @@ describe('Bell', () => {
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByText('Item 1')).toBeNull())
     expect(bell.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  test('Escape with focus on the bell itself still closes the popover', async () => {
+    serve([item(1, { run_id: 7 })])
+    wrap(<Bell />)
+    const bell = await screen.findByRole('button', { name: /Notifications/ })
+    await userEvent.click(bell)
+    expect(await screen.findByText('Item 1')).toBeTruthy()
+    act(() => bell.focus())
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByText('Item 1')).toBeNull())
   })
 
   test('earlier group for read items', async () => {
