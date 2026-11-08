@@ -40,6 +40,7 @@ test('chore model: type, chained steps, kid note, skip, deduction', async ({ pag
     await page.getByLabel('Add a note').press('Enter')
     await page.getByRole('button', { name: 'Create type' }).click()
     await expect(page.getByRole('button', { name: typeName, exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await page.locator('[data-focus-head="steps"]').click()
     for (const s of ['Sort the shelves', 'Sweep the floor']) {
       await page.getByLabel('Add a step').fill(s)
       await page.getByLabel('Add a step').press('Enter')
@@ -48,7 +49,8 @@ test('chore model: type, chained steps, kid note, skip, deduction', async ({ pag
     await expect(page.getByRole('button', { name: 'Must be done after the step above' })).toBeVisible()
     await page.getByRole('button', { name: 'Save chore' }).click()
 
-    const who = page.getByRole('region', { name: 'Who and when' })
+    await page.locator('[data-focus-head="who"]').click() // saving a new chore leaves the editor calm
+    const who = page.getByRole('region', { name: 'Who & when' })
     await who.getByRole('button', { name: kidName }).click()
     await page.getByRole('button', { name: 'Save chore' }).click() // one Save sends the chore and Who & when
     await expect(page.getByRole('button', { name: new RegExp(`^${choreName}`) }).first()).toContainText('2 steps')

@@ -38,6 +38,7 @@ test.describe('parent journeys', () => {
       // the editor swaps from the open chore to the empty form after the route change
       await expect(page.getByRole('heading', { name: 'New chore' })).toBeVisible()
       await page.getByLabel('Chore name', { exact: true }).fill('E2E race')
+      await page.locator('[data-focus-head="steps"]').click()
       for (const s of ['First step', 'Second step']) {
         await page.getByLabel('Add a step').fill(s)
         await page.getByLabel('Add a step').press('Enter')
@@ -45,7 +46,8 @@ test.describe('parent journeys', () => {
       await page.getByRole('button', { name: 'Save chore' }).click()
 
       // saving a new chore opens it; assign it to both kids as a race
-      const who = page.getByRole('region', { name: 'Who and when' })
+      await page.locator('[data-focus-head="who"]').click()
+      const who = page.getByRole('region', { name: 'Who & when' })
       await who.getByRole('button', { name: `Race A ${tag}` }).click()
       await who.getByRole('button', { name: `Race B ${tag}` }).click()
       await who.getByText('First one wins', { exact: true }).click()
@@ -53,7 +55,9 @@ test.describe('parent journeys', () => {
       const card = page.getByRole('button', { name: /^E2E race/ }).first()
       await expect(card).toContainText('2 steps')
 
-      await page.getByRole('button', { name: 'Duplicate' }).click()
+      await page.getByRole('button', { name: 'More' }).click()
+      await page.getByRole('menuitem', { name: 'Duplicate' }).click()
+      await page.locator('[data-focus-head="basics"]').click() // the copy opens calm
       const name = page.getByLabel('Chore name', { exact: true })
       await expect(name).toHaveValue('E2E race (copy)') // wait for the editor to switch to the copy
       await name.fill('E2E race edited')

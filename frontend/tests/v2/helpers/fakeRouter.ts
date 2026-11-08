@@ -7,7 +7,8 @@ type Target = { pathname?: string; query?: Query }
 const subs = new Set<() => void>()
 let version = 0
 const notify = () => { version++; subs.forEach((f) => f()) }
-const clean = (q: Query = {}): Query => Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined))
+// like the real router, query values come back as strings
+const clean = (q: Query = {}): Query => Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined).map(([k, v]) => [k, Array.isArray(v) ? v : String(v)]))
 const sync = () => {
   fakeRouter.query = fakeRouter.stack[fakeRouter.stack.length - 1]
   const qs = new URLSearchParams(Object.entries(fakeRouter.query).flatMap(([k, v]) => (Array.isArray(v) ? v : [v ?? '']).map((x) => [k, x] as [string, string]))).toString()

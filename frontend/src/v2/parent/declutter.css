@@ -33,6 +33,11 @@
 [data-look='parent'] .p-srow-chev { color: var(--p-sub); transition: transform 180ms; }
 [data-look='parent'] .p-srow[data-open] .p-srow-chev { transform: rotate(90deg); }
 [data-look='parent'] .p-srow-aside { flex: none; padding-right: 14px; }
+/* (i) right after the title: a hidden copy of the title keeps it beside the text, whatever the font */
+[data-look='parent'] .p-srow-top { position: relative; }
+[data-look='parent'] .p-srow-info { position: absolute; top: 0; bottom: 0; left: 42px; display: flex; align-items: center; gap: 2px; pointer-events: none; font-size: 14.5px; font-weight: 700; }
+[data-look='parent'] .p-srow-info > span { visibility: hidden; white-space: nowrap; }
+[data-look='parent'] .p-srow-info > button { pointer-events: auto; }
 [data-look='parent'] .p-srow-l2 { display: flex; align-items: center; gap: 10px; padding: 0 14px 12px 42px; }
 [data-look='parent'] .p-srow-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; outline: none; }
 

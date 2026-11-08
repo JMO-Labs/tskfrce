@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { ParentShell } from '@/v2/parent/ParentShell'
@@ -43,6 +43,7 @@ function KidsBody() {
   const firstId = { chores: chores.data, kids: kids.data, rewards: undefined, badges: undefined }[section]?.[0]?.id
   const item = first(query.item) ?? (small || query.kid ? undefined : (fixed ?? (firstId == null ? undefined : String(firstId))))
   const leave = useRef<LeaveGuard | null>(null)
+  const setGuard = useCallback((g: LeaveGuard | null) => { leave.current = g }, [])
   const pick = (id: number | string | null, now = false) => {
     const { item: _drop, pick: _pick, open: _o, edit: _e, pin: _p, ...rest } = query
     const go = () => router.push({ pathname: '/kids', query: id === null ? { section } : { ...rest, section, item: id } }, undefined, { shallow: true })
@@ -76,7 +77,7 @@ function KidsBody() {
   const kid = kidList.find((k) => k.id === id)
   const select = (n: number | null) => pick(n)
   const details = {
-    chores: item === 'new' ? <ChoreDetail key="new" kids={kidList} onSelect={select} /> : chore && <ChoreDetail key={chore.id} kids={kidList} chore={chore} onSelect={select} />,
+    chores: item === 'new' ? <ChoreDetail key="new" kids={kidList} onSelect={select} onGuard={setGuard} /> : chore && <ChoreDetail key={chore.id} kids={kidList} chore={chore} onSelect={select} onGuard={setGuard} />,
     kids:
       item === 'new' ? (
         <div className="pk-detail"><div className="pk-grid"><KidEditor onCreated={pick} /></div></div>
