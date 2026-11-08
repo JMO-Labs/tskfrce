@@ -31,6 +31,9 @@ export interface Focus {
 }
 
 const NAV = { shallow: true, scroll: false }
+// Params whose current history entry was pushed by a focus hook. Shared so a group swap
+// (Needs -> kid) hands the pushed entry to the next hook and its close goes Back.
+const PUSHED = new Set<string>()
 const OVERLAY = '[role="dialog"], .mantine-Popover-dropdown, .mantine-Menu-dropdown'
 
 function without(q: Query, keys: string[]): Query {
@@ -46,7 +49,10 @@ export function useFocusParam(param: string, opts: FocusOptions = {}): Focus {
   // Latest values for callbacks and listeners, so they never see a stale router or options.
   const live = useRef({ router, opts, open })
   useEffect(() => { live.current = { router, opts, open } }) // declared first, so it runs before the effects below
-  const pushed = useRef(false)
+  // A navigation is in flight (the real router updates `query` async); repeat taps are ignored until it lands.
+  const pending = useRef<string | null>(null)
+  useEffect(() => { pending.current = null }, [router.query])
+  useEffect(() => () => { PUSHED.delete(param) }, [param])
   const saved = useRef<{ top: number; opener: HTMLElement | null }>({ top: 0, opener: null })
   const prev = useRef<string | null>(open)
 
@@ -61,13 +67,19 @@ export function useFocusParam(param: string, opts: FocusOptions = {}): Focus {
     const { router: r, opts: { group = [], clears = [] } } = live.current
     const extra = o.extra ?? {}
     if (r.query[param] === id && Object.entries(extra).every(([k, v]) => r.query[k] === v)) return
-    const replace = o.replace || r.query[param] !== undefined || group.some((g) => r.query[g] !== undefined)
+    const key = `open:${id}:${JSON.stringify(extra)}`
+    if (pending.current === key) return
+    const swapped = group.find((g) => r.query[g] !== undefined)
+    const replace = o.replace || r.query[param] !== undefined || swapped !== undefined
+    pending.current = key
     go(replace ? 'replace' : 'push', { ...without(r.query, [...group, ...clears]), [param]: id, ...extra })
-    if (!replace) pushed.current = true
+    if (!replace) PUSHED.add(param)
+    else if (swapped !== undefined && PUSHED.delete(swapped)) PUSHED.add(param)
   }, [param])
 
   const close = useCallback(() => {
-    if (pushed.current) { live.current.router.back(); return }
+    if (pending.current === 'close') return
+    if (PUSHED.has(param)) { pending.current = 'close'; PUSHED.delete(param); live.current.router.back(); return }
     go('replace', without(live.current.router.query, [param, ...(live.current.opts.clears ?? [])]))
   }, [param])
 
@@ -77,7 +89,7 @@ export function useFocusParam(param: string, opts: FocusOptions = {}): Focus {
   useEffect(() => {
     const before = prev.current
     prev.current = open
-    if (open === null) pushed.current = false
+    if (open === null) PUSHED.delete(param)
     if (before === null && open !== null) {
       saved.current = { top: scrollEl().scrollTop, opener: document.activeElement as HTMLElement | null }
     } else if (before !== null && open === null) {
@@ -89,7 +101,7 @@ export function useFocusParam(param: string, opts: FocusOptions = {}): Focus {
         else document.querySelector<HTMLElement>(`[data-focus-head="${id}"]`)?.focus()
       })
     }
-  }, [open])
+  }, [open, param])
 
   // Esc closes this level unless something on top (overlay) or deeper (clears) wants it.
   useEffect(() => {
@@ -111,5 +123,6 @@ export function useFocusParam(param: string, opts: FocusOptions = {}): Focus {
     if (invalid) go('replace', without(live.current.router.query, [param]))
   }, [invalid, param])
 
-  return { param, open, isOpen: (id) => open === id, openTo, toggle, close }
+  const isOpen = useCallback((id: string) => open === id, [open])
+  return { param, open, isOpen, openTo, toggle, close }
 }
