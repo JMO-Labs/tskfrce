@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, test } from '@jest/globals'
 import type { Mock } from 'jest-mock'
 import type { ReactNode } from 'react'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MantineProvider } from '@mantine/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -63,7 +63,7 @@ describe('group detail, calm', () => {
   })
 
   test('menu: Unlock 30 min, Back to schedule only with an override, Delete group last', () => {
-    const items = (hasOverride: boolean) => groupMenu({ hasMembers: true, hasOverride, onUnlock() {}, onSchedule() {}, onRename() {}, onDelete() {} })
+    const items = (hasOverride: boolean) => groupMenu({ canAct: true, hasOverride, onUnlock() {}, onSchedule() {}, onRename() {}, onDelete() {} })
     expect(items(false).filter((i) => !i.hidden).map((i) => i.label)).toEqual(['Unlock 30 min', 'Rename', 'Delete group'])
     expect(items(true).filter((i) => !i.hidden).map((i) => i.label)).toEqual(['Unlock 30 min', 'Back to schedule', 'Rename', 'Delete group'])
     const del = items(true).at(-1)!
@@ -98,7 +98,7 @@ describe('group detail, calm', () => {
 describe('group detail, focus', () => {
   test('Devices row: "2 of 3 devices" opens a switch list that saves on change', async () => {
     show(group, { open: 'gdev' })
-    const sw = screen.getAllByRole('switch', { name: 'In group' })
+    const sw = screen.getAllByRole('switch', { name: /in group$/ })
     expect(sw).toHaveLength(3)
     expect(sw.map((s) => s.getAttribute('aria-checked'))).toEqual(['true', 'true', 'false'])
     expect(screen.getByText('Guest')).toBeTruthy()
@@ -155,5 +155,67 @@ describe('group detail, focus', () => {
     show(group, { open: 'ghours' })
     expect(screen.getByText('School nights')).toBeTruthy()
     expect(screen.getByRole('link', { name: /Edit in Settings/ }).getAttribute('href')).toBe('/settings?section=hours')
+  })
+
+  test('a settings save cannot race a membership save in flight', async () => {
+    let release = () => {}
+    apiMock.mockImplementation(async (path, o) => {
+      if (path === '/screen-time') return { enabled: true, price: 20, group_pricing: true }
+      if (o?.method === 'PATCH') await new Promise<void>((r) => (release = r))
+      return {}
+    })
+    show(group, { open: 'gdev' })
+    await userEvent.click(screen.getAllByRole('switch', { name: /in group$/ })[2])
+    expect(patches()).toHaveLength(1)
+    act(() => fakeRouter.reset('/devices', { tab: 'groups', item: '3', open: 'gset' }))
+    await userEvent.click(await screen.findByRole('switch', { name: /Lock with the kids/ }))
+    expect(patches()).toHaveLength(1) // held back: it would send the old device list
+    release()
+    await waitFor(() => expect(jest.mocked(notifications.show)).toHaveBeenCalled())
+    await userEvent.click(screen.getByRole('switch', { name: /Lock with the kids/ }))
+    await waitFor(() => expect(patches()).toHaveLength(2))
+  })
+
+  test('each device switch is named after its device', () => {
+    show(group, { open: 'gdev' })
+    expect(screen.getByRole('switch', { name: 'Xbox in group' })).toBeTruthy()
+  })
+
+  describe('Back to schedule follows the override', () => {
+    const at = (ms: number) => new Date(Date.now() + ms).toISOString()
+    const open = async (expires_at: string) => {
+      fakeRouter.reset('/devices', { tab: 'groups', item: '3' })
+      const ds = [dev(1, 'Maya iPad', { override: { action: 'unlock', expires_at } as never })]
+      render(wrap(<GroupDetail group={group} devices={ds} kids={kids} onSelect={() => {}} onRequestOverride={lock} />))
+      await userEvent.click(screen.getByRole('button', { name: 'More' }))
+      await screen.findByRole('menuitem', { name: /Rename/, hidden: true })
+    }
+    test('hidden once the override has run out', async () => {
+      await open(at(-60_000))
+      expect(screen.queryByRole('menuitem', { name: /Back to schedule/, hidden: true })).toBeNull()
+    })
+    test('shown while it is live', async () => {
+      await open(at(600_000))
+      expect(screen.getByRole('menuitem', { name: /Back to schedule/, hidden: true })).toBeTruthy()
+    })
+  })
+
+  test('the price error is tied to the field', async () => {
+    show(group, { open: 'gset' })
+    const input = await screen.findByLabelText('Screen time price')
+    await userEvent.type(input, '0')
+    await userEvent.tab()
+    expect(input.getAttribute('aria-describedby')).toBe(screen.getByText('Must be at least 1.').id)
+  })
+
+  test('a new group header shows the picked devices open/locked count and owners', async () => {
+    fakeRouter.reset('/devices', { tab: 'groups' })
+    render(wrap(<GroupDetail devices={devices} kids={kids} onSelect={() => {}} onRequestOverride={lock} />))
+    expect(screen.getByText('0 devices')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'Maya iPad' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Fire tablet' }))
+    expect(screen.getByText('1 open')).toBeTruthy()
+    expect(screen.getByText('1 locked')).toBeTruthy()
+    expect(screen.getByText('Maya')).toBeTruthy()
   })
 })

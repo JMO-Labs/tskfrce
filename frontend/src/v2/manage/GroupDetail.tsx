@@ -2,8 +2,9 @@ import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { useDisclosure } from '@mantine/hooks'
 import { clockText } from '@/v2/clockText'
-import { useDeleteGroup } from '@/v2/hooks/useDevices'
+import { useDeleteGroup, useSaveGroup } from '@/v2/hooks/useDevices'
 import { useScreenTime } from '@/v2/hooks/useScreenTime'
+import { useSingleFlight } from '@/v2/hooks/useSingleFlight'
 import { Icon } from '@/v2/parent/Icon'
 import { FocusArea, SummaryRow } from '@/v2/parent/SummaryRow'
 import { useFocusParam } from '@/v2/parent/useFocusParam'
@@ -14,8 +15,6 @@ import { GroupNew } from './GroupNew'
 import { DevicesBody, HoursBody, SettingsBody } from './GroupRows'
 import { nameOf } from './choreMeta'
 import { toastFail } from '../notify'
-
-export { GROUP_ICONS } from './GroupRows'
 
 interface Props {
   /** Omit to create a new group. */
@@ -38,7 +37,7 @@ const ico = (name: string): ReactNode => <Icon name={name} size={18} />
 
 /** Group detail: an existing group is a header over three rows that open one at a time; no group is the new-group form. */
 export function GroupDetail(p: Props) {
-  return p.group ? <Existing {...p} group={p.group} /> : <GroupNew devices={p.devices} onSelect={p.onSelect} />
+  return p.group ? <Existing {...p} group={p.group} /> : <GroupNew devices={p.devices} kids={p.kids} onSelect={p.onSelect} />
 }
 
 function Existing({ group, devices, kids, groups, rules, onSelect, onRequestOverride, timeZone, pendingAction = null }: Props & { group: Group }) {
@@ -46,6 +45,8 @@ function Existing({ group, devices, kids, groups, rules, onSelect, onRequestOver
   const [confirm, { open, close }] = useDisclosure(false)
   const rows = useFocusParam('open', { valid: (id) => ROWS.includes(id) })
   const st = useScreenTime().data
+  // one save guard for every row: each save sends the whole device list, so two at once could undo each other
+  const saver = { save: useSaveGroup(), once: useSingleFlight() }
   // Rename: open Settings and ask its name field to take focus (a counter, so it works when Settings is already open)
   const [nameFocus, setNameFocus] = useState(0)
   const rename = () => { rows.openTo('gset'); setNameFocus((n) => n + 1) }
@@ -85,10 +86,10 @@ function Existing({ group, devices, kids, groups, rules, onSelect, onRequestOver
           line2={<span className="p-kn">{members.length ? members.map((d) => d.name).join(', ') : 'No devices in this group yet'}</span>}
           focus={rows}
         >
-          <DevicesBody group={group} devices={devices} kids={kids} />
+          <DevicesBody saver={saver} group={group} devices={devices} kids={kids} />
         </SummaryRow>
         <SummaryRow id="gset" icon={ico('tune')} title="Settings" summary={setText} focus={rows}>
-          <SettingsBody group={group} pricing={st} nameFocus={nameFocus} />
+          <SettingsBody saver={saver} group={group} pricing={st} nameFocus={nameFocus} />
         </SummaryRow>
         {rules && (
           <SummaryRow id="ghours" icon={ico('schedule')} title="Hours" summary={hoursText} focus={rows}>

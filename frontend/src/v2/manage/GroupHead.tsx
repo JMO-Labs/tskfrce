@@ -5,10 +5,13 @@ import type { Device, Group } from '@/v2/types'
 import { ActionButton } from './ActionButton'
 import { GroupStats } from './GroupStats'
 
+/** a manual override that has not run out yet */
+const liveOverride = (d: Device) => !!d.override && !(d.override.expires_at && new Date(d.override.expires_at).getTime() <= Date.now())
+
 /** The "…" menu: Unlock 30 min, Back to schedule (only while a member has an override), Rename, then Delete group. */
-export function groupMenu(o: { hasMembers: boolean; hasOverride: boolean; onUnlock: () => void; onSchedule: () => void; onRename: () => void; onDelete: () => void }): MenuItem[] {
+export function groupMenu(o: { canAct: boolean; hasOverride: boolean; onUnlock: () => void; onSchedule: () => void; onRename: () => void; onDelete: () => void }): MenuItem[] {
   return [
-    { label: 'Unlock 30 min', icon: 'lock_open', disabled: !o.hasMembers, onClick: o.onUnlock },
+    { label: 'Unlock 30 min', icon: 'lock_open', disabled: !o.canAct, onClick: o.onUnlock },
     { label: 'Back to schedule', icon: 'event_repeat', hidden: !o.hasOverride, onClick: o.onSchedule },
     { label: 'Rename', icon: 'edit', takesFocus: true, onClick: o.onRename },
     { label: 'Delete group', icon: 'delete', tone: 'red', divider: true, onClick: o.onDelete },
@@ -48,7 +51,7 @@ export function GroupHead({ group, icon, members, locked, owners, timeZone, pend
       title={group.name}
       status={status}
       main={<ActionButton icon="lock" variant="red" busy={pendingAction === 'lock'} disabled={idle} onClick={() => onOverride('lock')}>Lock group</ActionButton>}
-      menu={groupMenu({ hasMembers: !idle, hasOverride: members.some((d) => d.override), onUnlock: () => onOverride('unlock'), onSchedule: () => onOverride('schedule'), onRename, onDelete })}
+      menu={groupMenu({ canAct: !idle, hasOverride: members.some(liveOverride), onUnlock: () => onOverride('unlock'), onSchedule: () => onOverride('schedule'), onRename, onDelete })}
     />
   )
 }
