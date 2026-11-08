@@ -31,7 +31,7 @@ const dev = (id: number, seen: boolean) => ({ id, name: `Dev${id}`, mac: 'm', ve
 
 const MAYA = /^Maya(?! details)/
 const LEO = /^Leo(?! details)/
-let state: { today: Today | Promise<never>; devices: unknown[]; widgets: unknown[]; hh: unknown[]; dismissed: string[] }
+let state: { fam: Record<string, unknown>; today: Today | Promise<never>; devices: unknown[]; widgets: unknown[]; hh: unknown[]; dismissed: string[] }
 const wrap = () =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -40,11 +40,9 @@ const wrap = () =>
   )
 
 beforeEach(() => {
-  Element.prototype.scrollIntoView ??= () => {}
-  window.matchMedia ??= ((q: string) => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} })) as never
   localStorage.clear()
   fakeRouter.reset('/')
-  state = { today: base(), devices: [], widgets: [], hh: [], dismissed: ['onboard.parent'] }
+  state = { fam: { timezone: 'UTC', hh_auto_boost: true, streak_freeze: true, hh_default_mult_x10: 20, hh_default_minutes: 60 }, today: base(), devices: [], widgets: [], hh: [], dismissed: ['onboard.parent'] }
   apiMock.mockReset()
   apiMock.mockImplementation(async (p, init) => {
     if (init?.method) return {}
@@ -53,7 +51,7 @@ beforeEach(() => {
     if (p.startsWith('/integration-widgets')) return state.widgets
     if (p === '/happy-hour') return { active: state.hh, recent: [] }
     if (p === '/me/tips') return { dismissed: state.dismissed }
-    if (p === '/family') return { timezone: 'UTC', hh_auto_boost: true, streak_freeze: true, hh_default_mult_x10: 20, hh_default_minutes: 60 }
+    if (p === '/family') return state.fam
     if (p === '/kids') return [{ id: 3, full_name: 'Maya', username: 'maya', age_group: 'teen' }]
     if (p === '/hours') return { rules: [] }
     if (p === '/parents') return []
@@ -132,7 +130,7 @@ describe('calm Today', () => {
   test('one tip at most, checklist first', async () => {
     state.dismissed = []
     wrap()
-    expect(await screen.findByText('Getting started')).toBeInTheDocument()
+    expect(await screen.findByText(/Getting started/)).toBeInTheDocument()
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/me/tips', expect.anything()))
     await new Promise((r) => setTimeout(r, 50))
     expect(screen.queryByText(/comic-book cheer/)).toBeNull()
@@ -142,7 +140,42 @@ describe('calm Today', () => {
   test('a Try card shows when the checklist is dismissed', async () => {
     wrap()
     expect(await screen.findByText(/comic-book cheer/)).toBeInTheDocument()
-    expect(screen.queryByText('Getting started')).toBeNull()
+    expect(screen.queryByText(/Getting started/)).toBeNull()
+  })
+
+  test('the tip is one dashed line; More opens its actions in place, dismiss closes it', async () => {
+    wrap()
+    const line = (await screen.findByText(/comic-book cheer/)).closest('.pt-tip') as HTMLElement
+    expect(line).not.toBeNull()
+    expect(screen.queryByRole('button', { name: 'Got it' })).toBeNull()
+    const more = within(line).getByRole('button', { name: 'More' })
+    expect(more).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(more)
+    expect(more).toHaveAttribute('aria-expanded', 'true')
+    expect(within(line).getByRole('button', { name: 'Turn off for all kids' })).toBeInTheDocument()
+    await userEvent.click(within(line).getByRole('button', { name: 'Dismiss tip' }))
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/me/tips/try.celebrate/dismiss', expect.anything()))
+  })
+
+  test('Getting started is a one-line tip whose More lists the steps', async () => {
+    state.dismissed = []
+    wrap()
+    const line = (await screen.findByText(/Getting started/)).closest('.pt-tip') as HTMLElement
+    await userEvent.click(within(line).getByRole('button', { name: 'More' }))
+    expect(within(line).getByText('Add a kid')).toBeInTheDocument()
+    await userEvent.click(within(line).getByRole('button', { name: 'Dismiss tip' }))
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/me/tips/onboard.parent/dismiss', expect.anything()))
+  })
+
+  test('Not now on a nudge falls through to the plain tip', async () => {
+    state.dismissed = ['onboard.parent', 'try.celebrate', 'try.happyhour', 'try.autoboost', 'try.streakfreeze', 'try.trust', 'try.bedtime']
+    state.fam = { ...state.fam, hh_auto_boost: false }
+    state.today = base({ kids: [{ ...maya, quiet: true }, leo] })
+    wrap()
+    expect(await screen.findByText(/quiet couple of days/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Dismiss tip' }))
+    expect(await screen.findByText(/Name devices so you know whose they are/)).toBeInTheDocument()
+    expect(screen.queryByText(/quiet couple of days/)).toBeNull()
   })
 
   test('Devices row counts devices online now', async () => {

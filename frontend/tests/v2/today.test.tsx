@@ -59,7 +59,6 @@ const wrap = (ui: React.ReactElement) =>
   )
 
 beforeEach(() => {
-  window.matchMedia ??= ((q: string) => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} })) as never
   apiMock.mockReset()
   fakeRouter.reset('/') // the onboarding card stays hidden: /me/tips is unanswered, which reads as dismissed
   apiMock.mockImplementation(async (p) => {

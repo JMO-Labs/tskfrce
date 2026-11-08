@@ -24,6 +24,12 @@ if (typeof document !== 'undefined') {
   document.documentElement.style.setProperty('--ease-out', 'cubic-bezier(0.25, 0.46, 0.45, 0.94)')
 }
 
+// jsdom lacks these; SummaryRow, InfoPop and Mantine need them
+if (typeof window !== 'undefined') {
+  window.matchMedia ??= (q) => ({ matches: false, media: q, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false })
+  Element.prototype.scrollIntoView ??= () => {}
+}
+
 // Mock Next.js router
 jest.mock('next/router', () => ({
   useRouter() {

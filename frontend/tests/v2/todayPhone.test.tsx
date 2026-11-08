@@ -23,7 +23,6 @@ const item = { type: 'chore', id: 5, kid_id: 1, kid_name: 'Mia', title: 'Homewor
 
 beforeEach(() => {
   fakeRouter.reset('/')
-  window.matchMedia ??= ((q: string) => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} })) as never
   localStorage.setItem('task4ce-tip:onboard.parent', '1')
   apiMock.mockReset()
   apiMock.mockImplementation(async (p) =>
