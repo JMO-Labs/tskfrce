@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MantineProvider } from '@mantine/core'
 import { api } from '@/v2/api'
 import { fridgeTheme } from '@/v2/theme'
-import { KidPushPane } from '@/v2/manage/KidPushPane'
+import { IphoneBody, IphoneHelp, iphoneSummary } from '@/v2/manage/KidPushPane'
 import { KidProfileForm } from '@/v2/manage/KidEditor'
 import type { Kid } from '@/v2/types'
 
@@ -22,6 +22,14 @@ const wrap = (ui: unknown) => (
 const kid: Kid = { id: 7, full_name: 'Mia', username: 'mia', avatar: null, has_pin: false, age_group: 'kid' }
 const fam = (relay: boolean) => ({ name: 'S', ntfy_upstream_relay: relay })
 const push = (enabled: boolean, upstream = true) => ({ enabled, upstream, server: 'http://box:2586', topic: 'kid-abc', link: 'x', qr_svg: '<svg xmlns="http://www.w3.org/2000/svg"/>' })
+
+// the row body and the one (i) pop-over's content, side by side
+const KidPushPane = () => (
+  <>
+    <IphoneBody />
+    <IphoneHelp />
+  </>
+)
 
 const RELAY = "Kid phones signed in with a code get a short generic line, like 'You have a new chore', through a public relay (ntfy.sh by default). Names, chores and messages stay in your home."
 const serve = (enabled: boolean, relay = false, upstream = true) =>
@@ -109,6 +117,14 @@ describe('KidPushPane', () => {
     expect(screen.getByText(/content-free poll request; the alert text stays in your home/)).toBeInTheDocument()
     await userEvent.click(sw)
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/family', { method: 'PATCH', body: { ntfy_upstream_relay: true } }))
+  })
+})
+
+describe('iphoneSummary', () => {
+  test('says whether iPhones get instant alerts', () => {
+    expect(iphoneSummary(true)).toBe('Instant (relay)')
+    expect(iphoneSummary(false)).toBe('Late (no relay)')
+    expect(iphoneSummary(undefined)).toBe('Late (no relay)')
   })
 })
 

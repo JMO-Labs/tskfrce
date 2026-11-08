@@ -11,8 +11,9 @@ import { NotificationsPane } from '@/v2/manage/NotificationsPane'
 import { FamilyCard, GifsCard } from '@/v2/manage/FamilyCards'
 import { DeviceDetail } from '@/v2/manage/DeviceDetail'
 import type { Device, Family } from '@/v2/types'
+import { fakeRouter } from './helpers/fakeRouter'
 
-jest.mock('next/router', () => ({ useRouter: () => ({ query: { open: 'details' }, push: jest.fn(), replace: jest.fn() }) }))
+jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 
@@ -38,6 +39,7 @@ beforeAll(() => {
     disconnect() {}
   }
 })
+beforeEach(() => fakeRouter.reset('/x', { open: 'details' }))
 const serve = (map: Record<string, unknown>) => apiMock.mockReset().mockImplementation(async (p) => map[p] ?? {})
 
 describe('screen time pane (item 4)', () => {
@@ -80,24 +82,25 @@ describe('notifications pane (item 6)', () => {
     wrap(<NotificationsPane />)
   }
   test('security toggle only when quiet hours on', async () => {
+    fakeRouter.reset('/settings', { section: 'notifications', open: 'quiet' })
     mount({})
     await screen.findByRole('switch', { name: 'Quiet hours' })
     expect(screen.queryByRole('switch', { name: 'Security alerts still send' })).toBeNull()
   })
   test('security toggle shows when on', async () => {
+    fakeRouter.reset('/settings', { section: 'notifications', open: 'quiet' })
     mount({ quiet_start: '21:30', quiet_end: '07:00' })
     expect(await screen.findByRole('switch', { name: 'Security alerts still send' })).toBeTruthy()
   })
-  test('App address is in a closed Advanced fold with help text', async () => {
+  test('App address is a row that opens to its help text', async () => {
     mount({})
-    const sum = await screen.findByText('Advanced')
-    expect(sum.closest('details')?.open).toBe(false)
-    expect(screen.getByText('Leave blank to use http://chores.local.')).toBeTruthy()
+    await userEvent.click(await screen.findByRole('button', { name: /App address/ }))
+    expect(await screen.findByText('Leave blank to use http://chores.local.')).toBeTruthy()
   })
   test('no quiet card without places', async () => {
     mount({}, [])
     await screen.findByText('No places yet')
-    expect(screen.queryByRole('region', { name: 'Quiet hours' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Quiet hours/ })).toBeNull()
   })
 })
 
