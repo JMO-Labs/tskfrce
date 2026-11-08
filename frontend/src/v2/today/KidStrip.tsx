@@ -9,7 +9,8 @@ export function KidStrip({ kids, selected, onSelect, onAll, waiting, onNeeds }: 
   onSelect: (id: number) => void
   onAll: () => void
   waiting: number
-  onNeeds: () => void
+  /** Omit when the Needs list itself is open: the pill would point at where you are. */
+  onNeeds?: () => void
 }) {
   return (
     <nav className="pt-strip" aria-label="Kids">
@@ -35,10 +36,12 @@ export function KidStrip({ kids, selected, onSelect, onAll, waiting, onNeeds }: 
         )
       })}
       <span className="pt-strip-grow" />
+      {onNeeds && (
       <button type="button" className="p-pill" aria-label={`Needs you, ${waiting} waiting`} onClick={onNeeds}>
         <Icon name="hourglass_top" size={14} />
         {waiting}
       </button>
+      )}
     </nav>
   )
 }

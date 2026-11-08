@@ -19,7 +19,6 @@
 [data-look='parent'] .v2-sub-t { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
 [data-look='parent'] .v2-sub-t b { color: var(--p-ink); }
 [data-look='parent'] .pt-own { white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; vertical-align: bottom; }
-[data-look='parent'] .p-needs-kind { display: grid; justify-items: end; gap: 2px; flex: none; }
 @media (max-width: 767px) {
   [data-look='parent'] .v2-level .pt-bar { flex-basis: 60%; }
   [data-look='parent'] .v2-next { margin-right: auto; }

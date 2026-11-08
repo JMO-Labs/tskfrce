@@ -1,6 +1,6 @@
 import { beforeEach, expect, test } from '@jest/globals'
 import type { Mock } from 'jest-mock'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MantineProvider } from '@mantine/core'
@@ -30,7 +30,7 @@ beforeEach(() => {
   )
 })
 
-test('phone Today: the Needs you strip opens the combined list, with no tabs or kid strip', async () => {
+test('phone Today: the Needs you strip opens the combined list, with the kid strip (no Needs pill) and no tabs', async () => {
   render(
     <QueryClientProvider client={new QueryClient()}>
       <MantineProvider>
@@ -40,6 +40,8 @@ test('phone Today: the Needs you strip opens the combined list, with no tabs or 
   )
   await userEvent.click(await screen.findByRole('button', { name: /^Needs you · 1/ }))
   expect(await screen.findByText('Homework')).toBeInTheDocument()
-  expect(screen.queryByRole('navigation', { name: 'Kids' })).toBeNull()
+  const strip = within(screen.getByRole('navigation', { name: 'Kids' }))
+  expect(strip.getByRole('button', { name: /^Mia/ })).toBeInTheDocument()
+  expect(strip.queryByRole('button', { name: /^Needs/ })).toBeNull()
   expect(screen.queryByRole('tab')).toBeNull()
 })

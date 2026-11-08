@@ -79,12 +79,14 @@ describe('IntegrationDetail', () => {
 })
 
 describe('Needs you', () => {
-  test('row names the integration and offers chore buttons', () => {
+  test('row names the integration and offers chore buttons', async () => {
     wrap(
       <NeedsYouList items={[{ type: 'integration', id: 9, kid_id: 3, kid_name: 'Sam', title: 'Dishes', integration: { id: 7, name: 'Demo', icon: 'extension' } }]} />,
     )
     expect(screen.getByText('via Demo')).toBeInTheDocument()
-    expect(screen.getByText('From an integration')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Send back/ })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'From an integration' }))
+    expect(await screen.findByText('From an integration: Demo checked it off')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /More for Dishes/ }))
+    expect(await screen.findByRole('menuitem', { name: 'Send back' })).toBeInTheDocument()
   })
 })
