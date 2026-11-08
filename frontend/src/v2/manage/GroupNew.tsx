@@ -5,13 +5,13 @@ import { useSingleFlight } from '@/v2/hooks/useSingleFlight'
 import { GlyphPicker } from '@/v2/parent/GlyphPicker'
 import { HeaderChips } from '@/v2/parent/HeaderChips'
 import { Icon } from '@/v2/parent/Icon'
-import type { Device, Group } from '@/v2/types'
+import type { Device, Group, Kid } from '@/v2/types'
 import { GROUP_ICONS } from './GroupRows'
-import { intError } from './choreMeta'
+import { intError, nameOf } from './choreMeta'
 import { toastFail, toastOk } from '../notify'
 
 /** The new-group form: a small form with Create / Cancel (an existing group saves as you go, see GroupDetail). */
-export function GroupNew({ devices, onSelect }: { devices: Device[]; onSelect: (id: number | null) => void }) {
+export function GroupNew({ devices, kids, onSelect }: { devices: Device[]; kids: Kid[]; onSelect: (id: number | null) => void }) {
   const save = useSaveGroup()
   const once = useSingleFlight()
   const st = useScreenTime().data
@@ -23,7 +23,14 @@ export function GroupNew({ devices, onSelect }: { devices: Device[]; onSelect: (
   const icon = draft.icon ?? 'devices'
   const choreLock = draft.chore_lock ?? true
   const showPrice = !!st?.enabled && !!st?.group_pricing && choreLock
-  const count = `${ids.length} ${ids.length === 1 ? 'device' : 'devices'}`
+  const members = devices.filter((d) => ids.includes(d.id))
+  const locked = members.filter((d) => !d.online && d.status !== 'guest' && !d.exempt).length
+  const owners = kids.filter((k) => members.some((d) => d.owner_ids.includes(k.id))).map(nameOf).join(', ')
+  const chips = [
+    { text: `${members.length} ${members.length === 1 ? 'device' : 'devices'}`, icon: 'devices' },
+    ...(members.length ? [{ text: `${members.length - locked} open`, icon: 'lock_open', tone: members.length > locked ? ('acc' as const) : ('plain' as const) }, { text: `${locked} locked`, icon: 'lock' }] : []),
+    ...(owners ? [{ text: owners, icon: 'group' }] : []),
+  ]
   const create = () =>
     once(() =>
       save.mutateAsync({ name: name.trim(), device_ids: ids, ...draft, ...(showPrice && price.trim() && !priceErr ? { screen_price: Number(price) } : {}) }).then((g) => {
@@ -40,7 +47,7 @@ export function GroupNew({ devices, onSelect }: { devices: Device[]; onSelect: (
         </span>
         <div className="pk-head-t">
           <h2>{name.trim() || 'New group'}</h2>
-          <HeaderChips items={[{ text: count, icon: 'devices' }]} />
+          <HeaderChips items={chips} />
         </div>
       </header>
 

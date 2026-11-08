@@ -328,7 +328,8 @@
 [data-look='parent'] .gd-t small { font-size: 11.5px; font-weight: 500; color: var(--p-sub); }
 [data-look='parent'] .gd-set { display: flex; flex-direction: column; gap: 10px; }
 [data-look='parent'] .gd-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; font-size: 13.5px; color: var(--p-ink); }
-[data-look='parent'] .gd-line .rw-unit { flex: 0 1 180px; }
+[data-look='parent'] .gd-line .rw-unit { flex: 0 1 150px; min-width: 0; }
+[data-look='parent'] .gd-line .dv-lbl > span:first-child { white-space: nowrap; }
 [data-look='parent'] .gd-sw { padding-top: 0; border-top: 0; }
 [data-look='parent'] .gd-tile { width: 36px; height: 36px; border: 1px solid var(--p-line); cursor: pointer; font-family: inherit; }
 [data-look='parent'] .gd-tile:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }

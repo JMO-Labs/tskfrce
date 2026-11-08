@@ -198,7 +198,7 @@ describe('GroupDetail with no devices', () => {
   test('switching a device on saves the group with exactly that member', async () => {
     fakeRouter.reset('/devices', { tab: 'groups', item: '3', open: 'gdev' })
     render(wrap(<GroupDetail group={empty} devices={[dev({ name: 'Switch' })]} kids={kids} groups={[empty]} rules={[]} onSelect={() => {}} onRequestOverride={() => {}} />))
-    await userEvent.click(screen.getByRole('switch', { name: 'In group' }))
+    await userEvent.click(screen.getByRole('switch', { name: 'Switch in group' }))
     expect(apiMock).toHaveBeenCalledWith('/groups/3', { method: 'PATCH', body: { name: 'Empty group', device_ids: [1] } })
   })
 })

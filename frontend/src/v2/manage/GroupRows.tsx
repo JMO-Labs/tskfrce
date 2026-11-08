@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useResetState } from '@/v2/hooks/useResetState'
-import { useSaveGroup } from '@/v2/hooks/useDevices'
-import { useSingleFlight } from '@/v2/hooks/useSingleFlight'
+import type { useSaveGroup } from '@/v2/hooks/useDevices'
+import type { useSingleFlight } from '@/v2/hooks/useSingleFlight'
 import { GlyphPicker } from '@/v2/parent/GlyphPicker'
 import { Icon } from '@/v2/parent/Icon'
 import { InfoPop } from '@/v2/parent/InfoPop'
@@ -12,12 +12,13 @@ import { HoursTimeline } from './HoursTimeline'
 import { intError, nameOf } from './choreMeta'
 import { toasted } from '../notify'
 
+/** the one save + single-flight guard GroupDetail hands to every row */
+export interface Saver { save: ReturnType<typeof useSaveGroup>; once: ReturnType<typeof useSingleFlight> }
+
 export const GROUP_ICONS = ['tablet_mac', 'sports_esports', 'tv', 'laptop', 'smartphone', 'speaker', 'router', 'devices_other', 'devices']
 
 /** Devices row body: every device with an "In group" switch that saves on change. */
-export function DevicesBody({ group, devices, kids }: { group: Group; devices: Device[]; kids: Kid[] }) {
-  const save = useSaveGroup()
-  const once = useSingleFlight()
+export function DevicesBody({ saver: { save, once }, group, devices, kids }: { saver: Saver; group: Group; devices: Device[]; kids: Kid[] }) {
   const toggle = (id: number) => {
     const next = group.device_ids.includes(id) ? group.device_ids.filter((i) => i !== id) : [...group.device_ids, id]
     once(() => toasted(save.mutateAsync({ id: group.id, name: group.name, device_ids: next }), 'Saved'))
@@ -32,7 +33,7 @@ export function DevicesBody({ group, devices, kids }: { group: Group; devices: D
           <div key={d.id} className="pk-switch gd-row">
             <span className="gd-ty"><Icon name={DEVICE_TYPE_ICON[getDeviceType(d.name, d.vendor)]} size={16} /></span>
             <span className="gd-t" id={`gd-${d.id}`}>{d.name}<small>{owner}</small></span>
-            <button type="button" role="switch" aria-checked={on} aria-label="In group" aria-describedby={`gd-${d.id}`} aria-disabled={save.isPending || undefined} onClick={() => !save.isPending && toggle(d.id)} />
+            <button type="button" role="switch" aria-checked={on} aria-label={`${d.name} in group`} aria-describedby={`gd-${d.id}`} aria-disabled={save.isPending || undefined} onClick={() => !save.isPending && toggle(d.id)} />
           </div>
         )
       })}
@@ -41,6 +42,7 @@ export function DevicesBody({ group, devices, kids }: { group: Group; devices: D
 }
 
 interface SettingsProps {
+  saver: Saver
   group: Group
   /** family screen-time setup: the price field exists only with group pricing on */
   pricing: { enabled?: boolean; group_pricing?: boolean; price?: number } | undefined
@@ -49,9 +51,7 @@ interface SettingsProps {
 }
 
 /** Settings row body: name (saves on blur), icon in a pop-over, chore lock and price. */
-export function SettingsBody({ group, pricing, nameFocus = 0 }: SettingsProps) {
-  const save = useSaveGroup()
-  const once = useSingleFlight()
+export function SettingsBody({ saver: { save, once }, group, pricing, nameFocus = 0 }: SettingsProps) {
   const [name, setName] = useResetState(group.name)
   const [price, setPrice] = useResetState(group.screen_price != null ? String(group.screen_price) : '')
   const nameRef = useRef<HTMLInputElement>(null)
@@ -119,15 +119,16 @@ export function SettingsBody({ group, pricing, nameFocus = 0 }: SettingsProps) {
               placeholder={pricing?.price == null ? 'Family price' : `Family price (${pricing.price})`}
               value={price}
               aria-invalid={!!priceErr}
+              aria-describedby={priceErr ? 'group-price-err' : undefined}
               onChange={(e) => setPrice(e.currentTarget.value)}
               onBlur={savePrice}
               onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
             />
-            <span aria-hidden="true">pts per 15 min</span>
+            <span aria-hidden="true">pts/15 min</span>
           </span>
         </div>
       )}
-      {showPrice && priceErr && <span className="pk-error">{priceErr}</span>}
+      {showPrice && priceErr && <span id="group-price-err" className="pk-error">{priceErr}</span>}
     </div>
   )
 }
