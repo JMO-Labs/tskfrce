@@ -48,7 +48,7 @@ export function SummaryRow({ id, icon, title, summary, line2, aside, info, focus
 
   return (
     <section className="p-srow" data-open={open ? '' : undefined}>
-      <div className="p-srow-top">
+      <div className="p-srow-top" data-aside={aside ? '' : undefined}>
         <button
           type="button"
           className="p-srow-head"

@@ -12,8 +12,8 @@ import { FocusArea, SummaryRow } from '@/v2/parent/SummaryRow'
 import { useFocusParam } from '@/v2/parent/useFocusParam'
 import { EmptyState, ErrorPanel, Skeleton } from '@/v2/parent/states'
 import { toastFail, toastOk } from '@/v2/notify'
-import { IphoneBody, IphoneHelp, iphoneSummary } from './KidPushPane'
-import { PlaceDetail, PlaceSwitch } from './PlaceCard'
+import { IphoneBody, IphoneHelp, iphoneSummary, useBoxPush } from './IphoneRows'
+import { PlaceDetail, PlaceSwitch } from './PlaceDetail'
 import { PlaceForm } from './PlaceForm'
 
 const QUIET = { quiet_start: '21:30', quiet_end: '07:00' }
@@ -45,7 +45,7 @@ function QuietBody({ s, save }: { s: NotifySettings; save: Save }) {
       </div>
       {partial && <p id="quiet-hint" className="pk-hint">Pick both times</p>}
       <Switch
-        className="pn-sw"
+        className="pn-sw pn-line"
         label="Security alerts still send"
         labelPosition="left"
         checked={s.quiet_security}
@@ -73,6 +73,7 @@ export function NotificationsPane() {
   const places = usePlaces()
   const settings = useNotifySettings()
   const family = useFamily().data
+  const box = useBoxPush()
   const patch = usePatchNotifySettings()
   const [adding, setAdding] = useState(false)
   const focus = useFocusParam('open', { valid: (id) => /^place-\d+$/.test(id) || ['quiet', 'iphones', 'address'].includes(id) })
@@ -100,7 +101,7 @@ export function NotificationsPane() {
         title="Notifications"
         sub="Pings to the chat apps your family already uses."
         main={
-          <button type="button" className="p-btn" data-variant="accent" onClick={() => setAdding(true)}>
+          <button type="button" className="p-btn pn-add" data-variant="accent" onClick={() => setAdding(true)}>
             <Icon name="add" size={17} />
             Add a place
           </button>
@@ -153,7 +154,7 @@ export function NotificationsPane() {
               icon={ico('smartphone')}
               title="iPhones"
               info={<InfoPop label="How iPhone alerts work" width={300}><IphoneHelp /></InfoPop>}
-              summary={iphoneSummary(family?.ntfy_upstream_relay)}
+              summary={iphoneSummary(family?.ntfy_upstream_relay, box?.enabled)}
               focus={focus}
             >
               <IphoneBody />

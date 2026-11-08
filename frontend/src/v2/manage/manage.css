@@ -356,3 +356,9 @@ html[data-look='parent'] .pn-addr .f-input.f-input { font: 12.5px ui-monospace, 
 [data-look='parent'] .pn-grp .p-srow:first-child { border-top: 0; }
 [data-look='parent'] .pn-grp .p-srow[data-open] { box-shadow: inset 3px 0 0 var(--p-ink); }
 [data-look='parent'] .pn-grp .p-srow-head { border-radius: 0; }
+/* Notifications header and iPhones body (mockup .btn.sm, .setr) */
+[data-look='parent'] .pn .p-dhead-meta { min-width: 110px; }
+[data-look='parent'] .pn .pn-add { padding: 6px 12px; font-size: 13px; }
+[data-look='parent'] .pn-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; }
+[data-look='parent'] .pn-line .mantine-Switch-body { flex: 1; justify-content: space-between; }
+[data-look='parent'] .pn-line .mantine-Switch-label { color: var(--p-sub); font-size: 13px; }

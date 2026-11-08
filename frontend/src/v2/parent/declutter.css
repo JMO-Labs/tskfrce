@@ -33,6 +33,9 @@
 [data-look='parent'] .p-srow-chev { color: var(--p-sub); transition: transform 180ms; }
 [data-look='parent'] .p-srow[data-open] .p-srow-chev { transform: rotate(90deg); }
 [data-look='parent'] .p-srow-aside { flex: none; padding-right: 14px; }
+/* with an aside the control sits before the chevron (mockup: summary, switch, chevron) */
+[data-look='parent'] .p-srow-top[data-aside] .p-srow-chev { position: absolute; right: 14px; top: 50%; margin-top: -9px; }
+[data-look='parent'] .p-srow-top[data-aside] .p-srow-aside { padding-right: 44px; }
 /* (i) right after the title: a hidden copy of the title keeps it beside the text, whatever the font */
 [data-look='parent'] .p-srow-top { position: relative; }
 /* same padding/gap as .p-srow-l1: hidden icon slot, hidden title, then the button */
