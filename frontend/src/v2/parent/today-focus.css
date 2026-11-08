@@ -129,3 +129,24 @@
 [data-look='parent'] .pt-chore[data-bare] :is(.pt-car, .pt-pts:not(:has(s))) { display: none; } /* focused kid: rows as in the mockup */
 [data-look='parent'] .pt-chore[data-bare] .pt-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 [data-look='parent'] .pt-sheetwrap { outline: none; }
+
+/* Needs focus: grouped action rows */
+[data-look='parent'] .pt-needs-body:has(.pt-needs-list) { padding: 4px 0; }
+[data-look='parent'] .pt-needs-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 14px; color: var(--p-sub); font-size: 13px; font-weight: 500; }
+[data-look='parent'] .pt-ngroup-h { display: flex; align-items: center; gap: 8px; padding: 8px 12px 2px; font-size: 12px; font-weight: 700; color: var(--p-sub); }
+[data-look='parent'] .pt-ngroup-h ~ div + div { border-top: 1px solid var(--p-line); }
+[data-look='parent'] .pt-ngroup-av {
+  width: 22px; height: 22px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--p-line);
+  background: var(--p-soft); color: var(--p-ink); font-size: 10px;
+}
+[data-look='parent'] .pt-ntitle { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+[data-look='parent'] .pt-ntitle .p-needs-thumb { width: 30px; height: 30px; border-radius: 8px; }
+[data-look='parent'] .pt-needs-list .p-arow-t { overflow-wrap: anywhere; }
+[data-look='parent'] .pt-needs-list .p-arow-acts .p-btn:not(.p-ib), [data-look='parent'] .pt-needs-top .p-btn { padding: 7px 12px; min-height: 0; font-size: 13px; }
+@media (max-width: 767px) {
+  [data-look='parent'] .pt-needs-list .p-arow-acts .p-btn:not(.p-ib), [data-look='parent'] .pt-needs-top .p-btn { position: relative; padding: 7px 10px; }
+  [data-look='parent'] .pt-needs-list .p-arow-acts .p-btn:not(.p-ib)::after, [data-look='parent'] .pt-needs-top .p-btn::after { content: ''; position: absolute; inset: -6px -2px; } /* 44 px touch target */
+  [data-look='parent'] .pt-needs-list .p-arow { gap: 8px; padding-right: 8px; }
+  [data-look='parent'] .pt-needs-list .p-arow-acts { gap: 4px; }
+  [data-look='parent'] .pt-ntitle .p-needs-thumb { width: 44px; height: 44px; } /* 44 px touch target */
+}

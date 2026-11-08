@@ -44,6 +44,7 @@ export function TodayPage() {
 
   const needs = data?.needs_you ?? []
   const calm = !kidFocus.open && !areaFocus.open
+  const needsOpen = areaFocus.isOpen('needs')
   return (
     <ParentShell title="Today" actions={<MoreMenu label="More for Today" items={[{ label: 'Start Happy Hour', icon: 'bolt', onClick: () => setHhOpen(true) }]} />}>
       <HappyHourSheet opened={hhOpen} onClose={() => setHhOpen(false)} allKids />
@@ -52,6 +53,16 @@ export function TodayPage() {
       {data && (
         <div className="p-today-detail">
           {calm && <HappyHourChip />}
+          {(focusedKid || (needsOpen && data.kids.length > 0)) && (
+            <KidStrip
+              kids={data.kids}
+              selected={focusedKid?.id}
+              onSelect={(id) => kidFocus.openTo(String(id))}
+              onAll={() => (focusedKid ? kidFocus.close() : areaFocus.close())}
+              waiting={needs.length}
+              onNeeds={needsOpen ? undefined : () => areaFocus.openTo('needs')}
+            />
+          )}
           {!kidFocus.open && <NeedsStrip items={needs} day={data.day} focus={areaFocus} />}
           {data.kids.length === 0 && (
             <EmptyState
@@ -64,25 +75,15 @@ export function TodayPage() {
               ]}
             />
           )}
-          {focusedKid && (
-            <KidStrip
-              kids={data.kids}
-              selected={focusedKid.id}
-              onSelect={(id) => kidFocus.openTo(String(id))}
-              onAll={() => kidFocus.close()}
-              waiting={needs.length}
-              onNeeds={() => areaFocus.openTo('needs')}
-            />
-          )}
-          <div className="pt-kids">
+          {!needsOpen && <div className="pt-kids">
             {(focusedKid ? [focusedKid] : data.kids).map((k) => (
               <KidCard key={k.id} kid={k} focus={kidFocus}>
                 <KidFocus kid={k} requests={needs.filter((n) => n.kid_id === k.id || (isChore(n) && k.chores.some((c) => c.id === n.id)))} chore={chore} />
               </KidCard>
             ))}
-          </div>
+          </div>}
           {calm && data.kids.length > 0 && <TipSlot kids={data.kids} />}
-          {!kidFocus.open && data.kids.length > 0 && (
+          {!kidFocus.open && !needsOpen && data.kids.length > 0 && (
             <FocusArea focus={areaFocus} label="More">
               <DevicesRow focus={areaFocus} />
               <AddonsRow focus={areaFocus} />

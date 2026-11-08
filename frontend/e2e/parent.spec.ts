@@ -21,7 +21,7 @@ test.describe('parent journeys', () => {
     await expect(needs.getByText('E2E sweep')).toHaveCount(0)
 
     // approving the other one clears it too
-    const card = needs.locator('.p-needs-item').filter({ hasText: 'E2E dishes' })
+    const card = needs.locator('.p-arow').filter({ hasText: 'E2E dishes' })
     await card.getByRole('button', { name: 'Approve', exact: true }).click()
     await expect(needs.getByText('E2E dishes')).toHaveCount(0)
   })
