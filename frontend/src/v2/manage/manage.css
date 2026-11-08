@@ -374,3 +374,25 @@ html[data-look='parent'] .pn-addr .f-input.f-input { font: 12.5px ui-monospace, 
 [data-look='parent'] .st .p-dhead-act .mantine-Switch-label { padding-inline: 0 8px; font-size: 13px; font-weight: 700; color: var(--p-ink); }
 [data-look='parent'] .st .pk-input { background: var(--p-bg); }
 [data-look='parent'] .st .rw-unit input { flex-basis: 3ch; }
+
+/* Custom badges: one line each, editor in place (mockup declutter-v2 badges-edit) */
+[data-look='parent'] .bd-page { max-width: 720px; width: 100%; margin: 0 auto; gap: 14px; }
+[data-look='parent'] .bd-page .p-dhead-meta { min-width: 110px; }
+[data-look='parent'] .bd-rtile, [data-look='parent'] .bd-tile { background: var(--p-acc); color: #292928; }
+[data-look='parent'] .bd-rtile { width: 28px; height: 28px; border-radius: 9px; }
+[data-look='parent'] .bd-edit, [data-look='parent'] .bd-award { display: flex; flex-direction: column; gap: 10px; }
+[data-look='parent'] .bd-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+[data-look='parent'] .bd-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; font-size: 13.5px; color: var(--p-ink); }
+[data-look='parent'] .bd-line b { font-weight: 700; }
+[data-look='parent'] .bd-line + .bd-line { border-top: 1px solid var(--p-line); padding-top: 4px; }
+[data-look='parent'] .bd-line > span:first-child { color: var(--p-sub); }
+[data-look='parent'] .bd-tsf { font-size: 12.5px; font-weight: 700; color: var(--p-ink); text-align: right; min-width: 0; overflow-wrap: anywhere; }
+[data-look='parent'] .bd-tile { border: 0; cursor: pointer; font-family: inherit; }
+[data-look='parent'] .bd-tile:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
+[data-look='parent'] .bd-act { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+[data-look='parent'] .bd-award { padding: 14px; border: 1px solid var(--p-line); border-radius: 14px; }
+@media (max-width: 767px) {
+  [data-look='parent'] .bd-tile { min-width: 44px; min-height: 44px; }
+  [data-look='parent'] .bd-page .pk-tile-lg { width: 48px; height: 48px; border-radius: 15px; }
+  [data-look='parent'] .bd-page .p-dhead { gap: 10px; flex-wrap: nowrap; }
+}

@@ -8,7 +8,7 @@ import { apiMock, calls, detail, list, mockRoute, serve, setupLibrary, wrap } fr
 
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn(), hide: jest.fn() } }))
 jest.mock('next/router', () => ({
-  useRouter: () => ({ query: mockRoute.query, push: mockRoute.push, replace: mockRoute.replace, pathname: '/kids' }),
+  useRouter: () => ({ query: mockRoute.query, push: mockRoute.push, replace: mockRoute.replace, pathname: '/kids', beforePopState: jest.fn(), events: { on: jest.fn(), off: jest.fn(), emit: jest.fn() } }),
 }))
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 jest.mock('@/v2/parent/ParentShell', () => ({
@@ -84,10 +84,11 @@ describe('badges panes', () => {
     data()
     mockRoute.query = { section: 'badges', item: 'custom', pick: '3' }
     render(wrap(<KidsPage />))
-    const award = await within(detail()).findByRole('region', { name: 'Award it' })
-    await waitFor(() => expect(within(award).getByTestId('award-preview')).toHaveTextContent(/Mia goes\s*Gold.*Platinum/))
+    await userEvent.click(await within(detail()).findByRole('button', { name: 'Award' }))
+    const award = await within(detail()).findByRole('region', { name: 'Award Kindness' })
+    await waitFor(() => expect(within(award).getByTestId('award-preview')).toHaveTextContent(/Mia gets\s*Platinum/))
     await userEvent.type(within(award).getByLabelText('Note to Mia (optional)'), 'Helped Leo read')
-    await userEvent.click(within(award).getByRole('button', { name: 'Award to Mia' }))
+    await userEvent.click(within(award).getByRole('button', { name: 'Award Kindness' }))
     await waitFor(() =>
       expect(calls('POST')[0]).toEqual(['/custom-badges/3/award', { method: 'POST', body: { kid_id: 7, note: 'Helped Leo read' } }]),
     )
@@ -98,10 +99,11 @@ describe('badges panes', () => {
     data()
     mockRoute.query = { section: 'badges', item: 'custom', pick: '3' }
     render(wrap(<KidsPage />))
-    const award = await within(detail()).findByRole('region', { name: 'Award it' })
+    await userEvent.click(await within(detail()).findByRole('button', { name: 'Award' }))
+    const award = await within(detail()).findByRole('region', { name: 'Award Kindness' })
     await userEvent.click(within(award).getByRole('button', { name: 'Leo' }))
-    expect(within(award).getByTestId('award-preview')).toHaveTextContent('Already Mega-diamond')
-    expect(within(award).getByRole('button', { name: 'Award to Leo' })).toBeDisabled()
+    expect(within(award).getByTestId('award-preview')).toHaveTextContent(/Leo is at\s*Mega-diamond/)
+    expect(within(award).getByRole('button', { name: 'Award Kindness' })).toBeDisabled()
   })
 
   test('Recent shows who gave it and the note', async () => {
@@ -125,11 +127,11 @@ describe('badges panes', () => {
     data()
     mockRoute.query = { section: 'badges', item: 'custom' }
     render(wrap(<KidsPage />))
-    await userEvent.click(await within(detail()).findByRole('button', { name: 'New badge' }))
+    await userEvent.click(await within(detail()).findByRole('button', { name: '+ New' }))
     expect(mockRoute.push).toHaveBeenCalledWith(
       { pathname: '/kids', query: { section: 'badges', item: 'custom', pick: 'new' } },
       undefined,
-      { shallow: true },
+      { shallow: true, scroll: false },
     )
   })
 
@@ -138,7 +140,8 @@ describe('badges panes', () => {
     mockRoute.query = { section: 'badges', item: 'custom', pick: 'new' }
     render(wrap(<KidsPage />))
     await userEvent.type(await screen.findByLabelText('Badge name'), 'Pet hero')
-    await userEvent.click(screen.getByTitle('pets'))
+    await userEvent.click(screen.getByRole('button', { name: 'Change icon' }))
+    await userEvent.click(await screen.findByTitle('pets'))
     await userEvent.click(screen.getByRole('button', { name: 'Add badge' }))
     await waitFor(() =>
       expect(calls('POST')[0]).toEqual(['/custom-badges', { method: 'POST', body: { name: 'Pet hero', icon: 'pets', description: '' } }]),
@@ -152,11 +155,13 @@ describe('badges panes', () => {
     await waitFor(() => expect(fetched('/badges/overview')).toBeGreaterThan(0))
     const o = fetched('/badges/overview')
     const r = fetched('/badges/recent')
+    await userEvent.type(await within(detail()).findByLabelText('Badge name'), '!')
     await userEvent.click(await within(detail()).findByRole('button', { name: 'Save badge' }))
     await waitFor(() => expect(fetched('/badges/overview')).toBeGreaterThan(o))
     await waitFor(() => expect(fetched('/badges/recent')).toBeGreaterThan(r))
     const o2 = fetched('/badges/overview')
-    await userEvent.click(within(detail()).getByRole('button', { name: 'Delete badge' }))
+    await userEvent.click(within(detail()).getByRole('button', { name: 'More for Kindness' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Delete badge' }))
     await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(fetched('/badges/overview')).toBeGreaterThan(o2))
   })
