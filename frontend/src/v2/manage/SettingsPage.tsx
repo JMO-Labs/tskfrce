@@ -14,7 +14,6 @@ import { PaneHead } from './PaneParts'
 import { useSettingsLines } from './useSettingsLines'
 import { SettingsList } from './SettingsList'
 import { SETTINGS_SECTIONS, type S } from './settingsSections'
-import { KidPushPane } from './KidPushPane'
 import { AppearancePane } from './AppearancePane'
 import { NotificationsPane } from './NotificationsPane'
 import { accentHex } from '@/v2/parent/accent'
@@ -69,12 +68,7 @@ function SettingsBody() {
         )}
         {section === 'gifs' && family.data && <GifsCard fam={family.data} />}
         {section === 'hours' && <HoursSection />}
-        {section === 'notifications' && (
-          <>
-            <NotificationsPane />
-            <KidPushPane />
-          </>
-        )}
+        {section === 'notifications' && <NotificationsPane />}
         {section === 'parents' && <ParentsPane />}
         {section === 'integrations' && <IntegrationsPane />}
       </div>
