@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
 type Query = Record<string, string | string[] | undefined>
+type PopHandler = (s: unknown) => boolean
 type Target = { pathname?: string; query?: Query }
 
 const subs = new Set<() => void>()
@@ -22,9 +23,11 @@ export const fakeRouter = {
   stack: [{}] as Query[],
   push: jest.fn((t: Target) => { fakeRouter.pathname = t.pathname ?? fakeRouter.pathname; fakeRouter.stack.push(clean(t.query)); sync() }),
   replace: jest.fn((t: Target) => { fakeRouter.pathname = t.pathname ?? fakeRouter.pathname; fakeRouter.stack[fakeRouter.stack.length - 1] = clean(t.query); sync() }),
+  beforePopState: jest.fn((cb: PopHandler) => { fakeRouter.popHandler = cb }),
+  popHandler: (() => true) as PopHandler,
   back: jest.fn(() => { if (fakeRouter.stack.length > 1) fakeRouter.stack.pop(); sync() }),
   reset(pathname = '/x', query: Query = {}) {
-    fakeRouter.push.mockClear(); fakeRouter.replace.mockClear(); fakeRouter.back.mockClear()
+    fakeRouter.push.mockClear(); fakeRouter.replace.mockClear(); fakeRouter.back.mockClear(); fakeRouter.beforePopState.mockClear(); fakeRouter.popHandler = () => true
     fakeRouter.pathname = pathname
     fakeRouter.stack = [clean(query)]
     sync()
