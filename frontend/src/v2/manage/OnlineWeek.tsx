@@ -1,21 +1,34 @@
 import { Skeleton } from '@/v2/parent/states'
-import { Icon } from '@/v2/parent/Icon'
 import type { Device } from '@/v2/types'
 import { useDeviceActivity } from '@/v2/hooks/useDeviceActivity'
 import { slotRuns } from './activityText'
 
 const weekday = (date: string) => new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })
 
-/** Overview "Online this week": one 24 h bar per day (online / locked), newest first. */
+/** Activity calm line: 7 mini bars, the time online each day relative to the busiest day, oldest first. */
+export function WeekBars({ device }: { device: Device }) {
+  const days = [...(useDeviceActivity(device.id).data?.days ?? [])].reverse()
+  if (!days.length) return null
+  const peak = Math.max(1, ...days.map((d) => d.online_minutes))
+  return (
+    <span className="dv-wk" role="img" aria-label="Online time, last 7 days">
+      {days.map((d) => <i key={d.date} style={{ height: `${Math.max(3, Math.round((d.online_minutes / peak) * 22))}px` }} />)}
+    </span>
+  )
+}
+
+/** Mean online hours per day, rounded, from the activity feed (null until it loads). */
+export function useDailyHours(device: Device): number | null {
+  const days = useDeviceActivity(device.id).data?.days
+  return days?.length ? Math.round(days.reduce((n, d) => n + d.online_minutes, 0) / days.length / 60) : null
+}
+
+/** "Online by hour": one 24 h bar per day (online / locked), newest first. */
 export function OnlineWeek({ device }: { device: Device }) {
   const { data, isLoading } = useDeviceActivity(device.id)
   const days = data?.days ?? []
   return (
-    <section className="pk-panel pk-span" aria-label="Online this week">
-      <h3>
-        <Icon name="timeline" size={18} />
-        Online this week
-      </h3>
+    <div className="ow-pop" role="region" aria-label="Online this week">
       {isLoading ? (
         <Skeleton rows={1} />
       ) : (
@@ -44,6 +57,6 @@ export function OnlineWeek({ device }: { device: Device }) {
           </div>
         </>
       )}
-    </section>
+    </div>
   )
 }

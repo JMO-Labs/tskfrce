@@ -12,7 +12,7 @@ import { FamilyCard, GifsCard } from '@/v2/manage/FamilyCards'
 import { DeviceDetail } from '@/v2/manage/DeviceDetail'
 import type { Device, Family } from '@/v2/types'
 
-jest.mock('next/router', () => ({ useRouter: () => ({ query: {}, push: jest.fn(), replace: jest.fn() }) }))
+jest.mock('next/router', () => ({ useRouter: () => ({ query: { open: 'details' }, push: jest.fn(), replace: jest.fn() }) }))
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 
@@ -132,6 +132,7 @@ describe('device detail (item 11)', () => {
     serve({})
     wrap(<DeviceDetail device={dev()} kids={[]} onRequestOverride={() => {}} />)
     expect(screen.getByRole('switch', { name: /Always allowed/ })).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'About always allowed' }))
     await waitFor(() => expect(screen.getByText("For a kid's device that should skip hours and chores, like a school laptop. A manual lock still applies.")).toBeTruthy())
   })
 })

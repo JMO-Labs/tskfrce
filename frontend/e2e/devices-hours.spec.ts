@@ -80,6 +80,7 @@ test('hour rules and device activity: one rule, every target', async ({ page }) 
     const open = async () => {
       await page.goto(`/devices?item=${deviceId}`)
       await expect(page.getByRole('heading', { name: `Kid1 tablet ${tag}` })).toBeVisible()
+      await page.getByRole('button', { name: /^Right now/ }).click() // the region exists only while its row is open
     }
     const right = page.getByRole('region', { name: 'Right now' })
     const state = right.locator('.pk-kv', { hasText: 'State' })
@@ -107,11 +108,15 @@ test('hour rules and device activity: one rule, every target', async ({ page }) 
     await expect(state).toContainText('Locked')
     await page.getByRole('button', { name: 'Unlock 30 min' }).click()
     await expect(state).toContainText('Open')
-    await page.getByRole('tab', { name: 'Activity' }).click()
+    const openActivity = async () => {
+      const row = page.getByRole('button', { name: /^Activity/ })
+      if ((await row.getAttribute('aria-expanded')) !== 'true') await row.click() // a reload keeps ?open=activity
+    }
+    await openActivity()
     const log = page.getByRole('region', { name: 'Lock history' })
     await expect(async () => {
       await page.reload()
-      await page.getByRole('tab', { name: 'Activity' }).click()
+      await openActivity()
       await expect(log.getByText('Locked by Lab Parent')).toBeVisible({ timeout: 10_000 })
       // newest first: a parent's unlock always reads as theirs, even inside allowed hours
       await expect(log.locator('.pk-kv').first()).toContainText(/Unlocked .*by Lab Parent/, { timeout: 10_000 })

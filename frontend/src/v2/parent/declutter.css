@@ -104,7 +104,7 @@
 [data-look='parent'] .p-dhead-sub { font-size: 13px; line-height: 1.35; color: var(--p-sub); }
 [data-look='parent'] .p-dhead-chips { display: flex; gap: 6px; flex-wrap: wrap; }
 [data-look='parent'] .p-dhead-act { display: flex; gap: 6px; align-items: center; }
-[data-look='parent'] button.p-chip { border: 0; font: inherit; cursor: pointer; }
+[data-look='parent'] button.p-chip { border: 0; font-family: inherit; cursor: pointer; }
 
 /* ActionRow (mockup .row/.ty/.t/.acts) */
 [data-look='parent'] .p-arow { display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 52px; }
