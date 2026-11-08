@@ -131,7 +131,7 @@ describe('calm Today', () => {
     await userEvent.keyboard('{Escape}')
     await userEvent.click(screen.getByRole('button', { name: MAYA }))
     expect(fakeRouter.query.kid).toBe('3')
-    expect(screen.getByRole('button', { name: MAYA })).toHaveAttribute('aria-expanded', 'true')
+    expect(document.querySelector('.pt-krow')).toHaveAttribute('aria-expanded', 'true')
   })
 
   test('?kid= deep link survives the first render before data loads', async () => {

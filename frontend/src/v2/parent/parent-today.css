@@ -28,7 +28,7 @@
   transition: background var(--dur-1) var(--ease-out);
 }
 [data-look='parent'] .pt-row:hover,
-[data-look='parent'] .pt-chore[data-open='true'] > .pt-row { background: var(--p-soft); }
+[data-look='parent'] .pt-chore[data-open='true'] > .pt-rowline { background: var(--p-soft); }
 [data-look='parent'] .pt-row:focus-visible { outline: 2px solid var(--p-ink); outline-offset: -2px; }
 
 [data-look='parent'] .pt-car { width: 20px; display: grid; color: var(--p-sub); transition: transform var(--dur-1) var(--ease-out); }
@@ -62,8 +62,8 @@
 [data-look='parent'] .pt-row > :is(.p-chip, .pt-pts, .pt-chips) { flex: none; }
 [data-look='parent'] .pt-chips { display: flex; gap: 6px; }
 [data-look='parent'] .pt-t small { display: block; margin-top: 1px; color: var(--p-sub); font-weight: 400; font-size: 12px; }
-[data-look='parent'] .pt-chore[data-state='done'] > .pt-row .pt-title,
-[data-look='parent'] .pt-chore[data-state='needs_you'] > .pt-row .pt-title,
+[data-look='parent'] .pt-chore[data-state='done'] > .pt-rowline > .pt-row .pt-title,
+[data-look='parent'] .pt-chore[data-state='needs_you'] > .pt-rowline > .pt-row .pt-title,
 [data-look='parent'] .pt-step[data-done='true'] .pt-title {
   text-decoration: line-through;
   text-decoration-thickness: 1.5px;
@@ -107,8 +107,8 @@
 
 /* kid note flag (mockup 03): amber wash over the row and its actions */
 [data-look='parent'] .pt-chore[data-flag='true'] { background: color-mix(in srgb, var(--p-amb) 55%, transparent); }
-[data-look='parent'] .pt-chore[data-flag='true'] > .pt-row:hover,
-[data-look='parent'] .pt-chore[data-flag='true'][data-open='true'] > .pt-row { background: color-mix(in srgb, var(--p-amb) 80%, transparent); }
+[data-look='parent'] .pt-chore[data-flag='true'] > .pt-rowline > .pt-row:hover,
+[data-look='parent'] .pt-chore[data-flag='true'][data-open='true'] > .pt-rowline { background: color-mix(in srgb, var(--p-amb) 80%, transparent); }
 [data-look='parent'] .pt-note { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12.5px; font-weight: 600; color: var(--p-ambink); }
 [data-look='parent'] .pt-note .ms { flex: none; }
 [data-look='parent'] .pt-note-acts { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 14px 124px; }
@@ -192,56 +192,6 @@
   [data-look='parent'] .pt-note-acts .p-btn { padding: 7px 11px; min-height: 0; font-size: 12.5px; }
   [data-look='parent'] .pt-chips { flex-direction: column; align-items: flex-end; gap: 4px; }
 }
-
-/* avatar strip (KidStrip) */
-[data-look='parent'] .pt-strip { display: flex; gap: 14px; padding: 12px 16px 4px; overflow-x: auto; }
-[data-look='parent'] .pt-strip-kid {
-  flex: none;
-  max-width: 72px;
-  display: grid;
-  justify-items: center;
-  gap: 4px;
-  border: 0;
-  background: none;
-  color: var(--p-ink);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  text-decoration: none;
-  cursor: pointer;
-}
-[data-look='parent'] .pt-strip-av {
-  position: relative;
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--p-soft);
-  font-size: 18px;
-  font-weight: 700;
-}
-[data-look='parent'] .pt-strip-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-[data-look='parent'] .pt-strip-kid[aria-pressed='true'] .pt-strip-av { background: var(--p-acc); color: #292928; box-shadow: 0 0 0 2px var(--p-bg), 0 0 0 4px var(--p-acc); }
-[data-look='parent'] .pt-strip-av[data-add] { border: 1.5px dashed var(--p-line); background: none; color: var(--p-sub); }
-[data-look='parent'] .pt-strip-av i {
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  min-width: 18px;
-  height: 18px;
-  display: grid;
-  place-items: center;
-  border-radius: 9px;
-  border: 2px solid var(--p-bg);
-  font: inherit;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-  font-style: normal;
-}
-[data-look='parent'] .pt-strip-av i[data-tone='lav'] { background: var(--p-lav); color: var(--p-lav-ink); }
-[data-look='parent'] .pt-strip-av i[data-tone='acc'] { background: var(--p-acc); color: #292928; }
 
 [data-look='parent'] .pt-photo-ph { width: 80px; height: 60px; border-radius: 10px; background: var(--p-soft); }
 [data-look='parent'] .pt-ded[data-tone='ink'] { background: var(--p-soft); border: 1px solid var(--p-line); }

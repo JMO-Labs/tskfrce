@@ -13,7 +13,8 @@ import { openingLabel } from './openingLabel'
 import { HappyHourSheet } from './HappyHourButton'
 import { HappyHourChip } from './HappyHourChip'
 import { KidCard } from './KidCard'
-import { KidChoresBody } from './KidChoresBody'
+import { KidFocus } from './KidFocus'
+import { KidStrip } from './KidStrip'
 import { NeedsStrip } from './NeedsStrip'
 import { TipSlot } from './TipSlot'
 import { AddonsRow, DevicesRow } from './TodayRows'
@@ -24,6 +25,8 @@ export function TodayPage() {
   const [hhOpen, setHhOpen] = useState(false)
   const kidFocus = useFocusParam('kid', { group: ['focus'], clears: ['chore'], valid: data ? (id) => data.kids.some((k) => String(k.id) === id) : undefined })
   const areaFocus = useFocusParam('focus', { group: ['kid'], clears: ['chore'], valid: (id) => ['needs', 'devices', 'addons'].includes(id) })
+  const focusedKid = data?.kids.find((k) => String(k.id) === kidFocus.open)
+  const chore = useFocusParam('chore', { valid: focusedKid ? (id) => focusedKid.chores.some((c) => String(c.id) === id) : undefined })
   const kidOfRun = useCallback((runId: number) => data?.kids.find((k) => k.chores.some((c) => c.id === runId))?.id, [data])
   useFocusAliases(data ? kidOfRun : undefined)
 
@@ -60,10 +63,20 @@ export function TodayPage() {
               ]}
             />
           )}
+          {focusedKid && (
+            <KidStrip
+              kids={data.kids}
+              selected={focusedKid.id}
+              onSelect={(id) => kidFocus.openTo(String(id))}
+              onAll={() => kidFocus.close()}
+              waiting={needs.length}
+              onNeeds={() => areaFocus.openTo('needs')}
+            />
+          )}
           <div className="pt-kids">
-            {data.kids.map((k) => (
-              <KidCard key={k.id} kid={k} focus={kidFocus} waiting={needs.filter((n) => n.kid_id === k.id)}>
-                <KidChoresBody kid={k} />
+            {(focusedKid ? [focusedKid] : data.kids).map((k) => (
+              <KidCard key={k.id} kid={k} focus={kidFocus}>
+                <KidFocus kid={k} requests={needs.filter((n) => n.kid_id === k.id)} chore={chore} />
               </KidCard>
             ))}
           </div>

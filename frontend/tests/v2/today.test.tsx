@@ -118,11 +118,12 @@ describe('TodayPage', () => {
     expect(screen.queryByRole('tab')).toBeNull()
   })
 
-  test('focusing a kid shows their day with View as kid and Add chore buttons', async () => {
+  test('focusing a kid shows their day with Add chore and View as kid in the … menu', async () => {
     wrap(<TodayPage />)
     await openKid()
     expect(await screen.findByRole('region', { name: /kid1.*s day/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /view as kid/i })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /^More for Kid1/ }))
+    expect(await screen.findByRole('menuitem', { name: /view as kid/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /add chore/i })).toHaveAttribute('href', '/kids?section=chores&item=new')
   })
 
