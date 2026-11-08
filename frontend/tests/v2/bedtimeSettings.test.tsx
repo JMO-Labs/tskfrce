@@ -129,6 +129,19 @@ test('bedtime on but reset too early: the hint shows and the time field goes', (
   expect(bedSwitch()).toBeEnabled()
 })
 
+test('a failed save reverts only the field it carried', async () => {
+  show(fam())
+  let fail: (e: Error) => void = () => {}
+  apiMock.mockImplementation((_p, i) => (i?.method ? new Promise((_r, rej) => { fail = rej }) : Promise.resolve(undefined)))
+  await userEvent.click(bedSwitch()) // sends { bedtime_auto: true }, still in flight
+  const t = screen.getByLabelText('Approve at')
+  fireEvent.change(t, { target: { value: '22:15' } }) // a later draft, not saved yet
+  fail(new Error('nope'))
+  await waitFor(() => expect(bedSwitch()).not.toBeChecked())
+  await userEvent.click(bedSwitch())
+  expect(screen.getByLabelText('Approve at')).toHaveValue('22:15') // the time draft survived the switch's failure
+})
+
 test('bedtimeLatest stays on a 15-minute step', () => {
   expect(bedtimeLatest('20:10')).toBe('19:45')
   expect(bedtimeLatest('06:00')).toBe('23:30')
