@@ -93,6 +93,7 @@ const menu = async (name: RegExp) => {
   return userEvent.click(await screen.findByRole('menuitem', { name }))
 }
 const openRow = (open: string) => fakeRouter.reset('/devices', { item: '1', open })
+const openGroupRow = (open: string) => fakeRouter.reset('/devices', { tab: 'groups', item: '3', open })
 const calls = (method: string) => apiMock.mock.calls.filter(([, i]) => i?.method === method)
 
 beforeAll(() => {
@@ -264,6 +265,7 @@ describe('devices', () => {
   describe('group screen price', () => {
     const g = { id: 3, name: 'Tablets', device_ids: [1], owner_ids: [], icon: 'tv', chore_lock: true, screen_price: null as number | null }
     const mount = (grp = g, group_pricing = true) => {
+      openGroupRow('gset')
       apiMock.mockImplementation(async (path) => (path === '/screen-time' ? { enabled: true, price: 20, group_pricing } : {}))
       render(wrap(<GroupDetail group={grp} devices={[device]} kids={kids} onSelect={() => {}} onRequestOverride={() => {}} />))
     }
@@ -274,6 +276,7 @@ describe('devices', () => {
       expect(screen.queryByLabelText('Screen time price')).toBeNull()
     })
     test('hidden while screen time is off, even with group pricing on', async () => {
+      openGroupRow('gset')
       apiMock.mockImplementation(async (path) => (path === '/screen-time' ? { enabled: false, price: 20, group_pricing: true } : {}))
       render(wrap(<GroupDetail group={g} devices={[device]} kids={kids} onSelect={() => {}} onRequestOverride={() => {}} />))
       await waitFor(() => expect(apiMock.mock.calls.some(([p]) => p === '/screen-time')).toBe(true))
@@ -295,9 +298,10 @@ describe('devices', () => {
         if ((opts as { method?: string } | undefined)?.method === 'PATCH' && patches++ === 0) await new Promise<void>((r) => (release = r))
         return {}
       })
+      openGroupRow('gset')
       render(wrap(<GroupDetail group={g} devices={[device]} kids={kids} onSelect={() => {}} onRequestOverride={() => {}} />))
       const input = await screen.findByLabelText('Screen time price')
-      await userEvent.click(screen.getByRole('button', { name: 'Maya laptop' })) // member save, held open
+      await userEvent.click(screen.getByRole('switch', { name: /Lock with the kids/ })) // another save, held open
       await userEvent.type(input, '40')
       await userEvent.tab() // dropped: a save is in flight
       expect(calls('PATCH')).toHaveLength(1)
@@ -330,7 +334,8 @@ describe('devices', () => {
   test('group delete asks first, then DELETEs', async () => {
     const g = { id: 3, name: 'Tablets', device_ids: [1], owner_ids: [] }
     render(wrap(<GroupDetail group={g} devices={[device]} kids={kids} onSelect={() => {}} onRequestOverride={() => {}} />))
-    await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    await userEvent.click(screen.getByRole('button', { name: 'More' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Delete group/ }))
     expect(calls('DELETE')).toHaveLength(0)
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
@@ -338,6 +343,7 @@ describe('devices', () => {
   })
 
   test('group rename saves on blur', async () => {
+    openGroupRow('gset')
     const g = { id: 3, name: 'Tablets', device_ids: [1], owner_ids: [] }
     render(wrap(<GroupDetail group={g} devices={[device]} kids={kids} onSelect={() => {}} onRequestOverride={() => {}} />))
     const input = screen.getByLabelText('Group name')
@@ -390,9 +396,9 @@ describe('groups deep link', () => {
     })
     fakeRouter.reset('/devices', { item: '1', tab: 'groups' })
     render(wrap(<DevicesPage />))
-    expect(await screen.findByLabelText('Group name')).toHaveValue('Tablets')
+    expect(await screen.findByRole('heading', { name: 'Tablets' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Devices.*1 of 1 device/ })).toBeTruthy()
     expect(screen.queryByLabelText('Device name')).toBeNull()
-    expect(screen.getByText('Maya')).toBeTruthy()
   })
 })
 
