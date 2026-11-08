@@ -1,4 +1,4 @@
-// Declutter shot script. Usage: node shoot.mjs <outDir> <name> <appPath> [<mockupFile> <preset>]
+// Declutter shot script. Usage: node shoot.mjs <outDir> <name> <appPath> [<mockupFile> <preset> [step=<n>]]
 // Shoots phone + desktop x light + dark of <appPath> (and the mockup's #box when given). Env DESKTOP_H sets desktop height (default 900).
 import { createRequire } from 'node:module'
 import { mkdirSync } from 'node:fs'
@@ -6,7 +6,8 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { route, S } from './mock.mjs'
 const { chromium } = createRequire(new URL('../../../frontend/package.json', import.meta.url))('playwright')
-const [OUT, NAME, APP, MOCK, PRESET] = process.argv.slice(2)
+const [OUT, NAME, APP, MOCK, PRESET, STEP] = process.argv.slice(2)
+const STEP_N = /^step=(\d+)$/.exec(STEP ?? '')?.[1] ?? null
 if (!OUT || !NAME || !APP) { console.error('usage: shoot.mjs <outDir> <name> <appPath> [<mockupFile> <preset>]'); process.exit(1) }
 const BASE = 'http://127.0.0.1:3295'
 const REPO = resolve(fileURLToPath(new URL('../../..', import.meta.url)))
@@ -20,7 +21,7 @@ for (const [dv, vp] of [['phone', { width: 390, height: 844 }], ['desktop', { wi
     const page = await ctx.newPage()
     page.on('pageerror', (e) => errors.push(`${dv}-${scheme} ${String(e).slice(0, 160)}`))
     await page.route('**/api/proxy/**', (r) => route(r, misses))
-    S.setup = { needed: false }; S.step = null
+    S.setup = { needed: false }; S.step = STEP_N === null ? null : Number(STEP_N)
     try {
       await page.goto(`${BASE}/login`, { timeout: 240000 })
       await page.getByLabel('Username', { exact: true }).fill('dad')
