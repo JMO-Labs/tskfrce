@@ -47,7 +47,7 @@ export function RecapKids({ kids, line }: { kids: RecapKid[]; line: string | nul
           <Icon name="insights" size={18} />
           This week
         </h3>
-        <button type="button" className="v2-info" aria-label="About these numbers" aria-expanded={note} aria-controls="rc-note" onClick={() => setNote(!note)}>
+        <button type="button" className="v2-info" aria-label="About these numbers" aria-expanded={note} aria-controls={note ? 'rc-note' : undefined} onClick={() => setNote(!note)}>
           <Icon name="info" size={16} />
         </button>
       </div>
@@ -61,7 +61,7 @@ export function RecapKids({ kids, line }: { kids: RecapKid[]; line: string | nul
           const isOpen = open === k.id
           return (
             <div key={k.id}>
-              <button type="button" className="v2-kid" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : k.id)}>
+              <button type="button" className="v2-kid" aria-expanded={isOpen} aria-controls={isOpen ? `rk-${k.id}` : undefined} onClick={() => setOpen(isOpen ? null : k.id)}>
                 <span className="pk-av" data-size="lg" aria-hidden="true">{k.name.charAt(0).toUpperCase()}</span>
                 <span className="v2-kid-t">
                   <b>{k.name}</b>
@@ -83,7 +83,7 @@ export function RecapKids({ kids, line }: { kids: RecapKid[]; line: string | nul
                 <Icon name={isOpen ? 'expand_less' : 'expand_more'} size={20} />
               </button>
               {!k.enough_history && <p className="v2-new">Trends start after 2 weeks.</p>}
-              {isOpen && <Detail k={k} />}
+              {isOpen && <div id={`rk-${k.id}`}><Detail k={k} /></div>}
             </div>
           )
         })}

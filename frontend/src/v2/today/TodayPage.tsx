@@ -36,7 +36,7 @@ export function TodayPage() {
     const t = setTimeout(() => {
       if (document.activeElement && document.activeElement !== document.body) return
       const q = (sel: string) => document.querySelector<HTMLElement>(sel)
-      ;(q('[data-focus-head="needs"]') ?? q('.pt-kcard [data-focus-head]') ?? q('main h1'))?.focus({ preventScroll: true })
+      ;(q('[data-focus-head="needs"]') ?? q('.pt-kcard [data-focus-head]') ?? q('.p-header h1, main h1'))?.focus({ preventScroll: true })
     }, 80)
     return () => clearTimeout(t)
   }, [needsNow])
