@@ -24,13 +24,18 @@ export function SummaryRow({ id, icon, title, summary, line2, aside, focus, chil
   const body = useRef<HTMLDivElement>(null)
   const startY = useRef<number | null>(null)
 
+  const wasOpen = useRef(open)
   useEffect(() => {
+    const was = wasOpen.current
+    wasOpen.current = open
+    // closing unmounts the body, so hand focus back to this row's head
+    if (was && !open) document.querySelector<HTMLElement>(`[data-focus-head="${id}"]`)?.focus({ preventScroll: true })
     const el = body.current
     if (!open || !el) return
     ;(el.querySelector<HTMLElement>(FOCUSABLE) ?? el).focus({ preventScroll: true })
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     el.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' })
-  }, [open])
+  }, [open, id])
 
   const onTouchStart = (e: TouchEvent) => { startY.current = e.touches[0]?.clientY ?? null }
   const onTouchEnd = (e: TouchEvent) => {
