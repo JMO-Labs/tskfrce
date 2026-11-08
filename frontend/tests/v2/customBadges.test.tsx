@@ -85,6 +85,8 @@ describe('custom badges, calm', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Change icon' }))
     await userEvent.click(await screen.findByTitle('pets'))
     expect(await screen.findByRole('region', { name: 'Unsaved changes' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByTitle('pets')).toBeNull()) // the pop-over closes on pick
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Change icon' })).toHaveFocus())
   })
 
   test('award form appears only after tapping Award', async () => {

@@ -96,7 +96,7 @@ export function SettingsBody({ saver: { save, once }, group, pricing, nameFocus 
       <div className="gd-line">
         <span>Icon</span>
         <InfoPop label="Change icon" width={320} target={<button type="button" className="pk-tile gd-tile" aria-label="Change icon"><Icon name={group.icon} size={20} /></button>}>
-          <GlyphPicker value={group.icon} onChange={(g) => g !== group.icon && setExtra({ icon: g })} choices={GROUP_ICONS} />
+          {(close) => <GlyphPicker value={group.icon} onChange={(g) => { if (g !== group.icon) setExtra({ icon: g }); close() }} choices={GROUP_ICONS} />}
         </InfoPop>
       </div>
       <div className="gd-line">

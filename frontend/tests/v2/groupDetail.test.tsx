@@ -120,6 +120,7 @@ describe('group detail, focus', () => {
     expect(await screen.findByPlaceholderText('Search glyphs')).toBeTruthy()
     await userEvent.click(screen.getByTitle('tv'))
     await waitFor(() => expect(patches()[0][1]?.body).toMatchObject({ icon: 'tv' }))
+    await waitFor(() => expect(screen.queryByPlaceholderText('Search glyphs')).toBeNull())
   })
 
   test('chore lock switch saves on change', async () => {

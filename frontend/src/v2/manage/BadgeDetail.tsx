@@ -101,7 +101,7 @@ export function BadgeDetail({ badge, kids, tiers, onSelect, onGuard }: Props) {
       <div className="bd-line">
         <span>Icon</span>
         <InfoPop label="Change icon" width={320} target={<button type="button" className="pk-tile bd-tile" aria-label="Change icon">{icon ? <Icon name={icon} size={20} /> : <Icon name="add" size={20} />}</button>}>
-          <GlyphPicker value={icon} onChange={setIcon} choices={BADGE_GLYPHS} />
+          {(close) => <GlyphPicker value={icon} onChange={(g) => { setIcon(g); close() }} choices={BADGE_GLYPHS} />}
         </InfoPop>
       </div>
       {badge && (
