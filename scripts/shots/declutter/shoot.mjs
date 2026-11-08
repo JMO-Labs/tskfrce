@@ -23,6 +23,7 @@ for (const [dv, vp] of [['phone', { width: 390, height: 844 }], ['desktop', { wi
     await page.route('**/api/proxy/**', (r) => route(r, misses))
     S.setup = { needed: false }; S.step = STEP_N === null ? null : Number(STEP_N)
     try {
+      if (APP !== '-') { // APP '-' = mockup only (no dev server)
       await page.goto(`${BASE}/login`, { timeout: 240000 })
       await page.getByLabel('Username', { exact: true }).fill('dad')
       await page.getByLabel('Password', { exact: true }).fill('pw12345678')
@@ -34,6 +35,7 @@ for (const [dv, vp] of [['phone', { width: 390, height: 844 }], ['desktop', { wi
       if (process.env.CLICK) { for (const n of process.env.CLICK.split('|')) { if (n === 'Escape') await page.keyboard.press('Escape'); else { await page.getByRole('button', { name: n, exact: true }).focus(); await page.keyboard.press('Enter') } await page.waitForTimeout(400) } await page.mouse.move(0, 0); await page.waitForTimeout(300) }
       await page.screenshot({ path: `${OUT}/${NAME}-${dv}-${scheme}.png` })
       console.log('shot', NAME, dv, scheme)
+      }
       if (MOCK && PRESET) {
         await page.goto(`file://${REPO}/.superpowers/mockups/${MOCK}?s=${PRESET}&t=${scheme}&w=${dv}`)
         await page.waitForTimeout(500)
