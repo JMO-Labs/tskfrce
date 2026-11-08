@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import type { NeedsItem, TodayChore, TodayKid } from '../types'
 import { Chip } from '../parent/Chip'
 import { Icon } from '../parent/Icon'
@@ -7,6 +8,7 @@ import { threadGlyph } from './choreIcon'
 import { statusChip } from './statusChip'
 import { ownApproved } from '../trustTypes'
 import { useClock, useNow } from './useClock'
+import type { NeedsActions } from './needsActions'
 import { WaitingActions } from './WaitingActions'
 
 const wall = (d: Date) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
@@ -32,6 +34,8 @@ export function ChoreRow({
   isOpen,
   onToggle,
   waiting,
+  actions,
+  bare,
 }: {
   chore: TodayChore
   kid: TodayKid
@@ -39,14 +43,24 @@ export function ChoreRow({
   onToggle: () => void
   /** this chore's needs-you item: Approve and "…" replace the Needs OK chip */
   waiting?: NeedsItem
+  /** the shared actions for `waiting` (one lock for all rows) */
+  actions?: NeedsActions
+  /** focused-kid look (mockup): no Approved / To do chips, no points */
+  bare?: boolean
 }) {
+  const sheet = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    // after the focus hook has noted the row as the opener
+    const f = isOpen ? requestAnimationFrame(() => sheet.current?.focus({ preventScroll: true })) : 0
+    return () => cancelAnimationFrame(f)
+  }, [isOpen]) // opening moves focus into the sheet
   const ticked = chore.state === 'done' || chore.state === 'needs_you'
   const sub = choreSub(chore, useClock())
-  const chips = statusChip(chore, useNow()).filter((c) => !waiting || c.label !== 'Needs OK')
+  const chips = statusChip(chore, useNow()).filter((c) => !(waiting && c.label === 'Needs OK') && !(bare && ['Approved', 'To do'].includes(c.label)))
   const own = chore.state === 'done' && ownApproved(chore.approved_via)
   const kept = Math.max(0, chore.points - (chore.deducted ?? 0))
   return (
-    <div data-testid="chore-row" data-open={isOpen} data-state={chore.state} data-flag={!!chore.note} className="pt-chore">
+    <div data-testid="chore-row" data-open={isOpen} data-state={chore.state} data-flag={!!chore.note} className="pt-chore" data-bare={bare || undefined}>
       <div className="pt-rowline">
         <button className="pt-row" onClick={onToggle} aria-expanded={isOpen}>
           <span className="pt-car" aria-hidden>
@@ -94,10 +108,14 @@ export function ChoreRow({
             )}
           </span>
         </button>
-        {waiting && <WaitingActions item={waiting} name={chore.title} />}
+        {waiting && actions && <WaitingActions item={waiting} name={chore.title} act={actions} />}
       </div>
       <ChoreNote chore={chore} />
-      {isOpen && <ChoreOpen chore={chore} kid={kid} />}
+      {isOpen && (
+        <div ref={sheet} role="region" aria-label={`${chore.title} details`} tabIndex={-1} className="pt-sheetwrap">
+          <ChoreOpen chore={chore} kid={kid} />
+        </div>
+      )}
     </div>
   )
 }

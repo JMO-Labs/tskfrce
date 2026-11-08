@@ -91,7 +91,7 @@
 [data-look='parent'] .pt-rowline { display: flex; flex-wrap: wrap; align-items: center; }
 [data-look='parent'] .pt-rowline > .pt-row { flex: 1; width: auto; min-width: 0; }
 [data-look='parent'] .pt-wact { flex: none; display: flex; align-items: center; gap: 6px; padding-right: 12px; }
-[data-look='parent'] .pt-wact .p-btn:not(.p-ib) { padding: 7px 12px; min-height: 0; font-size: 13px; }
+[data-look='parent'] :is(.pt-wact, .pt-kb .p-arow-acts) .p-btn:not(.p-ib) { padding: 7px 12px; min-height: 0; font-size: 13px; }
 [data-look='parent'] .pt-wsend { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 12px; }
 [data-look='parent'] .pt-wsend .p-needs-note { flex: 1 1 160px; min-width: 0; }
 [data-look='parent'] .pt-kb { display: grid; gap: 12px; min-width: 0; }
@@ -118,9 +118,14 @@
   [data-look='parent'] .pt-kbody:has(.pt-kb) { padding: 0 18px 18px; }
 }
 @media (max-width: 767px) {
-  [data-look='parent'] .pt-strip-kid { width: 44px; height: 44px; }
+  [data-look='parent'] .pt-strip-kid::after { content: ''; position: absolute; inset: -5px; } /* 44 px touch target, mockup-size avatar */
   [data-look='parent'] .pt-wact { padding-right: 8px; gap: 4px; }
-  [data-look='parent'] .pt-wact .p-btn:not(.p-ib) { position: relative; padding: 7px 10px; }
-  [data-look='parent'] .pt-wact .p-btn:not(.p-ib)::after { content: ''; position: absolute; inset: -6px -2px; } /* 44 px touch target */
+  [data-look='parent'] :is(.pt-wact, .pt-kb .p-arow-acts) .p-btn:not(.p-ib) { position: relative; padding: 7px 10px; }
+  [data-look='parent'] .pt-kb .p-arow-acts { gap: 4px; }
+  [data-look='parent'] .pt-kb .p-arow { gap: 8px; padding-right: 8px; }
+  [data-look='parent'] :is(.pt-wact, .pt-kb .p-arow-acts) .p-btn:not(.p-ib)::after { content: ''; position: absolute; inset: -6px -2px; } /* 44 px touch target */
 }
 [data-look='parent'] .pt-kcard[data-open] .pt-kname .p-chip { display: none; } /* the open card says it in its rows */
+[data-look='parent'] .pt-chore[data-bare] :is(.pt-car, .pt-pts:not(:has(s))) { display: none; } /* focused kid: rows as in the mockup */
+[data-look='parent'] .pt-chore[data-bare] .pt-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-look='parent'] .pt-sheetwrap { outline: none; }

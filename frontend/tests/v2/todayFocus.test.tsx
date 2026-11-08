@@ -258,4 +258,82 @@ describe('Today kid focus', () => {
     expect(fakeRouter.query.kid).toBe('3')
     expect(document.querySelectorAll('.pt-kcard')).toHaveLength(1)
   })
+
+  test('Requests sub-line reads Asked <time> · <pts> pts', async () => {
+    today = base({ needs_you: [items[0], { ...items[1], submitted_at: '2026-10-24T19:40:00Z' }] })
+    wrap()
+    const body = await focused()
+    expect(body.getByText(/^Asked .* · 30 pts$/)).toBeInTheDocument()
+  })
+
+  test('focused rows drop the Approved and To do chips', async () => {
+    wrap()
+    const body = await focused()
+    expect(body.queryByText('Approved')).toBeNull()
+    expect(body.queryByText('To do')).toBeNull()
+  })
+
+  test('a team chore credited to another kid still gets Approve on this kid\'s row', async () => {
+    today = base({ needs_you: [{ ...items[0], kid_id: 4, kid_name: 'Leo' }] })
+    wrap()
+    const body = await focused()
+    const row = body.getByText('Make bed').closest('[data-testid="chore-row"]') as HTMLElement
+    expect(within(row).getByRole('button', { name: 'Approve' })).toBeInTheDocument()
+    expect(within(row).queryByText('Needs OK')).toBeNull()
+  })
+
+  test('one lock: approving a row disables the other Approve buttons', async () => {
+    let release: (v: unknown) => void = () => undefined
+    const gate = new Promise((r) => (release = r))
+    const impl = apiMock.getMockImplementation()!
+    apiMock.mockImplementation(async (p, init) => (init?.method && p === '/chores/103/approve' ? gate : impl(p, init)))
+    wrap()
+    const body = await focused()
+    await userEvent.click(body.getAllByRole('button', { name: 'Approve' })[0])
+    await waitFor(() => body.getAllByRole('button', { name: 'Approve' }).forEach((b) => expect(b).toBeDisabled()))
+    release({})
+  })
+
+  test('Bonus and Deduct are disabled until the kid record loads', async () => {
+    const impl = apiMock.getMockImplementation()!
+    apiMock.mockImplementation(async (p, init) => (p === '/kids' ? new Promise(() => undefined) : impl(p, init)))
+    wrap()
+    await focused()
+    await userEvent.click(screen.getByRole('button', { name: 'More for Maya' }))
+    expect(await screen.findByRole('menuitem', { name: 'Bonus' })).toBeDisabled()
+    expect(screen.getByRole('menuitem', { name: 'Deduct' })).toBeDisabled()
+  })
+
+  test('header and tab bar are the same in calm and focus', async () => {
+    fakeRouter.reset('/')
+    wrap()
+    await screen.findByRole('button', { name: MAYA })
+    const shell = () => [document.querySelector('h1')?.textContent, document.querySelector('nav.p-tabbar, .p-tabbar')?.textContent, document.querySelector('.p-rail')?.textContent]
+    const calm = shell()
+    await userEvent.click(screen.getByRole('button', { name: MAYA }))
+    await focused()
+    expect(shell()).toEqual(calm)
+  })
+
+  test('opening a kid moves focus into its body; ‹ All returns focus to the kid row', async () => {
+    fakeRouter.reset('/')
+    wrap()
+    const opener = await screen.findByRole('button', { name: MAYA })
+    await userEvent.click(opener)
+    const region = await screen.findByRole('region', { name: "Maya's day" })
+    await waitFor(() => expect(document.activeElement).toBe(region))
+    await userEvent.click(screen.getByRole('button', { name: /All/ }))
+    await waitFor(() => expect(document.activeElement).toBe(document.querySelector('.pt-krow')))
+  })
+
+  test('opening a chore moves focus into its sheet; Esc returns focus to its row', async () => {
+    wrap()
+    const body = await focused()
+    const row = body.getByText('Dishes', { selector: '.pt-title' }).closest('button.pt-row') as HTMLElement
+    await userEvent.click(row)
+    const sheet = await screen.findByRole('region', { name: 'Dishes details' })
+    await waitFor(() => expect(document.activeElement).toBe(sheet))
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(document.activeElement).toBe(row))
+  })
 })
