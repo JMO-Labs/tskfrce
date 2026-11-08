@@ -1,20 +1,21 @@
 import Link from 'next/link'
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { Icon } from '../parent/Icon'
 import { InfoPop } from '../parent/InfoPop'
 import { ProgressRing } from '../parent/ProgressRing'
 import type { Focus } from '../parent/useFocusParam'
-import type { NeedsItem, TodayKid } from '../types'
+import type { TodayKid } from '../types'
 import { KidFacts, initial } from './KidFacts'
 
 /**
  * Calm kid row/tile on Today: avatar (details pop-over) and a row button that focuses the kid.
  * `children` is the focused body, shown only while this kid is the open `kid` focus.
- * `waiting` is this kid's Needs-you items, for the focused body.
  */
-export function KidCard({ kid, focus, children }: { kid: TodayKid; focus: Focus; waiting: NeedsItem[]; children?: ReactNode }) {
+export function KidCard({ kid, focus, children }: { kid: TodayKid; focus: Focus; children?: ReactNode }) {
   const id = String(kid.id)
   const open = focus.isOpen(id)
+  const body = useRef<HTMLDivElement>(null)
+  useEffect(() => { if (open) body.current?.focus({ preventScroll: true }) }, [open]) // opening moves focus into the body
   const name = kid.name ?? 'Kid'
   const waitingN = kid.needs_you_count ?? 0
   return (
@@ -54,7 +55,7 @@ export function KidCard({ kid, focus, children }: { kid: TodayKid; focus: Focus;
         </button>
       </div>
       {open && children && (
-        <div id={`kbody-${id}`} role="region" aria-label={`${name}'s day`} tabIndex={-1} className="pt-kbody">
+        <div id={`kbody-${id}`} role="region" aria-label={`${name}'s day`} tabIndex={-1} className="pt-kbody" ref={body}>
           {children}
         </div>
       )}

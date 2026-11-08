@@ -111,7 +111,7 @@ test('a kid note shows the note and only Reply, which opens the chore thread', a
   expect(within(card('Clean bathroom')).queryByRole('button', { name: 'Approve' })).toBeNull()
   expect(within(card('Clean bathroom')).queryByRole('button', { name: 'Send back' })).toBeNull()
   await userEvent.click(within(card('Clean bathroom')).getByRole('button', { name: 'Reply' }))
-  expect(push).toHaveBeenCalledWith('/?chore=21')
+  expect(push).toHaveBeenCalledWith({ pathname: '/', query: { kid: '1', chore: '21' } })
   expect(openChat).toHaveBeenCalledWith('chore', '21')
 })
 

@@ -1,36 +1,44 @@
-import Link from 'next/link'
-import type { TodayKid } from '../types'
 import { Icon } from '../parent/Icon'
+import type { TodayKid } from '../types'
 import { initial } from './KidFacts'
 
-/** Phone Today: one avatar per kid (lavender count = waiting, tick = all done), then Add. */
-export function KidStrip({ kids, selected, onSelect }: { kids: TodayKid[]; selected?: number; onSelect: (k: TodayKid) => void }) {
+/** Top of a focused Today: back to all kids, one avatar per kid (lavender count = waiting, tick = all done), Needs total. */
+export function KidStrip({ kids, selected, onSelect, onAll, waiting, onNeeds }: {
+  kids: TodayKid[]
+  selected?: number
+  onSelect: (id: number) => void
+  onAll: () => void
+  waiting: number
+  onNeeds: () => void
+}) {
   return (
     <nav className="pt-strip" aria-label="Kids">
+      <button type="button" className="p-btn" onClick={onAll}>
+        <Icon name="chevron_left" size={16} />
+        All
+      </button>
       {kids.map((k) => {
-        const waiting = k.needs_you_count ?? 0
+        const n = k.needs_you_count ?? 0
+        const on = k.id === selected
         const allDone = !!k.total && k.done === k.total
+        const name = k.name ?? 'Kid'
         return (
-          <button key={k.id} className="pt-strip-kid" aria-pressed={k.id === selected} onClick={() => onSelect(k)}>
-            <span className="pt-strip-av">
-              {initial(k.name)}
-              {waiting > 0 && <i data-tone="lav">{waiting}</i>}
-              {!waiting && allDone && (
-                <i data-tone="acc">
-                  <Icon name="check" size={12} />
-                </i>
-              )}
-            </span>
-            <span className="pt-strip-name">{k.name}</span>
+          <button key={k.id} type="button" className="pt-strip-kid" aria-pressed={on} aria-label={n > 0 && !on ? `${name}, ${n} waiting` : name} onClick={() => onSelect(k.id)}>
+            {initial(k.name)}
+            {!on && n > 0 && <i data-tone="lav" aria-hidden>{n}</i>}
+            {!on && !n && allDone && (
+              <i data-tone="acc" aria-hidden>
+                <Icon name="check" size={12} />
+              </i>
+            )}
           </button>
         )
       })}
-      <Link href="/kids?section=kids" className="pt-strip-kid">
-        <span className="pt-strip-av" data-add>
-          <Icon name="add" size={20} />
-        </span>
-        Add
-      </Link>
+      <span className="pt-strip-grow" />
+      <button type="button" className="p-pill" aria-label={`Needs you, ${waiting} waiting`} onClick={onNeeds}>
+        <Icon name="hourglass_top" size={14} />
+        {waiting}
+      </button>
     </nav>
   )
 }
