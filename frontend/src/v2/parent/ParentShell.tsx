@@ -73,7 +73,7 @@ export function ParentShell({
         <div className="p-content">
           {small && (
             <header className="p-header">
-              <h1>{title}</h1>
+              <h1 tabIndex={-1}>{title}</h1>
               {phoneTools}
             </header>
           )}
@@ -93,7 +93,7 @@ export function ParentShell({
       {!small && <Rail onLogout={logOut} />}
       <div className="p-content">
         <header className="p-header">
-          <h1>{title}</h1>
+          <h1 tabIndex={-1}>{title}</h1>
           {actions}
           {small && phoneTools}
         </header>
