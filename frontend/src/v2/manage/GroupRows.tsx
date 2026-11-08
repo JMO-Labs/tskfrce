@@ -55,7 +55,7 @@ export function SettingsBody({ saver: { save, once }, group, pricing, nameFocus 
   const [name, setName] = useResetState(group.name)
   const [price, setPrice] = useResetState(group.screen_price != null ? String(group.screen_price) : '')
   const nameRef = useRef<HTMLInputElement>(null)
-  const retryPrice = useRef(false) // a price blur landed while another save ran
+  const retry = useRef({ name: false, price: false }) // a blur landed while another save ran
   useEffect(() => { if (nameFocus) nameRef.current?.focus() }, [nameFocus])
   const priceErr = price.trim() === '' ? '' : intError(price, 1, 1000)
   // a free group (chore lock off) is never sold, so its price would do nothing
@@ -66,7 +66,7 @@ export function SettingsBody({ saver: { save, once }, group, pricing, nameFocus 
   const rename = () => {
     const n = name.trim()
     if (!n) setName(group.name)
-    else if (n !== group.name) once(() => toasted(save.mutateAsync({ ...base, name: n }), 'Renamed'))
+    else if (n !== group.name) void once(() => toasted(save.mutateAsync({ ...base, name: n }), 'Renamed')).then((ran) => { if (!ran) retry.current.name = true })
   }
   const setExtra = (extra: { icon?: string; chore_lock?: boolean }) =>
     once(() => toasted(save.mutateAsync({ ...base, icon: group.icon, chore_lock: group.chore_lock, ...extra }), 'Saved'))
@@ -75,14 +75,16 @@ export function SettingsBody({ saver: { save, once }, group, pricing, nameFocus 
     const next = price.trim() === '' ? null : Number(price)
     if (next === (group.screen_price ?? null)) return
     void once(() => toasted(save.mutateAsync({ ...base, screen_price: next }), 'Saved')).then((ran) => {
-      if (!ran) retryPrice.current = true
+      if (!ran) retry.current.price = true
     })
   }
-  // retry a dropped price save once the other save is done and the group has refreshed
+  // retry a dropped name or price save once the other save is done and the group has refreshed
   useEffect(() => {
-    if (!retryPrice.current || save.isPending) return
-    retryPrice.current = false
-    savePrice()
+    if (save.isPending || !(retry.current.name || retry.current.price)) return
+    const { name: n, price: p } = retry.current
+    retry.current = { name: false, price: false }
+    if (n) { rename(); retry.current.price = p } // the price waits for the rename to land
+    else if (p) savePrice()
   }, [save.isPending, group]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (

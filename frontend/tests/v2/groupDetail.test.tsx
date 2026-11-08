@@ -218,4 +218,26 @@ describe('group detail, focus', () => {
     expect(screen.getByText('1 locked')).toBeTruthy()
     expect(screen.getByText('Maya')).toBeTruthy()
   })
+
+  test('a name blur during another save is retried after it', async () => {
+    let release = () => {}
+    let n = 0
+    apiMock.mockImplementation(async (path, o) => {
+      if (path === '/screen-time') return { enabled: true, price: 20, group_pricing: true }
+      if (o?.method === 'PATCH' && n++ === 0) await new Promise<void>((r) => (release = r))
+      return {}
+    })
+    show(group, { open: 'gset' })
+    await userEvent.click(await screen.findByRole('switch', { name: /Lock with the kids/ })) // held open
+    const input = screen.getByLabelText('Group name')
+    await userEvent.clear(input)
+    await userEvent.type(input, 'Screens')
+    await userEvent.tab()
+    expect(patches()).toHaveLength(1)
+    release()
+    await waitFor(() => expect(patches()).toHaveLength(2))
+    expect(patches()[1][1]?.body).toMatchObject({ name: 'Screens' })
+    await new Promise((r) => setTimeout(r, 50))
+    expect(patches()).toHaveLength(2)
+  })
 })
