@@ -43,17 +43,24 @@ function PriceBody({ st, save }: BodyProps) {
   )
 }
 
+/** The most minutes any kid can buy in a day (family max when no kid has one); null = no max anywhere. */
+const largestMax = (st: ScreenTime) => {
+  const m = st.kids.map((k) => k.max_minutes).filter((n): n is number => n != null)
+  return m.length ? Math.max(...m) : st.max_minutes_per_day
+}
+
 function SaveBody({ st, save }: BodyProps) {
   const [cap, setCap] = useResetState(st.bank_cap == null ? '' : String(st.bank_cap))
-  if (!bankable(st)) return <p className="pk-hint">Pick a max per day first, so there is something to save up to.</p>
-  const max = st.max_minutes_per_day
+  const sw = <Sw label="Carry unused minutes over" checked={st.rollover} onChange={(v) => void save({ rollover: v })} />
+  if (!bankable(st)) return <>{st.rollover && sw}<p className="pk-hint">Pick a max per day first, so there is something to save up to.</p></>
+  const max = largestMax(st)
   const empty = !cap.trim()
   const msg: FieldMsg | undefined = empty
     ? undefined
     : (() => {
         const e = intError(cap, 15, 480) || (Number(cap) % 15 ? 'Use steps of 15.' : '')
         if (e) return { text: e, tone: 'error' }
-        return max != null && Number(cap) < max ? { text: `At least the daily max (${max} min), or leave empty.`, tone: 'hint' } : undefined
+        return max != null && Number(cap) < max ? { text: `At least the largest daily max (${max} min), or leave empty.`, tone: 'hint' } : undefined
       })()
   const next = empty ? null : Number(cap)
   const commit = () => {
@@ -62,9 +69,9 @@ function SaveBody({ st, save }: BodyProps) {
   }
   return (
     <>
-      <Sw label="Carry unused minutes over" checked={st.rollover} onChange={(v) => void save({ rollover: v })} />
+      {sw}
       {st.rollover && (
-        <ScreenField label="Save up to (min)" name="Save up to" value={cap} onChange={setCap} onCommit={commit} msg={msg} placeholder={max == null ? "Same as each kid's daily max" : `Same as the daily max (${max})`} />
+        <ScreenField label="Save up to (min)" name="Save up to" value={cap} onChange={setCap} onCommit={commit} msg={msg} placeholder={st.max_minutes_per_day == null ? "Same as each kid's daily max" : `Same as the daily max (${st.max_minutes_per_day})`} />
       )}
       <p className="pk-hint">Minutes a kid doesn&apos;t buy today carry over, so they can save up for a bigger day.</p>
     </>
@@ -77,7 +84,7 @@ export function ScreenRules({ st, save, focus }: BodyProps & { focus: Focus }) {
   const saveSummary = !st.rollover ? 'Off' : !bankable(st) ? 'Needs a max' : cap != null ? `On · up to ${cap} min` : 'On'
   return (
     <FocusArea focus={focus} label="Rules">
-      <SummaryRow id="price" icon={ico('star')} title="Price" summary={`${st.price} pts = 15 min`} focus={focus}>
+      <SummaryRow id="price" icon={ico('stars')} title="Price" summary={`${st.price} pts = 15 min`} focus={focus}>
         <PriceBody st={st} save={save} />
       </SummaryRow>
       <SummaryRow id="max" icon={ico('timer')} title="Max per day" summary={st.max_minutes_per_day ? `${st.max_minutes_per_day} min` : 'No max'} focus={focus}>

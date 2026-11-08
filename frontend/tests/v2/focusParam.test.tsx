@@ -251,3 +251,36 @@ test('a role=dialog blocks Esc', () => {
   act(() => { fireEvent.keyDown(document, { key: 'Escape' }) })
   expect(fakeRouter.query.open).toBe('a')
 })
+
+describe('closing blurs a focused field in the open body first', () => {
+  const mount = () => {
+    fakeRouter.reset('/x', { open: 'a' })
+    const onBlur = jest.fn()
+    render(<><Harness /><div className="p-srow-body"><input aria-label="f" onBlur={onBlur} /></div></>)
+    act(() => screen.getByLabelText('f').focus())
+    return onBlur
+  }
+  test('close()', () => {
+    const onBlur = mount()
+    act(() => h.focus.close())
+    expect(onBlur).toHaveBeenCalledTimes(1)
+  })
+  test('Esc', () => {
+    const onBlur = mount()
+    act(() => { fireEvent.keyDown(document, { key: 'Escape' }) })
+    expect(onBlur).toHaveBeenCalledTimes(1)
+  })
+  test('a route change (browser Back)', () => {
+    const onBlur = mount()
+    act(() => fakeRouter.events.emit('routeChangeStart', '/x'))
+    expect(onBlur).toHaveBeenCalledTimes(1)
+  })
+  test('a field outside the body keeps focus', () => {
+    fakeRouter.reset('/x', { open: 'a' })
+    const onBlur = jest.fn()
+    render(<><Harness /><input aria-label="g" onBlur={onBlur} /></>)
+    act(() => screen.getByLabelText('g').focus())
+    act(() => h.focus.close())
+    expect(onBlur).not.toHaveBeenCalled()
+  })
+})
