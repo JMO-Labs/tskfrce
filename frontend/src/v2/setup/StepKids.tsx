@@ -1,8 +1,11 @@
 import { useState, type KeyboardEvent } from 'react'
-import { Button, Group, TextInput } from '@mantine/core'
+import { Button, Popover, TextInput } from '@mantine/core'
 import { useMutation } from '@tanstack/react-query'
 import { api } from '../api'
 import { useSingleFlight } from '../hooks/useSingleFlight'
+import { Icon } from '../parent/Icon'
+import { InfoPop } from '../parent/InfoPop'
+import { motionProps } from '../parent/reduceMotion'
 import type { Kid } from '../types'
 import { AVATARS } from './starterChores'
 import styles from './stepCards.module.css'
@@ -17,6 +20,7 @@ interface Props {
 
 export function StepKids({ kids, name, onName, draftError, onAdd }: Props) {
   const [avatar, setAvatar] = useState(AVATARS[0])
+  const [picking, setPicking] = useState(false)
   const [pin, setPin] = useState('')
   const pinBad = pin !== '' && !/^\d{4}$/.test(pin)
   const add = useMutation({
@@ -37,35 +41,50 @@ export function StepKids({ kids, name, onName, draftError, onAdd }: Props) {
     if (canAdd) addKid()
   }
   return (
-    <div className={styles.card}>
+    <>
       {kids.length > 0 && (
-        <div className={styles.rows} aria-label="Kids added" role="list">
+        <div className={styles.list} aria-label="Kids added" role="list">
           {kids.map((k) => (
-            <div key={k.id} role="listitem" className={styles.kidrow}>
-              <span className={styles.av} aria-hidden="true">{k.avatar}</span>
-              <div className={styles.t2}>
-                {k.full_name}
-                <small>{k.has_pin ? 'PIN set' : 'No PIN'}</small>
-              </div>
-              <span className={styles.chip}>Added</span>
+            <div key={k.id} role="listitem" className={styles.kidline}>
+              <span className={styles.avsm} aria-hidden="true">{k.avatar}</span>
+              <span className={styles.kn}>{k.full_name}</span>
+              <span className={styles.pinnote}>{k.has_pin ? 'PIN set' : 'No PIN'}</span>
+              <span className={styles.chip}><Icon name="check" size={11} /> Added</span>
             </div>
           ))}
         </div>
       )}
-      <TextInput label="Name" value={name} onChange={(e) => onName(e.currentTarget.value)} onKeyDown={enterAdds} error={draftError} />
-      <div role="group" aria-label="Pick an avatar" className="f-row" style={{ marginTop: 12 }}>
-        {AVATARS.map((a) => (
-          <Button key={a} variant={a === avatar ? 'filled' : 'default'} aria-pressed={a === avatar}
-            aria-label={`Avatar ${a}`} onClick={() => setAvatar(a)} px={0} w={44}>{a}</Button>
-        ))}
+      <div className={styles.card}>
+        <TextInput label="Name" placeholder="Kid's name" autoComplete="off" value={name} onChange={(e) => onName(e.currentTarget.value)} onKeyDown={enterAdds} error={draftError} />
+        <div className={styles.pair}>
+          <div>
+            <div className={styles.fldlabel}>Avatar</div>
+            <Popover opened={picking} onChange={setPicking} withinPortal position="bottom-start" middlewares={{ flip: true, shift: { padding: 16 } }} closeOnEscape closeOnClickOutside returnFocus transitionProps={motionProps()}>
+              <Popover.Target>
+                <button type="button" className={styles.avbtn} aria-label={`Pick an avatar, now ${avatar}`} aria-expanded={picking}
+                  onKeyDown={(e) => { if (e.key === 'Escape') setPicking(false) }} onClick={() => setPicking((o) => !o)}>
+                  <span aria-hidden="true">{avatar}</span><Icon name="expand_more" size={14} />
+                </button>
+              </Popover.Target>
+              <Popover.Dropdown className="p-pop" maw="calc(100vw - 32px)">
+                <div className={styles.avtitle} aria-hidden="true">Pick an avatar</div>
+                <div className={styles.avgrid} role="group" aria-label="Pick an avatar">
+                  {AVATARS.map((a) => (
+                    <button key={a} type="button" aria-pressed={a === avatar} aria-label={`Avatar ${a}`} onClick={() => { setAvatar(a); setPicking(false) }}>{a}</button>
+                  ))}
+                </div>
+              </Popover.Dropdown>
+            </Popover>
+          </div>
+          <TextInput style={{ flex: 1, minWidth: 0 }} placeholder="4 digits" autoComplete="off" inputMode="numeric" maxLength={4} value={pin}
+            label={<span className={styles.pinlabel}>PIN (optional) <InfoPop label="About PINs" width={260}>4 digits. Lets a kid prove it&apos;s them on a shared device.</InfoPop></span>}
+            onChange={(e) => setPin(e.currentTarget.value)} onKeyDown={enterAdds} error={pinBad ? 'Use exactly 4 digits.' : undefined} />
+        </div>
+        {add.error && <p role="alert">Couldn&apos;t add that kid. {add.error.message}</p>}
+        <div className={styles.actbar}>
+          <Button variant="filled" leftSection={<Icon name="add" size={14} />} disabled={!name.trim() || pinBad} loading={add.isPending} onClick={addKid}>Add kid</Button>
+        </div>
       </div>
-      <TextInput mt="md" label="PIN (optional)" description="4 digits. Lets a kid prove it's them on a shared device."
-        inputMode="numeric" maxLength={4} value={pin} onChange={(e) => setPin(e.currentTarget.value)} onKeyDown={enterAdds}
-        error={pinBad ? 'Use exactly 4 digits.' : undefined} />
-      {add.error && <p role="alert">Couldn&apos;t add that kid. {add.error.message}</p>}
-      <Group mt="md">
-        <Button variant="filled" disabled={!name.trim() || pinBad} loading={add.isPending} onClick={addKid}>Add kid</Button>
-      </Group>
-    </div>
+    </>
   )
 }
