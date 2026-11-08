@@ -6,9 +6,8 @@ import { Icon } from '@/v2/parent/Icon'
 import { EmptyState, ErrorPanel, Skeleton } from '@/v2/parent/states'
 import type { HistoryRow } from '@/v2/types'
 import { daysAgo } from '../clockText'
-import { initial } from './choreMeta'
+import { fmtMin, initial } from './choreMeta'
 import { downloadCsv, toCsv } from './historyCsv'
-import { fmtMin } from './ScreenTimePane'
 
 type Kind = NonNullable<HistoryQuery['kind']>
 
