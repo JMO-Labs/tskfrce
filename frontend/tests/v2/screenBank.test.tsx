@@ -51,7 +51,7 @@ describe('time banking: parent settings', () => {
   test('with no max anywhere the row asks for one', async () => {
     await open({ max_minutes_per_day: null, kids: [{ ...kid, max_minutes: null }, { ...kid, kid_id: 8, name: 'Leo', max_minutes: null, limit: { max_minutes: null, min_points: 100 } }] })
     expect(await within(detail()).findByText(/Pick a max per day first/)).toBeInTheDocument()
-    expect(sw()).toBeNull()
+    expect(sw()).toBeChecked() // can still be turned off
     expect(cap()).toBeNull()
   })
   test('hidden when screen time is off', async () => {

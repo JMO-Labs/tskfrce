@@ -11,7 +11,7 @@ import { ScreenField, type FieldMsg } from './ScreenField'
 type Run = ReturnType<typeof useSaveQueue>
 
 /** One kid's limit: the daily max and the points floor save as a pair, once both are valid. */
-function KidBody({ kid, price, run }: { kid: ScreenKid; price: number; run: Run }) {
+function KidBody({ kid, price, familyMax, run }: { kid: ScreenKid; price: number; familyMax: number | null; run: Run }) {
   const setLimit = useSetLimit()
   const del = useDeleteLimit()
   const name = kid.name ?? 'Kid'
@@ -36,8 +36,8 @@ function KidBody({ kid, price, run }: { kid: ScreenKid; price: number; run: Run 
     <>
       <p className="pk-hint">{`${kid.balance} pts · up to ${fmtMin(Math.floor(kid.balance / price) * 15)}${kid.saved > 0 ? ` · saved ${kid.saved} min` : ''}`}</p>
       <div className="st-two">
-        <ScreenField label="Daily limit (min)" name={`${name} daily limit (min)`} value={max} onChange={setMax} onCommit={commit} msg={msg(maxErr)} placeholder="Family max" />
-        <ScreenField label="Not allowed until" unit="pts" name={`${name} not allowed until`} value={min} onChange={setMin} onCommit={commit} msg={msg(minErr)} placeholder="Any time" />
+        <ScreenField label="Daily limit (min)" name={`${name} daily limit (min)`} value={max} onChange={setMax} onCommit={commit} msg={msg(maxErr)} placeholder={familyMax == null ? 'No max' : `${familyMax} (family)`} />
+        <ScreenField label="Not allowed until" unit="pts" name={`${name} not allowed until (pts)`} value={min} onChange={setMin} onCommit={commit} msg={msg(minErr)} placeholder="any time" />
       </div>
       {cleared && <p className="pk-hint">To clear both, use Remove limit.</p>}
       {kid.limit && (
@@ -81,7 +81,7 @@ export function ScreenKids({ st, focus }: { st: ScreenTime; focus: Focus }) {
               }
               focus={focus}
             >
-              <KidBody kid={k} price={st.price} run={run} />
+              <KidBody kid={k} price={st.price} familyMax={st.max_minutes_per_day} run={run} />
             </SummaryRow>
           )
         })}

@@ -27,7 +27,7 @@ export function ScreenTimePane() {
         title="Screen time"
         sub="Kids spend points on extra minutes. Changes save as you go."
         main={
-          <Switch className="pn-sw" label={st.enabled ? 'On' : 'Off'} labelPosition="left" aria-label="Kids can buy extra minutes" checked={st.enabled} onChange={(e) => void save({ enabled: e.currentTarget.checked })} />
+          <Switch className="pn-sw" label={st.enabled ? 'On' : 'Off'} labelPosition="left" aria-label={`${st.enabled ? 'On' : 'Off'}, kids can buy extra minutes`} checked={st.enabled} onChange={(e) => void save({ enabled: e.currentTarget.checked })} />
         }
       />
       {st.enabled ? (

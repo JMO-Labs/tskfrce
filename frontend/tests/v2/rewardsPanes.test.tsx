@@ -244,7 +244,7 @@ describe('rewards: screen time', () => {
 
   test("a kid's minimum of 100 PUTs the limit", async () => {
     await show(stFull, 'kid-9')
-    await userEvent.type(await within(detail()).findByRole('textbox', { name: 'Sam not allowed until' }), '100')
+    await userEvent.type(await within(detail()).findByRole('textbox', { name: 'Sam not allowed until (pts)' }), '100')
     await userEvent.tab()
     await waitFor(() =>
       expect(calls('PUT')[0]).toEqual(['/screen-time/limits/9', { method: 'PUT', body: { max_minutes: null, min_points: 100 } }]),

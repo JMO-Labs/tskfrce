@@ -36,6 +36,12 @@ const NAV = { shallow: true, scroll: false }
 const PUSHED = new Set<string>()
 const OVERLAY = '[role="dialog"], .mantine-Popover-dropdown, .mantine-Menu-dropdown'
 
+/** React never fires onBlur for a field that is removed while focused, so blur it first: a blur-autosave field then saves. */
+function blurOpenBody() {
+  const a = document.activeElement
+  if (a instanceof HTMLElement && a.closest('.p-srow-body')) a.blur()
+}
+
 function without(q: Query, keys: string[]): Query {
   const out = { ...q }
   for (const k of keys) delete out[k]
@@ -79,6 +85,7 @@ export function useFocusParam(param: string, opts: FocusOptions = {}): Focus {
 
   const close = useCallback(() => {
     if (pending.current === 'close') return
+    blurOpenBody()
     if (PUSHED.has(param)) { pending.current = 'close'; PUSHED.delete(param); live.current.router.back(); return }
     go('replace', without(live.current.router.query, [param, ...(live.current.opts.clears ?? [])]))
   }, [param])
@@ -102,6 +109,14 @@ export function useFocusParam(param: string, opts: FocusOptions = {}): Focus {
       })
     }
   }, [open, param])
+
+  // Back (and any other navigation) unmounts the open body too: commit a focused field first.
+  useEffect(() => {
+    if (open === null) return
+    const { events } = live.current.router
+    events?.on('routeChangeStart', blurOpenBody)
+    return () => events?.off('routeChangeStart', blurOpenBody)
+  }, [open])
 
   // Esc closes this level unless something on top (overlay) or deeper (clears) wants it.
   useEffect(() => {

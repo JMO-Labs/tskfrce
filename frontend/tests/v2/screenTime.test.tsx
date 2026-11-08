@@ -28,6 +28,8 @@ const serve = (over: object = {}, fail?: (p: string, i?: Init) => boolean) => {
   apiMock.mockReset().mockImplementation(async (p, i) => {
     if (fail?.(p, i)) throw new Error('boom')
     if (i?.method === 'PATCH') cur = { ...cur, ...(i.body as object) }
+    const put = /limits\/(\d+)$/.exec(p)
+    if (put && i?.method === 'PUT') cur = { ...cur, kids: (cur as typeof base).kids.map((k) => (k.kid_id === Number(put[1]) ? { ...k, limit: i.body } : k)) }
     return cur
   })
 }
@@ -74,13 +76,13 @@ describe('Screen time pane', () => {
     serve()
     wrap()
     expect(await screen.findByText('Kids spend points on extra minutes. Changes save as you go.')).toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: 'Kids can buy extra minutes' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: /kids can buy extra minutes/i })).toBeChecked()
   })
 
   test('off: only the header switch and a hint', async () => {
     serve({ enabled: false })
     wrap()
-    const sw = await screen.findByRole('switch', { name: 'Kids can buy extra minutes' })
+    const sw = await screen.findByRole('switch', { name: /kids can buy extra minutes/i })
     expect(sw).not.toBeChecked()
     expect(screen.getByText('Turn this on to let kids spend points on extra internet time.')).toBeInTheDocument()
     expect(screen.queryByText('Rules')).toBeNull()
@@ -164,7 +166,7 @@ describe('Screen time pane', () => {
     await userEvent.type(f, '60')
     await userEvent.tab()
     expect(sent('PATCH')).toHaveLength(0)
-    const hint = screen.getByText(/at least the daily max/i)
+    const hint = screen.getByText(/at least the largest daily max/i)
     expect(f.getAttribute('aria-describedby')).toContain(hint.id)
     await userEvent.clear(f)
     await userEvent.type(f, '180')
@@ -204,7 +206,31 @@ describe('Screen time pane', () => {
     await screen.findByText('Rules')
     open('save')
     expect(await screen.findByText(/Pick a max per day first/)).toBeInTheDocument()
-    expect(screen.queryByRole('switch', { name: 'Carry unused minutes over' })).toBeNull()
+    expect(screen.getByRole('button', { name: /^Save unused time.*Needs a max/ })).toBeInTheDocument()
+    // saving can still be turned off from here
+    await userEvent.click(screen.getByRole('switch', { name: 'Carry unused minutes over' }))
+    await waitFor(() => expect(sent('PATCH')[0][1]).toEqual({ method: 'PATCH', body: { rollover: false } }))
+    await waitFor(() => expect(screen.queryByRole('switch', { name: 'Carry unused minutes over' })).toBeNull())
+  })
+
+  test('a saved cap below a kid max is flagged on open', async () => {
+    serve({ max_minutes_per_day: null, bank_cap: 60, kids: [kid({ limit: { max_minutes: 180, min_points: null }, max_minutes: 180 })] })
+    wrap()
+    await screen.findByText('Rules')
+    open('save')
+    expect(await screen.findByText(/at least the largest daily max \(180 min\)/i)).toBeInTheDocument()
+  })
+
+  test('cap check uses the largest kid max when there is no family max', async () => {
+    serve({ max_minutes_per_day: null, bank_cap: null, kids: [kid({ max_minutes: 180, limit: { max_minutes: 180, min_points: null } })] })
+    wrap()
+    await screen.findByText('Rules')
+    open('save')
+    const f = await screen.findByRole('textbox', { name: /Save up to/ })
+    await userEvent.type(f, '120')
+    await userEvent.tab()
+    expect(screen.getByText(/at least the largest daily max \(180 min\)/i)).toBeInTheDocument()
+    expect(sent('PATCH')).toHaveLength(0)
   })
 
   test('group prices: link to the groups tab only when saved on', async () => {
@@ -262,7 +288,7 @@ describe('Screen time pane', () => {
     expect(fakeRouter.query.open).toBe('kid-4')
     expect(await screen.findByText('190 pts · up to 2h 15m')).toBeInTheDocument()
     const max = screen.getByRole('textbox', { name: 'Leo daily limit (min)' })
-    const min = screen.getByRole('textbox', { name: 'Leo not allowed until' })
+    const min = screen.getByRole('textbox', { name: 'Leo not allowed until (pts)' })
     expect(screen.queryByRole('button', { name: /Remove limit/ })).toBeNull()
     await userEvent.type(max, '45')
     await userEvent.type(min, '100')
@@ -289,7 +315,7 @@ describe('Screen time pane', () => {
     wrap()
     open('kid-5')
     expect(await screen.findByRole('textbox', { name: 'Ava daily limit (min)' })).toHaveValue('60')
-    expect(screen.getByRole('textbox', { name: 'Ava not allowed until' })).toHaveValue('20')
+    expect(screen.getByRole('textbox', { name: 'Ava not allowed until (pts)' })).toHaveValue('20')
     expect(screen.getByText('60 pts · up to 45 min · saved 10 min')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Remove limit for Ava' }))
     await waitFor(() => expect(sent('DELETE')[0][0]).toBe('/screen-time/limits/5'))
@@ -301,10 +327,58 @@ describe('Screen time pane', () => {
     open('kid-5')
     const max = await screen.findByRole('textbox', { name: 'Ava daily limit (min)' })
     await userEvent.clear(max)
-    await userEvent.clear(screen.getByRole('textbox', { name: 'Ava not allowed until' }))
+    await userEvent.clear(screen.getByRole('textbox', { name: 'Ava not allowed until (pts)' }))
     await userEvent.tab()
     expect(screen.getByText(/Remove limit/, { selector: 'p' })).toBeInTheDocument()
     expect(sent('PUT')).toHaveLength(0)
+  })
+
+  test('Esc with a typed price saves it first', async () => {
+    serve()
+    wrap()
+    await screen.findByText('Rules')
+    open('price')
+    const f = await screen.findByRole('textbox', { name: 'Points per 15 min' })
+    await userEvent.clear(f)
+    await userEvent.type(f, '25')
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(sent('PATCH')[0]).toEqual(['/screen-time', { method: 'PATCH', body: { price: 25 } }]))
+  })
+
+  test('Esc after typing in the kid pair saves it', async () => {
+    serve()
+    wrap()
+    open('kid-4')
+    await userEvent.type(await screen.findByRole('textbox', { name: 'Leo daily limit (min)' }), '45')
+    await userEvent.tab()
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(sent('PUT')[0]).toEqual(['/screen-time/limits/4', { method: 'PUT', body: { max_minutes: 45, min_points: null } }]))
+  })
+
+  test('the kid row summary updates after a limit save', async () => {
+    serve()
+    wrap()
+    open('kid-4')
+    await userEvent.type(await screen.findByRole('textbox', { name: 'Leo daily limit (min)' }), '45')
+    await userEvent.tab()
+    await userEvent.tab()
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Leo.*45 min\/day/ })).toBeInTheDocument())
+  })
+
+  test('placeholders show the family max and any time', async () => {
+    serve()
+    wrap()
+    open('kid-4')
+    expect(await screen.findByRole('textbox', { name: 'Leo daily limit (min)' })).toHaveAttribute('placeholder', '120 (family)')
+    expect(screen.getByRole('textbox', { name: 'Leo not allowed until (pts)' })).toHaveAttribute('placeholder', 'any time')
+  })
+
+  test('the header switch name carries its visible state', async () => {
+    serve()
+    wrap()
+    const sw = await screen.findByRole('switch', { name: /^On, kids can buy extra minutes$/i })
+    expect(sw).toBeChecked()
+    expect(sw.closest('.mantine-Switch-root')).toHaveTextContent('On') // the visible label is inside the name
   })
 
   test('a stale open kid is closed', async () => {

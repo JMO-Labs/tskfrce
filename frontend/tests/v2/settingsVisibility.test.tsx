@@ -46,7 +46,7 @@ describe('screen time pane (item 4)', () => {
   test('off: only the switch and a hint show', async () => {
     serve({ '/screen-time': st() })
     wrap(<ScreenTimePane />)
-    const sw = await screen.findByRole('switch', { name: 'Kids can buy extra minutes' })
+    const sw = await screen.findByRole('switch', { name: /kids can buy extra minutes/i })
     expect(sw).not.toBeChecked()
     for (const n of [/^Price/, /^Max per day/, /^Approve automatically/, /^Only during allowed hours/]) expect(screen.queryByRole('button', { name: n })).toBeNull()
     for (const t of ['Rules', 'Kids']) expect(screen.queryByText(t)).toBeNull()
@@ -56,7 +56,7 @@ describe('screen time pane (item 4)', () => {
   test('turning it on sends enabled: true', async () => {
     serve({ '/screen-time': st() })
     wrap(<ScreenTimePane />)
-    await userEvent.click(await screen.findByRole('switch', { name: 'Kids can buy extra minutes' }))
+    await userEvent.click(await screen.findByRole('switch', { name: /kids can buy extra minutes/i }))
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/screen-time', { method: 'PATCH', body: { enabled: true } }))
   })
   test('on: one line per rule keeps its value', async () => {
@@ -65,7 +65,7 @@ describe('screen time pane (item 4)', () => {
     expect(await screen.findByRole('button', { name: /^Price.*35 pts = 15 min/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /^Max per day.*60 min/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /^Approve automatically.*Off/ })).toBeTruthy()
-    expect(screen.getByRole('switch', { name: 'Kids can buy extra minutes' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: /kids can buy extra minutes/i })).toBeChecked()
     for (const n of ['What points buy', 'Bought today', 'Per-kid limits']) expect(screen.queryByRole('region', { name: n })).toBeNull()
   })
 })
