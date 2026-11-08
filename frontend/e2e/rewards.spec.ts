@@ -62,6 +62,10 @@ test('rewards, screen time, badges and chat', async ({ page }) => {
     const hours = page.getByRole('switch', { name: 'Only during allowed hours' })
     if (await hours.isChecked()) await hours.click() // the lab clock is not ours: don't depend on allowed hours
     await expect(head('hrs')).toContainText('Off')
+    await expect.poll(async () => {
+      const st = await (await api.get('/api/proxy/screen-time')).json()
+      return [st.price, st.max_minutes_per_day, st.auto_approve, st.only_in_allowed_hours]
+    }).toEqual([20, 30, true, false])
 
     // 2. catalogue: a reward that needs no approval
     await page.goto('/kids?section=rewards&item=catalogue&pick=new')
