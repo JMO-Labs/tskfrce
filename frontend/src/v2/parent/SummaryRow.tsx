@@ -11,6 +11,8 @@ export interface SummaryRowProps {
   line2?: ReactNode
   /** control right of the head, outside the toggle button (e.g. a Switch) */
   aside?: ReactNode
+  /** (i) button shown right after the title, outside the toggle button (a button cannot sit inside a button) */
+  info?: ReactNode
   focus: Focus
   /** body, rendered only when open */
   children: ReactNode
@@ -19,7 +21,7 @@ export interface SummaryRowProps {
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"])'
 const SWIPE_PX = 60
 
-export function SummaryRow({ id, icon, title, summary, line2, aside, focus, children }: SummaryRowProps) {
+export function SummaryRow({ id, icon, title, summary, line2, aside, info, focus, children }: SummaryRowProps) {
   const open = focus.isOpen(id)
   const body = useRef<HTMLDivElement>(null)
   const startY = useRef<number | null>(null)
@@ -65,6 +67,7 @@ export function SummaryRow({ id, icon, title, summary, line2, aside, focus, chil
           </span>
         </button>
         {aside && <div className="p-srow-aside">{aside}</div>}
+        {info && <div className="p-srow-info"><span aria-hidden="true">{title}</span>{info}</div>}
       </div>
       {line2 && (!focus.open || open) && <div className="p-srow-l2">{line2}</div>}
       {open && (

@@ -19,26 +19,19 @@ import {
   lib,
   asg,
   list,
-  mockRoute,
   nav,
   serve,
   setupLibrary,
-  show,
   who,
   wrap,
 } from './libraryHelpers'
+import { fakeRouter } from './helpers/fakeRouter'
 
 jest.mock('@mantine/notifications', () => ({
   notifications: { show: jest.fn() },
 }))
-jest.mock('next/router', () => ({
-  useRouter: () => ({
-    query: mockRoute.query,
-    push: mockRoute.push,
-    replace: mockRoute.replace,
-    pathname: '/kids',
-  }),
-}))
+jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
+jest.mock('next/link', () => ({ __esModule: true, default: ({ href, children, ...r }: any) => <a href={href} {...r}>{children}</a> }))
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 jest.mock('@/v2/parent/ParentShell', () => ({
   ParentShell: ({
@@ -60,8 +53,18 @@ jest.mock('@/v2/components/RequireParent', () => ({
   cancelSignOut: jest.fn(),
 }))
 
-const { push, replace } = mockRoute
+const { push, replace } = fakeRouter
 setupLibrary()
+
+/** Open the Kids & chores page at ?query (one editor row is open at a time: pass open=...). */
+const show = async (q: Record<string, string>) => {
+  fakeRouter.reset('/kids', q)
+  render(wrap(<KidsPage />))
+  await within(list()).findByText('Trash')
+  await within(list()).findAllByRole('button', { name: /Clean room/ })
+}
+/** Open an editor row by tapping its head. */
+const row = async (id: string) => userEvent.click(document.querySelector<HTMLElement>(`[data-focus-head="${id}"]`)!)
 
 describe('tabs and list', () => {
   test('default is chores with the tab pressed; a tab click replaces ?section', async () => {
@@ -113,13 +116,12 @@ describe('tabs and list', () => {
 })
 
 describe('chore detail', () => {
-  test('header shows points and schedule chips, no photo chip when not needed', async () => {
+  test('header shows one summary line (points, schedule, who), no photo chip', async () => {
     await show({ item: '6' })
     expect(
       within(detail()).getByRole('heading', { name: 'Trash' }),
     ).toBeInTheDocument()
-    expect(within(detail()).getByText('15 pts')).toBeInTheDocument()
-    expect(within(detail()).getByText('Daily')).toBeInTheDocument()
+    expect(within(detail()).getByText('15 pts · daily · Maya, Leo')).toBeInTheDocument()
     expect(within(detail()).queryByText('Needs photo')).toBeNull()
   })
 
@@ -133,17 +135,20 @@ describe('chore detail', () => {
       return []
     })
     await show({ item: 'new' })
-    expect(within(who()).getByText(/Save the chore first/)).toBeInTheDocument()
     await userEvent.type(
-      within(detail()).getByLabelText('Chore name'),
+      await within(detail()).findByLabelText('Chore name'), // Basics opens on its own for a new chore
       'Laundry',
     )
+    await row('who')
+    expect(within(who()).getByText(/Save the chore first/)).toBeInTheDocument()
+    await row('steps')
     for (const s of ['Fold clothes', 'Make bed']) {
       await userEvent.type(
         within(detail()).getByLabelText('Add a step'),
         `${s}{Enter}`,
       )
     }
+    await row('opts')
     await userEvent.click(
       within(detail()).getByRole('switch', { name: 'Needs a photo' }),
     )
@@ -177,7 +182,7 @@ describe('chore detail', () => {
   })
 
   test('saving PATCHes only chore fields, with reordered steps', async () => {
-    await show({ item: '5' })
+    await show({ item: '5', open: 'steps' })
     await userEvent.click(
       within(detail()).getByRole('button', { name: 'Move down Fold clothes' }),
     )
@@ -210,7 +215,7 @@ describe('chore detail', () => {
       { id: 2, title: 'B', after_previous: true },
     ]
     serve({ '/chores/': [{ ...defs[0], steps }, ...defs.slice(1)] })
-    await show({ item: String(defs[0].id) })
+    await show({ item: String(defs[0].id), open: 'basics' })
     const pts = within(detail()).getByLabelText('Points')
     await userEvent.clear(pts)
     await userEvent.type(pts, '20')
@@ -232,7 +237,7 @@ describe('chore detail', () => {
   ])(
     'points "%s" shows "%s" inline and blocks Save without a request',
     async (value, msg) => {
-      await show({ item: '5' })
+      await show({ item: '5', open: 'basics' })
       const pts = within(detail()).getByLabelText('Points')
       await userEvent.clear(pts)
       if (value) await userEvent.type(pts, value)
@@ -251,9 +256,10 @@ describe('chore detail', () => {
       position: i,
     }))
     serve({ '/chores/': [{ ...defs[0], steps }, ...defs.slice(1)] })
-    await show({ item: String(defs[0].id) })
+    await show({ item: String(defs[0].id), open: 'steps' })
     expect(within(detail()).getByLabelText('Add a step')).toBeDisabled()
-    expect(within(detail()).getByText(/20 of 20 steps/)).toBeInTheDocument()
+    await userEvent.click(within(detail()).getByRole('button', { name: 'How steps work' }))
+    expect(await screen.findByText(/20 of 20 steps/)).toBeInTheDocument()
   })
 
   test('a half-typed new chore survives switching away and back, and is gone after Cancel', async () => {
@@ -279,7 +285,7 @@ describe('chore detail', () => {
   })
 
   test('Enter in "Add a step" adds it and flags unsaved changes; step buttons have tooltips', async () => {
-    await show({ item: '5' })
+    await show({ item: '5', open: 'steps' })
     expect(within(detail()).queryByText('Unsaved changes')).toBeNull()
     await userEvent.type(
       within(detail()).getByLabelText('Add a step'),
@@ -296,17 +302,18 @@ describe('chore detail', () => {
   })
 
   test('Assign posts AssignmentIn with exact keys; mode hidden with one kid', async () => {
-    await show({ item: '9' })
+    await show({ item: '9', open: 'who' })
     expect(
       within(who()).getByText(/Nobody has this chore yet/),
     ).toBeInTheDocument()
     await userEvent.click(within(who()).getByRole('button', { name: 'Maya' }))
     expect(within(who()).queryByRole('group', { name: 'Mode' })).toBeNull()
+    expect(within(who()).queryByLabelText('Due by (optional)')).toBeNull()
+    expect(within(who()).queryByRole('button', { name: 'Save' })).toBeNull()
+    await row('opts') // Who & when keeps its pick while another row is open
     fireEvent.change(within(detail()).getByLabelText('Due by (optional)'), {
       target: { value: '17:00' },
     })
-    expect(within(who()).queryByLabelText('Due by (optional)')).toBeNull()
-    expect(within(who()).queryByRole('button', { name: 'Save' })).toBeNull()
     await userEvent.click(within(detail()).getByRole('button', { name: 'Save chore' }))
     await waitFor(() =>
       expect(calls('POST')[0]).toEqual([
@@ -325,25 +332,23 @@ describe('chore detail', () => {
     )
   })
 
-  test('two kids show the mode control and its hint', async () => {
-    await show({ item: '9' })
+  test('two kids show the mode control; its hints live in one (i)', async () => {
+    await show({ item: '9', open: 'who' })
     await userEvent.click(within(who()).getByRole('button', { name: 'Maya' }))
     await userEvent.click(within(who()).getByRole('button', { name: 'Leo' }))
-    expect(
-      within(who()).getByText(/own copy and their own points/),
-    ).toBeInTheDocument()
+    expect(within(who()).queryByText(/own copy and points/)).toBeNull()
+    await userEvent.click(within(who()).getByRole('button', { name: 'About sharing' }))
+    expect(await screen.findByText(/every kid gets their own copy and points/)).toBeInTheDocument()
+    expect(screen.getByText(/first to finish gets the points/)).toBeInTheDocument()
+    expect(screen.getByText(/done together, points shared/)).toBeInTheDocument()
     await userEvent.click(
       within(who()).getByRole('button', { name: 'First one wins' }),
     )
-    expect(within(who()).getByText(/first kid to finish/)).toBeInTheDocument()
-    await userEvent.click(
-      within(who()).getByRole('button', { name: 'Team effort' }),
-    )
-    expect(within(who()).getByText(/split evenly/)).toBeInTheDocument()
+    expect(within(who()).getByRole('button', { name: 'First one wins' })).toHaveAttribute('aria-pressed', 'true')
   })
 
   test('Some days shows weekday circles; Save sends the chosen days', async () => {
-    await show({ item: '9' })
+    await show({ item: '9', open: 'who' })
     await userEvent.click(within(who()).getByRole('button', { name: 'Maya' }))
     await userEvent.click(
       within(who()).getByRole('button', { name: 'Some days' }),
@@ -366,7 +371,7 @@ describe('chore detail', () => {
   })
 
   test('One time needs a date before Save is enabled', async () => {
-    await show({ item: '9' })
+    await show({ item: '9', open: 'who' })
     await userEvent.click(within(who()).getByRole('button', { name: 'Maya' }))
     await userEvent.click(
       within(who()).getByRole('button', { name: 'One time' }),
@@ -387,7 +392,7 @@ describe('chore detail', () => {
   })
 
   test('editing an assignment PATCHes it; removing DELETEs it', async () => {
-    await show({ item: '5' })
+    await show({ item: '5', open: 'who' })
     expect(within(who()).getByRole('button', { name: 'Maya' })).toHaveAttribute(
       'aria-pressed',
       'true',
@@ -413,7 +418,7 @@ describe('chore detail', () => {
   })
 
   test('a step can be renamed in place and the new name is saved', async () => {
-    await show({ item: '5' })
+    await show({ item: '5', open: 'steps' })
     await userEvent.type(within(detail()).getByLabelText('Add a step'), 'Wipe desk{Enter}')
     const name = within(detail()).getByLabelText('Step 1 name')
     await userEvent.clear(name)
@@ -424,9 +429,8 @@ describe('chore detail', () => {
 
   test('Duplicate POSTs /copy', async () => {
     await show({ item: '5' })
-    await userEvent.click(
-      within(detail()).getByRole('button', { name: 'Duplicate' }),
-    )
+    await userEvent.click(within(detail()).getByRole('button', { name: 'More' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Duplicate' }))
     await waitFor(() =>
       expect(calls('POST')[0]).toEqual(['/chores/5/copy', { method: 'POST' }]),
     )
@@ -434,9 +438,8 @@ describe('chore detail', () => {
 
   test('Delete asks first, says history stays, then DELETEs and closes the detail', async () => {
     await show({ item: '5' })
-    await userEvent.click(
-      within(detail()).getByRole('button', { name: 'Delete' }),
-    )
+    await userEvent.click(within(detail()).getByRole('button', { name: 'More' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Delete chore' }))
     expect(calls('DELETE')).toHaveLength(0)
     const confirm = await screen.findByRole('dialog', {
       name: 'Delete Clean room?',

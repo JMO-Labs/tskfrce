@@ -24,13 +24,14 @@ type PopHandler = () => boolean
 const guards: PopHandler[] = [] // active dirty guards; the newest decides browser Back
 
 /** Confirm before leaving a dirty form: in-app links (guard), tab close and browser Back. */
-export function useDiscardGuard(dirty: boolean): { guard: (go: () => void) => void; sheet: ReactNode } {
+export function useDiscardGuard(dirty: boolean, onDiscard?: () => void): { guard: (go: () => void) => void; sheet: ReactNode } {
   const router = useRouter()
   const [pending, setPending] = useState<(() => void) | null>(null)
-  const guard = useCallback((go: () => void) => { if (dirty) setPending(() => go); else go() }, [dirty])
+  const leaving = useRef(false) // Discard was chosen: let the popstate / route change / next guard() through, no second prompt
+  const guard = useCallback((go: () => void) => { if (dirty && !leaving.current) setPending(() => go); else go() }, [dirty])
   const routerRef = useRef(router)
-  const leaving = useRef(false) // Discard on the Back sheet: let the popstate through
-  useEffect(() => { routerRef.current = router })
+  const discardRef = useRef(onDiscard)
+  useEffect(() => { routerRef.current = router; discardRef.current = onDiscard })
 
   useEffect(() => {
     if (!dirty) return
@@ -67,7 +68,7 @@ export function useDiscardGuard(dirty: boolean): { guard: (go: () => void) => vo
 
   const sheet = (
     <ConfirmDelete opened={!!pending} title="Discard changes?" body="What you changed here won't be saved." confirmLabel="Discard"
-      onConfirm={() => { leaving.current = true; pending?.() }} onClose={() => setPending(null)} />
+      onConfirm={() => { leaving.current = true; discardRef.current?.(); pending?.() }} onClose={() => setPending(null)} />
   )
   return { guard, sheet }
 }

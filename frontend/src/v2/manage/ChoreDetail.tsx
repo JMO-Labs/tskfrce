@@ -1,18 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useDisclosure } from '@mantine/hooks'
+import type { AssignmentBody } from '@/v2/hooks/useChores'
 import { useCopyChore, useDeleteChore, useSaveAssignment, useSaveChore } from '@/v2/hooks/useChores'
 import { useChoreTypes } from '@/v2/hooks/useChoreTypes'
-import { HeaderChips } from '@/v2/parent/HeaderChips'
 import { Icon } from '@/v2/parent/Icon'
-import type { Kid, LibChore } from '@/v2/types'
+import { SaveBar, useDiscardGuard } from '@/v2/parent/SaveBar'
+import { FocusArea, SummaryRow } from '@/v2/parent/SummaryRow'
+import { useFocusParam } from '@/v2/parent/useFocusParam'
+import type { Assignment, Kid, LibChore } from '@/v2/types'
 import type { PendingAssignment } from './AssignmentForm'
-import { ChoreSteps, type Step } from './ChoreSteps'
+import { ChoreHead } from './ChoreHead'
+import { BasicsBody, OptionsBody } from './ChoreRows'
+import { ChoreSteps, StepsInfo, type Step } from './ChoreSteps'
 import { ChoreTypePanel } from './ChoreTypePanel'
-import { ChoreTypePicker } from './ChoreTypePicker'
 import { ConfirmDelete } from './ConfirmDelete'
 import { useSingle } from './useSingle'
 import { WhoWhen } from './WhoWhen'
-import { intError, joinNames, nameOf, otherType, schedules, UNIVERSAL_NOTES, usedBy } from './choreMeta'
+import { choreHeadLine, intError, nameOf, optionsOn, otherType, schedules, stepsSummary, usedBy } from './choreMeta'
 import { toastFail, toastOk } from '../notify'
 
 interface Props {
@@ -21,6 +26,8 @@ interface Props {
   chore?: LibChore
   /** Select a chore, or null to close the detail. */
   onSelect: (id: number | null) => void
+  /** Hands the page this editor's leave guard (null on unmount), so switching chore asks about unsaved edits. */
+  onGuard?: (g: ((go: () => void) => void) | null) => void
 }
 
 interface Draft { title: string; points: string; typeId?: number; steps: Step[]; next: string; photo: boolean; check: boolean }
@@ -31,10 +38,17 @@ export const clearChoreDrafts = () => drafts.clear()
 
 const stepsOf = (c?: LibChore): Step[] =>
   c?.steps.map((s) => ({ title: s.title, due_time: s.due_time ?? null, after_previous: s.after_previous ?? false })) ?? []
+const dueBody = (a: Assignment, due: string): AssignmentBody => ({
+  kid_ids: a.kid_ids, mode: a.mode, on_date: a.on_date, due_time: due || null,
+  repeat: { type: a.repeat.type, days: a.repeat.type === 'weekly' ? [...a.repeat.days].sort() : [] },
+})
 const sameSteps = (a: Step[], b: Step[]) => JSON.stringify(a) === JSON.stringify(b)
 
-/** Chore editor laid out as cards: header, Basics, Steps, Who & when and Notes. */
-export function ChoreDetail({ kids, chore, onSelect }: Props) {
+const ico = (name: string): ReactNode => <Icon name={name} size={18} />
+const ROWS = ['basics', 'steps', 'who', 'opts']
+
+/** Chore editor: header and four summary rows (Basics, Steps, Who & when, Options); Save bar after a change. */
+export function ChoreDetail({ kids, chore, onSelect, onGuard }: Props) {
   const save = useSaveChore()
   const saveAssignment = useSaveAssignment()
   const [saving, setSaving] = useState(false)
@@ -74,6 +88,11 @@ export function ChoreDetail({ kids, chore, onSelect }: Props) {
   const formsBad = forms.some((f) => f.dirty && !f.ready)
   const [dueEdit, setDue] = useState<string>()
   const [gen, setGen] = useState(0) // remounts Who & when on Discard
+  // After create, delete or Cancel of a new chore the editor leaves without asking: nothing is left to lose.
+  const [exit, setExit] = useState<{ id: number | null } | null>(null)
+  useEffect(() => { if (exit) onSelect(exit.id) }, [exit]) // eslint-disable-line react-hooks/exhaustive-deps
+  const rows = useFocusParam('open', { valid: (id) => ROWS.includes(id) })
+  useEffect(() => { if (!chore) rows.openTo('basics', { replace: true }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
   const savedDue = chore?.assignments.map((a) => a.due_time?.slice(0, 5)).filter((t): t is string => !!t).sort().pop() ?? ''
   const due = dueEdit ?? savedDue
   const dueTimes = new Set(chore?.assignments.map((a) => a.due_time?.slice(0, 5)).filter(Boolean))
@@ -87,6 +106,7 @@ export function ChoreDetail({ kids, chore, onSelect }: Props) {
     setSteps(stepsOf(chore))
     setDue(undefined)
     setGen((g) => g + 1)
+    setPending({})
     setNext('')
     setPhoto(chore?.needs_photo ?? false)
     setCheck(chore?.always_check ?? false)
@@ -105,11 +125,15 @@ export function ChoreDetail({ kids, chore, onSelect }: Props) {
         id: chore?.id,
         body: { title: title.trim(), points: Number(points), needs_photo: photo, always_check: check, type_id: typeId, steps: stepBody },
       })
-      for (const f of forms.filter((f) => f.dirty)) await saveAssignment.mutateAsync({ choreId: chore?.id ?? c.id, id: f.id, body: f.body })
+      // Due by is the chore's own field: it overrides a closed form's stale copy, and reaches assignments no form changed
+      const dirtyForms = forms.filter((f) => f.dirty)
+      for (const f of dirtyForms) await saveAssignment.mutateAsync({ choreId: chore?.id ?? c.id, id: f.id, body: dueEdit === undefined ? f.body : { ...f.body, due_time: dueEdit || null } })
+      if (dueEdit !== undefined) for (const a of chore?.assignments ?? []) if (!dirtyForms.some((f) => f.id === a.id)) await saveAssignment.mutateAsync({ choreId: c.id, id: a.id, body: dueBody(a, dueEdit) })
       drafts.delete(key)
       setDue(undefined)
+      setPending({}) // saved; an open form reports again if it changes
       toastOk(chore ? 'Saved' : 'Added. Now choose who does it.')
-      if (!chore) onSelect(c.id)
+      if (!chore) setExit({ id: c.id })
     } catch (e) {
       toastFail(e)
     } finally {
@@ -118,163 +142,86 @@ export function ChoreDetail({ kids, chore, onSelect }: Props) {
     }
   }
 
-  const duplicate = () =>
-    copyOnce(chore!.id, {
-      onError: toastFail,
-      onSuccess: (c) => {
-        toastOk('Copied')
-        onSelect(c.id)
-      },
-    })
-
-  const dirty = !!next.trim() || formsDirty || (chore
+  const dueDirty = dueEdit !== undefined && !!chore?.assignments.some((a) => (a.due_time?.slice(0, 5) ?? '') !== dueEdit)
+  const dirty = !exit && (!!next.trim() || formsDirty || dueDirty || (chore
     ? title.trim() !== chore.title ||
       !!pointsErr || Number(points) !== chore.points ||
       photo !== chore.needs_photo ||
       check !== (chore.always_check ?? false) ||
       (picked !== undefined && picked !== chore.type_id) ||
       !sameSteps(steps, stepsOf(chore))
-    : !!(title.trim() || steps.length || picked !== undefined))
+    : !!(title.trim() || steps.length || picked !== undefined)))
+  const { guard, sheet } = useDiscardGuard(dirty, () => drafts.delete(key)) // Discard drops the draft before leaving
+  useEffect(() => {
+    onGuard?.(guard)
+    return () => onGuard?.(null)
+  }, [onGuard, guard])
 
   // Switching tabs or chores unmounts this editor: keep what was typed so it isn't lost silently.
   useEffect(() => {
     if (dirty) drafts.set(key, { title, points, typeId: picked, steps, next, photo, check })
     else drafts.delete(key)
-  }, [dirty, key, title, points, picked, steps, next, photo, check])
-  useEffect(() => {
-    if (!dirty) return
-    const warn = (e: BeforeUnloadEvent) => e.preventDefault()
-    window.addEventListener('beforeunload', warn)
-    return () => window.removeEventListener('beforeunload', warn)
-  }, [dirty])
+  }, [dirty, key, gen, title, points, picked, steps, next, photo, check])
 
-  const when = chore ? schedules(chore).join(' + ').replace(/^./, (c) => c.toUpperCase()) : ''
+  const duplicate = () =>
+    guard(() =>
+      copyOnce(chore!.id, {
+        onError: toastFail,
+        onSuccess: (c) => {
+          toastOk('Copied')
+          onSelect(c.id)
+        },
+      }),
+    )
+
   const byId = new Map(kids.map((k) => [k.id, k]))
-  const doers = joinNames((chore ? usedBy(chore) : []).flatMap((id) => (byId.has(id) ? [nameOf(byId.get(id)!)] : [])))
+  const names = (chore ? usedBy(chore) : []).flatMap((id) => (byId.has(id) ? [nameOf(byId.get(id)!)] : []))
+  const doers = names.join(', ')
+  const when = chore ? schedules(chore).join(' + ') : ''
+  const pts = pointsErr ? 0 : Number(points)
+  const cancel = () => (chore ? discard() : (drafts.delete(key), setExit({ id: null })))
 
   return (
-    <div className="pk-detail">
-      <header className="pk-head">
-        <span className="pk-tile pk-tile-lg">
-          <Icon name={type?.glyph ?? 'task_alt'} size={30} />
-        </span>
-        <div className="pk-head-t">
-          <h2>{title.trim() || 'New chore'}</h2>
-          <HeaderChips
-            items={[
-              type && { icon: 'category', text: type.name },
-              { icon: 'stars', text: `${pointsErr ? 0 : Number(points)} pts`, tone: 'acc' as const },
-              when && { icon: 'event_repeat', text: when },
-              photo && { icon: 'photo_camera', text: 'Needs photo' },
-            ].filter((c) => !!c)}
+    <div className="pk-detail ch-page">
+      <ChoreHead
+        title={title.trim() || 'New chore'}
+        sub={choreHeadLine(type?.name, pts, when, doers)}
+        type={type}
+        onEditType={() => setPanel(typeId ?? null)}
+        onDuplicate={chore && duplicate}
+        onDelete={chore && open}
+      />
+      {chore && (
+        <ConfirmDelete
+          opened={confirm}
+          title={`Delete ${chore.title}?`}
+          body="Its history, photos and chat go too. Points already earned stay."
+          onConfirm={() => delOnce(chore.id, { onError: toastFail, onSuccess: () => (toastOk('Deleted'), drafts.delete(key), setExit({ id: null })) })}
+          onClose={close}
+        />
+      )}
+
+      <FocusArea focus={rows} label="Chore">
+        <SummaryRow id="basics" icon={ico('edit')} title="Basics" summary={[type?.name, `${pts} pts`].filter(Boolean).join(' · ')} focus={rows}>
+          <BasicsBody
+            title={title} onTitle={setTitle} points={points} pointsErr={pointsErr} onPoints={setPoints}
+            types={types} typeId={typeId} onPick={setPicked} onEditType={() => setPanel(typeId ?? null)} onNewType={() => setPanel('new')}
           />
-        </div>
-        {chore && (
-          <div className="pk-actions">
-            <button type="button" className="p-btn" data-variant="red" onClick={open}>
-              <Icon name="delete" />
-              Delete
-            </button>
-            <button type="button" className="p-btn" onClick={duplicate} disabled={copy.isPending} aria-busy={copy.isPending}>
-              <Icon name="content_copy" />
-              {copy.isPending ? 'Duplicating…' : 'Duplicate'}
-            </button>
-            <ConfirmDelete
-              opened={confirm}
-              title={`Delete ${chore.title}?`}
-              body="Its history, photos and chat go too. Points already earned stay."
-              onConfirm={() => delOnce(chore.id, { onError: toastFail, onSuccess: () => (toastOk('Deleted'), onSelect(null)) })}
-              onClose={close}
-            />
-          </div>
-        )}
-      </header>
-
-      <div className="pk-grid">
-        <section className="pk-panel" aria-label="Basics">
-          <h3>
-            <Icon name="edit" size={18} />
-            Basics
-          </h3>
-          <label className="pk-field">
-            <span className="pk-label">Chore name</span>
-            <input className="pk-input" value={title} maxLength={100} onChange={(e) => setTitle(e.currentTarget.value)} />
-          </label>
-          <ChoreTypePicker types={types} value={typeId} onPick={setPicked} onEdit={() => setPanel(typeId ?? null)} onNew={() => setPanel('new')} />
-          <label className="pk-field">
-            <span className="pk-label">Points</span>
-            <input
-              className="pk-input"
-              inputMode="numeric"
-              aria-label="Points"
-              value={points}
-              aria-invalid={!!pointsErr}
-              aria-describedby={pointsErr ? 'chore-pts-err' : undefined}
-              onChange={(e) => setPoints(e.currentTarget.value)}
-            />
-            {pointsErr && <span id="chore-pts-err" className="pk-error">{pointsErr}</span>}
-          </label>
-          <div>
-          <label className="pk-field">
-            <span className="pk-label">Due by (optional)</span>
-            <input
-              className="pk-input"
-              type="time"
-              value={due}
-              disabled={!chore}
-              aria-describedby={!chore ? 'chore-due-hint' : dueEdit === undefined && dueTimes.size > 1 ? 'chore-due-diff' : undefined}
-              onChange={(e) => setDue(e.currentTarget.value)}
-            />
-            {!chore && <span id="chore-due-hint" className="pk-hint">Set after you choose who does it.</span>}
-          </label>
-          {dueEdit === undefined && dueTimes.size > 1 && (
-            <span id="chore-due-diff" className="pk-hint">Kids have different times. Set Due by to give them all one time.</span>
-          )}
-          </div>
-          <div className="pk-switch">
-            <span id="photo-label">Needs a photo</span>
-            <button type="button" role="switch" aria-checked={photo} aria-labelledby="photo-label" onClick={() => setPhoto(!photo)} />
-          </div>
-          <div className="pk-switch">
-            <span id="check-label">Always check</span>
-            <button type="button" role="switch" aria-checked={check} aria-labelledby="check-label" onClick={() => setCheck(!check)} />
-          </div>
-        </section>
-
-        <ChoreSteps steps={steps} onChange={setSteps} next={next} onNext={setNext} choreDue={due || null} />
-
-        {chore ? (
-          <WhoWhen key={gen} chore={chore} kids={kids} due={due} dueTouched={dueEdit !== undefined} report={report} />
-        ) : (
-          <section className="pk-panel" aria-label="Who and when">
-            <h3>
-              <Icon name="group" size={18} />
-              Who & when
-            </h3>
+        </SummaryRow>
+        <SummaryRow id="steps" icon={ico('checklist')} title="Steps" summary={stepsSummary(steps)} info={<StepsInfo count={steps.length} />} focus={rows}>
+          <ChoreSteps steps={steps} onChange={setSteps} next={next} onNext={setNext} choreDue={due || null} />
+        </SummaryRow>
+        <SummaryRow id="who" icon={ico('group')} title="Who & when" summary={names.length ? `${doers} · ${when}` : 'Nobody yet'} focus={rows}>
+          {chore ? (
+            <WhoWhen key={gen} chore={chore} kids={kids} due={due} dueTouched={dueEdit !== undefined} report={report} kept={pending} />
+          ) : (
             <p className="pk-hint">Save the chore first, then choose who does it and when.</p>
-          </section>
-        )}
-
-        <section className="pk-panel" aria-label="Notes">
-          <h3>
-            <Icon name="sms" size={18} />
-            Notes {doers || 'a kid'} can send
-          </h3>
-          {type && <p className="pk-hint">From the {type.name} type.</p>}
-          <div className="pk-notes">
-            {type?.notes.map((n) => (
-              <span key={n.id} className="pk-np">
-                {n.label}
-              </span>
-            ))}
-            {UNIVERSAL_NOTES.map((n) => (
-              <span key={n.label} className="pk-np" data-universal>
-                {n.label}
-              </span>
-            ))}
-          </div>
-        </section>
-      </div>
+          )}
+        </SummaryRow>
+        <SummaryRow id="opts" icon={ico('tune')} title="Options" summary={`${optionsOn({ due, photo, check })} on`} focus={rows}>
+          <OptionsBody isNew={!chore} due={due} differs={dueEdit === undefined && dueTimes.size > 1} onDue={setDue} photo={photo} onPhoto={setPhoto} check={check} onCheck={setCheck} />
+        </SummaryRow>
+      </FocusArea>
 
       <ChoreTypePanel
         opened={panel !== null}
@@ -284,28 +231,16 @@ export function ChoreDetail({ kids, chore, onSelect }: Props) {
         onDeleted={() => setPicked(undefined)}
       />
 
-      <div className="pk-foot">
-        {dirty && (
-          <span className="pk-dirty" role="status">
-            <Icon name="edit_note" size={16} />
-            {restored ? 'Unsaved changes (restored)' : 'Unsaved changes'}
-          </span>
-        )}
-        {dirty && (
-          <button type="button" className="p-btn" onClick={discard}>
-            Discard
-          </button>
-        )}
-        {!chore && (
-          <button type="button" className="p-btn" onClick={() => (drafts.delete(key), onSelect(null))}>
-            Cancel
-          </button>
-        )}
-        <button type="button" className="p-btn" data-variant="accent" onClick={submit} disabled={!title.trim() || !!pointsErr || formsBad || saving} aria-busy={saving}>
-          <Icon name={saving ? 'progress_activity' : 'check'} className={saving ? 'pk-spin' : ''} />
-          {saving ? 'Saving…' : 'Save chore'}
-        </button>
-      </div>
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        onSave={submit}
+        onCancel={cancel}
+        saveLabel="Save chore"
+        disabled={!title.trim() || !!pointsErr || formsBad || saving}
+        note={restored ? 'Unsaved changes (restored)' : undefined}
+      />
+      {sheet}
     </div>
   )
 }

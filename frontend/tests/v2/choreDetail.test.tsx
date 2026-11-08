@@ -10,9 +10,11 @@ import { api } from '@/v2/api'
 import { ChoreDetail, clearChoreDrafts } from '@/v2/manage/ChoreDetail'
 import { ChoresList } from '@/v2/manage/ChoresList'
 import type { ChoreType, Kid, LibChore } from '@/v2/types'
+import { fakeRouter } from './helpers/fakeRouter'
 
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
+jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
 
 const apiMock = api as unknown as Mock<(p: string, init?: { method?: string; body?: unknown }) => Promise<unknown>>
 const calls = (method: string) => apiMock.mock.calls.filter(([, i]) => i?.method === method)
@@ -57,16 +59,19 @@ beforeEach(() => {
   apiMock.mockReset().mockImplementation(async (path) => (path === '/chore-types' ? types : {}))
 })
 
-const show = async (c: LibChore = chore()) => {
+/** Open the editor with row `open` (one row is open at a time; the others are click targets). */
+const show = async (c: LibChore = chore(), open = 'basics') => {
+  fakeRouter.reset('/kids', { section: 'chores', item: String(c.id), open })
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MantineProvider theme={fridgeTheme}>
+      <MantineProvider theme={fridgeTheme} env="test">
         <ChoreDetail kids={kids} chore={c} onSelect={jest.fn()} />
       </MantineProvider>
     </QueryClientProvider>,
   )
-  await screen.findByRole('button', { name: 'Pets' })
+  await screen.findAllByRole('button', { name: 'Schoolwork' }) // types have landed
 }
+const row = (id: string) => document.querySelector<HTMLElement>(`[data-focus-head="${id}"]`)!
 const saveBody = async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Save chore' }))
   await waitFor(() => expect(calls('PATCH')).toHaveLength(1))
@@ -76,15 +81,16 @@ const saveBody = async () => {
 describe('chore editor: type, steps, notes', () => {
   test('picking Pets then saving sends type_id', async () => {
     await show()
-    expect(screen.getByRole('button', { name: 'Schoolwork' })).toHaveAttribute('aria-pressed', 'true')
-    await userEvent.click(screen.getByRole('button', { name: 'Pets' }))
-    expect(screen.getByText('From the Pets type.')).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Type' }).querySelector('[aria-pressed="true"]')).toHaveTextContent('Schoolwork')
+    await userEvent.click(within(screen.getByRole('group', { name: 'Type' })).getByRole('button', { name: 'Pets' }))
+    await userEvent.click(document.querySelector<HTMLElement>('.ch-chip')!)
+    expect(await screen.findByText("From the Pets type. Kids pick one when they're stuck.")).toBeInTheDocument()
     expect(screen.getByText('Out of pet food')).toBeInTheDocument()
     expect((await saveBody()).type_id).toBe(2)
   })
 
   test('toggling the link between step 1 and 2 sends after_previous: true for step 2', async () => {
-    await show()
+    await show(chore(), 'steps')
     const link = screen.getByRole('button', { name: 'Any order' })
     expect(link).toHaveAttribute('aria-pressed', 'false')
     await userEvent.click(link)
@@ -99,11 +105,11 @@ describe('chore editor: type, steps, notes', () => {
         { id: 12, chore_id: 5, kid_ids: [7], mode: 'each', repeat: { type: 'weekly', days: [5, 6] }, on_date: null, due_time: '07:30', active: true },
       ],
     })
-    await show(two)
-    expect(screen.queryByText('Unsaved changes')).toBeNull()
+    await show(two, 'opts')
+    expect(screen.queryByRole('region', { name: 'Unsaved changes' })).toBeNull()
     expect(screen.getByText(/Kids have different times/)).toBeInTheDocument()
-    expect(screen.getByText('Daily + weekends')).toBeInTheDocument()
-    expect(document.querySelector('.p-header-chip[data-tone="acc"]')).toHaveTextContent(/pts$/)
+    expect(screen.getByText('Schoolwork · 30 pts · daily + weekends · Maya')).toBeInTheDocument()
+    await userEvent.click(row('basics'))
     await userEvent.clear(screen.getByLabelText('Points'))
     await userEvent.type(screen.getByLabelText('Points'), '40')
     await userEvent.click(screen.getByRole('button', { name: 'Save chore' }))
@@ -118,7 +124,7 @@ describe('chore editor: type, steps, notes', () => {
         { id: 12, chore_id: 5, kid_ids: [7], mode: 'each', repeat: { type: 'weekly', days: [5, 6] }, on_date: null, due_time: '07:30', active: true },
       ],
     })
-    await show(two)
+    await show(two, 'opts')
     fireEvent.change(screen.getByLabelText('Due by (optional)'), { target: { value: '19:00' } })
     await userEvent.click(screen.getByRole('button', { name: 'Save chore' }))
     await waitFor(() => expect(calls('PATCH')).toHaveLength(3))
@@ -127,7 +133,7 @@ describe('chore editor: type, steps, notes', () => {
   })
 
   test('a step due after the chore shows the warning', async () => {
-    await show()
+    await show(chore(), 'steps')
     await userEvent.click(screen.getByRole('button', { name: 'Due time, due time for Pack backpack' }))
     fireEvent.change(screen.getByLabelText('Due time for Pack backpack'), { target: { value: '20:30' } })
     expect(
@@ -136,12 +142,12 @@ describe('chore editor: type, steps, notes', () => {
     expect(screen.getByRole('button', { name: 'by 4:30 PM, due time for Math worksheet' })).toHaveTextContent('by 4:30 PM')
   })
 
-  test('notes card lists type notes and the universal notes for the assigned kids', async () => {
+  test('the type chip pop-over lists the type notes and the universal notes', async () => {
     await show()
-    const notes = screen.getByRole('region', { name: 'Notes' })
-    expect(within(notes).getByRole('heading')).toHaveTextContent('Notes Maya can send')
+    await userEvent.click(document.querySelector<HTMLElement>('.ch-chip')!)
+    expect(await screen.findByText('Notes kids can send')).toBeInTheDocument()
     for (const n of ["Don't understand it", 'Need help', 'Ran out of time', "Can't do it today"]) {
-      expect(within(notes).getByText(n)).toBeInTheDocument()
+      expect(screen.getByText(n)).toBeInTheDocument()
     }
   })
 
@@ -179,7 +185,7 @@ describe('chore editor: type, steps, notes', () => {
 
 describe('chore editor: Always check', () => {
   test('the switch sends always_check on save', async () => {
-    await show()
+    await show(chore(), 'opts')
     const sw = screen.getByRole('switch', { name: 'Always check' })
     expect(sw).toHaveAttribute('aria-checked', 'false')
     await userEvent.click(sw)
@@ -187,7 +193,7 @@ describe('chore editor: Always check', () => {
   })
 
   test('a chore already set shows it on', async () => {
-    await show(chore({ always_check: true }))
+    await show(chore({ always_check: true }), 'opts')
     expect(screen.getByRole('switch', { name: 'Always check' })).toHaveAttribute('aria-checked', 'true')
   })
 })
