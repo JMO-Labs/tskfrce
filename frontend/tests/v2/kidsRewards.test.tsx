@@ -37,6 +37,7 @@ jest.mock('next/router', () => ({
     push: mockRoute.push,
     replace: mockRoute.replace,
     beforePopState: jest.fn(),
+    events: { on: jest.fn(), off: jest.fn(), emit: jest.fn() },
     pathname: '/kids',
   }),
 }))
@@ -323,15 +324,18 @@ describe('rewards and badges', () => {
     render(wrap(<KidsPage />))
     expect(
       await within(detail()).findByRole('button', { name: /^Helper/ }),
-    ).toHaveTextContent('Helped out')
+    ).toHaveTextContent('Not awarded yet')
     expect(
       within(list()).getByRole('button', { name: /Custom badges/ }),
     ).toHaveTextContent('1 made by you')
     await userEvent.click(
+      within(detail()).getByRole('button', { name: 'Award' }),
+    )
+    await userEvent.click(
       within(detail()).getByRole('button', { name: 'Leo' }),
     )
     await userEvent.click(
-      within(detail()).getByRole('button', { name: 'Award to Leo' }),
+      within(detail()).getByRole('button', { name: 'Award Helper' }),
     )
     await waitFor(() =>
       expect(calls('POST')[0]).toEqual([
@@ -346,7 +350,8 @@ describe('rewards and badges', () => {
     mockRoute.query = { section: 'badges', item: 'custom', pick: 'new' }
     render(wrap(<KidsPage />))
     await userEvent.type(await screen.findByLabelText('Badge name'), 'Kind')
-    await userEvent.click(screen.getByTitle('star'))
+    await userEvent.click(screen.getByRole('button', { name: 'Change icon' }))
+    await userEvent.click(await screen.findByTitle('star'))
     await userEvent.type(screen.getByLabelText('Description'), 'Was kind')
     await userEvent.click(screen.getByRole('button', { name: 'Add badge' }))
     await waitFor(() =>
@@ -407,7 +412,10 @@ describe('rewards and badges: icon and delete confirmation', () => {
     mockRoute.query = { section: 'badges', item: 'custom', pick: '3' }
     render(wrap(<KidsPage />))
     await userEvent.click(
-      await within(detail()).findByRole('button', { name: 'Delete badge' }),
+      await within(detail()).findByRole('button', { name: 'More for Helper' }),
+    )
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'Delete badge' }),
     )
     expect(calls('DELETE')).toHaveLength(0)
     await userEvent.click(

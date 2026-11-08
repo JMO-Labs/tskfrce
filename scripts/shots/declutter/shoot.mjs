@@ -1,5 +1,5 @@
 // Declutter shot script. Usage: node shoot.mjs <outDir> <name> <appPath> [<mockupFile> <preset> [step=<n>]]
-// Shoots phone + desktop x light + dark of <appPath> (and the mockup's #box when given). Env DESKTOP_H sets desktop height (default 900).
+// Env CLICK = app button name to click first, MOCKCLICK = css selector to click in the mockup. Shoots phone + desktop x light + dark of <appPath> (and the mockup's #box when given). Env DESKTOP_H sets desktop height (default 900).
 import { createRequire } from 'node:module'
 import { mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -31,11 +31,13 @@ for (const [dv, vp] of [['phone', { width: 390, height: 844 }], ['desktop', { wi
       await page.goto(`${BASE}${APP}`, { timeout: 240000 })
       await page.locator('main').first().waitFor({ timeout: 240000 })
       await page.waitForTimeout(1200)
+      if (process.env.CLICK) { await page.getByRole('button', { name: process.env.CLICK, exact: true }).click(); await page.waitForTimeout(600) }
       await page.screenshot({ path: `${OUT}/${NAME}-${dv}-${scheme}.png` })
       console.log('shot', NAME, dv, scheme)
       if (MOCK && PRESET) {
         await page.goto(`file://${REPO}/.superpowers/mockups/${MOCK}?s=${PRESET}&t=${scheme}&w=${dv}`)
         await page.waitForTimeout(500)
+        if (process.env.MOCKCLICK) { await page.locator(process.env.MOCKCLICK).first().click(); await page.waitForTimeout(500) }
         await page.locator('#box').screenshot({ path: `${OUT}/${NAME}-mock-${dv}-${scheme}.png` })
         console.log('shot', NAME, 'mock', dv, scheme)
       }

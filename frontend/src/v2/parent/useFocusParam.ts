@@ -34,7 +34,7 @@ const NAV = { shallow: true, scroll: false }
 // Params whose current history entry was pushed by a focus hook. Shared so a group swap
 // (Needs -> kid) hands the pushed entry to the next hook and its close goes Back.
 const PUSHED = new Set<string>()
-const OVERLAY = '[role="dialog"], .mantine-Popover-dropdown, .mantine-Menu-dropdown'
+export const OVERLAY = '[role="dialog"], .mantine-Popover-dropdown, .mantine-Menu-dropdown'
 
 /** React never fires onBlur for a field that is removed while focused, so blur it first: a blur-autosave field then saves. */
 function blurOpenBody() {

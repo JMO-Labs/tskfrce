@@ -100,7 +100,7 @@ function KidsBody() {
       item === 'all' ? (
         <BadgesAll />
       ) : item === 'custom' ? (
-        <BadgesCustom pick={first(query.pick)} onPick={pickIn('custom')} />
+        <BadgesCustom />
       ) : item === 'recent' ? (
         <BadgesRecent />
       ) : null,
