@@ -112,7 +112,7 @@ export function BadgeDetail({ badge, kids, tiers, onSelect, onGuard }: Props) {
       )}
       {badge && (
         <div className="bd-act">
-          <button ref={awardBtn} type="button" className="p-btn" data-variant="accent" aria-expanded={awarding} aria-controls={`award-${badge.id}`} onClick={() => setAwarding((a) => !a)}>
+          <button ref={awardBtn} type="button" className="p-btn" data-variant="accent" aria-expanded={awarding} aria-controls={awarding ? `award-${badge.id}` : undefined} onClick={() => setAwarding((a) => !a)}>
             <Icon name="emoji_events" size={18} />Award
           </button>
           <MoreMenu label={`More for ${badge.name}`} items={[{ label: 'Delete badge', icon: 'delete', tone: 'red', onClick: open }]} />

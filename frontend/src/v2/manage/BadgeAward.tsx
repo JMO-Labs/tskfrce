@@ -44,7 +44,7 @@ export const BadgeAward = forwardRef<HTMLDivElement, { id: string; badge: Custom
         <input className="pk-input" value={note} maxLength={200} onChange={(e) => setNote(e.currentTarget.value)} />
       </label>
       {err && <span role="alert" className="pk-error">{err}</span>}
-      <button type="button" className="p-btn" data-variant="accent" style={{ alignSelf: 'flex-start' }} disabled={maxed || award.isPending} aria-busy={award.isPending} onClick={give}>
+      <button type="button" className="p-btn rw-self-start" data-variant="accent" disabled={maxed || award.isPending} aria-busy={award.isPending} onClick={give}>
         <Icon name={award.isPending ? 'progress_activity' : 'emoji_events'} className={award.isPending ? 'pk-spin' : ''} />
         {`Award ${badge.name}`}
       </button>
