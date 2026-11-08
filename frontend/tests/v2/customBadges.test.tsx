@@ -30,14 +30,18 @@ const wrap = (ui: ReactNode) => (
   </QueryClientProvider>
 )
 let release: (v: unknown) => void = () => {}
-const serve = (pending = false) =>
-  apiMock.mockReset().mockImplementation(async (path, o) => {
-    if (path === '/custom-badges' && !o?.method) return pending ? new Promise((r) => { release = r }).then(() => badges) : badges
+let live = badges
+const serve = (pending = false) => {
+  live = [...badges]
+  return apiMock.mockReset().mockImplementation(async (path, o) => {
+    if (path === '/custom-badges' && o?.method === 'POST') { live = [...live, { id: 9, ...(o.body as object) } as (typeof badges)[0]]; return { id: 9 } }
+    if (path === '/custom-badges' && !o?.method) return pending ? new Promise((r) => { release = r }).then(() => live) : live
     if (path === '/kids') return kids
     if (path === '/badges/overview') return overview
     if (path.endsWith('/award')) return { tier: 2 }
     return {}
   })
+}
 const show = (query: Record<string, string> = {}) => {
   fakeRouter.reset('/kids', { section: 'badges', item: 'custom', ...query })
   return render(wrap(<BadgesCustom />))
@@ -55,13 +59,13 @@ describe('custom badges, calm', () => {
   test('one line per badge with who has it', async () => {
     show()
     const row = (await screen.findByRole('button', { name: /Kindness/ })).closest('section') as HTMLElement
-    expect(row).toHaveTextContent('Mia Copper')
+    expect(row).toHaveTextContent('Mia · Copper')
     expect(row).not.toHaveTextContent('Leo')
     expect((screen.getByRole('button', { name: /Brave try/ })).closest('section')).toHaveTextContent('Not awarded yet')
     expect(screen.getByRole('heading', { name: 'Custom badges' })).toBeInTheDocument()
     expect(screen.getByText('Each award moves a kid up a tier.')).toBeInTheDocument()
     expect(screen.queryByLabelText('Badge name')).toBeNull()
-    expect(screen.queryByRole('region', { name: 'Award' })).toBeNull()
+    expect(screen.queryByRole('region', { name: /^Award / })).toBeNull()
   })
 
   test('focusing a badge opens its editor in place', async () => {
@@ -87,7 +91,10 @@ describe('custom badges, calm', () => {
     show({ pick: '1' })
     await screen.findByLabelText('Badge name')
     expect(screen.queryByLabelText(/Note to/)).toBeNull()
-    await userEvent.click(screen.getByRole('button', { name: 'Award' }))
+    const toggle = screen.getByRole('button', { name: 'Award' })
+    expect(toggle).not.toHaveAttribute('aria-controls')
+    await userEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-controls', 'award-1')
     const form = await screen.findByRole('region', { name: 'Award Kindness' })
     expect(within(form).getByRole('group', { name: 'Award to' })).toBeInTheDocument()
     expect(within(form).getByTestId('award-preview')).toHaveTextContent(/Mia gets\s*Silver/)
@@ -149,7 +156,7 @@ describe('custom badges, calm', () => {
 
   test('+ New opens a new row at the top', async () => {
     show()
-    await userEvent.click(await screen.findByRole('button', { name: '+ New' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'New' }))
     expect(fakeRouter.query.pick).toBe('new')
     expect(await screen.findByLabelText('Badge name')).toHaveValue('')
     expect(screen.queryByRole('button', { name: 'Award' })).toBeNull()
@@ -159,6 +166,10 @@ describe('custom badges, calm', () => {
     await userEvent.click(await screen.findByTitle('pets'))
     await userEvent.click(screen.getByRole('button', { name: 'Add badge' }))
     await waitFor(() => expect(writes()[0]).toEqual(['/custom-badges', { method: 'POST', body: { name: 'Pet hero', icon: 'pets', description: '' } }]))
+    await waitFor(() => expect(fakeRouter.query.pick).toBe('9'))
+    expect(await screen.findByRole('button', { name: /Pet hero/, expanded: true })).toBeInTheDocument()
+    expect(screen.getByLabelText('Badge name')).toHaveValue('Pet hero')
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 })
 
@@ -195,10 +206,27 @@ describe('custom badges, unsaved edits', () => {
     await waitFor(() => expect(fakeRouter.query.pick).toBeUndefined())
   })
 
+  test('Esc with the icon pop-over or the menu open closes only that', async () => {
+    show({ pick: '1' })
+    await userEvent.type(await screen.findByLabelText('Badge name'), 'X')
+    await userEvent.click(screen.getByRole('button', { name: 'Change icon' }))
+    await screen.findByTitle('pets')
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByTitle('pets')).toBeNull())
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(fakeRouter.query.pick).toBe('1')
+    await userEvent.click(screen.getByRole('button', { name: 'More for Kindness' }))
+    await screen.findByRole('menuitem', { name: 'Delete badge' })
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('menuitem', { name: 'Delete badge' })).toBeNull())
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(fakeRouter.query.pick).toBe('1')
+  })
+
   test('+ New asks too', async () => {
     show({ pick: '1' })
     await userEvent.type(await screen.findByLabelText('Badge name'), 'X')
-    await userEvent.click(screen.getByRole('button', { name: '+ New' }))
+    await userEvent.click(screen.getByRole('button', { name: 'New' }))
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
     expect(fakeRouter.query.pick).toBe('1')
   })

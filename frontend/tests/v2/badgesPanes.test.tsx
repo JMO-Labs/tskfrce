@@ -127,7 +127,7 @@ describe('badges panes', () => {
     data()
     mockRoute.query = { section: 'badges', item: 'custom' }
     render(wrap(<KidsPage />))
-    await userEvent.click(await within(detail()).findByRole('button', { name: '+ New' }))
+    await userEvent.click(await within(detail()).findByRole('button', { name: 'New' }))
     expect(mockRoute.push).toHaveBeenCalledWith(
       { pathname: '/kids', query: { section: 'badges', item: 'custom', pick: 'new' } },
       undefined,

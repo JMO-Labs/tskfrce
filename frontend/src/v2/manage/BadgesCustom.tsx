@@ -13,9 +13,9 @@ import { nameOf } from './choreMeta'
 
 type Guard = (go: () => void) => void
 
-/** "Mia Copper, Leo Silver" for the kids who have it, or "Not awarded yet". */
+/** "Mia · Copper, Leo · Silver" for the kids who have it, or "Not awarded yet". */
 const whoHas = (tiers: Record<string, number>, kids: Kid[]) =>
-  kids.filter((k) => (tiers[String(k.id)] ?? 0) > 0).map((k) => `${nameOf(k)} ${tierLabel(tiers[String(k.id)])}`).join(', ') || 'Not awarded yet'
+  kids.filter((k) => (tiers[String(k.id)] ?? 0) > 0).map((k) => `${nameOf(k)} · ${tierLabel(tiers[String(k.id)])}`).join(', ') || 'Not awarded yet'
 
 const tile = (glyph: string) => <span className="pk-tile bd-rtile"><Icon name={glyph} size={16} /></span>
 
@@ -51,7 +51,7 @@ export function BadgesCustom() {
         media={<span className="pk-tile pk-tile-lg"><Icon name="military_tech" size={30} /></span>}
         title="Custom badges"
         sub="Each award moves a kid up a tier."
-        main={<button type="button" className="p-btn" data-variant="accent" onClick={() => focus.openTo('new')}>+ New</button>}
+        main={<button type="button" className="p-btn" data-variant="accent" onClick={() => focus.openTo('new')}><Icon name="add" size={16} />New</button>}
       />
       {badges.isPending ? (
         <Skeleton />
