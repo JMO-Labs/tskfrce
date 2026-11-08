@@ -9,6 +9,7 @@ import { notifications } from '@mantine/notifications'
 import { fridgeTheme } from '@/v2/theme'
 import { api } from '@/v2/api'
 import { DeviceDetail } from '@/v2/manage/DeviceDetail'
+import { deviceMenu } from '@/v2/manage/DeviceHead'
 import type { Device, DeviceEvent, Group, Kid } from '@/v2/types'
 import { fakeRouter } from './helpers/fakeRouter'
 
@@ -146,9 +147,31 @@ describe('device detail, calm', () => {
     show(dev(), { open: 'activity' })
     const feed = await screen.findByRole('region', { name: 'Attempts & alerts' })
     const li = await within(feed).findByRole('listitem')
-    expect(within(li).getByRole('button', { name: 'Ask Maya' })).toBeTruthy()
-    expect(within(li).queryByRole('button', { name: 'Mark OK' })).toBeNull()
+    expect(within(li).getByRole('button', { name: 'Mark OK' })).toBeTruthy()
+    expect(within(li).queryByRole('button', { name: 'Ask Maya' })).toBeNull()
     await userEvent.click(within(li).getByRole('button', { name: 'More' }))
-    expect(await labels()).toEqual(["Lock all Maya's devices", 'Mark OK'])
+    expect(await labels()).toEqual(['Ask Maya', "Lock all Maya's devices"])
+  })
+})
+
+describe('device menu', () => {
+  const o = { testing: false, hasOverride: false, onTest: () => {}, onRename: () => {}, onSchedule: () => {}, onDelete: () => {} }
+  test('Test block says Testing… and is off while it runs', () => {
+    expect(deviceMenu(o)[0]).toMatchObject({ label: 'Test block', disabled: false })
+    expect(deviceMenu({ ...o, testing: true })[0]).toMatchObject({ label: 'Testing…', disabled: true })
+  })
+  test('Rename takes focus; Back to schedule is hidden without an override', () => {
+    expect(deviceMenu(o)[1]).toMatchObject({ label: 'Rename', takesFocus: true })
+    expect(deviceMenu(o)[2].hidden).toBe(true)
+    expect(deviceMenu({ ...o, hasOverride: true })[2].hidden).toBe(false)
+  })
+})
+
+describe('daily hours', () => {
+  test('under an hour a day reads "<1 h", never "~0 h"', async () => {
+    const short = days.map((d) => ({ ...d, online_minutes: 10 }))
+    apiMock.mockImplementation(async (path) => (path.endsWith('/activity') ? { counts: {}, events: [], history: [], days: short } : path === '/family' ? { timezone: 'UTC' } : {}))
+    show(dev())
+    expect(await screen.findByText('Online <1 h a day')).toBeTruthy()
   })
 })

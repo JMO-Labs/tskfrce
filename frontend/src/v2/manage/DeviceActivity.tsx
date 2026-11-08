@@ -29,18 +29,9 @@ const KPIS: [keyof Activity['counts'], string, string][] = [
   ['wrong_pins', 'Wrong PINs · 7d', 'Wrong PINs'],
 ]
 
-/** "2 h 10 min" / "1 h" / "45 min" */
-export const duration = (m: number) => {
-  const h = Math.floor(m / 60)
-  const r = Math.round(m % 60)
-  return h ? (r ? `${h} h ${r} min` : `${h} h`) : `${r} min`
-}
-
 type Act = MenuItem & { onClick: () => void }
 const SEV_TONE: Record<string, ChipTone> = { hi: 'red', md: 'amb', lo: 'grey' }
 const SEV_NAME: Record<string, string> = { hi: 'High priority', md: 'Medium priority', lo: 'Low priority' }
-
-const weekday = (date: string) => new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })
 
 interface Props {
   device: Device
@@ -66,7 +57,7 @@ export function DeviceActivity({ device, kids, timeZone }: Props) {
   const events = kinds ? data.events.filter((e) => kinds.includes(e.kind)) : data.events
   const ev = (e: DeviceEvent) => ({ deviceId: device.id, eventId: e.id })
 
-  // the first action is the row's main button, the rest go in its "…"
+  // Mark OK (or merge, for a new address) is the row's plain main button; the rest go in its "…"
   const actions = (e: DeviceEvent): Act[] => {
     if (e.reviewed) return [] // already answered
     if (e.kind === 'new_address')
@@ -76,6 +67,7 @@ export function DeviceActivity({ device, kids, timeZone }: Props) {
       ]
     const kid = kidOf(e)
     return [
+      { label: 'Mark OK', icon: 'check', disabled: markOk.isPending, onClick: () => markOk.mutate(ev(e)) },
       ...(kid ? [
         { label: `Ask ${kid.name}`, icon: 'chat', onClick: () => openChat('private', String(kid.id)) },
         {
@@ -83,12 +75,8 @@ export function DeviceActivity({ device, kids, timeZone }: Props) {
           onClick: () => lockKid.mutate({ kidId: kid.id, action: 'lock' }, { onSuccess: () => toastOk(`Locked all ${kid.name}'s devices`, { undo: () => lockKid.mutate({ kidId: kid.id, action: 'clear' }, { onSuccess: () => toastOk('Undone') }) }) }),
         },
       ] : []),
-      { label: 'Mark OK', icon: 'check', disabled: markOk.isPending, onClick: () => markOk.mutate(ev(e)) },
     ]
   }
-
-  const shown = [...data.days].reverse()
-  const max = Math.max(1, ...shown.map((d) => d.online_minutes))
 
   return (
     <div className="pk-grid">
@@ -103,17 +91,13 @@ export function DeviceActivity({ device, kids, timeZone }: Props) {
       </div>
 
       <section className="pk-panel pk-span" aria-label="Attempts & alerts">
-        <h3 className="da-h3">
-          <Icon name="policy" size={18} />
-          Attempts &amp; alerts
-          <span className="da-filt" role="group" aria-label="Filter">
-            {FILTERS.map((f) => (
-              <button key={f.key} type="button" aria-pressed={filter === f.key} onClick={() => setFilter(f.key)}>
-                {f.label}
-              </button>
-            ))}
-          </span>
-        </h3>
+        <span className="da-filt" role="group" aria-label="Filter">
+          {FILTERS.map((f) => (
+            <button key={f.key} type="button" aria-pressed={filter === f.key} onClick={() => setFilter(f.key)}>
+              {f.label}
+            </button>
+          ))}
+        </span>
         {events.length === 0 ? (
           <EmptyState
             icon="verified_user"
@@ -133,8 +117,9 @@ export function DeviceActivity({ device, kids, timeZone }: Props) {
                     iconTone={SEV_TONE[t.sev]}
                     iconLabel={SEV_NAME[t.sev]}
                     title={t.title}
-                    sub={`${whenLabel(e.at, timeZone, now)} · ${t.sub}`}
-                    main={main && { label: main.label, onClick: main.onClick, disabled: main.disabled }}
+                    sub={`${whenLabel(e.at, timeZone, now)}${e.count > 1 ? ` · ${e.count} times` : ''}`}
+                    iconHelp={<p className="ch-pop-p">{t.sub}</p>}
+                    main={main && { label: main.label, onClick: main.onClick, disabled: main.disabled, plain: true }}
                     menu={more.length ? more : undefined}
                   />
                 </li>
@@ -142,25 +127,6 @@ export function DeviceActivity({ device, kids, timeZone }: Props) {
             })}
           </ul>
         )}
-      </section>
-
-      <section className="pk-panel" aria-label="Time online per day">
-        <h3>
-          <Icon name="bar_chart" size={18} />
-          Time online per day
-        </h3>
-        <div className="da-bars">
-          {shown.map((d) => (
-            <div key={d.date} className="da-bar-slot">
-              <div className="da-bar" title={duration(d.online_minutes)} style={{ height: `max(2px, ${(d.online_minutes / max) * 100}%)` }} />
-            </div>
-          ))}
-        </div>
-        <div className="da-bl">
-          {shown.map((d, i) => (
-            <span key={d.date}>{i === shown.length - 1 ? 'Today' : weekday(d.date)}</span>
-          ))}
-        </div>
       </section>
 
       <LockHistory history={data.history} timeZone={timeZone} now={now} />

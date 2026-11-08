@@ -104,20 +104,21 @@ describe('device Activity', () => {
     expect(within(f).queryByRole('button', { name: 'Different device' })).toBeNull()
   })
 
-  test('each alert has one main button; the other actions are menu items', async () => {
+  test('each alert has one plain main button; the other actions are menu items', async () => {
     show()
     const f = await feed()
     await waitFor(() => expect(within(f).getAllByRole('listitem')).toHaveLength(3))
     const [merge, tried] = within(f).getAllByRole('listitem')
     expect(within(merge).getByRole('button', { name: /Same device, merge/ })).toBeTruthy()
     expect(within(merge).queryByRole('button', { name: 'Different device' })).toBeNull()
-    expect(within(tried).getByRole('button', { name: 'Ask Maya' })).toBeTruthy()
-    expect(within(tried).queryByRole('button', { name: 'Mark OK' })).toBeNull()
+    const ok = within(tried).getByRole('button', { name: 'Mark OK' })
+    expect(ok.getAttribute('data-variant')).toBeNull()
+    expect(within(tried).queryByRole('button', { name: 'Ask Maya' })).toBeNull()
     await userEvent.click(within(tried).getByRole('button', { name: 'More' }))
     const items = (await screen.findAllByRole('menuitem')).map((m) => m.textContent)
     expect(items).toHaveLength(2)
-    expect(items[0]).toMatch(/Lock all Maya's devices$/)
-    expect(items[1]).toMatch(/Mark OK$/)
+    expect(items[0]).toMatch(/Ask Maya$/)
+    expect(items[1]).toMatch(/Lock all Maya's devices$/)
   })
 
   test('Mark OK posts, then the row has no actions once reviewed', async () => {
@@ -125,10 +126,9 @@ describe('device Activity', () => {
     const f = await feed()
     await waitFor(() => expect(within(f).getAllByRole('listitem')).toHaveLength(3))
     data = { ...data, events: data.events.map((e) => (e.id === 12 ? { ...e, reviewed: true } : e)) }
-    await userEvent.click(within(within(f).getAllByRole('listitem')[1]).getByRole('button', { name: 'More' }))
-    await userEvent.click(await screen.findByRole('menuitem', { name: /Mark OK/ }))
+    await userEvent.click(within(within(f).getAllByRole('listitem')[1]).getByRole('button', { name: 'Mark OK' }))
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/devices/1/events/12/ok', { method: 'POST' }))
-    await waitFor(() => expect(within(within(f).getAllByRole('listitem')[1]).queryByRole('button', { name: 'Ask Maya' })).toBeNull())
+    await waitFor(() => expect(within(within(f).getAllByRole('listitem')[1]).queryByRole('button', { name: 'Mark OK' })).toBeNull())
   })
 
   const lockAll = async () => {
@@ -167,15 +167,5 @@ describe('device Activity', () => {
     show()
     const h = await screen.findByRole('region', { name: 'Lock history' })
     expect(await within(h).findByText('Unlocked 30 min by Dad')).toBeTruthy()
-  })
-
-  test('time online has 7 bars, oldest first, Today last', async () => {
-    show()
-    const t = await screen.findByRole('region', { name: 'Time online per day' })
-    await waitFor(() => expect(t.querySelectorAll('.da-bar')).toHaveLength(7))
-    const bars = [...t.querySelectorAll('.da-bar')]
-    expect(bars[0].getAttribute('title')).toBe('1 h')
-    expect(bars[6].getAttribute('title')).toBe('0 min')
-    expect(within(t).getAllByText(/./).at(-1)?.textContent).toBe('Today')
   })
 })

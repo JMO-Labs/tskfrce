@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useDisclosure } from '@mantine/hooks'
 import { clockText } from '@/v2/clockText'
@@ -48,10 +48,9 @@ export function DeviceDetail({ device, kids, groups = [], onDeleted, onRequestOv
   // a new device has no owner: start on Details, where the owner is picked
   useEffect(() => { if (unknown && !rows.open) rows.openTo('details', { replace: true }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const rename = () => {
-    rows.openTo('details')
-    requestAnimationFrame(() => document.querySelector<HTMLInputElement>('input[aria-label="Device name"]')?.focus())
-  }
+  // Rename: open Details and ask its Name field to take focus (a counter, so it works when Details is already open)
+  const [nameFocus, setNameFocus] = useState(0)
+  const rename = () => { rows.openTo('details'); setNameFocus((n) => n + 1) }
   const owners = guest ? 'Guest' : kids.filter((k) => device.owner_ids.includes(k.id)).map(nameOf).join(', ') || 'No owner yet'
   const mine = groups.filter((g) => g.device_ids.includes(device.id)).map((g) => g.name)
   const until = ov?.action === 'lock' ? (ov.expires_at ? `until ${clockText(ov.expires_at, tz)}` : 'until you unlock') : 'on schedule'
@@ -59,7 +58,7 @@ export function DeviceDetail({ device, kids, groups = [], onDeleted, onRequestOv
   const alerts = device.alerts > 0 ? `${device.alerts} alert${device.alerts === 1 ? '' : 's'} this week` : 'No alerts this week'
 
   return (
-    <div className="pk-detail">
+    <div className="pk-detail dv-detail">
       <DeviceHead
         device={device}
         locked={locked}
@@ -78,7 +77,7 @@ export function DeviceDetail({ device, kids, groups = [], onDeleted, onRequestOv
           <DeviceRightNow device={device} timeZone={tz} />
         </SummaryRow>
         <SummaryRow id="details" icon={ico('tune')} title="Details" summary={[owners, mine.join(', ')].filter(Boolean).join(' · ')} focus={rows}>
-          <DetailsBody device={device} kids={kids} groups={groups} />
+          <DetailsBody device={device} kids={kids} groups={groups} nameFocus={nameFocus} />
         </SummaryRow>
         <SummaryRow id="network" icon={ico('wifi')} title="Network" summary={device.ip ? <span className="pk-mono">{device.ip}</span> : 'Not seen yet'} focus={rows}>
           <DeviceNetwork device={device} timeZone={tz} />

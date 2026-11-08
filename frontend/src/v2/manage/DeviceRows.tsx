@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useResetState } from '@/v2/hooks/useResetState'
 import { usePatchDevice, useSaveGroup, type DevicePatch } from '@/v2/hooks/useDevices'
@@ -9,15 +10,17 @@ import { nameOf } from './choreMeta'
 import { OnlineWeek, useDailyHours, WeekBars } from './OnlineWeek'
 import { toasted } from '../notify'
 
-interface Props { device: Device; kids: Kid[]; groups: Group[] }
+interface Props { device: Device; kids: Kid[]; groups: Group[]; /** bumps when Rename is picked: focus the Name field */ nameFocus?: number }
 
 /** Details row body: name, owners, groups, Guest and Always allowed. Every change saves at once. */
-export function DetailsBody({ device, kids, groups }: Props) {
+export function DetailsBody({ device, kids, groups, nameFocus = 0 }: Props) {
   const router = useRouter()
   const patch = usePatchDevice()
   const saveGroup = useSaveGroup()
   const once = useSingleFlight()
   const [name, setName] = useResetState(device.name)
+  const nameRef = useRef<HTMLInputElement>(null)
+  useEffect(() => { if (nameFocus) nameRef.current?.focus() }, [nameFocus])
   const guest = device.status === 'guest'
   const owners = kids.filter((k) => device.owner_ids.includes(k.id))
   const save = (p: DevicePatch) => once(() => toasted(patch.mutateAsync({ id: device.id, patch: p }), 'Saved'))
@@ -36,6 +39,7 @@ export function DetailsBody({ device, kids, groups }: Props) {
         <span className="pk-label">Name</span>
         <input
           className="pk-input"
+          ref={nameRef}
           aria-label="Device name"
           maxLength={100}
           aria-busy={patch.isPending || undefined}
@@ -96,7 +100,7 @@ export function ActivityLine({ device }: { device: Device }) {
   return (
     <>
       <WeekBars device={device} />
-      {hours !== null && <span className="dv-hrs">Online ~{hours} h a day</span>}
+      {hours !== null && <span className="dv-hrs">Online {hours} a day</span>}
       <InfoPop label="Online by hour" width={340}><OnlineWeek device={device} /></InfoPop>
     </>
   )

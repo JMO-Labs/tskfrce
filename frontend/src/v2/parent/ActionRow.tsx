@@ -8,7 +8,7 @@ import type { MenuItem } from './MoreMenu'
 /** One item that needs the parent: type icon, title, one main button, "…" menu, optional inline box below. */
 export function ActionRow({ icon, iconTone, iconLabel, iconHelp, title, sub, main, menu, menuLabel = 'More', children }: {
   icon: string; iconTone?: ChipTone; iconLabel: string; iconHelp?: ReactNode; title: ReactNode; sub?: ReactNode
-  main?: { label: string; onClick: () => void; busy?: boolean; disabled?: boolean }
+  main?: { label: string; onClick: () => void; busy?: boolean; disabled?: boolean; /** outline instead of the accent fill */ plain?: boolean }
   menu?: MenuItem[]; menuLabel?: string; children?: ReactNode
 }) {
   const ty = iconHelp
@@ -21,7 +21,7 @@ export function ActionRow({ icon, iconTone, iconLabel, iconHelp, title, sub, mai
         <div className="p-arow-t">{title}{sub && <small>{sub}</small>}</div>
         <div className="p-arow-acts">
           {main && (
-            <button type="button" className="p-btn" data-variant="accent" onClick={main.onClick} disabled={main.disabled} aria-busy={main.busy} data-loading={main.busy || undefined}>{main.label}</button>
+            <button type="button" className="p-btn" data-variant={main.plain ? undefined : 'accent'} onClick={main.onClick} disabled={main.disabled} aria-busy={main.busy} data-loading={main.busy || undefined}>{main.label}</button>
           )}
           {!!menu?.length && <MoreMenu label={menuLabel} items={menu} />}
         </div>

@@ -3,6 +3,7 @@ import { useTestBlock } from '@/v2/hooks/useDevices'
 import { useSingleFlight } from '@/v2/hooks/useSingleFlight'
 import { clockText } from '@/v2/clockText'
 import { DetailHeader, type StatusChip } from '@/v2/parent/DetailHeader'
+import type { MenuItem } from '@/v2/parent/MoreMenu'
 import { Icon } from '@/v2/parent/Icon'
 import type { Device, Override } from '@/v2/types'
 import { ActionButton } from './ActionButton'
@@ -27,6 +28,16 @@ interface Props {
 const popBtn = (icon: string, label: string, onClick: () => void) => (
   <button type="button" className="p-mi ch-edit" onClick={onClick}><Icon name={icon} size={16} />{label}</button>
 )
+
+/** The "…" menu: Test block (says Testing… and is off while it runs), Rename, Back to schedule (override only), Delete. */
+export function deviceMenu(o: { testing: boolean; hasOverride: boolean; onTest: () => void; onRename: () => void; onSchedule: () => void; onDelete: () => void }): MenuItem[] {
+  return [
+    { label: o.testing ? 'Testing…' : 'Test block', icon: 'shield', disabled: o.testing, onClick: o.onTest },
+    { label: 'Rename', icon: 'edit', takesFocus: true, onClick: o.onRename },
+    { label: 'Back to schedule', icon: 'event_repeat', hidden: !o.hasOverride, onClick: o.onSchedule },
+    { label: 'Delete', icon: 'delete', tone: 'red', divider: true, onClick: o.onDelete },
+  ]
+}
 
 /** Device header: type tile, name, the one status chip (its pop-over explains it), the main action and the "…" menu. */
 export function DeviceHead({ device, locked, ov, timeZone, blockNew, pendingAction, onOverride, onActivity, onRename, onDelete }: Props) {
@@ -81,12 +92,7 @@ export function DeviceHead({ device, locked, ov, timeZone, blockNew, pendingActi
       ) : (
         <ActionButton icon="lock" variant="red" busy={busy('lock')} disabled={!!pendingAction} onClick={() => onOverride('lock')}>Lock now</ActionButton>
       )}
-      menu={[
-        { label: test.isPending ? 'Testing…' : 'Test block', icon: 'shield', disabled: test.isPending, onClick: runTest },
-        { label: 'Rename', icon: 'edit', takesFocus: true, onClick: onRename },
-        { label: 'Back to schedule', icon: 'event_repeat', hidden: !ov, onClick: () => onOverride('schedule') },
-        { label: 'Delete', icon: 'delete', tone: 'red', divider: true, onClick: onDelete },
-      ]}
+      menu={deviceMenu({ testing: test.isPending, hasOverride: !!ov, onTest: runTest, onRename, onSchedule: () => onOverride('schedule'), onDelete })}
     />
   )
 }

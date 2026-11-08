@@ -59,7 +59,7 @@ describe('device rows', () => {
   test('Right now explains a blocked device and when it locks', () => {
     show(dev(), 'now')
     const right = screen.getByRole('region', { name: 'Right now' })
-    expect(within(right).getByText('Locked')).toBeTruthy()
+    expect(within(right).queryByText('Locked')).toBeNull() // the header chip says it, once
     expect(within(right).getByText('Chores 3/5 done')).toBeTruthy()
     expect(within(right).getByText('Locks at')).toBeTruthy()
     expect(within(right).getByText(/8:00\s?PM/)).toBeTruthy()
@@ -69,7 +69,7 @@ describe('device rows', () => {
   test('an exempt device is Open, always allowed, with no lock time', () => {
     show(dev({ exempt: true, online: true, reason: 'exempt', locks_at: null }), 'now')
     const right = screen.getByRole('region', { name: 'Right now' })
-    expect(within(right).getByText('Open')).toBeTruthy()
+    expect(within(right).queryByText('Open')).toBeNull()
     expect(within(right).getByText('Always allowed')).toBeTruthy()
     expect(within(right).queryByText('Locks at')).toBeNull()
   })
