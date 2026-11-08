@@ -50,7 +50,8 @@ describe('StepKids calm', () => {
     setup()
     const btn = screen.getByRole('button', { name: /Pick an avatar, now/ })
     await user.click(btn)
-    await screen.findByRole('button', { name: 'Avatar 🐼' })
+    const grid = await screen.findByRole('group', { name: 'Pick an avatar' })
+    await waitFor(() => expect(grid).toContainElement(document.activeElement as HTMLElement)) // focus trapped in the grid
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Avatar 🐼' })).not.toBeInTheDocument())
     expect(btn).toHaveFocus()
