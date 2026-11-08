@@ -109,7 +109,7 @@ test('kid note shows in the bell under Needs you and Reply opens the chore chat'
     await loginUi(page)
     await page.getByRole('button', { name: /^Notifications/ }).click()
     await page.getByRole('dialog', { name: /^Notifications/ }).getByRole('button', { name: /^Needs you/ }).click()
-    const item = page.locator('.p-bell-item').filter({ hasText: choreName })
+    const item = page.locator('.p-arow').filter({ hasText: choreName })
     await expect(item).toBeVisible()
     await item.getByRole('button', { name: 'Reply' }).click()
     await expect(page).toHaveURL(new RegExp(`chore=${run.id}`))
