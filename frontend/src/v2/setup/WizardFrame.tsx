@@ -1,7 +1,8 @@
 import { Icon } from '@/v2/parent/Icon'
 import type { ReactNode } from 'react'
-import { useState, useEffect, useRef } from 'react'
+import { Fragment, useState, useEffect, useRef } from 'react'
 import { Button, Group } from '@mantine/core'
+import { useMediaQuery } from '@mantine/hooks'
 import { useLook } from '../parent/useLook'
 import styles from './wizard.module.css'
 
@@ -37,6 +38,7 @@ export function WizardFrame({
   step, children, title, subtitle, onBack, onNext, nextLabel = 'Next', onSkip, onStepClick, busy, done, note
 }: Props) {
   useLook('parent')
+  const phone = useMediaQuery('(max-width: 767px)') // phone: numbers and ticks, plus the current label only
   const [maxStepReached, setMaxStepReached] = useState(step)
 
   if (step > maxStepReached) setMaxStepReached(step) // adjust during render, not in an effect
@@ -66,8 +68,9 @@ export function WizardFrame({
             const isActive = i + 1 === step
             const canOpen = i + 1 <= Math.min(maxStepReached, step + 1) // the page only goes back or one ahead
             return (
+              <Fragment key={s.num}>
+              {i > 0 && <span className={styles.ln} aria-hidden="true" />}
               <div
-                key={s.num}
                 data-step={s.num}
                 className={`${styles.st} ${isDone ? styles.done : ''} ${isActive ? styles.on : ''}`}
                 onClick={() => canOpen && onStepClick?.(i + 1)}
@@ -80,14 +83,18 @@ export function WizardFrame({
                 role={canOpen ? 'button' : undefined}
                 tabIndex={canOpen ? 0 : -1}
                 aria-current={isActive ? 'step' : undefined}
+                aria-label={phone && !isActive ? `Step ${s.num}: ${s.title}` : undefined}
               >
                 <span className={styles.dot}>{isDone ? <span className="ms" aria-hidden="true">check</span> : s.num}</span>
-                <div>
-                  {s.title}
-                  <small>{s.sub}</small>
-                </div>
-                {s.opt && <span className={styles.opt}>Optional</span>}
+                {(!phone || isActive) && (
+                  <div>
+                    {s.title}
+                    {!phone && <small>{s.sub}</small>}
+                  </div>
+                )}
+                {s.opt && !phone && <span className={styles.opt}>Optional</span>}
               </div>
+              </Fragment>
             )
           })}
         </div>

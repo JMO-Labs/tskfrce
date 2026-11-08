@@ -76,6 +76,8 @@
   user-select: none;
 }
 
+.ln { display: none; }
+
 .st:hover {
   background: #323230;
 }
@@ -259,7 +261,7 @@
 
   .side {
     border-radius: 14px 14px 0 0;
-    padding-bottom: 16px;
+    padding: 18px 16px 14px;
   }
 
   .main {
@@ -269,8 +271,17 @@
   .steps {
     min-width: 0;
     flex-direction: row;
+    align-items: center;
     overflow-x: auto;
-    gap: 0;
+    gap: 4px;
+  }
+
+  .ln {
+    display: block;
+    flex: 1 1 3px;
+    min-width: 0;
+    height: 1.5px;
+    background: #4a4a47;
   }
 
   .st small,
@@ -280,12 +291,46 @@
   }
 
   .st {
+    flex: none;
+    gap: 6px;
+    padding: 0;
+    border-radius: 999px;
+    font-size: 12.5px;
     white-space: nowrap;
   }
 
+  .st.on {
+    flex: 0 1 auto;
+    min-width: 0;
+    padding: 3px 10px 3px 3px;
+  }
+
+  .st.on div {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .main h1 {
+    font-size: 24px;
+    line-height: 1.25;
+  }
+
+  /* 44px touch target around the 24px dot */
+  .st::before {
+    content: '';
+    position: absolute;
+    inset: -10px -2px;
+  }
+
   .st .dot {
-    width: 32px;
-    height: 32px;
+    width: 24px;
+    height: 24px;
+    font-size: 11px;
+  }
+
+  .st.done .dot {
+    font-size: 13px;
   }
 
   .prog {
@@ -323,3 +368,6 @@
 .picked { font-size: 13px; color: var(--p-sub); }
 .tip { margin-top: 14px; color: var(--p-sub); }
 .tip a { color: var(--p-ink); font-weight: 600; text-decoration: underline; }
+
+/* phone: the bar always fits (only the current label shows), so no sideways scroll */
+@media (max-width: 767px) { .steps { overflow: visible; } }

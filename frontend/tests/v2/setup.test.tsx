@@ -11,7 +11,7 @@ import { DEFAULT_DRAFTS } from '@/v2/setup/StepHours'
 
 const replace = jest.fn()
 const push = jest.fn()
-jest.mock('next/router', () => ({ useRouter: () => ({ push, replace, asPath: '/setup' }) }))
+jest.mock('next/router', () => ({ useRouter: () => ({ push, replace, asPath: '/setup', pathname: '/setup', query: {} }) }))
 jest.mock('@/v2/api', () => {
   class ApiError extends Error {
     status: number
