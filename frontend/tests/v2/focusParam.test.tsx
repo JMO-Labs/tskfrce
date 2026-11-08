@@ -5,7 +5,7 @@ import { fakeRouter } from './helpers/fakeRouter'
 
 jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
 
-const h = {} as { focus: ReturnType<typeof useFocusParam> }
+const h = {} as { focus: ReturnType<typeof useFocusParam>; kid?: ReturnType<typeof useFocusParam> }
 function Harness({ opts }: { opts?: FocusOptions }) {
   const focus = useFocusParam('open', opts)
   useEffect(() => { h.focus = focus })
@@ -35,7 +35,7 @@ beforeEach(() => {
   fakeRouter.reset('/x')
   document.body.innerHTML = ''
 })
-afterEach(() => jest.useRealTimers())
+afterEach(() => { jest.restoreAllMocks(); jest.useRealTimers() })
 
 const click = (name: string) => act(() => { fireEvent.click(screen.getByRole('button', { name })) })
 
@@ -131,7 +131,7 @@ test('openTo with replace adds no history entry', () => {
 
 test('restores the calm scroll position on close', () => {
   let top = 0
-  const spy = jest.spyOn(document.documentElement, 'scrollTop', 'get').mockImplementation(() => top)
+  jest.spyOn(document.documentElement, 'scrollTop', 'get').mockImplementation(() => top)
   jest.spyOn(document.documentElement, 'scrollTop', 'set').mockImplementation((v) => { top = v })
   top = 420
   render(<Harness />)
@@ -140,7 +140,6 @@ test('restores the calm scroll position on close', () => {
   act(() => h.focus.close())
   flushRaf()
   expect(top).toBe(420)
-  spy.mockRestore()
 })
 
 test('returns focus to the opener on close', () => {
@@ -168,4 +167,87 @@ test('group params are swapped without a new history entry', () => {
   act(() => h.focus.openTo('3'))
   expect(fakeRouter.query).toEqual({ kid: '3' })
   expect(fakeRouter.push).not.toHaveBeenCalled()
+})
+
+test('double close before the route lands goes back only once', () => {
+  render(<Harness />)
+  click('A')
+  fakeRouter.back.mockImplementationOnce(() => {}) // route update is async in real Next
+  act(() => { h.focus.close(); h.focus.close() })
+  expect(fakeRouter.back).toHaveBeenCalledTimes(1)
+})
+
+test('double open before the route lands pushes only once', () => {
+  render(<Harness />)
+  fakeRouter.push.mockImplementationOnce(() => {})
+  act(() => { h.focus.openTo('a'); h.focus.openTo('a') })
+  expect(fakeRouter.push).toHaveBeenCalledTimes(1)
+})
+
+test('group swap across hooks then close goes back, leaving no duplicate calm entry', () => {
+  function Two() {
+    const n = useFocusParam('focus')
+    const k = useFocusParam('kid', { group: ['focus'] })
+    useEffect(() => { h.focus = n; h.kid = k })
+    return null
+  }
+  render(<Two />)
+  act(() => h.focus.openTo('needs'))
+  act(() => h.kid!.openTo('3'))
+  expect(fakeRouter.query).toEqual({ kid: '3' })
+  act(() => h.kid!.close())
+  expect(fakeRouter.back).toHaveBeenCalled()
+  expect(fakeRouter.stack).toHaveLength(1)
+})
+
+test('openTo another id removes the clears keys', () => {
+  fakeRouter.reset('/x', { kid: '3', chore: '12' })
+  function O() { const f = useFocusParam('kid', { clears: ['chore'] }); useEffect(() => { h.focus = f }); return null }
+  render(<O />)
+  act(() => h.focus.openTo('4'))
+  expect(fakeRouter.query).toEqual({ kid: '4' })
+})
+
+test('outer close removes the clears keys', () => {
+  fakeRouter.reset('/x', { kid: '3', chore: '12' })
+  function O() { const f = useFocusParam('kid', { clears: ['chore'] }); useEffect(() => { h.focus = f }); return null }
+  render(<O />)
+  act(() => h.focus.close())
+  expect(fakeRouter.query).toEqual({})
+})
+
+test('falls back to the data-focus-head element when the opener is gone', () => {
+  render(<Harness />)
+  const a = screen.getByRole('button', { name: 'A' })
+  a.focus()
+  click('A')
+  a.remove()
+  const head = document.createElement('button')
+  head.setAttribute('data-focus-head', 'a')
+  document.body.appendChild(head)
+  act(() => h.focus.close())
+  flushRaf()
+  expect(document.activeElement).toBe(head)
+})
+
+test('Back from outside resets pushed, so the next close replaces', () => {
+  render(<Harness />)
+  click('A')
+  act(() => fakeRouter.back())
+  click('B') // deep-ish: pushes again
+  act(() => fakeRouter.back())
+  fakeRouter.reset('/x', { open: 'a' }) // deep link now; nothing pushed by us
+  act(() => h.focus.close())
+  expect(fakeRouter.replace).toHaveBeenCalled()
+  expect(fakeRouter.back).not.toHaveBeenCalled()
+})
+
+test('a role=dialog blocks Esc', () => {
+  render(<Harness />)
+  click('A')
+  const d = document.createElement('div')
+  d.setAttribute('role', 'dialog')
+  document.body.appendChild(d)
+  act(() => { fireEvent.keyDown(document, { key: 'Escape' }) })
+  expect(fakeRouter.query.open).toBe('a')
 })
