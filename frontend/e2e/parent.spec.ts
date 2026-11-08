@@ -6,7 +6,7 @@ test.describe('parent journeys', () => {
 
   test('send back needs a note, approve clears the item', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('tab', { name: /Needs you/ }).click()
+    await page.getByRole('button', { name: /^Needs you/ }).click()
     const needs = page.getByRole('region', { name: 'Needs you' })
     await expect(needs).toContainText('E2E sweep')
 

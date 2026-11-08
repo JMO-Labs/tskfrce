@@ -25,17 +25,13 @@ export function hhCopy(multX10 = 20, minutes = 60) {
   return `${pts} for ${minutes === 60 ? 'an hour' : `${minutes} minutes`} gets chores moving.`
 }
 
-/** One "Try this" card at a time (Today). Dismissals are per parent (tips API); pacing is per device. */
-export function TryCards() {
+/** Which Try card is up (null = none), plus the data its body needs. */
+function useTryPick() {
   const tips = useTips().data
   const fam = useFamily().data
   const kids = useKids().data
   const hh = useHappyHours().data
   const today = useToday().data
-  const dismiss = useDismissTip()
-  const patchFam = usePatchFamily()
-  const patchKid = usePatchKid()
-  const [, bump] = useState(0) // re-pick after a local "Not now"
 
   const quietKid = !fam?.hh_auto_boost ? today?.kids.find((k) => k.quiet && !nudgeSnoozed(k.id)) : undefined
   const trustKid = kids?.find((k) => k.id === today?.try_trust_kid)
@@ -51,6 +47,19 @@ export function TryCards() {
   }
   const eligible = ready ? [...TRY_ORDER.filter((k) => on[k] && !seen.has(k)), ...(quietKid ? [nudgeKey(quietKid.id)] : [])] : []
   const key = ready ? pickCard(eligible) : null
+  return { key, fam, kids, today, quietKid, trustKid }
+}
+
+/** The key of the Try card `TryCards` would show, or null (Today uses it to share one tip slot). */
+export const useTryCardKey = (): string | null => useTryPick().key
+
+/** One "Try this" card at a time (Today). Dismissals are per parent (tips API); pacing is per device. */
+export function TryCards() {
+  const { key, fam, kids, today, quietKid, trustKid } = useTryPick()
+  const dismiss = useDismissTip()
+  const patchFam = usePatchFamily()
+  const patchKid = usePatchKid()
+  const [, bump] = useState(0) // re-pick after a local "Not now"
   useEffect(() => {
     if (key) writeShown(key)
   }, [key])
@@ -58,8 +67,8 @@ export function TryCards() {
 
   const done = () => {
     dismiss.mutate(key)
-    // the card unmounts: park focus on the first chore row instead of <body>
-    requestAnimationFrame(() => document.querySelector<HTMLElement>('.pt-chore .pt-row')?.focus())
+    // the card unmounts: park focus on the first kid row instead of <body>
+    requestAnimationFrame(() => document.querySelector<HTMLElement>('.pt-krow')?.focus())
   }
   const off = (turnOff: () => void) => () => (turnOff(), done())
   const setFam = (body: { hh_auto_boost?: boolean; streak_freeze?: boolean; bedtime_auto?: boolean; bedtime_auto_at?: string }, onSuccess?: () => void) =>

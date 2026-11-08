@@ -234,41 +234,6 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
-/* Segmented control styling for list headers */
-/* ─────────────────────────────────────────────────────────────────────────── */
-
-[data-look='parent'] .p-segment-tabs .mantine-Tabs-list {
-  display: flex;
-  gap: 4px;
-  background: var(--p-soft);
-  border-radius: 12px;
-  padding: 4px;
-  margin-bottom: 0;
-}
-
-[data-look='parent'] .p-segment-tabs .mantine-Tabs-tab {
-  flex: 1;
-  border: 0;
-  border-radius: 8px;
-  padding: 8px 4px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--p-sub);
-  background: transparent;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-[data-look='parent'] .p-segment-tabs .mantine-Tabs-tab:hover:not([data-active]) {
-  color: var(--p-ink);
-}
-
-[data-look='parent'] .p-segment-tabs .mantine-Tabs-tab[data-active] {
-  background: var(--p-ink);
-  color: var(--p-card);
-}
-
-/* ─────────────────────────────────────────────────────────────────────────── */
 /* More page (phone view) */
 /* ─────────────────────────────────────────────────────────────────────────── */
 

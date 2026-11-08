@@ -166,3 +166,15 @@ test('Approve all counts spot-checked items too', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Approve all 2' }))
   await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/chores/12/approve', expect.anything()))
 })
+
+test('labels a waiting chore from an older day', async () => {
+  const old: NeedsItem = { type: 'chore', id: 1, kid_id: 1, kid_name: 'Leo', title: 'Take out bins', attempt: 1, day: '2026-11-04', submitted_at: '2026-11-04T20:00:00Z' }
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <MantineProvider>
+        <NeedsYouList items={[old]} today="2026-11-06" />
+      </MantineProvider>
+    </QueryClientProvider>,
+  )
+  expect(await screen.findByText(/wednesday/i)).toBeInTheDocument()
+})
