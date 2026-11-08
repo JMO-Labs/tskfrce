@@ -69,3 +69,31 @@ test('KidPicker pop variant labels the current pick', () => {
   wrap(<KidPicker kids={kids} value={['4']} onChange={jest.fn()} label="Owner of this" variant="pop" />)
   expect(screen.getByRole('button', { name: 'Owner of this' })).toHaveTextContent('Leo')
 })
+
+test('KidPicker pop variant lists kids, divider, extras; extra pick clears kids', async () => {
+  const user = userEvent.setup(); const onChange = jest.fn()
+  wrap(<KidPicker kids={kids} value={['3']} onChange={onChange} label="Owner of this" variant="pop" extras={extras} />)
+  await user.click(screen.getByRole('button', { name: 'Owner of this' }))
+  expect(await screen.findByRole('button', { name: /Leo/ })).toBeInTheDocument()
+  expect(document.querySelector('.p-pk-div')).not.toBeNull()
+  await user.click(screen.getByRole('button', { name: 'Guest' }))
+  expect(onChange).toHaveBeenCalledWith(['guest'])
+})
+
+test('KidPicker pop variant with a kid with no name initial still groups as a kid', async () => {
+  const user = userEvent.setup()
+  const odd = [{ id: 9, full_name: '', username: '' }] as Kid[]
+  wrap(<KidPicker kids={odd} value={[]} onChange={jest.fn()} label="Owner of this" variant="pop" extras={extras} />)
+  await user.click(screen.getByRole('button', { name: 'Owner of this' }))
+  const list = (await screen.findAllByRole('button', { name: /Guest/ }))[0]
+  expect(list.previousElementSibling).toHaveClass('p-pk-div')
+})
+
+test('KidPicker pop variant stays open while busy', async () => {
+  const user = userEvent.setup(); const onChange = jest.fn()
+  wrap(<KidPicker kids={kids} value={[]} onChange={onChange} label="Owner of this" variant="pop" busy />)
+  await user.click(screen.getByRole('button', { name: 'Owner of this' }))
+  await user.click(await screen.findByRole('button', { name: /Maya/ }))
+  expect(onChange).not.toHaveBeenCalled()
+  expect(screen.getByRole('button', { name: /Maya/ })).toBeInTheDocument()
+})

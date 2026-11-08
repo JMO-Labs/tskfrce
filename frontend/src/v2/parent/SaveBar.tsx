@@ -20,26 +20,38 @@ export function SaveBar({ dirty, saving, onSave, onCancel, saveLabel = 'Save', d
   )
 }
 
+type PopHandler = () => boolean
+const guards: PopHandler[] = [] // active dirty guards; the newest decides browser Back
+
 /** Confirm before leaving a dirty form: in-app links (guard), tab close and browser Back. */
 export function useDiscardGuard(dirty: boolean): { guard: (go: () => void) => void; sheet: ReactNode } {
   const router = useRouter()
   const [pending, setPending] = useState<(() => void) | null>(null)
   const guard = useCallback((go: () => void) => { if (dirty) setPending(() => go); else go() }, [dirty])
   const routerRef = useRef(router)
-  routerRef.current = router // eslint-disable-line react-hooks/refs -- latest router for the Back handler
+  const leaving = useRef(false) // Discard on the Back sheet: let the popstate through
+  useEffect(() => { routerRef.current = router })
 
   useEffect(() => {
     if (!dirty) return
+    const r = () => routerRef.current
     const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
-    window.addEventListener('beforeunload', warn)
-    routerRef.current.beforePopState(() => {
+    const onBack: PopHandler = () => {
+      if (leaving.current) return true
       // stay on the page: put the entry Back just popped back, then ask
-      const r = routerRef.current
-      void r.push(r.asPath, undefined, { shallow: true, scroll: false })
-      setPending(() => () => routerRef.current.back())
+      void r().push(r().asPath, undefined, { shallow: true, scroll: false })
+      setPending(() => () => { leaving.current = true; r().back() })
       return false
-    })
-    return () => { window.removeEventListener('beforeunload', warn); routerRef.current.beforePopState(() => true) }
+    }
+    window.addEventListener('beforeunload', warn)
+    guards.push(onBack)
+    r().beforePopState(onBack)
+    return () => {
+      window.removeEventListener('beforeunload', warn)
+      guards.splice(guards.indexOf(onBack), 1)
+      r().beforePopState(guards[guards.length - 1] ?? (() => true))
+      leaving.current = false
+    }
   }, [dirty])
 
   const sheet = (
