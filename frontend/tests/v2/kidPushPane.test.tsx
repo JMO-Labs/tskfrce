@@ -7,7 +7,7 @@ import { MantineProvider } from '@mantine/core'
 import { api } from '@/v2/api'
 import { fridgeTheme } from '@/v2/theme'
 import { KidPushPane } from '@/v2/manage/KidPushPane'
-import { KidEditor } from '@/v2/manage/KidEditor'
+import { KidProfileForm } from '@/v2/manage/KidEditor'
 import type { Kid } from '@/v2/types'
 
 jest.mock('@/v2/api', () => ({ ...(jest.requireActual('@/v2/api') as object), api: jest.fn() }))
@@ -112,16 +112,14 @@ describe('KidPushPane', () => {
   })
 })
 
-describe('KidEditor age group', () => {
-  test('sends age_group only when changed', async () => {
+describe('KidProfileForm age group', () => {
+  test('nothing to save until something changes; then only age_group is sent', async () => {
     apiMock.mockResolvedValue({})
-    render(wrap(<KidEditor kid={kid} />))
-    expect(screen.getByRole('button', { name: /Kid \(9–12\)/ })).toHaveAttribute('aria-pressed', 'true')
-    await userEvent.click(screen.getByRole('button', { name: 'Save kid' }))
-    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/kids/7', { method: 'PATCH', body: {} }))
-    apiMock.mockClear()
-    await userEvent.click(screen.getByRole('button', { name: /Teen \(13\+\)/ }))
-    await userEvent.click(screen.getByRole('button', { name: 'Save kid' }))
+    render(wrap(<KidProfileForm kid={kid} onSaved={() => {}} />))
+    expect(screen.getByRole('combobox', { name: 'Age group' })).toHaveValue('kid')
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Age group' }), 'teen')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/kids/7', { method: 'PATCH', body: { age_group: 'teen' } }))
   })
 })

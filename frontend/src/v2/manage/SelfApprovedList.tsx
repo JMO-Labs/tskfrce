@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Modal } from '@mantine/core'
 import { when } from '@/v2/components/bellRules'
+import { ActionRow } from '@/v2/parent/ActionRow'
 import { Icon } from '@/v2/parent/Icon'
 import { useSelfApproved } from '@/v2/hooks/useTrust'
 import { threadGlyph } from '@/v2/today/choreIcon'
@@ -17,18 +18,14 @@ export const dayTime = (iso: string) => {
 
 function Row({ r, onTake }: { r: SelfApproved; onTake: () => void }) {
   return (
-    <div className="ao-row">
-      <span className="pt-ty">
-        <Icon name={threadGlyph(undefined, r.title)} size={18} />
-      </span>
-      <span className="pt-t">
-        {r.title}
-        <small>{`${dayTime(r.approved_at)} · +${r.points}${r.approved_via === 'bedtime' ? ' · at bedtime' : ''}`}</small>
-      </span>
-      <button type="button" className="p-btn" onClick={onTake}>
-        Wasn&apos;t done
-      </button>
-    </div>
+    <ActionRow
+      icon={threadGlyph(undefined, r.title)}
+      iconLabel="Approved on their own"
+      iconHelp="Approved on their own"
+      title={r.title}
+      sub={`${dayTime(r.approved_at)} · +${r.points}${r.approved_via === 'bedtime' ? ' · at bedtime' : ''}`}
+      main={{ label: "Wasn't done", onClick: onTake }}
+    />
   )
 }
 
@@ -58,13 +55,13 @@ export function SelfApprovedList({ kid, today }: { kid: Kid; today: string }) {
           </button>
         )}
       </div>
-      <div className="ao-list">
+      <div className="kd-list">
         {rows.slice(0, 2).map((r) => (
           <Row key={r.id} r={r} onTake={() => take(r)} />
         ))}
       </div>
       <Modal opened={all} onClose={() => setAll(false)} title="Approved on their own" centered>
-        <div className="ao-list">
+        <div className="kd-list">
           {rows.map((r) => (
             <Row key={r.id} r={r} onTake={() => take(r)} />
           ))}

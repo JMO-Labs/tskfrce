@@ -10,7 +10,7 @@ import { fridgeTheme } from '@/v2/theme'
 import { api } from '@/v2/api'
 import { DeviceDetail } from '@/v2/manage/DeviceDetail'
 import { GroupDetail } from '@/v2/manage/GroupDetail'
-import { KidEditor } from '@/v2/manage/KidEditor'
+import { KidProfileForm } from '@/v2/manage/KidEditor'
 import { DevicesPage } from '@/v2/manage/DevicesPage'
 import { SettingsPage } from '@/v2/manage/SettingsPage'
 import type { Device, Family, Kid } from '@/v2/types'
@@ -382,10 +382,10 @@ describe('groups deep link', () => {
 describe('PIN', () => {
   test('Remove PIN sends clear_pin, and only shows when a PIN is set', async () => {
     apiMock.mockResolvedValue({})
-    const { unmount } = render(wrap(<KidEditor kid={kids[0]} />))
+    const { unmount } = render(wrap(<KidProfileForm kid={kids[0]} onSaved={() => {}} />))
     expect(screen.queryByRole('button', { name: 'Remove PIN' })).toBeNull()
     unmount()
-    render(wrap(<KidEditor kid={kids[1]} />))
+    render(wrap(<KidProfileForm kid={kids[1]} onSaved={() => {}} />))
     await userEvent.click(screen.getByRole('button', { name: 'Remove PIN' }))
     await waitFor(() =>
       expect(calls('PATCH')[0]).toEqual(['/kids/8', { method: 'PATCH', body: { clear_pin: true } }]),

@@ -36,6 +36,7 @@ jest.mock('next/router', () => ({
     query: mockRoute.query,
     push: mockRoute.push,
     replace: mockRoute.replace,
+    beforePopState: jest.fn(),
     pathname: '/kids',
   }),
 }))
@@ -85,31 +86,24 @@ describe('kids', () => {
     expect(document.body.textContent).not.toContain('🦊')
   })
 
-  test('detail has View as kid, Edit and a More menu with Bonus and Deduct, plus chores and devices', async () => {
-    mockRoute.query = { section: 'kids', item: '8' }
+  test('detail has Edit and a More menu with Bonus, Deduct, View as kid and Remove; devices and chores sit in rows', async () => {
+    mockRoute.query = { section: 'kids', item: '8', open: 'devices' }
     render(wrap(<KidsPage />))
     expect(
-      await within(detail()).findByRole('link', { name: 'View as kid' }),
-    ).toHaveAttribute('href', '/kid?as=8')
-    expect(
-      within(detail()).getByRole('button', { name: 'Edit' }),
+      await within(detail()).findByRole('button', { name: 'Edit' }),
     ).toBeInTheDocument()
     await userEvent.click(within(detail()).getByRole('button', { name: 'More' }))
-    const items = (await screen.findAllByRole('menuitem')).map((e) => e.textContent)
-    expect(items).toEqual(['add_circleBonus', 'remove_circleDeduct'])
+    const items = await screen.findAllByRole('menuitem')
+    expect(items.map((e) => e.textContent)).toEqual(['add_circleBonus', 'remove_circleDeduct', 'visibilityView as kid', 'closeRemove Leo'])
+    expect(items[2]).toHaveAttribute('href', '/kid?as=8')
     expect(await within(detail()).findByText('Leo iPad')).toBeInTheDocument()
-    expect(
-      within(detail()).getByRole('region', { name: 'Chores assigned' }),
-    ).toHaveTextContent('Trash')
+    expect(within(detail()).getByText('1 device · all open')).toBeInTheDocument()
     expect(document.body.textContent).not.toContain('🦊')
   })
 
-  test('Edit opens KidEditor; Remove PIN PATCHes', async () => {
-    mockRoute.query = { section: 'kids', item: '8' }
+  test('Edit profile: Remove PIN PATCHes', async () => {
+    mockRoute.query = { section: 'kids', item: '8', open: 'settings', edit: '1' }
     render(wrap(<KidsPage />))
-    await userEvent.click(
-      await within(detail()).findByRole('button', { name: 'Edit' }),
-    )
     await userEvent.click(
       await within(detail()).findByRole('button', { name: 'Remove PIN' }),
     )
@@ -122,12 +116,9 @@ describe('kids', () => {
   })
 
   test('PIN: letters are refused with a message, 3 digits are refused, nothing is sent', async () => {
-    mockRoute.query = { section: 'kids', item: '8' }
+    mockRoute.query = { section: 'kids', item: '8', open: 'settings', edit: '1' }
     render(wrap(<KidsPage />))
-    await userEvent.click(
-      await within(detail()).findByRole('button', { name: 'Edit' }),
-    )
-    const pin = within(detail()).getByLabelText(/PIN \(4 digits\)/)
+    const pin = await within(detail()).findByLabelText(/PIN \(4 digits\)/)
     await userEvent.type(pin, 'ab')
     expect(
       within(detail()).getByText('A PIN is digits only, exactly 4.'),
@@ -142,7 +133,7 @@ describe('kids', () => {
       within(detail()).getByText('Use exactly 4 digits.'),
     ).toBeInTheDocument()
     expect(
-      within(detail()).getByRole('button', { name: 'Save kid' }),
+      within(detail()).getByRole('button', { name: 'Save' }),
     ).toBeDisabled()
     expect(calls('PATCH')).toHaveLength(0)
   })
@@ -252,13 +243,11 @@ describe('kids: create, delete, points', () => {
         }),
       ],
     })
-    mockRoute.query = { section: 'kids', item: '7' }
+    mockRoute.query = { section: 'kids', item: '7', open: 'chores' }
     render(wrap(<KidsPage />))
-    const card = await within(detail()).findByRole('region', {
-      name: 'Chores assigned',
-    })
-    await waitFor(() => expect(card).toHaveTextContent('Trash · daily'))
-    expect(card).not.toHaveTextContent('once')
+    const link = await within(detail()).findByRole('link', { name: /Trash/ })
+    await waitFor(() => expect(link).toHaveTextContent('Daily'))
+    expect(link).not.toHaveTextContent(/once/i)
   })
 
   test('Bonus refreshes the balance by refetching /today', async () => {

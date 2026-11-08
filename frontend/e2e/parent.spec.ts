@@ -82,8 +82,8 @@ test.describe('parent journeys', () => {
       await page.getByRole('button', { name: /Bonus Kid/ }).click()
       // desktop shows the first kid until the shallow route lands; Bonus before that opens Pat's form
       await expect(page.getByRole('heading', { name: 'Bonus Kid', level: 2 })).toBeVisible()
-      await page.getByRole('button', { name: 'More' }).click()
-      await page.getByRole('menuitem', { name: 'Bonus' }).click()
+      await page.getByRole('button', { name: 'More', exact: true }).click()
+      await page.getByRole('menuitem', { name: /Bonus/ }).click()
       await page.getByLabel(/Points \(1 to 500\)/).fill('5')
       await page.getByLabel('Why?').fill('Great teamwork')
       await page.getByRole('button', { name: 'Send points' }).click()

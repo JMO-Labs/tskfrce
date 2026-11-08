@@ -5,6 +5,7 @@ import { useEnrollCode } from '@/v2/hooks/useEnroll'
 import { useKidPhones, useRemoveKidPhone } from '@/v2/hooks/useKidPhones'
 import { toastFail, toastOk } from '@/v2/notify'
 import { Icon } from '@/v2/parent/Icon'
+import { InfoPop } from '@/v2/parent/InfoPop'
 import type { Kid } from '@/v2/types'
 import type { EnrollCode, KidPhone } from '@/v2/types/enroll'
 import { ConfirmDelete } from './ConfirmDelete'
@@ -16,8 +17,8 @@ const ago = (iso: string) => {
 }
 const added = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
-/** Parent view of a kid's signed-in phones: list, add by QR, remove. */
-export function KidPhonesPanel({ kid }: { kid: Kid }) {
+/** A kid's signed-in phones as Devices rows, ending with + Add a phone (QR) and its help. */
+export function KidPhoneRows({ kid }: { kid: Kid }) {
   const [code, setCode] = useState<EnrollCode>() // kept across "New code" so the QR doesn't jump
   const phones = useKidPhones(kid.id, code ? 5000 : false) // while a QR is up, watch for the phone signing in
   const remove = useRemoveKidPhone()
@@ -36,14 +37,12 @@ export function KidPhonesPanel({ kid }: { kid: Kid }) {
     seen.current = rows.length
   }, [phones.isSuccess, rows.length, code])
   return (
-    <section className="pk-panel pk-span" aria-label="Phones and tablets">
-      <h3>
-        <Icon name="smartphone" size={18} />
-        Phones and tablets
-      </h3>
-      {phones.isSuccess && rows.length === 0 && <p className="pk-hint">No phones yet. Not every kid has one, and that&apos;s fine.</p>}
+    <>
       {rows.map((p) => (
-        <div key={p.id} className="pk-line">
+        <div key={p.id} className="kd-prow">
+          <span className="kd-ty">
+            <Icon name="smartphone" size={16} />
+          </span>
           <span className="pk-card-t">
             <b>{p.label}</b>
             <small>{`Added ${added(p.created_at)} · last used ${ago(p.last_seen_at)}`}</small>
@@ -53,16 +52,18 @@ export function KidPhonesPanel({ kid }: { kid: Kid }) {
           </button>
         </div>
       ))}
-      {code ? (
-        <EnrollQr kid={kid} code={code} busy={enroll.isPending} onNew={make} />
-      ) : (
-        <div className="pk-actions">
-          <button type="button" className="p-btn" disabled={enroll.isPending} onClick={make}>
-            <Icon name="add" />
+      <div className="kd-prow kd-add">
+        <span className="kd-ty">
+          <Icon name="add" size={16} />
+        </span>
+        <span className="pk-card-t">
+          <button type="button" className="kd-lnk" disabled={enroll.isPending || !!code} onClick={make}>
             Add a phone
           </button>
-        </div>
-      )}
+        </span>
+        <InfoPop label="About phones">No phones yet. Not every kid has one, and that&apos;s fine.</InfoPop>
+      </div>
+      {code && <EnrollQr kid={kid} code={code} busy={enroll.isPending} onNew={make} />}
       <ConfirmDelete
         opened={!!asking}
         title={`Remove ${name}'s ${asking?.label ?? 'phone'}?`}
@@ -71,6 +72,6 @@ export function KidPhonesPanel({ kid }: { kid: Kid }) {
         onConfirm={() => asking && remove.mutate({ kidId: kid.id, phoneId: asking.id }, { onSuccess: () => toastOk('Phone removed'), onError: toastFail })}
         onClose={() => setAsking(undefined)}
       />
-    </section>
+    </>
   )
 }
