@@ -11,10 +11,12 @@ interface Props {
   kids: Kid[]; value: string[]; onChange: (v: string[]) => void; label: string
   single?: boolean; extras?: PickerExtra[]; busy?: boolean; disabled?: boolean
   variant?: 'pills' | 'pop'; placeholder?: string
+  /** list the extras before the kids (an "All kids" pill) */
+  extrasFirst?: boolean
 }
 
 /** Pick kids (and exclusive extras such as Guest). Pills inline, or one button with a pop-over. */
-export function KidPicker({ kids, value, onChange, label, single, extras = [], busy, disabled, variant = 'pills', placeholder = 'Owner' }: Props) {
+export function KidPicker({ kids, value, onChange, label, single, extras = [], busy, disabled, variant = 'pills', placeholder = 'Owner', extrasFirst }: Props) {
   const [open, setOpen] = useState(false)
   const isExtra = (v: string) => extras.some((x) => x.value === v)
   const pick = (v: string) => {
@@ -23,10 +25,11 @@ export function KidPicker({ kids, value, onChange, label, single, extras = [], b
     else if (single) onChange([v])
     else onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value.filter((x) => !isExtra(x)), v])
   }
-  const items = [
+  const kidItems = [
     ...kids.map((k) => ({ value: String(k.id), label: nameOf(k), av: initial(nameOf(k)), icon: undefined as string | undefined, extra: false, short: undefined as string | undefined })),
-    ...extras.map((x) => ({ value: x.value, label: x.label, av: undefined as string | undefined, icon: x.icon, extra: true, short: x.short })),
   ]
+  const extraItems = extras.map((x) => ({ value: x.value, label: x.label, av: undefined as string | undefined, icon: x.icon, extra: true, short: x.short }))
+  const items = extrasFirst ? [...extraItems, ...kidItems] : [...kidItems, ...extraItems]
   const btn = (i: (typeof items)[number], cls: string) => (
     <button key={i.value} type="button" className={cls} aria-pressed={value.includes(i.value)} disabled={disabled} aria-disabled={busy || undefined}
       onClick={() => { pick(i.value); if (variant === 'pop' && !busy) setOpen(false) }}>
