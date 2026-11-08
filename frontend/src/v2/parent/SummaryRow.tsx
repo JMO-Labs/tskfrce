@@ -67,7 +67,7 @@ export function SummaryRow({ id, icon, title, summary, line2, aside, info, focus
           </span>
         </button>
         {aside && <div className="p-srow-aside">{aside}</div>}
-        {info && <div className="p-srow-info"><span aria-hidden="true">{title}</span>{info}</div>}
+        {info && <div className="p-srow-info"><span className="p-srow-info-i" aria-hidden="true" /><span aria-hidden="true">{title}</span>{info}</div>}
       </div>
       {line2 && (!focus.open || open) && <div className="p-srow-l2">{line2}</div>}
       {open && (

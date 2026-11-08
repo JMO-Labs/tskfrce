@@ -45,6 +45,7 @@ export function InfoPop({ label, children, target, width }: { label: string; chi
           onMouseLeave: (e: MouseEvent<HTMLElement>) => { target.props.onMouseLeave?.(e); leave() },
           onKeyDown: (e: KeyboardEvent<HTMLElement>) => { target.props.onKeyDown?.(e); esc(e) },
           onClick: (e: MouseEvent<HTMLElement>) => { target.props.onClick?.(e); click() },
+          'aria-expanded': opened,
         }) : (
           <button type="button" className="p-info-btn" aria-label={label} aria-expanded={opened} onMouseEnter={enter} onMouseLeave={leave} onKeyDown={esc} onClick={click}>
             <Icon name="info" size={16} />

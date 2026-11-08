@@ -69,7 +69,7 @@ const show = async (c: LibChore = chore(), open = 'basics') => {
       </MantineProvider>
     </QueryClientProvider>,
   )
-  await screen.findAllByRole('button', { name: 'Schoolwork' }) // types have landed
+  await screen.findAllByRole('button', { name: /Schoolwork/ }) // types have landed
 }
 const row = (id: string) => document.querySelector<HTMLElement>(`[data-focus-head="${id}"]`)!
 const saveBody = async () => {
@@ -83,7 +83,7 @@ describe('chore editor: type, steps, notes', () => {
     await show()
     expect(screen.getByRole('group', { name: 'Type' }).querySelector('[aria-pressed="true"]')).toHaveTextContent('Schoolwork')
     await userEvent.click(within(screen.getByRole('group', { name: 'Type' })).getByRole('button', { name: 'Pets' }))
-    await userEvent.click(document.querySelector<HTMLElement>('.ch-chip')!)
+    await userEvent.click(screen.getByRole('button', { name: /type, notes kids can send/ }))
     expect(await screen.findByText("From the Pets type. Kids pick one when they're stuck.")).toBeInTheDocument()
     expect(screen.getByText('Out of pet food')).toBeInTheDocument()
     expect((await saveBody()).type_id).toBe(2)
@@ -144,7 +144,7 @@ describe('chore editor: type, steps, notes', () => {
 
   test('the type chip pop-over lists the type notes and the universal notes', async () => {
     await show()
-    await userEvent.click(document.querySelector<HTMLElement>('.ch-chip')!)
+    await userEvent.click(screen.getByRole('button', { name: /type, notes kids can send/ }))
     expect(await screen.findByText('Notes kids can send')).toBeInTheDocument()
     for (const n of ["Don't understand it", 'Need help', 'Ran out of time', "Can't do it today"]) {
       expect(screen.getByText(n)).toBeInTheDocument()
