@@ -44,6 +44,7 @@ test.describe('parent journeys', () => {
         await page.getByLabel('Add a step').press('Enter')
       }
       await page.getByRole('button', { name: 'Save chore' }).click()
+      await expect(page).toHaveURL(/item=\d+/) // the editor swaps from the empty form to the saved chore
 
       // saving a new chore opens it; assign it to both kids as a race
       await page.locator('[data-focus-head="who"]').click()
@@ -87,7 +88,7 @@ test.describe('parent journeys', () => {
       // desktop shows the first kid until the shallow route lands; Bonus before that opens Pat's form
       await expect(page.getByRole('heading', { name: 'Bonus Kid', level: 2 })).toBeVisible()
       await page.getByRole('button', { name: 'More', exact: true }).click()
-      await page.getByRole('menuitem', { name: /Bonus/ }).click()
+      await page.getByRole('menuitem', { name: 'Bonus', exact: true }).click()
       await page.getByLabel(/Points \(1 to 500\)/).fill('5')
       await page.getByLabel('Why?').fill('Great teamwork')
       await page.getByRole('button', { name: 'Send points' }).click()
@@ -103,10 +104,10 @@ test.describe('parent journeys', () => {
     const before = (await (await api.get('/api/proxy/family')).json()).screen_time_price
     try {
       // screen time lives under Rewards (spec §11 errata 1)
-      await page.goto('/kids?section=rewards&item=screen')
-      const how = page.getByRole('region', { name: 'How it works' })
-      await how.getByLabel('Price (points per 15 min)').fill(String(before + 1))
-      await how.getByRole('button', { name: 'Save' }).click()
+      await page.goto('/kids?section=rewards&item=screen&open=price')
+      // every rule saves as you leave the field: no Save button
+      await page.getByLabel('Points per 15 min').fill(String(before + 1))
+      await page.getByLabel('Points per 15 min').press('Enter')
       await expect
         .poll(async () => (await (await api.get('/api/proxy/family')).json()).screen_time_price)
         .toBe(before + 1)
