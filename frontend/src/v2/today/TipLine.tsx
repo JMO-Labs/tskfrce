@@ -11,7 +11,7 @@ export function TipLine({ icon, text, onDismiss, label = 'Tip', children }: { ic
         <Icon name={icon} size={18} />
         <span className="pt-tip-t">{text}</span>
         {children && (
-          <button type="button" className="pt-tip-more" aria-expanded={open} aria-controls={id} onClick={() => setOpen((o) => !o)}>
+          <button type="button" className="pt-tip-more" aria-expanded={open} aria-controls={open ? id : undefined} onClick={() => setOpen((o) => !o)}>
             More
           </button>
         )}
