@@ -19,3 +19,22 @@
 .card > :is(ol, p) { color: var(--p-sub); }
 .card ol :global(.ms), .card p :global(.ms) { vertical-align: middle; }
 .card ol b, .card p b { color: var(--p-ink); }
+
+/* Step 3 calm kids (declutter v3): one-line kid rows, avatar pop-over */
+.list { border: 1px solid var(--p-line); border-radius: 14px; background: var(--p-card); margin-bottom: 14px; }
+.kidline { display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 52px; }
+.kidline + .kidline { border-top: 1px solid var(--p-line); }
+.avsm { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--p-acc); font-size: 15px; }
+.kn { flex: 1; min-width: 0; font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
+.pinnote { flex: none; color: var(--p-sub); font-size: 12px; }
+.kidline .chip { display: inline-flex; align-items: center; gap: 4px; }
+.pair { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; }
+.fldlabel { font-size: 12.5px; font-weight: 600; line-height: 1.55; padding-top: 8px; margin-bottom: 10px; }
+.pinlabel { display: inline-flex; align-items: center; gap: 2px; }
+.pinlabel :global(.p-info-btn) { margin: -4px 0; }
+.avbtn { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 12px; border-radius: 10px; border: 1px solid var(--p-line); background: var(--p-card); color: var(--p-ink); font-size: 20px; line-height: 1; cursor: pointer; }
+.actbar { display: flex; justify-content: flex-end; margin-top: 14px; }
+.avgrid { display: grid; grid-template-columns: repeat(6, 44px); gap: 6px; padding: 6px; }
+.avgrid button { width: 44px; height: 44px; border-radius: 10px; border: 1px solid var(--p-line); background: var(--p-card); display: grid; place-items: center; padding: 0; font-size: 19px; line-height: 1; cursor: pointer; }
+.avgrid button:hover, .avgrid button[aria-pressed='true'] { background: var(--p-acc); border-color: var(--p-acc); color: #292928; }
+.avtitle { margin: 4px 8px 0; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--p-sub); }
