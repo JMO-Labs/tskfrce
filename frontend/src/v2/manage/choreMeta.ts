@@ -76,3 +76,6 @@ export const optionsOn = (o: { due: string; photo: boolean; check: boolean }) =>
 /** "School · 30 pts · daily · Maya, Leo" */
 export const choreHeadLine = (typeName: string | undefined, points: number, when: string, doers: string) =>
   [typeName, `${points} pts`, when, doers].filter(Boolean).join(' · ')
+
+/** 45 → "45 min", 60 → "1h", 645 → "10h 45m" */
+export const fmtMin = (m: number) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ''}`)

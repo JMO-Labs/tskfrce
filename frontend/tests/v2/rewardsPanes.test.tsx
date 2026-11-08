@@ -203,82 +203,52 @@ const stFull = {
 }
 
 describe('rewards: screen time', () => {
-  test('group pricing switch: the link waits for Save', async () => {
-    data({ '/screen-time': { ...stFull, group_pricing: false } })
-    mockRoute.query = { section: 'rewards', item: 'screen' }
+  const show = async (st: object, row: string) => {
+    data({ '/screen-time': st })
+    mockRoute.query = { section: 'rewards', item: 'screen', open: row }
     render(wrap(<KidsPage />))
+  }
+
+  test('group pricing switch saves on change', async () => {
+    await show({ ...stFull, group_pricing: false }, 'gprice')
     const sw = await within(detail()).findByRole('switch', { name: 'Different prices for device groups' })
-    expect(sw).toHaveAttribute('aria-checked', 'false')
+    expect(sw).not.toBeChecked()
     expect(within(detail()).getByText(/Charge more for some devices, like game consoles\./)).toBeInTheDocument()
     expect(within(detail()).queryByRole('link', { name: 'Set group prices' })).toBeNull()
     await userEvent.click(sw)
-    expect(sw).toHaveAttribute('aria-checked', 'true')
-    expect(within(detail()).queryByRole('link', { name: 'Set group prices' })).toBeNull() // not saved yet
-    await userEvent.click(within(detail()).getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(calls('PATCH')[0]).toEqual(['/screen-time', { method: 'PATCH', body: { group_pricing: true } }]))
   })
 
   test('saved group pricing shows the Set group prices link', async () => {
-    data({ '/screen-time': stFull })
-    mockRoute.query = { section: 'rewards', item: 'screen' }
-    render(wrap(<KidsPage />))
+    await show(stFull, 'gprice')
     expect(await within(detail()).findByRole('link', { name: 'Set group prices' })).toHaveAttribute('href', '/devices?tab=groups')
   })
 
-  test('Approve automatically + Save PATCHes only auto_approve', async () => {
-    data({ '/screen-time': stFull })
-    mockRoute.query = { section: 'rewards', item: 'screen' }
-    render(wrap(<KidsPage />))
-    const sw = await within(detail()).findByRole('switch', { name: 'Approve automatically' })
-    const save = within(detail()).getByRole('button', { name: 'Save' })
-    expect(save).toBeDisabled()
-    await userEvent.click(sw)
-    await userEvent.click(save)
+  test('Approve buys without asking PATCHes only auto_approve', async () => {
+    await show(stFull, 'auto')
+    await userEvent.click(await within(detail()).findByRole('switch', { name: 'Approve buys without asking' }))
     await waitFor(() => expect(calls('PATCH')[0]).toEqual(['/screen-time', { method: 'PATCH', body: { auto_approve: true } }]))
   })
 
-  test('header chips, what points buy, bought today and per-kid limits', async () => {
-    data({ '/screen-time': stFull })
-    mockRoute.query = { section: 'rewards', item: 'screen' }
-    render(wrap(<KidsPage />))
+  test('rules summaries, what points buy in Price, and one row per kid', async () => {
+    await show(stFull, 'price')
     const pane = detail()
-    expect(await within(pane).findByText('20 pts = 15 min')).toBeInTheDocument()
-    expect(within(pane).getByText('Max 60 min/day')).toBeInTheDocument()
-    expect(within(pane).getByText('Average chore (20 pts)')).toBeInTheDocument()
-    expect(within(pane).getByText('Maya · 860 pts').parentElement).toHaveTextContent('up to 10h 45m')
-    expect(within(pane).getByText('Sam · 95 pts').parentElement).toHaveTextContent('up to 1h')
-    const bought = within(pane).getByRole('region', { name: 'Bought today' })
-    expect(bought).toHaveTextContent('resets 4:00 AM')
-    expect(bought).toHaveTextContent('30 / 60 min')
-    const limits = within(pane).getByRole('region', { name: 'Per-kid limits' })
-    expect(limits).toHaveTextContent('Max 30 min/day')
+    expect(await within(pane).findByRole('button', { name: /^Price.*20 pts = 15 min/ })).toBeInTheDocument()
+    expect(within(pane).getByRole('button', { name: /^Max per day.*60 min/ })).toBeInTheDocument()
+    expect(within(pane).getByText(/An average chore \(20 pts\) buys 15 min\./)).toHaveTextContent('An average chore (20 pts) buys 15 min. Today Maya can buy up to 10h 45m, Leo 3h 45m, Sam 1h.')
+    expect(within(pane).getByText('bought today · resets 4:00 AM')).toBeInTheDocument()
+    expect(within(pane).getByRole('button', { name: /^Leo.*30 min\/day/ })).toBeInTheDocument()
+    expect(within(pane).getByRole('button', { name: /^Maya.*Family max/ })).toBeInTheDocument()
+    expect(within(pane).queryByRole('region', { name: 'What points buy' })).toBeNull()
   })
 
-  test('Add a limit for Sam with a minimum of 100 PUTs the limit and lists it', async () => {
-    let cur = stFull
-    const saved = { ...stFull, kids: [stFull.kids[0], stFull.kids[1], { ...sam, limit: { max_minutes: null, min_points: 100 } }] }
-    // getters (not data(): spreading would read them once)
-    serve({
-      '/redemptions': pending,
-      get '/screen-time'() {
-        return cur
-      },
-      get '/screen-time/limits/9'() {
-        cur = saved
-        return saved
-      },
-    })
-    mockRoute.query = { section: 'rewards', item: 'screen' }
-    render(wrap(<KidsPage />))
-    await userEvent.click(await within(detail()).findByRole('button', { name: 'Add a limit' }))
-    const limits = within(detail()).getByRole('region', { name: 'Per-kid limits' })
-    await userEvent.selectOptions(within(limits).getByLabelText('Kid'), 'Sam')
-    await userEvent.type(within(limits).getByLabelText('Minimum points'), '100')
-    await userEvent.click(within(limits).getByRole('button', { name: 'Save limit' }))
+  test("a kid's minimum of 100 PUTs the limit", async () => {
+    await show(stFull, 'kid-9')
+    await userEvent.type(await within(detail()).findByRole('textbox', { name: 'Sam not allowed until' }), '100')
+    await userEvent.tab()
     await waitFor(() =>
       expect(calls('PUT')[0]).toEqual(['/screen-time/limits/9', { method: 'PUT', body: { max_minutes: null, min_points: 100 } }]),
     )
-    expect(await within(limits).findByText('Not allowed until 100 pts')).toBeInTheDocument()
   })
 })
 

@@ -362,3 +362,28 @@ html[data-look='parent'] .pn-addr .f-input.f-input { font: 12.5px ui-monospace, 
 [data-look='parent'] .pn-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; }
 [data-look='parent'] .pn-line .mantine-Switch-body { flex: 1; justify-content: space-between; }
 [data-look='parent'] .pn-line .mantine-Switch-label { color: var(--p-sub); font-size: 13px; }
+/* Rewards > Screen time: rule and kid rows are cards with dividers (mockup .srows.grp) */
+[data-look='parent'] .st-grp { display: flex; flex-direction: column; }
+[data-look='parent'] .st-grp .p-srows { gap: 0; margin-top: 0; background: var(--p-card); border: 1px solid var(--p-line); border-radius: 16px; overflow: hidden; }
+[data-look='parent'] .st-grp .p-srow { border: 0; border-top: 1px solid var(--p-line); border-radius: 0; }
+[data-look='parent'] .st-grp .p-srow:first-child { border-top: 0; }
+[data-look='parent'] .st-grp .p-srow[data-open] { box-shadow: inset 3px 0 0 var(--p-ink); }
+[data-look='parent'] .st-grp .p-srow-head { border-radius: 0; }
+[data-look='parent'] .st .p-dhead-meta { min-width: 110px; }
+[data-look='parent'] .st-kh { display: flex; justify-content: space-between; gap: 10px; }
+[data-look='parent'] .st-kh span { text-transform: none; letter-spacing: 0; font-weight: 500; }
+[data-look='parent'] .st-av { flex: none; width: 26px; height: 26px; margin: -4px -4px -4px -4px; display: grid; place-items: center; border-radius: 50%; background: var(--p-soft); border: 1px solid var(--p-line); color: var(--p-ink); font-size: 11.5px; font-weight: 700; }
+[data-look='parent'] .st-bought { font-size: 12px; color: var(--p-sub); white-space: nowrap; }
+[data-look='parent'] .st-num { width: 130px; align-self: flex-start; }
+[data-look='parent'] .st-two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+[data-look='parent'] .st-two .st-num { width: 100%; box-sizing: border-box; }
+[data-look='parent'] .st-link { align-self: flex-start; padding: 0; border: 0; background: none; font: inherit; font-size: 12.5px; font-weight: 700; color: var(--p-ink); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+[data-look='parent'] .st .p-srow-body > .pk-hint { margin: 0; }
+@media (max-width: 767px) {
+  [data-look='parent'] .st-link { min-height: 44px; display: inline-flex; align-items: center; }
+  [data-look='parent'] .st .pk-input { min-height: 44px; }
+}
+
+[data-look='parent'] .st .p-dhead-act .mantine-Switch-label { padding-inline: 0 8px; font-size: 13px; font-weight: 700; color: var(--p-ink); }
+[data-look='parent'] .st .pk-input { background: var(--p-bg); }
+[data-look='parent'] .st .rw-unit input { flex-basis: 3ch; }
