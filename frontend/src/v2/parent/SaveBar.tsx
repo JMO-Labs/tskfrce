@@ -44,6 +44,7 @@ export function useDiscardGuard(dirty: boolean, onDiscard?: () => void): { guard
       if (undoing.current) { undoing.current = false; return false } // the popstate from our own history.go(1) below
       // stay on the page: step forward again (router.push of the current URL would only replace the popped entry), then ask
       undoing.current = true
+      window.setTimeout(() => { undoing.current = false }, 500) // if that popstate never comes, a later real Back must still prompt
       window.history.go(1)
       setPending(() => () => { leaving.current = true; r().back() })
       return false

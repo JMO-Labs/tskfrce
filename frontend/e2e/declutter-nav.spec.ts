@@ -1,9 +1,12 @@
+import { rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 import { loginUi, makeKid, parentApi } from './seed'
 
 // Real Next routing (jest fakes the router): focus params, Back, tab bar, the discard guard.
 // one login for the file (login is rate limited to 10/min, and the specs after this one log in too)
-const STATE = 'e2e-artifacts/declutter-nav-state.json'
+const STATE = join(tmpdir(), `declutter-nav-state-${process.pid}.json`) // holds a session: never under e2e-artifacts (CI uploads it)
 const BASE = process.env.E2E_BASE_URL ?? 'http://10.99.0.5:3000'
 test.use({ viewport: { width: 390, height: 844 }, actionTimeout: 15_000, storageState: STATE })
 
@@ -24,6 +27,7 @@ test.beforeAll(async ({ browser }) => {
   undo = k.undo
 })
 test.afterAll(async () => {
+  rmSync(STATE, { force: true })
   await undo()
   await api.dispose()
 })
@@ -94,7 +98,7 @@ test.describe('unsaved-changes guard', () => {
     await name.fill(`Renamed ${tag}`)
     // the guard registers its Back handler a render or two after the typing; a person is never that quick
     await expect(page.getByText('Unsaved changes', { exact: true })).toBeVisible()
-    await page.waitForTimeout(300)
+    await expect(page.getByRole('region', { name: 'Unsaved changes' })).toBeVisible() // the guard registers with the dirty state
     return name
   }
 
@@ -124,7 +128,7 @@ test.describe('unsaved-changes guard', () => {
     const name = page.getByLabel('Name', { exact: true })
     await name.fill(`Renamed ${tag}`)
     await expect(page.getByText('Unsaved changes', { exact: true })).toBeVisible()
-    await page.waitForTimeout(300) // the guard registers its Back handler a render after the typing
+    await expect(page.getByRole('region', { name: 'Unsaved changes' })).toBeVisible()
 
     await page.goBack()
     await expect(discardSheet(page)).toHaveCount(1)

@@ -132,3 +132,16 @@ test('two guards do not clobber each other', () => {
   a.unmount()
   expect(fakeRouter.popHandler({})).toBe(true)
 })
+
+test('a go(1) popstate that never arrives does not swallow a later real Back', async () => {
+  jest.useFakeTimers()
+  const go = jest.spyOn(window.history, 'go').mockImplementation(() => {})
+  wrap(<Probe dirty go={jest.fn()} />)
+  act(() => { fakeRouter.popHandler({}) })
+  act(() => { jest.advanceTimersByTime(600) })
+  go.mockClear()
+  act(() => { fakeRouter.popHandler({}) })
+  expect(go).toHaveBeenCalledWith(1) // asked again, not swallowed
+  go.mockRestore()
+  jest.useRealTimers()
+})
