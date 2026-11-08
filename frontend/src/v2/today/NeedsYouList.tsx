@@ -102,7 +102,7 @@ export function NeedsYouList({ items, today }: { items: NeedsItem[]; today?: str
   }
 
   return (
-    <section className="p-needs-list" aria-label="Needs you">
+    <div className="p-needs-list">
       {approvable.length > 1 && (
         <button type="button" className="p-btn" data-variant="accent" disabled={!!busy} data-loading={busy === 'all'} onClick={approveAll}>
           <Icon name="done_all" size={17} />
@@ -209,6 +209,6 @@ export function NeedsYouList({ items, today }: { items: NeedsItem[]; today?: str
         onApprove={(id) => run(() => approve.mutateAsync(id), 'Approved', `p${id}`)}
         onSendBack={submitSendBack}
       />
-    </section>
+    </div>
   )
 }

@@ -20,35 +20,6 @@
   overflow: hidden;
 }
 
-/* Summary strip styling */
-.p-summary-strip {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
-  padding: 16px;
-  background: var(--p-card);
-  border: 1px solid var(--p-line);
-  border-radius: 12px;
-}
-
-.p-summary-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.p-summary-label {
-  font-size: 12px;
-  color: var(--p-sub);
-  font-weight: 500;
-}
-
-.p-summary-value {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--p-ink);
-}
-
 /* toasts sit bottom-centre so neither they nor the floating chat button cover each other;
    on phones they clear the tab bar */
 @media (max-width: 767px) {

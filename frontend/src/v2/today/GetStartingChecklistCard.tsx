@@ -10,7 +10,7 @@ interface Props {
   kids: TodayKid[]
 }
 
-export function GetStartingChecklistCard({ kids }: Props) {
+function useChecklist(kids: TodayKid[]) {
   const { isDismissed, dismiss } = useTipState()
   const hours = (useHours().data?.rules.length ?? 0) > 0
   const parents = useParents().data?.length ?? 0
@@ -55,9 +55,16 @@ export function GetStartingChecklistCard({ kids }: Props) {
 
   const doneCount = items.filter((i) => i.done).length
   const allDone = doneCount === items.length
-  const wasDismissed = isDismissed('onboard.parent')
+  const shown = !(allDone || isDismissed('onboard.parent'))
+  return { items, doneCount, dismiss, shown }
+}
 
-  if (allDone || wasDismissed) return null
+/** Whether the Getting started card is up (so Today can give it the one tip slot). */
+export const useChecklistShown = (kids: TodayKid[]): boolean => useChecklist(kids).shown
+
+export function GetStartingChecklistCard({ kids }: Props) {
+  const { items, doneCount, dismiss, shown } = useChecklist(kids)
+  if (!shown) return null
 
   return (
     <div className="p-onboard-card" data-testid="parent-onboarding">

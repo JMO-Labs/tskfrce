@@ -1,0 +1,69 @@
+/**
+ * @fileoverview Calm Today: kid rows/tiles, Needs strip, Happy Hour chip, device rows.
+ * Look copied from the owner-approved mockup declutter-v1 (today-calm): .krow .kname .pts .needs-head .pill .tip.
+ */
+
+[data-look='parent'] .pt-kids { display: flex; flex-direction: column; gap: 8px; }
+[data-look='parent'] .pt-kcard { background: var(--p-card); border: 1px solid var(--p-line); border-radius: 18px; min-width: 0; transition: border-color 180ms; }
+[data-look='parent'] .pt-kcard[data-open] { border-color: var(--p-ink); }
+[data-look='parent'] .pt-kmain { display: flex; align-items: center; gap: 4px; padding-left: 12px; }
+[data-look='parent'] .pt-kav {
+  width: 40px; height: 40px; flex: none; padding: 0; display: grid; place-items: center; cursor: pointer;
+  border-radius: 50%; border: 2px solid var(--p-line); background: var(--p-soft); color: var(--p-ink);
+  font: 700 16px var(--font-parent), system-ui, sans-serif;
+}
+[data-look='parent'] .pt-kcard[data-open] .pt-kav { background: var(--p-acc); border-color: var(--p-acc); color: #292928; }
+[data-look='parent'] .pt-krow {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 12px 14px 12px 8px;
+  border: 0; border-radius: 18px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+[data-look='parent'] .pt-krow:hover { background: var(--p-soft); }
+[data-look='parent'] .pt-kname { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; font-weight: 700; font-size: 15px; }
+[data-look='parent'] .pt-kpts { font-weight: 700; font-size: 13px; min-width: 52px; text-align: right; white-space: nowrap; }
+[data-look='parent'] .pt-kchev { color: var(--p-sub); transition: transform 180ms; }
+[data-look='parent'] .pt-kcard[data-open] .pt-kchev { transform: rotate(90deg); }
+[data-look='parent'] .pt-kbody { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 12px; outline: none; }
+[data-look='parent'] .pt-kearned { margin: 8px 2px 4px; font-weight: 600; }
+.pt-klink { display: inline-flex; align-items: center; gap: 2px; padding: 6px 2px; font-weight: 700; font-size: 13px; color: var(--p-ink); text-decoration: underline; text-underline-offset: 3px; }
+.p-pop .p-kid-facts { grid-template-columns: 1fr 1fr; row-gap: 10px; margin: 6px 2px; }
+
+/* Needs strip */
+[data-look='parent'] .pt-needs-head {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; border: 0; border-radius: 14px; padding: 10px 14px;
+  background: var(--p-lav); color: var(--p-lav-ink); font: 700 14px var(--font-parent), system-ui, sans-serif; text-align: left; cursor: pointer;
+}
+[data-look='parent'] .pt-needs-t { flex: 1; }
+[data-look='parent'] .pt-needs-chev { transition: transform 180ms; }
+[data-look='parent'] .pt-needs[data-open] .pt-needs-head { border-radius: 14px 14px 0 0; }
+[data-look='parent'] .pt-needs[data-open] .pt-needs-chev { transform: rotate(90deg); }
+[data-look='parent'] .pt-needs-body { background: var(--p-card); border: 1px solid var(--p-line); border-top: 0; border-radius: 0 0 14px 14px; padding: 8px 14px; outline: none; }
+
+/* Happy Hour chip and its pop-over */
+[data-look='parent'] .pt-hh { display: flex; flex-wrap: wrap; gap: 6px; }
+.p-pill {
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px 4px 8px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--p-line); background: var(--p-soft); color: var(--p-ink); font: 600 12px var(--font-parent), system-ui, sans-serif; white-space: nowrap;
+}
+.p-pill[data-tone='acc'] { background: var(--p-acc); border-color: var(--p-acc); color: #292928; }
+.pt-hhpop { display: grid; gap: 8px; padding: 4px; }
+
+/* Devices row body */
+.pt-dlist { border: 1px solid var(--p-line); border-radius: 14px; background: var(--p-card); }
+.pt-drow { display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 44px; }
+.pt-drow + .pt-drow { border-top: 1px solid var(--p-line); }
+.pt-drow b { flex: 1; min-width: 0; font-size: 14px; }
+
+@media (min-width: 768px) {
+  [data-look='parent'] .pt-kids { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; align-items: start; }
+  [data-look='parent'] .pt-kcard[data-open] { grid-column: 1 / -1; }
+  [data-look='parent'] .pt-krow { padding: 16px 18px 16px 8px; }
+}
+@media (max-width: 767px) {
+  [data-look='parent'] .pt-kav { width: 44px; height: 44px; }
+  .p-pill { position: relative; }
+  .p-pill::after { content: ''; position: absolute; inset: -8px 0; } /* 44 px touch target, mockup-size pill */
+  .pt-klink { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-look='parent'] .pt-kcard, [data-look='parent'] .pt-kchev, [data-look='parent'] .pt-needs-chev { transition-duration: 0ms; }
+}

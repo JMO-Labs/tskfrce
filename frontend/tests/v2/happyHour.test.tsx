@@ -130,8 +130,9 @@ describe('scoped running state', () => {
 
 describe('placement', () => {
   const src = (f: string) => require('fs').readFileSync(require('path').join(__dirname, '../../src/v2', f), 'utf8') as string
-  test('the button is in TodayPage and KidDetail', () => {
-    expect(src('today/TodayPage.tsx')).toContain('<HappyHourButton kidId={kid.id} allKids />')
+  test('Start Happy Hour is in the Today header menu and KidDetail', () => {
+    expect(src('today/TodayPage.tsx')).toContain("label: 'Start Happy Hour'")
+    expect(src('today/TodayPage.tsx')).not.toContain('<HappyHourButton')
     expect(src('manage/KidDetail.tsx')).toContain('<HappyHourButton kidId={kid.id} />')
   })
 })
