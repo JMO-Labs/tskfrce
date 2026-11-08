@@ -265,8 +265,9 @@ html[data-look='parent'] .pk-sheet-foot { position: sticky; bottom: 0; margin-to
   transition: border-color var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
 }
 [data-look='parent'] .pk-pill .pk-av { width: 26px; height: 26px; border: 0; background: var(--p-soft); color: var(--p-ink); }
-[data-look='parent'] .pk-pill[aria-pressed='true'] { border: 1.5px solid var(--p-ink); padding: 3.5px 13.5px 3.5px 3.5px; }
-[data-look='parent'] .pk-pill[aria-pressed='true'] .pk-av { background: var(--p-acc); color: #292928; }
+[data-look='parent'] .pk-pill[aria-pressed='true'] { background: var(--p-acc); border-color: var(--p-acc); color: #292928; }
+[data-look='parent'] .pk-pill[aria-pressed='true'] .pk-av { background: var(--p-card); color: var(--p-ink); }
+[data-look='parent'] .pk-pill:not(:has(.pk-av)):not(:has(.ms)) { padding-left: 14px; }
 
 [data-look='parent'] .pk-days { display: flex; gap: 8px; flex-wrap: wrap; }
 [data-look='parent'] .pk-day {
