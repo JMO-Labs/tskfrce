@@ -83,8 +83,8 @@ export function KidFocus({ kid, requests, chore }: { kid: TodayKid; requests: Ne
           <MoreMenu
             label={`More for ${name}`}
             items={[
-              { label: 'Bonus', icon: 'add_circle', disabled: !full, onClick: () => setPoints('bonus') },
-              { label: 'Deduct', icon: 'remove_circle', disabled: !full, onClick: () => setPoints('deduct') },
+              { label: 'Bonus', icon: 'add_circle', takesFocus: true, disabled: !full, onClick: () => setPoints('bonus') },
+              { label: 'Deduct', icon: 'remove_circle', takesFocus: true, disabled: !full, onClick: () => setPoints('deduct') },
               { label: 'View as kid', icon: 'visibility', href: viewAs(kid.id, router.asPath) },
               { label: 'Open page', icon: 'open_in_new', href: `/kids?section=kids&item=${kid.id}` },
             ]}

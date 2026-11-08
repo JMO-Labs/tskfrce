@@ -69,3 +69,8 @@
 /* phone: Edit and "…" stay beside the name (the points and Level pills wrap under it) */
 [data-look='parent'] .kd-page .p-dhead-meta { min-width: 110px; }
 [data-look='parent'] .kd-page [hidden] { display: none; } /* Edit hides while editing (mockup [data-edit] #editb) */
+
+/* Kids list: the ring sits on the name line so "Level 7 · 240 pts" keeps its own line */
+[data-look='parent'] .pk-items .kl-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+[data-look='parent'] .pk-items .kl-line b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-look='parent'] .pk-items .pk-card-t small { white-space: nowrap; }

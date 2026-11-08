@@ -7,7 +7,7 @@ import { MantineProvider } from '@mantine/core'
 import { notifications } from '@mantine/notifications'
 import { api } from '@/v2/api'
 import { fridgeTheme } from '@/v2/theme'
-import { KidPhoneRows } from '@/v2/manage/KidPhonesPanel'
+import { KidPhoneRows } from '@/v2/manage/KidPhoneRows'
 import type { Kid } from '@/v2/types'
 
 jest.mock('@/v2/api', () => ({ ...(jest.requireActual('@/v2/api') as object), api: jest.fn() }))

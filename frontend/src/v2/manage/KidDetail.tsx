@@ -49,6 +49,15 @@ export function KidDetail({ kid, onDeleted, guardRef }: { kid: Kid; onDeleted: (
     return () => { guardRef.current = null }
   }, [guardRef, guard])
 
+  // an old PIN link's pin=1 goes away with edit, or the next Edit would focus the PIN again
+  const pinSet = router.query.pin !== undefined
+  useEffect(() => {
+    if (editing || !pinSet) return
+    const { pin: _pin, ...rest } = router.query
+    void router.replace({ pathname: router.pathname, query: rest }, undefined, { shallow: true, scroll: false })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing, pinSet])
+
   // leaving edit lands on Edit again, never on <body>
   const wasEditing = useRef(editing)
   useEffect(() => {

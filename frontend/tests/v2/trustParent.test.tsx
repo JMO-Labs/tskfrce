@@ -100,17 +100,18 @@ describe('approved on their own', () => {
     expect(screen.queryByText('Approved on their own')).toBeNull()
   })
 
-  test('2 newest show; See all lists the rest; Wasn\'t done posts lower_trust true by default', async () => {
-    rows = [row(1), row(2), row(3, { approved_via: 'bedtime' })]
+  test("4 newest show as quiet rows; See all lists the rest; … > Wasn't done posts lower_trust true by default", async () => {
+    rows = [1, 2, 3, 4, 5].map((n) => row(n, n === 5 ? { approved_via: 'bedtime' } : {}))
     wrap(<TrustSection kid={kid()} />)
-    expect(await screen.findByText('3 this week')).toBeInTheDocument()
-    expect(screen.getByText('Chore 1')).toBeInTheDocument()
-    expect(screen.queryByText('Chore 3')).toBeNull()
+    expect(await screen.findByText('Chore 4')).toBeInTheDocument()
+    expect(screen.queryByText('Chore 5')).toBeNull()
+    expect(screen.queryByRole('button', { name: "Wasn't done" })).toBeNull()
     await userEvent.click(screen.getByRole('button', { name: 'See all' }))
     const all = await screen.findByRole('dialog', { name: 'Approved on their own' })
-    expect(within(all).getByText('Chore 3')).toBeInTheDocument()
+    expect(within(all).getByText('Chore 5')).toBeInTheDocument()
     expect(within(all).getByText(/at bedtime/)).toBeInTheDocument()
-    await userEvent.click(within(all).getAllByRole('button', { name: "Wasn't done" })[0])
+    await userEvent.click(within(all).getByRole('button', { name: 'More for Chore 1' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Wasn't done/ }))
     const sheet = await screen.findByRole('dialog', { name: "Wasn't done?" })
     expect(within(sheet).getByRole('checkbox', { name: /Also lower trust level/ })).toBeChecked()
     await userEvent.click(within(sheet).getByRole('button', { name: "Wasn't done" }))
@@ -120,7 +121,7 @@ describe('approved on their own', () => {
   test('still shown when trust mode is off but rows exist', async () => {
     rows = [row(1)]
     wrap(<TrustSection kid={kid({ trust_mode: false })} />)
-    expect(await screen.findByText('Approved on their own')).toBeInTheDocument()
+    expect(await screen.findByText('Chore 1')).toBeInTheDocument()
   })
 })
 
@@ -202,23 +203,24 @@ describe('focus returns after a sheet closes', () => {
   })
 
   test("Wasn't done sheet from See all: Keep lands on See all", async () => {
-    rows = [row(1), row(2), row(3)]
+    rows = [1, 2, 3, 4, 5].map((n) => row(n))
     wrap(<TrustSection kid={kid()} />)
     const seeAll = await screen.findByRole('button', { name: 'See all' })
     await userEvent.click(seeAll)
     const all = await screen.findByRole('dialog', { name: 'Approved on their own' })
-    await userEvent.click(within(all).getAllByRole('button', { name: "Wasn't done" })[0])
+    await userEvent.click(within(all).getByRole('button', { name: 'More for Chore 1' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Wasn't done/ }))
     const sheet = await screen.findByRole('dialog', { name: "Wasn't done?" })
     await userEvent.click(within(sheet).getByRole('button', { name: 'Keep' }))
     await waitFor(() => expect(seeAll).toHaveFocus())
   })
 
-  test("Wasn't done sheet from an inline row: Keep lands on that row's button", async () => {
-    rows = [row(1), row(2), row(3)]
+  test("Wasn't done sheet from an inline row: Keep lands back on that row's … button", async () => {
+    rows = [row(1), row(2)]
     wrap(<TrustSection kid={kid()} />)
-    await screen.findByRole('button', { name: 'See all' })
-    const btn = screen.getAllByRole('button', { name: "Wasn't done" })[1]
+    const btn = await screen.findByRole('button', { name: 'More for Chore 2' })
     await userEvent.click(btn)
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Wasn't done/ }))
     const sheet = await screen.findByRole('dialog', { name: "Wasn't done?" })
     await userEvent.click(within(sheet).getByRole('button', { name: 'Keep' }))
     await waitFor(() => expect(btn).toHaveFocus())

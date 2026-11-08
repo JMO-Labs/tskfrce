@@ -14,7 +14,7 @@ import type { Kid } from '@/v2/types'
 import { AGE_LABEL } from './ageGroups'
 import { KidCelebrations } from './KidCelebrations'
 import { KidProfileForm } from './KidEditor'
-import { KidPhoneRows } from './KidPhonesPanel'
+import { KidPhoneRows } from './KidPhoneRows'
 import { TrustBody, TrustLine } from './TrustSection'
 import { DEVICE_TYPE_ICON, getDeviceType } from './deviceMeta'
 import { nameOf, schedules } from './choreMeta'
@@ -26,7 +26,7 @@ const CELEBRATE = { full: 'Full', small: 'Small', off: 'Off' } as const
 
 export function TrustRow({ kid, focus }: RowProps) {
   const n = useSelfApproved(kid.id).data?.length
-  const summary = !kid.trust_mode ? 'Off' : n === undefined ? '' : `${n} approved on their own`
+  const summary = !kid.trust_mode ? 'Off' : n === undefined ? '' : n === 0 ? 'None yet' : `${n} approved on their own`
   return (
     <SummaryRow id="trust" icon={ico('verified_user')} title="Trust" summary={summary} line2={<TrustLine kid={kid} />} focus={focus}>
       <TrustBody kid={kid} />

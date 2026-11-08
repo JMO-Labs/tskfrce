@@ -43,10 +43,21 @@ export function useDiscardGuard(dirty: boolean): { guard: (go: () => void) => vo
       setPending(() => () => { leaving.current = true; r().back() })
       return false
     }
+    // in-app links (back link, View as kid, tabs, nav): ask before a navigation that leaves this page's record
+    const onStart = (url: string) => {
+      if (leaving.current) return
+      const here = new URL(r().asPath, 'http://x'), to = new URL(url, 'http://x')
+      if (here.pathname === to.pathname && ['section', 'item'].every((k) => here.searchParams.get(k) === to.searchParams.get(k))) return
+      setPending(() => () => { void r().push(url) })
+      r().events?.emit('routeChangeError')
+      throw Object.assign(new Error('Route change cancelled: unsaved changes'), { cancelled: true }) // Next treats `cancelled` as a quiet abort
+    }
+    r().events?.on('routeChangeStart', onStart)
     window.addEventListener('beforeunload', warn)
     guards.push(onBack)
     r().beforePopState(onBack)
     return () => {
+      r().events?.off('routeChangeStart', onStart)
       window.removeEventListener('beforeunload', warn)
       guards.splice(guards.indexOf(onBack), 1)
       r().beforePopState(guards[guards.length - 1] ?? (() => true))
@@ -56,7 +67,7 @@ export function useDiscardGuard(dirty: boolean): { guard: (go: () => void) => vo
 
   const sheet = (
     <ConfirmDelete opened={!!pending} title="Discard changes?" body="What you changed here won't be saved." confirmLabel="Discard"
-      onConfirm={() => { pending?.() }} onClose={() => setPending(null)} />
+      onConfirm={() => { leaving.current = true; pending?.() }} onClose={() => setPending(null)} />
   )
   return { guard, sheet }
 }

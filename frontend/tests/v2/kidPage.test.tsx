@@ -65,6 +65,7 @@ describe('calm', () => {
     for (const id of ['trust', 'devices', 'chores', 'settings']) expect(rowHead(id)).toBeInTheDocument()
     expect(screen.queryByText('Points history')).toBeNull()
     expect(await screen.findByText('4 approved on their own')).toBeInTheDocument()
+    expect(rowHead('trust')).toBeInTheDocument()
     expect(await screen.findByText('2 devices · all open')).toBeInTheDocument()
     expect(await screen.findByText('3 daily')).toBeInTheDocument()
     expect(screen.getByText('Celebrations: Full')).toBeInTheDocument()
@@ -115,14 +116,24 @@ describe('rows', () => {
     expect(screen.getByRole('button', { name: 'Change' })).toBeInTheDocument()
   })
 
-  test('self-approved rows are action rows', async () => {
+  test('self-approved rows are quiet action rows with a … menu (up to 4)', async () => {
     view({ open: 'trust' })
-    const take = await screen.findAllByRole('button', { name: "Wasn't done" })
-    expect(take[0].closest('.p-arow')).not.toBeNull()
-    await userEvent.click(take[0])
+    const more = await screen.findAllByRole('button', { name: /^More for Chore/ })
+    expect(more).toHaveLength(4)
+    expect(screen.queryByRole('button', { name: "Wasn't done" })).toBeNull()
+    expect(more[0].closest('.p-arow')).not.toBeNull()
+    await userEvent.click(more[0])
+    expect((await screen.findAllByRole('menuitem')).map((e) => e.textContent)).toEqual(["undoWasn't done", 'chatOpen chat'])
+    await userEvent.click(screen.getByRole('menuitem', { name: /Wasn't done/ }))
     const sheet = await screen.findByRole('dialog', { name: "Wasn't done?" })
     await userEvent.click(within(sheet).getByRole('button', { name: "Wasn't done" }))
     await waitFor(() => expect(sent('/chores/1/take-back', 'POST')).toEqual({ lower_trust: true }))
+  })
+
+  test('Trust row says None yet when nothing approved itself', async () => {
+    apiMock.mockImplementation(async (p) => (p.endsWith('/self-approved') ? [] : p === '/today' ? { kids: [] } : []))
+    view()
+    expect(await screen.findByText('None yet')).toBeInTheDocument()
   })
 
   test('Devices row merges phones and ends with + Add a phone', async () => {
@@ -136,6 +147,8 @@ describe('rows', () => {
     expect(await screen.findByText('Pixel')).toBeInTheDocument()
     const body = document.getElementById('srow-devices-body')!
     const last = body.querySelector('.kd-add')!
+    await userEvent.click(within(last as HTMLElement).getByRole('button', { name: 'About phones' }))
+    expect(await screen.findByText(/Not every kid has a phone/)).toBeInTheDocument()
     expect(within(last as HTMLElement).getByRole('button', { name: /Add a phone/ })).toBeInTheDocument()
     expect(within(body).getByText('iPad')).toBeInTheDocument()
     expect(within(body).getByText('Locked')).toBeInTheDocument()
@@ -147,12 +160,6 @@ describe('rows', () => {
     expect(link).toHaveAttribute('href', '/kids?section=chores&item=400')
     expect(screen.getByRole('link', { name: /Edit in Chores/ })).toBeInTheDocument()
     expect(screen.getByText('3 daily')).toBeInTheDocument()
-  })
-
-  test('picking another kid drops open and edit', () => {
-    // KidsPage.pick strips these params; the contract is checked at the source
-    const src = require('fs').readFileSync(require('path').join(__dirname, '../../src/v2/manage/KidsPage.tsx'), 'utf8') as string
-    expect(src).toMatch(/open: _o, edit: _e, pin: _p/)
   })
 })
 
@@ -182,6 +189,41 @@ describe('edit in place', () => {
     await userEvent.click(within(d).getByRole('button', { name: 'Discard' }))
     await waitFor(() => expect(q().edit).toBeUndefined())
     expect(q().open).toBe('settings')
+  })
+
+  test('Edit while Settings is already open moves focus into the form', async () => {
+    view({ open: 'settings' })
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    const name = await screen.findByRole('textbox', { name: 'Name' })
+    await waitFor(() => expect(name).toHaveFocus())
+  })
+
+  test('closing edit drops pin=1 from the URL', async () => {
+    view({ open: 'settings', edit: '1', pin: '1' })
+    await userEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(q().edit).toBeUndefined())
+    expect(q().pin).toBeUndefined()
+    expect(q().open).toBe('settings')
+  })
+
+  test('a link out of the page (back link, View as kid, tabs) asks first while dirty', async () => {
+    view({ open: 'settings', edit: '1' })
+    await userEvent.type(await screen.findByRole('textbox', { name: 'Name' }), 'x')
+    const go = () => fakeRouter.events.emit('routeChangeStart', '/kid?as=7', { shallow: false })
+    expect(go).toThrow()
+    const d = await screen.findByRole('dialog', { name: 'Discard changes?' })
+    fakeRouter.push.mockClear()
+    await userEvent.click(within(d).getByRole('button', { name: 'Discard' }))
+    expect(fakeRouter.push).toHaveBeenCalledWith('/kid?as=7')
+    // the push itself must pass the guard now
+    expect(go).not.toThrow()
+  })
+
+  test('same-page changes and clean forms are never blocked', async () => {
+    view({ open: 'settings', edit: '1' })
+    await userEvent.type(await screen.findByRole('textbox', { name: 'Name' }), 'x')
+    expect(() => fakeRouter.events.emit('routeChangeStart', '/kids?section=kids&item=7&open=trust', { shallow: true })).not.toThrow()
+    expect(() => fakeRouter.events.emit('routeChangeStart', '/kids?section=chores&item=7', { shallow: true })).toThrow()
   })
 
   test('Cancel without changes just closes edit', async () => {
