@@ -40,7 +40,7 @@ export function KidCard({ kid, focus, children }: { kid: TodayKid; focus: Focus;
           type="button"
           className="pt-krow"
           aria-expanded={open}
-          aria-controls={open ? `kbody-${id}` : undefined}
+          aria-controls={`kbody-${id}`}
           data-focus-head={id}
           onClick={() => focus.toggle(id)}
         >

@@ -7,9 +7,10 @@ import { useDismissTip, useTips } from '@/v2/hooks/useTips'
 import { CelebratePreview } from '@/v2/manage/CelebratePreview'
 import { toastFail } from '../notify'
 import { HappyHourButton } from './HappyHourButton'
-import { TRY_ORDER, nudgeKey, nudgeSnoozed, pickCard, snoozeNudge, writeShown } from './tryCards'
+import { SNOOZE_EVENT, TRY_ORDER, nudgeKey, nudgeSnoozed, pickCard, snoozeNudge, writeShown } from './tryCards'
 import { wallClock } from '@/v2/clockText'
 import { bedtimeAt, bedtimePossible } from '@/v2/trustTypes'
+import { TipLine } from './TipLine'
 import styles from '../components/QuickTip.module.css'
 
 const TEXT: Record<Exclude<(typeof TRY_ORDER)[number], 'try.trust' | 'try.bedtime'>, { icon: string; text: string }> = {
@@ -27,6 +28,12 @@ export function hhCopy(multX10 = 20, minutes = 60) {
 
 /** Which Try card is up (null = none), plus the data its body needs. */
 function useTryPick() {
+  const [, bump] = useState(0)
+  useEffect(() => {
+    const f = () => bump((n) => n + 1) // a "Not now" anywhere re-picks
+    window.addEventListener(SNOOZE_EVENT, f)
+    return () => window.removeEventListener(SNOOZE_EVENT, f)
+  }, [])
   const tips = useTips().data
   const fam = useFamily().data
   const kids = useKids().data
@@ -54,12 +61,12 @@ function useTryPick() {
 export const useTryCardKey = (): string | null => useTryPick().key
 
 /** One "Try this" card at a time (Today). Dismissals are per parent (tips API); pacing is per device. */
-export function TryCards() {
+/** `compact`: the one-line tip (Today's slot) with the actions under More; otherwise the full card. */
+export function TryCards({ compact = false }: { compact?: boolean } = {}) {
   const { key, fam, kids, today, quietKid, trustKid } = useTryPick()
   const dismiss = useDismissTip()
   const patchFam = usePatchFamily()
   const patchKid = usePatchKid()
-  const [, bump] = useState(0) // re-pick after a local "Not now"
   useEffect(() => {
     if (key) writeShown(key)
   }, [key])
@@ -128,8 +135,16 @@ export function TryCards() {
     actions = (
       <>
         <HappyHourButton kidId={k.id} label={`Start for ${k.name}`} />
-        <Btn onClick={() => (snoozeNudge(k.id), bump((n) => n + 1))}>Not now</Btn>
+        <Btn onClick={() => snoozeNudge(k.id)}>Not now</Btn>
       </>
+    )
+  }
+  if (compact) {
+    const nudge = key.startsWith('nudge.')
+    return (
+      <TipLine icon={icon} text={text} label="Try this" onDismiss={nudge ? () => snoozeNudge(quietKid!.id) : done}>
+        <div className="pt-tip-acts">{actions}</div>
+      </TipLine>
     )
   }
   return (
