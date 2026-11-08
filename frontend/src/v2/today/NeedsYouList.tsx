@@ -51,8 +51,8 @@ export function NeedsYouList({ items, today }: { items: NeedsItem[]; today?: str
     if (i.type === 'note') return i.note ?? ''
     const via = i.integration ? `via ${i.integration.name}` : ''
     const parts = isChore(i)
-      ? [i.attempt && i.attempt > 1 ? `${ordinal(i.attempt)} try` : '', i.subtasks_total ? `${i.subtasks_done}/${i.subtasks_total} steps` : '', i.submitted_at ? clock(i.submitted_at) : '']
-      : [i.device_name ? `from ${i.device_name}` : '', `${i.cost} pts`, `has ${i.kid_balance}`]
+      ? [i.attempt && i.attempt > 1 ? `${ordinal(i.attempt)} try` : '', i.subtasks_total ? `${i.subtasks_done}/${i.subtasks_total} steps` : '', i.submitted_at ? `Done ${clock(i.submitted_at)}` : '']
+      : [i.submitted_at ? `Asked ${clock(i.submitted_at)}` : '', i.device_name ? `from ${i.device_name}` : '', `${i.cost} pts`, `has ${i.kid_balance}`]
     return [...parts, via].filter(Boolean).join(' · ')
   }
 
@@ -62,7 +62,7 @@ export function NeedsYouList({ items, today }: { items: NeedsItem[]; today?: str
         <span>Oldest first, grouped by kid</span>
         {approvable.length > 0 && (
           <button type="button" className="p-btn" disabled={!!act.busy} data-loading={act.busy === 'all' || undefined} onClick={() => act.approveAll(approvable)}>
-            <Icon name="done_all" size={15} />
+            <Icon name="check" size={15} />
             Approve all
           </button>
         )}
@@ -70,8 +70,8 @@ export function NeedsYouList({ items, today }: { items: NeedsItem[]; today?: str
       {groupNeeds(items).map((g) => (
         <div key={g.key} className="pt-ngroup" data-testid="needs-group">
           <div className="pt-ngroup-h">
-            <span className="pt-ngroup-av">{initial(g.name)}</span>
-            {g.name}
+            <span className="pt-ngroup-av" aria-hidden>{initial(g.name)}</span>
+            <span className="pt-ngroup-name">{g.name}</span>
           </div>
           {g.items.map((i) => {
             const k = i.spot_check && i.type === 'chore' ? SPOT : KIND[i.type]
@@ -85,7 +85,7 @@ export function NeedsYouList({ items, today }: { items: NeedsItem[]; today?: str
                 icon={i.integration?.icon ?? k.icon}
                 iconTone={k.tone}
                 iconLabel={k.label}
-                iconHelp={i.integration ? `From an integration: ${i.integration.name} checked it off` : k.help}
+                iconHelp={i.integration ? `${k.help}: ${i.integration.name} checked it off` : k.help}
                 title={
                   <span className="pt-ntitle">
                     {i.thumb_url && <Thumb item={i} onOpen={() => setViewing(i)} />}

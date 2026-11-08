@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import { ParentShell } from '../parent/ParentShell'
 import { MoreMenu } from '../parent/MoreMenu'
@@ -26,6 +26,20 @@ export function TodayPage() {
   const [hhOpen, setHhOpen] = useState(false)
   const kidFocus = useFocusParam('kid', { group: ['focus'], clears: ['chore'], valid: data ? (id) => data.kids.some((k) => String(k.id) === id) : undefined })
   const areaFocus = useFocusParam('focus', { group: ['kid'], clears: ['chore'], valid: (id) => ['needs', 'devices', 'addons'].includes(id) })
+  // Closing Needs: useFocusParam hands focus back to the opener. If that is gone (last item cleared, strip removed), land on a calm anchor, never <body>.
+  const needsWas = useRef(false)
+  const needsNow = areaFocus.isOpen('needs')
+  useEffect(() => {
+    const was = needsWas.current
+    needsWas.current = needsNow
+    if (!was || needsNow) return
+    const t = setTimeout(() => {
+      if (document.activeElement && document.activeElement !== document.body) return
+      const q = (sel: string) => document.querySelector<HTMLElement>(sel)
+      ;(q('[data-focus-head="needs"]') ?? q('.pt-kcard [data-focus-head]') ?? q('main h1'))?.focus({ preventScroll: true })
+    }, 80)
+    return () => clearTimeout(t)
+  }, [needsNow])
   const focusedKid = data?.kids.find((k) => String(k.id) === kidFocus.open)
   const chore = useFocusParam('chore', { valid: focusedKid ? (id) => focusedKid.chores.some((c) => String(c.id) === id) : undefined })
   const kidOfRun = useCallback((runId: number) => data?.kids.find((k) => k.chores.some((c) => c.id === runId))?.id, [data])

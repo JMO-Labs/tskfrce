@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from '@jest/globals'
 import type { Mock } from 'jest-mock'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MantineProvider } from '@mantine/core'
@@ -81,8 +81,8 @@ describe('Today Needs focus', () => {
   test('?focus=needs opens the list in place, grouped by kid, oldest first', async () => {
     wrap()
     const b = await body()
-    const heads = b.getAllByTestId('needs-group').map((g) => g.querySelector('.pt-ngroup-h')?.textContent)
-    expect(heads).toEqual(['LLeo', 'MMaya', 'AAva'])
+    const heads = b.getAllByTestId('needs-group').map((g) => g.querySelector('.pt-ngroup-name')?.textContent)
+    expect(heads).toEqual(['Leo', 'Maya', 'Ava'])
     const leo = b.getAllByTestId('needs-group')[0]
     const titles = [...leo.querySelectorAll('.p-arow-t')].map((e) => e.firstChild?.textContent)
     expect(titles).toEqual(['Take out bins', 'Homework'])
@@ -136,7 +136,7 @@ describe('Today Needs focus', () => {
     wrap()
     const b = await body()
     const groups = b.getAllByTestId('needs-group')
-    expect(groups.map((g) => g.querySelector('.pt-ngroup-h')?.textContent)).toEqual(['MMaya', 'AA kid'])
+    expect(groups.map((g) => g.querySelector('.pt-ngroup-name')?.textContent)).toEqual(['Maya', 'A kid'])
     expect([...groups[0].querySelectorAll('.p-arow-t')].map((e) => e.firstChild?.textContent)).toEqual(['Timed', 'No time'])
   })
 
@@ -179,5 +179,69 @@ describe('Today Needs focus', () => {
     await body()
     await userEvent.click(screen.getByRole('button', { name: /^Needs you · 4/ }))
     await waitFor(() => expect(fakeRouter.query.focus).toBeUndefined())
+  })
+
+  test('sub lines: chores say Done, requests say Asked', async () => {
+    wrap()
+    await body()
+    expect(rowOf('Make bed')).toHaveTextContent(/Done \d/)
+    expect(rowOf('Ice cream')).toHaveTextContent(/Asked \d.*20 pts/)
+  })
+
+  test('Reply keeps a way back: it pushes, and Back returns to the Needs list', async () => {
+    fakeRouter.reset('/', {})
+    wrap()
+    await userEvent.click(await screen.findByRole('button', { name: /^Needs you · 4/ }))
+    await body()
+    await userEvent.click(within(rowOf('Make bed')).getByRole('button', { name: 'More for Make bed' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Reply' }))
+    expect(fakeRouter.push).toHaveBeenLastCalledWith({ pathname: '/', query: { kid: '3', chore: '1' } })
+    act(() => fakeRouter.back())
+    await waitFor(() => expect(fakeRouter.query.focus).toBe('needs'))
+  })
+
+  describe('focus on close', () => {
+    const settle = () => new Promise((r) => setTimeout(r, 150))
+    const headFocused = () => expect(screen.getByRole('button', { name: /^Needs you/ })).toHaveFocus()
+    const open = async () => {
+      fakeRouter.reset('/', {})
+      wrap()
+      await userEvent.click(await screen.findByRole('button', { name: /^Needs you · \d/ }))
+      await body()
+    }
+
+    test('Esc returns focus to the strip head', async () => {
+      await open()
+      await userEvent.keyboard('{Escape}')
+      await waitFor(() => expect(fakeRouter.query.focus).toBeUndefined())
+      await waitFor(headFocused)
+    })
+
+    test('Back returns focus to the strip head', async () => {
+      await open()
+      act(() => fakeRouter.back())
+      await waitFor(() => expect(fakeRouter.query.focus).toBeUndefined())
+      await waitFor(headFocused)
+    })
+
+    test('‹ All returns focus to the strip head', async () => {
+      await open()
+      await userEvent.click(within(screen.getByRole('navigation', { name: 'Kids' })).getByRole('button', { name: /All/ }))
+      await waitFor(() => expect(fakeRouter.query.focus).toBeUndefined())
+      await waitFor(headFocused)
+    })
+
+    test('with the strip gone (last item cleared) focus lands on a calm anchor, not body', async () => {
+      setToday([items()[0]])
+      await open()
+      apiMock.mockImplementationOnce(async () => (setToday([]), {}))
+      await userEvent.click((await body()).getByRole('button', { name: 'Approve' }))
+      await screen.findByText('All caught up')
+      await userEvent.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('button', { name: /^Needs you/ })).toBeNull())
+      await settle()
+      expect(document.activeElement).not.toBe(document.body)
+      expect(document.activeElement?.closest('main')).not.toBeNull()
+    })
   })
 })
