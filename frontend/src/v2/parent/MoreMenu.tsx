@@ -4,7 +4,7 @@ import { Menu } from '@mantine/core'
 import { Icon } from './Icon'
 import { motionProps } from './reduceMotion'
 
-export interface MenuItem { label: string; icon: string; onClick?: () => void; href?: string; tone?: 'red'; divider?: boolean; hidden?: boolean }
+export interface MenuItem { label: string; icon: string; onClick?: () => void; href?: string; tone?: 'red'; divider?: boolean; hidden?: boolean; disabled?: boolean }
 
 /** The "…" menu on a header: secondary actions, Delete last in red. */
 export function MoreMenu({ label, items, id }: { label: string; items: MenuItem[]; id?: string }) {
@@ -22,7 +22,7 @@ export function MoreMenu({ label, items, id }: { label: string; items: MenuItem[
             {i.href ? (
               <Menu.Item className="p-mi" component={Link} href={i.href} color={i.tone} leftSection={<Icon name={i.icon} size={18} />}>{i.label}</Menu.Item>
             ) : (
-              <Menu.Item className="p-mi" color={i.tone} leftSection={<Icon name={i.icon} size={18} />} onClick={i.onClick}>{i.label}</Menu.Item>
+              <Menu.Item className="p-mi" color={i.tone} disabled={i.disabled} leftSection={<Icon name={i.icon} size={18} />} onClick={i.onClick}>{i.label}</Menu.Item>
             )}
           </Fragment>
         ))}

@@ -15,6 +15,7 @@ import { HappyHourChip } from './HappyHourChip'
 import { KidCard } from './KidCard'
 import { KidFocus } from './KidFocus'
 import { KidStrip } from './KidStrip'
+import { isChore } from './needsActions'
 import { NeedsStrip } from './NeedsStrip'
 import { TipSlot } from './TipSlot'
 import { AddonsRow, DevicesRow } from './TodayRows'
@@ -76,7 +77,7 @@ export function TodayPage() {
           <div className="pt-kids">
             {(focusedKid ? [focusedKid] : data.kids).map((k) => (
               <KidCard key={k.id} kid={k} focus={kidFocus}>
-                <KidFocus kid={k} requests={needs.filter((n) => n.kid_id === k.id)} chore={chore} />
+                <KidFocus kid={k} requests={needs.filter((n) => n.kid_id === k.id || (isChore(n) && k.chores.some((c) => c.id === n.id)))} chore={chore} />
               </KidCard>
             ))}
           </div>

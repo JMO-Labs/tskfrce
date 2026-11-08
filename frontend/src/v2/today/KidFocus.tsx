@@ -12,6 +12,7 @@ import type { Focus } from '../parent/useFocusParam'
 import type { NeedsItem, TodayKid } from '../types'
 import { ChoreRow } from './ChoreRow'
 import { isChore, useNeedsActions } from './needsActions'
+import { useClock } from './useClock'
 
 const REQ: Record<string, { icon: string; label: string }> = {
   screen_time: { icon: 'timer', label: 'Screen time request' },
@@ -23,6 +24,7 @@ const REQ: Record<string, { icon: string; label: string }> = {
 export function KidFocus({ kid, requests, chore }: { kid: TodayKid; requests: NeedsItem[]; chore: Focus }) {
   const router = useRouter()
   const act = useNeedsActions()
+  const clock = useClock()
   const full = useKids().data?.find((k) => k.id === kid.id)
   const [points, setPoints] = useState<'bonus' | 'deduct' | null>(null)
   const name = kid.name ?? 'Kid'
@@ -43,7 +45,7 @@ export function KidFocus({ kid, requests, chore }: { kid: TodayKid; requests: Ne
           <div className="pt-box">
             {kid.chores.map((c) => {
               const id = String(c.id)
-              return <ChoreRow key={c.id} chore={c} kid={kid} isOpen={chore.isOpen(id)} onToggle={() => chore.toggle(id)} waiting={waitingFor(c.id, c.state)} />
+              return <ChoreRow key={c.id} chore={c} kid={kid} isOpen={chore.isOpen(id)} onToggle={() => chore.toggle(id)} waiting={waitingFor(c.id, c.state)} actions={act} bare />
             })}
           </div>
         )}
@@ -63,7 +65,7 @@ export function KidFocus({ kid, requests, chore }: { kid: TodayKid; requests: Ne
                     iconTone="lav"
                     iconLabel={t.label}
                     title={i.title}
-                    sub={note ? i.note : `${i.device_name ? `${i.device_name} · ` : ''}${i.cost} pts`}
+                    sub={note ? i.note : `${i.submitted_at ? `Asked ${clock(i.submitted_at)} · ` : ''}${i.cost} pts`}
                     main={note ? { label: 'Reply', onClick: () => act.reply(i) } : { label: 'Approve', onClick: () => act.approve(i), busy: act.busy === `a${i.type}${i.id}`, disabled: !!act.busy }}
                     menu={note ? undefined : [{ label: 'Decline', icon: 'close', tone: 'red', onClick: () => act.decline(i) }]}
                     menuLabel={`More for ${i.title}`}
@@ -81,8 +83,8 @@ export function KidFocus({ kid, requests, chore }: { kid: TodayKid; requests: Ne
           <MoreMenu
             label={`More for ${name}`}
             items={[
-              { label: 'Bonus', icon: 'add_circle', onClick: () => setPoints('bonus') },
-              { label: 'Deduct', icon: 'remove_circle', onClick: () => setPoints('deduct') },
+              { label: 'Bonus', icon: 'add_circle', disabled: !full, onClick: () => setPoints('bonus') },
+              { label: 'Deduct', icon: 'remove_circle', disabled: !full, onClick: () => setPoints('deduct') },
               { label: 'View as kid', icon: 'visibility', href: viewAs(kid.id, router.asPath) },
               { label: 'Open page', icon: 'open_in_new', href: `/kids?section=kids&item=${kid.id}` },
             ]}
