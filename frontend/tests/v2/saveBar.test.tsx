@@ -145,3 +145,40 @@ test('a go(1) popstate that never arrives does not swallow a later real Back', a
   go.mockRestore()
   jest.useRealTimers()
 })
+
+test('Keep after a cancelled in-app leave puts focus back in the field', async () => {
+  const user = userEvent.setup()
+  function Form() {
+    const { sheet } = useDiscardGuard(true)
+    return <><input aria-label="field" /><a href="#x">away</a>{sheet}</>
+  }
+  wrap(<Form />)
+  await user.click(screen.getByLabelText('field'))
+  act(() => { try { fakeRouter.events.emit('routeChangeStart', '/elsewhere', { shallow: true }) } catch { /* cancelled */ } })
+  screen.getByLabelText('field').blur()
+  await user.click(await screen.findByRole('button', { name: 'Keep' }))
+  await waitFor(() => expect(screen.getByLabelText('field')).toHaveFocus())
+})
+
+test('Discard-triggered push keeps shallow and the guard resets after the navigation', async () => {
+  const user = userEvent.setup()
+  wrap(<Probe dirty go={jest.fn()} />)
+  act(() => { try { fakeRouter.events.emit('routeChangeStart', '/elsewhere', { shallow: true }) } catch { /* cancelled */ } })
+  await user.click(await screen.findByRole('button', { name: 'Discard' }))
+  expect(fakeRouter.push).toHaveBeenCalledWith('/elsewhere', undefined, { shallow: true })
+  // leaving stays set until the route ends; then a new leave asks again
+  act(() => { fakeRouter.events.emit('routeChangeComplete') })
+  await user.click(screen.getByRole('button', { name: 'leave' }))
+  expect(await screen.findByText('Discard changes?')).toBeInTheDocument()
+})
+
+test('release() lets a navigation through without the Discard prompt (record deleted)', () => {
+  function Gone() {
+    const { release, sheet } = useDiscardGuard(true)
+    return <><button onClick={release}>gone</button>{sheet}</>
+  }
+  wrap(<Gone />)
+  act(() => { screen.getByRole('button', { name: 'gone' }).click() })
+  expect(() => fakeRouter.events.emit('routeChangeStart', '/kids')).not.toThrow()
+  expect(screen.queryByText('Discard changes?')).toBeNull()
+})
