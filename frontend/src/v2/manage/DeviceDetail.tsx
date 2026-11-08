@@ -35,7 +35,7 @@ const ico = (name: string): ReactNode => <Icon name={name} size={18} />
 export function DeviceDetail({ device, kids, groups = [], onDeleted, onRequestOverride, pendingAction = null }: Props) {
   const del = useDeleteDevice()
   const [confirm, { open, close }] = useDisclosure(false)
-  const rows = useFocusParam('open', { valid: (id) => ROWS.includes(id) })
+  const rows = useFocusParam('open', { group: ['net'], valid: (id) => ROWS.includes(id) })
   const family = useFamily().data
   const tz = family?.timezone
   const guest = device.status === 'guest'
