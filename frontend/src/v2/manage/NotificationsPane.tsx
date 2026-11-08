@@ -110,9 +110,9 @@ export function NotificationsPane() {
       {err && <ErrorPanel kind="unreachable" error={err} onRetry={() => (places.refetch(), settings.refetch())} />}
       {(places.isPending || settings.isPending) && !err && <Skeleton rows={2} />}
       {s && list && list.length > 0 && (
-        <div className="pn-grp">
+        <div>
           <div className="p-sec-h">Places</div>
-          <FocusArea focus={focus} label="Places">
+          <FocusArea focus={focus} label="Places" grouped>
             {list.map((p) => (
               <SummaryRow
                 key={p.id}
@@ -134,9 +134,9 @@ export function NotificationsPane() {
         <EmptyState icon="notifications" title="No places yet" body="Add a Signal group, Discord channel, email or any Apprise address." />
       )}
       {s && list && (
-        <div className="pn-grp">
+        <div>
           <div className="p-sec-h">When and how</div>
-          <FocusArea focus={focus} label="When and how">
+          <FocusArea focus={focus} label="When and how" grouped>
             {list.length > 0 && (
               <SummaryRow
                 id="quiet"

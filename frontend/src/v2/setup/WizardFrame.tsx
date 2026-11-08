@@ -10,11 +10,11 @@ const STEPS = [
   { num: 1, title: 'You', sub: 'Parent account' },
   { num: 2, title: 'Family', sub: 'Name, time zone' },
   { num: 3, title: 'Kids', sub: 'Names, PINs' },
-  { num: 4, title: "Kids' phones", sub: 'Scan to sign in', opt: true },
+  { num: 4, title: "Kids' phones", short: 'Phones', sub: 'Scan to sign in', opt: true },
   { num: 5, title: 'Chores', sub: 'Pick starters' },
   { num: 6, title: 'Devices', sub: 'Who owns what' },
   { num: 7, title: 'Hours', sub: 'Bedtime, school nights' },
-  { num: 8, title: 'Optional extras', sub: 'Trust, bedtime', opt: true },
+  { num: 8, title: 'Optional extras', short: 'Extras', sub: 'Trust, bedtime', opt: true },
 ]
 
 interface Props {
@@ -43,7 +43,7 @@ export function WizardFrame({
 
   if (step > maxStepReached) setMaxStepReached(step) // adjust during render, not in an effect
 
-  // phone: the step strip scrolls sideways; keep the active step in view
+  // 768-900px: the step strip scrolls sideways; keep the active step in view
   const stepsRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const el = stepsRef.current?.querySelector<HTMLElement>('[aria-current="step"]')
@@ -88,7 +88,7 @@ export function WizardFrame({
                 <span className={styles.dot}>{isDone ? <span className="ms" aria-hidden="true">check</span> : s.num}</span>
                 {(!phone || isActive) && (
                   <div>
-                    {s.title}
+                    {phone ? s.short ?? s.title : s.title}
                     {!phone && <small>{s.sub}</small>}
                   </div>
                 )}

@@ -8,7 +8,7 @@ import { route, S } from './mock.mjs'
 const { chromium } = createRequire(new URL('../../../frontend/package.json', import.meta.url))('playwright')
 const [OUT, NAME, APP, MOCK, PRESET, STEP] = process.argv.slice(2)
 const STEP_N = /^step=(\d+)$/.exec(STEP ?? '')?.[1] ?? null
-if (!OUT || !NAME || !APP) { console.error('usage: shoot.mjs <outDir> <name> <appPath> [<mockupFile> <preset>]'); process.exit(1) }
+if (!OUT || !NAME || !APP) { console.error('usage: shoot.mjs <outDir> <name> <appPath> [<mockupFile> <preset> [step=<n>]]'); process.exit(1) }
 const BASE = 'http://127.0.0.1:3295'
 const REPO = resolve(fileURLToPath(new URL('../../..', import.meta.url)))
 const DESKTOP_H = Number(process.env.DESKTOP_H) || 900

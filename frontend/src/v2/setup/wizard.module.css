@@ -261,7 +261,7 @@
 
   .side {
     border-radius: 14px 14px 0 0;
-    padding: 18px 16px 14px;
+    padding: 18px 12px 14px;
   }
 
   .main {
@@ -273,7 +273,7 @@
     flex-direction: row;
     align-items: center;
     overflow-x: auto;
-    gap: 4px;
+    gap: 3px;
   }
 
   .ln {
@@ -292,7 +292,7 @@
 
   .st {
     flex: none;
-    gap: 6px;
+    gap: 5px;
     padding: 0;
     border-radius: 999px;
     font-size: 12.5px;
@@ -302,7 +302,7 @@
   .st.on {
     flex: 0 1 auto;
     min-width: 0;
-    padding: 3px 10px 3px 3px;
+    padding: 3px 8px 3px 3px;
   }
 
   .st.on div {
@@ -320,12 +320,12 @@
   .st::before {
     content: '';
     position: absolute;
-    inset: -10px -2px;
+    inset: -10px 0;
   }
 
   .st .dot {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     font-size: 11px;
   }
 

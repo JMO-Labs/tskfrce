@@ -7,8 +7,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fakeRouter } from './helpers/fakeRouter'
 import { StepDevices } from '@/v2/setup/StepDevices'
 import { api } from '@/v2/api'
+import { toastFail } from '@/v2/notify'
 import type { Device, Kid } from '@/v2/types'
 
+jest.mock('@/v2/notify', () => ({ toastOk: jest.fn(), toastFail: jest.fn() }))
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 const apiMock = api as unknown as Mock<typeof api>
 
@@ -30,7 +32,7 @@ const view = () =>
 const three = [dev({}), dev({ id: 2, name: 'Switch', vendor: 'Nintendo', ip: '192.168.1.43', mac: '3c:22:fb:00:00:02' }), dev({ id: 3, name: 'Fire tablet', vendor: null, ip: null, mac: '3a:1f:00:00:c2:09', status: 'assigned', owner_ids: [7] })]
 const openNeed = () => fakeRouter.reset('/setup', { open: 'need' })
 
-beforeEach(() => { apiMock.mockReset(); fakeRouter.reset('/setup') })
+beforeEach(() => { apiMock.mockReset(); (toastFail as jest.Mock).mockClear(); fakeRouter.reset('/setup') })
 
 describe('StepDevices', () => {
   test('devices split into Need an owner · N left and Done · N', async () => {
@@ -90,14 +92,15 @@ describe('StepDevices', () => {
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/devices/1', { method: 'PATCH', body: { status: 'unassigned', owner_ids: [] } }))
   })
 
-  test('a failed save reverts to the server owner', async () => {
+  test('a failed save shows the failure and keeps the server owner', async () => {
     apiMock.mockImplementation(async (path, init) => { if (init?.method === 'PATCH') throw new Error('nope'); return [dev({})] })
     openNeed()
     view()
     await userEvent.click(await screen.findByRole('button', { name: 'Owner for Mias-iPad' }))
     await userEvent.click(await screen.findByRole('button', { name: /Mia$/, hidden: true }))
     await waitFor(() => expect(apiMock.mock.calls.some(([, i]) => i?.method === 'PATCH')).toBe(true))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Owner for Mias-iPad' })).toHaveTextContent('Owner'))
+    await waitFor(() => expect(toastFail).toHaveBeenCalled())
+    expect(screen.getByRole('button', { name: 'Owner for Mias-iPad' })).toHaveTextContent('Owner')
   })
 
   test('private address help is one pop-over', async () => {
@@ -108,5 +111,25 @@ describe('StepDevices', () => {
     await userEvent.click(screen.getByRole('button', { name: 'More' }))
     expect(await screen.findByText(/Unlock it and open a web page/)).toBeInTheDocument()
     expect(screen.getByText(/1 of these use a private Wi-Fi address/)).toBeInTheDocument()
+  })
+
+  test('the two rows are one grouped card', async () => {
+    apiMock.mockResolvedValue(three)
+    const { container } = view()
+    await screen.findByText('Looking for devices… 3 found')
+    expect(container.querySelector('.p-srows[data-grp]')).not.toBeNull()
+  })
+
+  test('no devices yet: one line says what to do and that you can continue', async () => {
+    apiMock.mockResolvedValue([])
+    view()
+    expect(await screen.findByText(/No devices yet\. Unlock a device and open a web page, or skip and add them later\./)).toBeInTheDocument()
+  })
+
+  test('an owned device shows its owner in the pop name', async () => {
+    apiMock.mockResolvedValue(three)
+    fakeRouter.reset('/setup', { open: 'done' })
+    view()
+    expect(await screen.findByRole('button', { name: 'Owner for Fire tablet: Mia' })).toBeInTheDocument()
   })
 })

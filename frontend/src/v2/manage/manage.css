@@ -350,25 +350,12 @@ html[data-look='parent'] .pn-addr .f-input.f-input { font: 12.5px ui-monospace, 
 @media (max-width: 1023px) { [data-look='parent'] .pn-fields { grid-template-columns: 1fr; } }
 @media (max-width: 767px) { [data-look='parent'] .pn-fields, [data-look='parent'] .pn-prev { grid-template-columns: 1fr; } }
 [data-look='parent'] .pn-sp { height: 14px; }
-/* Notifications: each group of rows is one card with dividers (mockup .srows.grp) */
-[data-look='parent'] .pn-grp .p-srows { gap: 0; margin-top: 0; background: var(--p-card); border: 1px solid var(--p-line); border-radius: 16px; overflow: hidden; }
-[data-look='parent'] .pn-grp .p-srow { border: 0; border-top: 1px solid var(--p-line); border-radius: 0; }
-[data-look='parent'] .pn-grp .p-srow:first-child { border-top: 0; }
-[data-look='parent'] .pn-grp .p-srow[data-open] { box-shadow: inset 3px 0 0 var(--p-ink); }
-[data-look='parent'] .pn-grp .p-srow-head { border-radius: 0; }
 /* Notifications header and iPhones body (mockup .btn.sm, .setr) */
 [data-look='parent'] .pn .p-dhead-meta { min-width: 110px; }
 [data-look='parent'] .pn .pn-add { padding: 6px 12px; font-size: 13px; }
 [data-look='parent'] .pn-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; }
 [data-look='parent'] .pn-line .mantine-Switch-body { flex: 1; justify-content: space-between; }
 [data-look='parent'] .pn-line .mantine-Switch-label { color: var(--p-sub); font-size: 13px; }
-/* Rewards > Screen time: rule and kid rows are cards with dividers (mockup .srows.grp) */
-[data-look='parent'] .st-grp { display: flex; flex-direction: column; }
-[data-look='parent'] .st-grp .p-srows { gap: 0; margin-top: 0; background: var(--p-card); border: 1px solid var(--p-line); border-radius: 16px; overflow: hidden; }
-[data-look='parent'] .st-grp .p-srow { border: 0; border-top: 1px solid var(--p-line); border-radius: 0; }
-[data-look='parent'] .st-grp .p-srow:first-child { border-top: 0; }
-[data-look='parent'] .st-grp .p-srow[data-open] { box-shadow: inset 3px 0 0 var(--p-ink); }
-[data-look='parent'] .st-grp .p-srow-head { border-radius: 0; }
 [data-look='parent'] .st .p-dhead-meta { min-width: 110px; }
 [data-look='parent'] .st-kh { display: flex; justify-content: space-between; gap: 10px; }
 [data-look='parent'] .st-kh span { text-transform: none; letter-spacing: 0; font-weight: 500; }

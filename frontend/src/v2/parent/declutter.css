@@ -46,6 +46,13 @@
 [data-look='parent'] .p-srow-l2 { display: flex; align-items: center; gap: 10px; padding: 0 14px 12px 42px; }
 [data-look='parent'] .p-srow-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; outline: none; }
 
+/* Grouped rows: one card, dividers, left bar on the open row (mockup .srows.grp) */
+[data-look='parent'] .p-srows[data-grp] { gap: 0; margin-top: 0; background: var(--p-card); border: 1px solid var(--p-line); border-radius: 16px; overflow: hidden; }
+[data-look='parent'] .p-srows[data-grp] .p-srow { border: 0; border-top: 1px solid var(--p-line); border-radius: 0; }
+[data-look='parent'] .p-srows[data-grp] .p-srow:first-child { border-top: 0; }
+[data-look='parent'] .p-srows[data-grp] .p-srow[data-open] { box-shadow: inset 3px 0 0 var(--p-ink); }
+[data-look='parent'] .p-srows[data-grp] .p-srow-head { border-radius: 0; }
+
 /* While one row is open the closed rows shrink to a single compact line */
 [data-look='parent'] .p-srows[data-focused] .p-srow:not([data-open]) .p-srow-head { padding: 7px 14px; }
 [data-look='parent'] .p-srows[data-focused] .p-srow:not([data-open]) .p-srow-l1 b { font-size: 13.5px; font-weight: 600; }
