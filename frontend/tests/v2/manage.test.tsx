@@ -14,10 +14,10 @@ import { KidProfileForm } from '@/v2/manage/KidEditor'
 import { DevicesPage } from '@/v2/manage/DevicesPage'
 import { SettingsPage } from '@/v2/manage/SettingsPage'
 import type { Device, Family, Kid } from '@/v2/types'
+import { fakeRouter } from './helpers/fakeRouter'
 
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
-const mockRouter: { query: Record<string, string> } = { query: {} }
-jest.mock('next/router', () => ({ useRouter: () => mockRouter }))
+jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 jest.mock('@/v2/parent/ParentShell', () => ({
   ParentShell: ({ children }: { children: ReactNode }) => <>{children}</>,
@@ -88,7 +88,11 @@ const wrap = (ui: ReactNode) => (
     <MantineProvider theme={fridgeTheme}>{ui}</MantineProvider>
   </QueryClientProvider>
 )
-const TB = 'Test block on Maya laptop'
+const menu = async (name: RegExp) => {
+  await userEvent.click(screen.getByRole('button', { name: 'More' }))
+  return userEvent.click(await screen.findByRole('menuitem', { name }))
+}
+const openRow = (open: string) => fakeRouter.reset('/devices', { item: '1', open })
 const calls = (method: string) => apiMock.mock.calls.filter(([, i]) => i?.method === method)
 
 beforeAll(() => {
@@ -102,7 +106,7 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
-  mockRouter.query = {}
+  fakeRouter.reset('/devices')
   jest.mocked(notifications.show).mockClear()
   apiMock.mockReset().mockImplementation(async (path) => {
     if (path === '/family') return family
@@ -132,7 +136,7 @@ describe('devices', () => {
 
   test('delete asks first, then toasts Deleted', async () => {
     render(wrap(<DeviceDetail device={device} kids={kids} onRequestOverride={() => {}} />))
-    await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    await menu(/Delete$/)
     expect(calls('DELETE')).toHaveLength(0)
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
@@ -140,20 +144,20 @@ describe('devices', () => {
     await waitFor(() => expect(notifications.show).toHaveBeenCalledWith(expect.objectContaining({ message: 'Deleted' })))
   })
 
-  test('shows resisting pill when device.resisting', () => {
+  test('shows the got-around chip when device.resisting', () => {
     render(wrap(<DeviceDetail device={{ ...device, resisting: true }} kids={kids} onRequestOverride={() => {}} />))
-    expect(screen.getByText('got around the lock')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Got around the lock/ })).toBeInTheDocument()
   })
 
-  test('hides pill otherwise', () => {
+  test('hides the chip otherwise', () => {
     render(wrap(<DeviceDetail device={device} kids={kids} onRequestOverride={() => {}} />))
-    expect(screen.queryByText('got around the lock')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Got around the lock/ })).toBeNull()
   })
 
   test('Test block button posts and toasts message', async () => {
     apiMock.mockImplementation(async () => ({ reason: 'ok', message: 'Blocked fine', offline: false, router_resisted: false }))
     render(wrap(<DeviceDetail device={device} kids={kids} onRequestOverride={() => {}} />))
-    await userEvent.click(screen.getByRole('button', { name: TB }))
+    await menu(/Test block$/)
     await waitFor(() => expect(calls('POST')[0]).toEqual(['/devices/1/test-block', { method: 'POST' }]))
     await waitFor(() =>
       expect(notifications.show).toHaveBeenCalledWith(expect.objectContaining({ message: 'Blocked fine', color: 'fridgeGreen' })),
@@ -163,7 +167,7 @@ describe('devices', () => {
   test('Test block non-ok reason toasts red', async () => {
     apiMock.mockImplementation(async () => ({ reason: 'router', message: 'x' }))
     render(wrap(<DeviceDetail device={device} kids={kids} onRequestOverride={() => {}} />))
-    await userEvent.click(screen.getByRole('button', { name: TB }))
+    await menu(/Test block$/)
     await waitFor(() =>
       expect(notifications.show).toHaveBeenCalledWith(expect.objectContaining({ message: 'x', color: 'fridgeRed' })),
     )
@@ -174,7 +178,7 @@ describe('devices', () => {
       throw new Error("The home box didn't answer. Is it plugged in?")
     })
     render(wrap(<DeviceDetail device={device} kids={kids} onRequestOverride={() => {}} />))
-    await userEvent.click(screen.getByRole('button', { name: TB }))
+    await menu(/Test block$/)
     await waitFor(() =>
       expect(notifications.show).toHaveBeenCalledWith(
         expect.objectContaining({ title: "That didn't work", color: 'fridgeRed' }),
@@ -182,19 +186,22 @@ describe('devices', () => {
     )
   })
 
-  test('Test block is busy (aria-disabled, keeps focus) and says Testing… while pending', async () => {
+  test('Test block ignores a second run while the first is pending', async () => {
     apiMock.mockImplementation(() => new Promise(() => {}))
     render(wrap(<DeviceDetail device={device} kids={kids} onRequestOverride={() => {}} />))
-    await userEvent.click(screen.getByRole('button', { name: TB }))
-    const btn = await screen.findByRole('button', { name: TB })
-    await waitFor(() => expect(btn).toHaveAttribute('aria-busy', 'true'))
-    expect(btn).toHaveAttribute('aria-disabled', 'true')
-    expect(btn).toHaveTextContent('Testing…')
+    await userEvent.click(screen.getByRole('button', { name: 'More' }))
+    await userEvent.dblClick(await screen.findByRole('menuitem', { name: /Test block$/ }))
+    expect(calls('POST')).toHaveLength(1)
   })
 
-  test('Lock now shows busy and Unlock is disabled while an override is running', () => {
+  test('Lock now shows busy while an override is running', () => {
     render(wrap(<DeviceDetail device={device} kids={kids} pendingAction="lock" onRequestOverride={() => {}} />))
     expect(screen.getByRole('button', { name: /Lock now/ })).toHaveAttribute('aria-busy', 'true')
+    expect(screen.queryByRole('button', { name: /Unlock 30 min/ })).toBeNull()
+  })
+
+  test('Unlock is disabled while another override is running', () => {
+    render(wrap(<DeviceDetail device={{ ...device, status: 'assigned', owner_ids: [7] }} kids={kids} pendingAction="clear" onRequestOverride={() => {}} />))
     expect(screen.getByRole('button', { name: /Unlock 30 min/ })).toBeDisabled()
   })
 
@@ -211,9 +218,10 @@ describe('devices', () => {
     expect(calls('PATCH')).toHaveLength(1)
   })
 
-  test('an unknown device leads with Who\'s this?; copy follows the block-new-devices setting', async () => {
+  test('an unknown device opens Details; the chip copy follows the block-new-devices setting', async () => {
     render(wrap(<DeviceDetail device={device} kids={kids} onRequestOverride={() => {}} />))
-    expect(screen.getByRole('heading', { name: "Who's this?" })).toBeInTheDocument()
+    expect(await screen.findByRole('group', { name: 'Owners' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Open' }))
     expect(await screen.findByText(/new and blocked until you say/)).toBeInTheDocument() // family fixture blocks
     await userEvent.click(screen.getByRole('button', { name: 'Maya' }))
     await waitFor(() => expect(calls('PATCH')[0]).toEqual([`/devices/${device.id}`, { method: 'PATCH', body: { owner_ids: [kids[0].id] } }]))
@@ -222,10 +230,13 @@ describe('devices', () => {
   test('learning mode says the new device stays online', async () => {
     apiMock.mockImplementation(async (path) => (path === '/family' ? { ...family, new_devices_blocked: false } : []))
     render(wrap(<DeviceDetail device={device} kids={kids} onRequestOverride={() => {}} />))
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/family'))
+    await userEvent.click(screen.getByRole('button', { name: 'Open' }))
     expect(await screen.findByText(/stays online until you say/)).toBeInTheDocument()
   })
 
   test('guest disables the owner pills', () => {
+    openRow('details')
     render(wrap(<DeviceDetail device={{ ...device, status: 'guest' }} kids={kids} onRequestOverride={() => {}} />))
     expect(screen.getByRole('button', { name: 'Maya' })).toBeDisabled()
   })
@@ -343,7 +354,7 @@ describe('devices page', () => {
   const serve = (devices: Device[]) =>
     apiMock.mockImplementation(async (path) => (path === '/devices' ? devices : path === '/kids' ? kids : path === '/groups' ? [] : {}))
 
-  test('opens the first device and its lock buttons call the box', async () => {
+  test('opens the first device and Lock now calls the box', async () => {
     serve([device])
     render(wrap(<DevicesPage />))
     await userEvent.click(await screen.findByRole('button', { name: /lock now/i }))
@@ -353,7 +364,13 @@ describe('devices page', () => {
         body: { action: 'lock', minutes: null },
       }),
     )
-    await userEvent.click(screen.getByRole('button', { name: /unlock 30 min/i }))
+  })
+
+  test('a locked device offers Unlock 30 min instead', async () => {
+    serve([{ ...device, status: 'assigned', owner_ids: [7] }])
+    render(wrap(<DevicesPage />))
+    expect(screen.queryByRole('button', { name: /lock now/i })).toBeNull()
+    await userEvent.click(await screen.findByRole('button', { name: /unlock 30 min/i }))
     await waitFor(() =>
       expect(apiMock).toHaveBeenCalledWith(`/devices/${device.id}/override`, {
         method: 'POST',
@@ -371,7 +388,7 @@ describe('groups deep link', () => {
       if (path === '/groups') return [{ id: 1, name: 'Tablets', device_ids: [1] }]
       return []
     })
-    mockRouter.query = { item: '1', tab: 'groups' }
+    fakeRouter.reset('/devices', { item: '1', tab: 'groups' })
     render(wrap(<DevicesPage />))
     expect(await screen.findByLabelText('Group name')).toHaveValue('Tablets')
     expect(screen.queryByLabelText('Device name')).toBeNull()
@@ -421,7 +438,7 @@ describe('props passing', () => {
       if (path === '/hours') return { today: null, rules: [] }
       return {}
     })
-    mockRouter.query = { item: '1' }
+    fakeRouter.reset('/devices', { item: '1' })
     render(wrap(<DevicesPage />))
     await waitFor(() => {
       expect(apiMock).toHaveBeenCalledWith('/devices')

@@ -1,13 +1,13 @@
 import { clockText } from '@/v2/clockText'
 import { useExpired } from '@/v2/hooks/useDevices'
 import { Chip } from '@/v2/parent/Chip'
-import { Icon } from '@/v2/parent/Icon'
 import type { Device } from '@/v2/types'
 import { whyText } from './activityText'
+import { ago } from './deviceMeta'
 
 const clock = clockText
 
-/** Device Overview "Right now": state, why, when it locks, and any manual override. */
+/** Device "Right now" row: state, why, when it locks, and any manual override. */
 export function DeviceRightNow({ device, timeZone }: { device: Device; timeZone?: string }) {
   // an override that ran out while the screen was open no longer counts
   const expired = useExpired(device.override?.expires_at)
@@ -20,11 +20,7 @@ export function DeviceRightNow({ device, timeZone }: { device: Device; timeZone?
   const override = !ov ? 'None · on schedule' : ov.expires_at ? `${verb} until ${clock(ov.expires_at, timeZone)}` : verb
   const why = whyText(device)
   return (
-    <section className="pk-panel" aria-label="Right now">
-      <h3>
-        <Icon name="bolt" size={18} />
-        Right now
-      </h3>
+    <div className="dv-now">
       <div className="pk-kv">
         <span>State</span>
         <Chip tone={state[0]} icon={state[1]}>{state[2]}</Chip>
@@ -45,6 +41,10 @@ export function DeviceRightNow({ device, timeZone }: { device: Device; timeZone?
         <span>Override</span>
         <b>{override}</b>
       </div>
-    </section>
+      <div className="pk-kv">
+        <span>Last seen</span>
+        <b>{device.seen_now ? 'Online now' : ago(device.last_seen)}</b>
+      </div>
+    </div>
   )
 }

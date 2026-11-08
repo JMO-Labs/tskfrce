@@ -29,7 +29,7 @@ function DevicesBody() {
   // the tab lives in the URL: device and group ids overlap, so ?item alone can't say which one it is
   const tab = first(query.tab) === 'groups' ? 'groups' : 'devices'
   const setTab = (t: 'devices' | 'groups') => {
-    const { item: _drop, tab: _t, ...rest } = query
+    const { item: _drop, tab: _t, open: _o, ...rest } = query
     router.push({ pathname: router.pathname, query: t === 'groups' ? { ...rest, tab: t } : rest }, undefined, { shallow: true })
   }
   const small = useMediaQuery('(max-width: 767px)')
@@ -51,7 +51,7 @@ function DevicesBody() {
   }, [stale])
   // select a group (or null = drop ?item so the first item reopens)
   const pick = (id: number | null) => {
-    const { item: _drop, ...rest } = query
+    const { item: _drop, open: _o, ...rest } = query
     router.push({ pathname: router.pathname, query: id === null ? rest : { ...rest, item: id } }, undefined, { shallow: true })
   }
 

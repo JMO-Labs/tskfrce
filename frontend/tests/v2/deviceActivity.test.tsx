@@ -104,27 +104,50 @@ describe('device Activity', () => {
     expect(within(f).queryByRole('button', { name: 'Different device' })).toBeNull()
   })
 
-  test('Mark OK hides its button once reviewed', async () => {
+  test('each alert has one main button; the other actions are menu items', async () => {
     show()
     const f = await feed()
-    await waitFor(() => expect(within(f).getAllByRole('button', { name: 'Mark OK' })).toHaveLength(2))
-    data = { ...data, events: data.events.map((e) => (e.id === 12 ? { ...e, reviewed: true } : e)) }
-    await userEvent.click(within(f).getAllByRole('button', { name: 'Mark OK' })[0])
-    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/devices/1/events/12/ok', { method: 'POST' }))
-    await waitFor(() => expect(within(f).getAllByRole('button', { name: 'Mark OK' })).toHaveLength(1))
+    await waitFor(() => expect(within(f).getAllByRole('listitem')).toHaveLength(3))
+    const [merge, tried] = within(f).getAllByRole('listitem')
+    expect(within(merge).getByRole('button', { name: /Same device, merge/ })).toBeTruthy()
+    expect(within(merge).queryByRole('button', { name: 'Different device' })).toBeNull()
+    expect(within(tried).getByRole('button', { name: 'Ask Maya' })).toBeTruthy()
+    expect(within(tried).queryByRole('button', { name: 'Mark OK' })).toBeNull()
+    await userEvent.click(within(tried).getByRole('button', { name: 'More' }))
+    const items = (await screen.findAllByRole('menuitem')).map((m) => m.textContent)
+    expect(items).toHaveLength(2)
+    expect(items[0]).toMatch(/Lock all Maya's devices$/)
+    expect(items[1]).toMatch(/Mark OK$/)
   })
 
-  test("Lock all posts the kid's override", async () => {
+  test('Mark OK posts, then the row has no actions once reviewed', async () => {
     show()
-    await userEvent.click((await screen.findAllByRole('button', { name: "Lock all Maya's devices" }))[0])
+    const f = await feed()
+    await waitFor(() => expect(within(f).getAllByRole('listitem')).toHaveLength(3))
+    data = { ...data, events: data.events.map((e) => (e.id === 12 ? { ...e, reviewed: true } : e)) }
+    await userEvent.click(within(within(f).getAllByRole('listitem')[1]).getByRole('button', { name: 'More' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Mark OK/ }))
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/devices/1/events/12/ok', { method: 'POST' }))
+    await waitFor(() => expect(within(within(f).getAllByRole('listitem')[1]).queryByRole('button', { name: 'Ask Maya' })).toBeNull())
+  })
+
+  const lockAll = async () => {
+    show()
+    const f = await feed()
+    await waitFor(() => expect(within(f).getAllByRole('listitem')).toHaveLength(3))
+    await userEvent.click(within(within(f).getAllByRole('listitem')[1]).getByRole('button', { name: 'More' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Lock all Maya's devices/ }))
+  }
+
+  test("Lock all posts the kid's override", async () => {
+    await lockAll()
     await waitFor(() =>
       expect(apiMock).toHaveBeenCalledWith('/kids/7/override', expect.objectContaining({ method: 'POST', body: expect.objectContaining({ action: 'lock' }) })),
     )
   })
 
   test('the Locked toast offers Undo, which puts the kid back on schedule', async () => {
-    show()
-    await userEvent.click((await screen.findAllByRole('button', { name: "Lock all Maya's devices" }))[0])
+    await lockAll()
     await waitFor(() => expect(notifications.show).toHaveBeenCalled())
     const toast = render(<>{(notifications.show as Mock).mock.calls.at(-1)![0].message}</>)
     await userEvent.click(toast.getByRole('button', { name: 'Undo' }))

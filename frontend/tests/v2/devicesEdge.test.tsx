@@ -12,8 +12,9 @@ import { DeviceList } from '@/v2/manage/DeviceList'
 import { GroupDetail } from '@/v2/manage/GroupDetail'
 import { ago, inFamilyZone } from '@/v2/manage/deviceMeta'
 import type { Device, Group, Kid } from '@/v2/types'
+import { fakeRouter } from './helpers/fakeRouter'
 
-jest.mock('next/router', () => ({ useRouter: () => ({ query: {}, push: jest.fn(), replace: jest.fn() }) }))
+jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 
@@ -39,6 +40,7 @@ beforeAll(() => {
   Element.prototype.scrollIntoView = jest.fn()
 })
 beforeEach(() => {
+  fakeRouter.reset('/devices')
   apiMock.mockReset().mockImplementation(async (path) => (path === '/family' ? { timezone: 'Pacific/Auckland' } : {}))
 })
 afterEach(() => jest.useRealTimers())
@@ -61,8 +63,15 @@ describe('device time helpers', () => {
 })
 
 describe('DeviceDetail', () => {
+  const open = (row: string) => fakeRouter.reset('/devices', { item: '1', open: row })
+  const menu = async (name: string) => {
+    await userEvent.click(screen.getByRole('button', { name: 'More' }))
+    return userEvent.click(await screen.findByRole('menuitem', { name: new RegExp(`${name}$`) }))
+  }
+
   test('an unlock that expires while the screen is open goes back to "None · on schedule"', async () => {
     jest.useFakeTimers({ now: new Date('2026-10-25T10:00:00Z') })
+    open('now')
     const d = dev({ override: { action: 'unlock', expires_at: '2026-10-25T10:00:02Z' } })
     render(wrap(<DeviceDetail device={d} kids={kids} onRequestOverride={() => {}} />))
     const right = screen.getByRole('region', { name: 'Right now' })
@@ -79,22 +88,26 @@ describe('DeviceDetail', () => {
     render(wrap(<DeviceDetail device={d} kids={kids} onRequestOverride={() => {}} />))
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/family'))
     const want = inFamilyZone(d.override!.expires_at!, 'Pacific/Auckland', { timeStyle: 'short' })
-    expect(await screen.findByText(`Locked until ${want}`)).toBeTruthy()
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Right now/ }).textContent).toContain(`Locked · until ${want}`))
+    await userEvent.click(screen.getByRole('button', { name: 'Locked' }))
+    expect(await screen.findByText(`Locked by you until ${want}.`)).toBeTruthy()
   })
 
   test('Back to schedule shows only while an override is set and clears it', async () => {
     const onRequestOverride = jest.fn()
     const { unmount } = render(wrap(<DeviceDetail device={dev()} kids={kids} onRequestOverride={onRequestOverride} />))
-    expect(screen.queryByRole('button', { name: 'Back to schedule' })).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'More' }))
+    await screen.findByRole('menuitem', { name: /Test block/ })
+    expect(screen.queryByRole('menuitem', { name: /Back to schedule/ })).toBeNull()
     unmount()
     render(wrap(<DeviceDetail device={dev({ override: { action: 'lock', expires_at: null } })} kids={kids} onRequestOverride={onRequestOverride} />))
-    await userEvent.click(screen.getByRole('button', { name: 'Back to schedule' }))
+    await menu('Back to schedule')
     expect(onRequestOverride).toHaveBeenCalledWith({ kind: 'device', id: 1, action: 'schedule' })
   })
 
   test('a double click on Delete in the dialog sends exactly one DELETE', async () => {
     render(wrap(<DeviceDetail device={dev()} kids={kids} onRequestOverride={() => {}} />))
-    await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    await menu('Delete')
     const dialog = await screen.findByRole('dialog')
     await userEvent.dblClick(within(dialog).getByRole('button', { name: 'Delete' }))
     const deletes = apiMock.mock.calls.filter(([p, o]) => p === '/devices/1' && o?.method === 'DELETE')
@@ -103,9 +116,11 @@ describe('DeviceDetail', () => {
 
   test('a double click on an owner pill or Test block sends exactly one request', async () => {
     apiMock.mockImplementation(() => new Promise(() => {})) // the first request is still in flight for the second click
+    open('details')
     render(wrap(<DeviceDetail device={dev({ owner_ids: [] })} kids={kids} onRequestOverride={() => {}} />))
     await userEvent.dblClick(screen.getByRole('button', { name: 'Maya' }))
-    await userEvent.dblClick(screen.getByRole('button', { name: /Test block/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'More' }))
+    await userEvent.dblClick(await screen.findByRole('menuitem', { name: /Test block/ }))
     const calls = (path: string) => apiMock.mock.calls.filter(([p]) => p === path)
     expect(calls('/devices/1')).toHaveLength(1)
     expect(apiMock).toHaveBeenCalledWith('/devices/1', { method: 'PATCH', body: { owner_ids: [7] } })
@@ -113,6 +128,7 @@ describe('DeviceDetail', () => {
   })
 
   test('names stop at the 100 characters the API accepts', () => {
+    open('details')
     render(wrap(<DeviceDetail device={dev()} kids={kids} onRequestOverride={() => {}} />))
     expect(screen.getByLabelText('Device name').getAttribute('maxlength')).toBe('100')
   })

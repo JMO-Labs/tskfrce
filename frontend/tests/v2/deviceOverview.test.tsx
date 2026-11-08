@@ -9,8 +9,9 @@ import { fridgeTheme } from '@/v2/theme'
 import { api } from '@/v2/api'
 import { DeviceDetail } from '@/v2/manage/DeviceDetail'
 import type { Device, Kid } from '@/v2/types'
+import { fakeRouter } from './helpers/fakeRouter'
 
-jest.mock('next/router', () => ({ useRouter: () => ({ query: {}, push: jest.fn(), replace: jest.fn() }) }))
+jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 
@@ -31,7 +32,10 @@ const wrap = (ui: ReactNode) => (
     <MantineProvider theme={fridgeTheme}>{ui}</MantineProvider>
   </QueryClientProvider>
 )
-const show = (d: Device) => render(wrap(<DeviceDetail device={d} kids={kids} onRequestOverride={() => {}} />))
+const show = (d: Device, open?: string) => {
+  fakeRouter.reset('/devices', open ? { item: String(d.id), open } : { item: String(d.id) })
+  return render(wrap(<DeviceDetail device={d} kids={kids} onRequestOverride={() => {}} />))
+}
 
 beforeAll(() => {
   window.matchMedia ??= ((q: string) => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} })) as never
@@ -51,9 +55,9 @@ beforeEach(() => {
   })
 })
 
-describe('device Overview', () => {
+describe('device rows', () => {
   test('Right now explains a blocked device and when it locks', () => {
-    show(dev())
+    show(dev(), 'now')
     const right = screen.getByRole('region', { name: 'Right now' })
     expect(within(right).getByText('Locked')).toBeTruthy()
     expect(within(right).getByText('Chores 3/5 done')).toBeTruthy()
@@ -63,43 +67,49 @@ describe('device Overview', () => {
   })
 
   test('an exempt device is Open, always allowed, with no lock time', () => {
-    show(dev({ exempt: true, online: true, reason: 'exempt', locks_at: null }))
+    show(dev({ exempt: true, online: true, reason: 'exempt', locks_at: null }), 'now')
     const right = screen.getByRole('region', { name: 'Right now' })
     expect(within(right).getByText('Open')).toBeTruthy()
     expect(within(right).getByText('Always allowed')).toBeTruthy()
     expect(within(right).queryByText('Locks at')).toBeNull()
   })
 
-  test('Online this week has 7 rows, Today first', async () => {
+  test('Online by hour has 7 rows, Today first', async () => {
     show(dev())
+    await userEvent.click(await screen.findByRole('button', { name: 'Online by hour' }))
     const week = await screen.findByRole('region', { name: 'Online this week' })
-    await waitFor(() => expect(within(week).getAllByRole('listitem')).toHaveLength(7))
-    expect(within(week).getAllByRole('listitem')[0].textContent).toMatch(/^Today/)
+    await waitFor(() => expect(week.querySelectorAll('li')).toHaveLength(7))
+    expect(week.querySelectorAll('li')[0].textContent).toMatch(/^Today/)
     expect(within(week).getByText('Sat')).toBeTruthy()
   })
 
-  test('guest devices have no Online this week', () => {
+  test('guest devices have no online-by-hour line', () => {
     show(dev({ status: 'guest' }))
-    expect(screen.queryByRole('region', { name: 'Online this week' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Online by hour' })).toBeNull()
+  })
+
+  test('Right now says when the device was last seen', () => {
+    show(dev({ seen_now: false, last_seen: null }), 'now')
+    const right = screen.getByRole('region', { name: 'Right now' })
+    expect(within(right).getByText('Last seen')).toBeTruthy()
+    expect(within(right).getByText('never')).toBeTruthy()
   })
 
   test('Always allowed switch saves exempt', async () => {
-    show(dev())
+    show(dev(), 'details')
     await userEvent.click(screen.getByRole('switch', { name: 'Always allowed (never lock)' }))
     expect(apiMock).toHaveBeenCalledWith('/devices/1', { method: 'PATCH', body: { exempt: true } })
   })
 
-  test('Activity tab carries the alert count', () => {
+  test('Activity row carries the alert count', () => {
     show(dev())
-    const tab = screen.getByRole('tab', { name: /Activity/ })
-    expect(tab.textContent).toContain('1')
+    expect(screen.getByRole('button', { name: /^Activity/ }).textContent).toContain('1 alert this week')
   })
 })
 
 describe('device Network history rows', () => {
   const net = async (d: Device) => {
-    show(d)
-    await userEvent.click(screen.getByRole('tab', { name: 'Network' }))
+    show(d, 'network')
     return screen.getByRole('region', { name: 'Connection' })
   }
 
