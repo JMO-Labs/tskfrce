@@ -23,12 +23,12 @@ export function KidPicker({ kids, value, onChange, label, single, extras = [], b
     else onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value.filter((x) => !isExtra(x)), v])
   }
   const items = [
-    ...kids.map((k) => ({ value: String(k.id), label: nameOf(k), av: initial(nameOf(k)), icon: undefined as string | undefined })),
-    ...extras.map((x) => ({ value: x.value, label: x.label, av: undefined as string | undefined, icon: x.icon })),
+    ...kids.map((k) => ({ value: String(k.id), label: nameOf(k), av: initial(nameOf(k)), icon: undefined as string | undefined, extra: false })),
+    ...extras.map((x) => ({ value: x.value, label: x.label, av: undefined as string | undefined, icon: x.icon, extra: true })),
   ]
   const btn = (i: (typeof items)[number], cls: string) => (
     <button key={i.value} type="button" className={cls} aria-pressed={value.includes(i.value)} disabled={disabled} aria-disabled={busy || undefined}
-      onClick={() => { pick(i.value); if (variant === 'pop') setOpen(false) }}>
+      onClick={() => { pick(i.value); if (variant === 'pop' && !busy) setOpen(false) }}>
       {i.av && <span className="pk-av" aria-hidden="true">{i.av}</span>}
       {i.icon && <Icon name={i.icon} size={16} />}
       {i.label}
@@ -46,9 +46,9 @@ export function KidPicker({ kids, value, onChange, label, single, extras = [], b
       </Popover.Target>
       <Popover.Dropdown className="p-pop">
         <div className="pk-pills p-pk-list" role="group" aria-label={label}>
-          {kids.length > 0 && items.filter((i) => i.av).map((i) => btn(i, 'pk-pill'))}
+          {items.filter((i) => !i.extra).map((i) => btn(i, 'pk-pill'))}
           {extras.length > 0 && kids.length > 0 && <hr className="p-pk-div" />}
-          {items.filter((i) => !i.av).map((i) => btn(i, 'pk-pill'))}
+          {items.filter((i) => i.extra).map((i) => btn(i, 'pk-pill'))}
         </div>
       </Popover.Dropdown>
     </Popover>

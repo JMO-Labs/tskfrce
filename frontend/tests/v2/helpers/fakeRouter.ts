@@ -25,7 +25,7 @@ export const fakeRouter = {
   replace: jest.fn((t: Target) => { fakeRouter.pathname = t.pathname ?? fakeRouter.pathname; fakeRouter.stack[fakeRouter.stack.length - 1] = clean(t.query); sync() }),
   beforePopState: jest.fn((cb: PopHandler) => { fakeRouter.popHandler = cb }),
   popHandler: (() => true) as PopHandler,
-  back: jest.fn(() => { if (fakeRouter.stack.length > 1) fakeRouter.stack.pop(); sync() }),
+  back: jest.fn(() => { if (!fakeRouter.popHandler({})) return; if (fakeRouter.stack.length > 1) fakeRouter.stack.pop(); sync() }),
   reset(pathname = '/x', query: Query = {}) {
     fakeRouter.push.mockClear(); fakeRouter.replace.mockClear(); fakeRouter.back.mockClear(); fakeRouter.beforePopState.mockClear(); fakeRouter.popHandler = () => true
     fakeRouter.pathname = pathname

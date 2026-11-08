@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MantineProvider } from '@mantine/core'
 import { SaveBar, useDiscardGuard } from '@/v2/parent/SaveBar'
@@ -86,5 +86,27 @@ test('useDiscardGuard blocks browser Back while dirty', async () => {
 test('useDiscardGuard resets beforePopState on unmount', () => {
   const { unmount } = wrap(<Probe dirty go={jest.fn()} />)
   unmount()
+  expect(fakeRouter.popHandler({})).toBe(true)
+})
+
+test('Discard on the Back sheet really goes back (no re-prompt loop)', async () => {
+  const user = userEvent.setup()
+  wrap(<Probe dirty go={jest.fn()} />)
+  act(() => { fakeRouter.popHandler({}) })
+  const depth = fakeRouter.stack.length
+  await user.click(await screen.findByRole('button', { name: 'Discard' }))
+  expect(fakeRouter.stack.length).toBe(depth - 1)
+  await waitFor(() => expect(screen.queryByText('Discard changes?')).toBeNull())
+  expect(fakeRouter.push).toHaveBeenCalledTimes(1)
+})
+
+test('two guards do not clobber each other', () => {
+  const a = wrap(<Probe dirty go={jest.fn()} />)
+  const b = wrap(<Probe dirty go={jest.fn()} />)
+  b.unmount()
+  let r: boolean | undefined
+  act(() => { r = fakeRouter.popHandler({}) })
+  expect(r).toBe(false) // guard A still blocks
+  a.unmount()
   expect(fakeRouter.popHandler({})).toBe(true)
 })

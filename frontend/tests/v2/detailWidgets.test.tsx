@@ -69,3 +69,17 @@ test('ProgressRing labels progress', () => {
   expect(screen.getByRole('img', { name: '4 of 6 done' })).toBeInTheDocument()
   expect(screen.getByText('4 of 6')).toBeInTheDocument()
 })
+
+test('ActionRow icon without help is not a button', () => {
+  wrap(<ActionRow icon="check" iconLabel="Spot check" title="Dishes" />)
+  expect(screen.queryByRole('button', { name: 'Spot check' })).toBeNull()
+  expect(screen.getByRole('img', { name: 'Spot check' })).toBeInTheDocument()
+})
+
+test('ActionRow disabled main button does not fire', async () => {
+  const user = userEvent.setup(); const ok = jest.fn()
+  wrap(<ActionRow icon="check" iconLabel="x" title="Dishes" main={{ label: 'Approve', onClick: ok, disabled: true }} />)
+  expect(screen.getByRole('button', { name: 'Approve' })).toBeDisabled()
+  await user.click(screen.getByRole('button', { name: 'Approve' }))
+  expect(ok).not.toHaveBeenCalled()
+})

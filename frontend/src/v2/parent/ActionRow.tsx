@@ -11,7 +11,9 @@ export function ActionRow({ icon, iconTone, iconLabel, iconHelp, title, sub, mai
   main?: { label: string; onClick: () => void; busy?: boolean; disabled?: boolean }
   menu?: MenuItem[]; menuLabel?: string; children?: ReactNode
 }) {
-  const ty = <button type="button" className="p-arow-ty" data-tone={iconTone} aria-label={iconLabel}><Icon name={icon} size={18} /></button>
+  const ty = iconHelp
+    ? <button type="button" className="p-arow-ty" data-tone={iconTone} aria-label={iconLabel}><Icon name={icon} size={18} /></button>
+    : <span className="p-arow-ty" data-tone={iconTone} role="img" aria-label={iconLabel}><Icon name={icon} size={18} /></span>
   return (
     <div>
       <div className="p-arow">
