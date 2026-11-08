@@ -171,12 +171,17 @@ describe('DeviceList status glyph', () => {
 describe('GroupDetail with no devices', () => {
   const empty: Group = { id: 3, name: 'Empty group', device_ids: [], icon: 'devices', chore_lock: true }
 
-  test('says so, hides the open/locked chips and disables lock, unlock and back-to-schedule', () => {
+  test('says so, shows no open/locked counts and disables lock and unlock', async () => {
+    fakeRouter.reset('/devices', { tab: 'groups', item: '3' })
     render(wrap(<GroupDetail group={empty} devices={[dev()]} kids={kids} groups={[empty]} rules={[]} onSelect={() => {}} onRequestOverride={() => {}} />))
-    expect(screen.getByText('No devices in this group yet. Tap a device to add it.')).toBeTruthy()
-    expect(screen.getByText('0 devices')).toBeTruthy()
-    expect(screen.queryByText('0 open')).toBeNull()
-    for (const name of ['Lock group', 'Unlock 30 min', 'Back to schedule']) expect((screen.getByRole('button', { name }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByText('No devices in this group yet')).toBeTruthy()
+    expect(screen.getByText('0 of 1 device')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'No devices' })).toBeTruthy()
+    expect(screen.queryByText(/open ·/)).toBeNull()
+    expect((screen.getByRole('button', { name: 'Lock group' }) as HTMLButtonElement).disabled).toBe(true)
+    await userEvent.click(screen.getByRole('button', { name: 'More' }))
+    expect(await screen.findByRole('menuitem', { name: /Unlock 30 min/ })).toBeDisabled()
+    expect(screen.queryByRole('menuitem', { name: /Back to schedule/ })).toBeNull()
   })
 
   test('Create group on a new group sends one POST even when mashed', async () => {
@@ -190,9 +195,10 @@ describe('GroupDetail with no devices', () => {
     expect(posts[0][1]).toEqual({ method: 'POST', body: { name: 'Twins', device_ids: [1] } })
   })
 
-  test('tapping a device saves the group with exactly that member', async () => {
+  test('switching a device on saves the group with exactly that member', async () => {
+    fakeRouter.reset('/devices', { tab: 'groups', item: '3', open: 'gdev' })
     render(wrap(<GroupDetail group={empty} devices={[dev({ name: 'Switch' })]} kids={kids} groups={[empty]} rules={[]} onSelect={() => {}} onRequestOverride={() => {}} />))
-    await userEvent.click(screen.getByRole('button', { name: 'Switch' }))
+    await userEvent.click(screen.getByRole('switch', { name: 'In group' }))
     expect(apiMock).toHaveBeenCalledWith('/groups/3', { method: 'PATCH', body: { name: 'Empty group', device_ids: [1] } })
   })
 })
@@ -206,12 +212,15 @@ describe('GroupDetail icon, chore switch, hours and summary', () => {
     dev({ id: 2, name: 'Xbox', alerts: 2, seen_now: true, override: { action: 'unlock', expires_at: null } as never }),
     dev({ id: 4, name: 'PS5', override: { action: 'lock', expires_at: null } as never, locks_at: '2026-10-27T03:00:00Z' }),
   ]
-  const show = (rules: never[] = []) =>
-    render(wrap(<GroupDetail group={g} devices={members} kids={kids} groups={[g]} rules={rules} timeZone="America/New_York" onSelect={() => {}} onRequestOverride={() => {}} />))
+  const show = (rules: never[] = [], open = 'gset') => {
+    fakeRouter.reset('/devices', { tab: 'groups', item: '3', open })
+    return render(wrap(<GroupDetail group={g} devices={members} kids={kids} groups={[g]} rules={rules} timeZone="America/New_York" onSelect={() => {}} onRequestOverride={() => {}} />))
+  }
 
   test('picking tv saves icon tv', async () => {
     show()
-    await userEvent.click(screen.getByTitle('tv'))
+    await userEvent.click(screen.getByRole('button', { name: 'Change icon' }))
+    await userEvent.click(await screen.findByTitle('tv'))
     expect(apiMock).toHaveBeenCalledWith('/groups/3', { method: 'PATCH', body: expect.objectContaining({ icon: 'tv', chore_lock: true }) })
   })
 
@@ -219,11 +228,10 @@ describe('GroupDetail icon, chore switch, hours and summary', () => {
     show()
     await userEvent.click(screen.getByRole('switch', { name: /Lock with the kids/ }))
     expect(apiMock).toHaveBeenCalledWith('/groups/3', { method: 'PATCH', body: expect.objectContaining({ chore_lock: false }) })
-    expect(screen.getByText(/these devices skip the chore check/)).toBeTruthy()
   })
 
   test('hours card lists everyone and this group rules, not another group', () => {
-    show([rule(1, 'Family hours', { everyone: true }), rule(2, 'Tablets only', { group_ids: [3] }), rule(3, 'Other group rule', { group_ids: [9] })] as never)
+    show([rule(1, 'Family hours', { everyone: true }), rule(2, 'Tablets only', { group_ids: [3] }), rule(3, 'Other group rule', { group_ids: [9] })] as never, 'ghours')
     const card = within(screen.getByRole('region', { name: 'Hours' }))
     expect(card.getByText('Family hours')).toBeTruthy()
     expect(card.getByText('Tablets only')).toBeTruthy()
@@ -232,9 +240,10 @@ describe('GroupDetail icon, chore switch, hours and summary', () => {
     expect(card.getByRole('link', { name: /Edit in Settings/ }).getAttribute('href')).toBe('/settings?section=hours')
   })
 
-  test('summary strip shows open count, alerts, overrides and next lock in family time', () => {
+  test('status pop-over shows open count, alerts, overrides and next lock in family time', async () => {
     show()
-    const strip = within(screen.getByRole('group', { name: 'Group summary' }))
+    await userEvent.click(screen.getByRole('button', { name: /open · / }))
+    const strip = within(await screen.findByRole('group', { name: 'Group summary' }))
     expect(strip.getByText('2 of 3')).toBeTruthy()
     expect(strip.getByText('3')).toBeTruthy()
     expect(strip.getByText('Overrides today').nextSibling?.textContent).toBe('2')
