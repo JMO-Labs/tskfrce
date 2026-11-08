@@ -19,6 +19,7 @@ type Props = {
   onSendBack: () => void
   onDecide: (yes: boolean) => void
   onDismiss: () => void
+  onLock: () => void
   /** tap on the row text */
   onOpen: () => void
   /** mark read, close the bell and go to `to` (null: just close); resolves once the page has changed */
@@ -33,7 +34,7 @@ const LABEL: Record<string, string> = {
 }
 
 /** One inbox row (v3): one main button; Send back, Decline, Ask, Dismiss live in the "..." menu. */
-export function InboxRow({ n, live, busy, sending, note, onNote, onApprove, onSendBack, onDecide, onDismiss, onOpen, go }: Props) {
+export function InboxRow({ n, live, busy, sending, note, onNote, onApprove, onSendBack, onDecide, onDismiss, onLock, onOpen, go }: Props) {
   const needs = isNeedsYou(n)
   const device = n.device_id ? `/devices?item=${n.device_id}` : '/devices'
   const reply = () => void go(`/?chore=${n.run_id}`).then(() => openChat('chore', String(n.run_id)))
@@ -51,7 +52,9 @@ export function InboxRow({ n, live, busy, sending, note, onNote, onApprove, onSe
     else if (n.kind === 'new_device' && n.pending) main = { label: "Who's this?", onClick: () => void go(device), plain: true }
     else if (n.kind === 'device_resisting' || n.kind === 'device_bypass' || n.kind === 'workaround_try') {
       main = { label: 'View', onClick: () => void go(device), plain: true }
-      menu = [{ label: `Ask ${n.kid_name ?? 'kid'}`, icon: 'chat', onClick: ask, hidden: !n.kid_id }]
+      menu = [{ label: `Ask ${n.kid_name ?? 'kid'}`, icon: 'chat', onClick: ask, hidden: !n.kid_id },
+        { label: `Lock all ${n.kid_name ?? 'kid'}'s devices`, icon: 'lock', tone: 'red', onClick: onLock, hidden: !n.kid_id },
+      ]
     } else if (n.kind === 'password_guess') main = { label: 'Change password', onClick: () => void go('/settings?section=parents#password'), plain: true }
     else if (n.kind === 'box_offline') main = { label: 'View', onClick: () => void go('/devices'), plain: true }
     else if (n.kind === 'boost') menu = [{ label: 'See Happy Hour', icon: 'bolt', onClick: () => void go('/') }]

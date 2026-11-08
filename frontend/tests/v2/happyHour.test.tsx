@@ -200,7 +200,7 @@ describe('alerts', () => {
     expect(severity(n)).toEqual({ name: 'bolt', tone: 'ok' })
     const go = jest.fn(async () => {})
     const f = () => {}
-    render(<MantineProvider env="test"><InboxRow n={{ ...n, pending: false, title: 'Boost', created_at: new Date().toISOString() } as never} live busy={false} sending={false} note="" onNote={f} onApprove={f} onSendBack={f} onDecide={f} onDismiss={f} onOpen={f} go={go} /></MantineProvider>)
+    render(<MantineProvider env="test"><InboxRow n={{ ...n, pending: false, title: 'Boost', created_at: new Date().toISOString() } as never} live busy={false} sending={false} note="" onNote={f} onApprove={f} onSendBack={f} onDecide={f} onDismiss={f} onLock={f} onOpen={f} go={go} /></MantineProvider>)
     await userEvent.click(screen.getByRole('button', { name: 'More for Boost' }))
     await userEvent.click(await screen.findByRole('menuitem', { name: 'See Happy Hour' }))
     expect(go).toHaveBeenCalledWith('/')

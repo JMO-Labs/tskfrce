@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react'
+import { createContext, Fragment, useContext, useState } from 'react'
 import Link from 'next/link'
 import { Menu } from '@mantine/core'
 import { Icon } from './Icon'
@@ -8,11 +8,15 @@ export interface MenuItem { label: string; icon: string; onClick?: () => void; h
   /** the item opens something that takes focus itself (an inline form): the menu must not hand focus back to "…" */
   takesFocus?: boolean }
 
+/** Where menus render. null: body. The bell pop-over sets its own dropdown, so a click in a menu is not an outside click. */
+export const MenuPortalContext = createContext<HTMLElement | null>(null)
+
 /** The "…" menu on a header: secondary actions, Delete last in red. */
 export function MoreMenu({ label, items, id }: { label: string; items: MenuItem[]; id?: string }) {
   const [giveBack, setGiveBack] = useState(true)
+  const target = useContext(MenuPortalContext)
   return (
-    <Menu position="bottom-end" withinPortal transitionProps={motionProps()} returnFocus={giveBack} onOpen={() => setGiveBack(true)}>
+    <Menu position="bottom-end" withinPortal portalProps={target ? { target } : undefined} floatingStrategy={target ? 'fixed' : undefined} transitionProps={motionProps()} returnFocus={giveBack} onOpen={() => setGiveBack(true)}>
       <Menu.Target>
         <button type="button" className="p-btn p-ib" aria-label={label} id={id}>
           <Icon name="more_horiz" size={20} />
