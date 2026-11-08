@@ -20,6 +20,7 @@ export function SaveBar({ dirty, saving, onSave, onCancel, saveLabel = 'Save', d
   )
 }
 
+const CANCEL = { cancelled: true, message: 'Route change cancelled: unsaved changes' }
 type PopHandler = () => boolean
 const guards: PopHandler[] = [] // active dirty guards; the newest decides browser Back
 
@@ -27,6 +28,7 @@ const guards: PopHandler[] = [] // active dirty guards; the newest decides brows
 export function useDiscardGuard(dirty: boolean, onDiscard?: () => void): { guard: (go: () => void) => void; sheet: ReactNode } {
   const router = useRouter()
   const [pending, setPending] = useState<(() => void) | null>(null)
+  const undoing = useRef(false) // history.go(1) is on its way: its popstate is not a new Back
   const leaving = useRef(false) // Discard was chosen: let the popstate / route change / next guard() through, no second prompt
   const guard = useCallback((go: () => void) => { if (dirty && !leaving.current) setPending(() => go); else go() }, [dirty])
   const routerRef = useRef(router)
@@ -39,8 +41,10 @@ export function useDiscardGuard(dirty: boolean, onDiscard?: () => void): { guard
     const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
     const onBack: PopHandler = () => {
       if (leaving.current) return true
-      // stay on the page: put the entry Back just popped back, then ask
-      void r().push(r().asPath, undefined, { shallow: true, scroll: false })
+      if (undoing.current) { undoing.current = false; return false } // the popstate from our own history.go(1) below
+      // stay on the page: step forward again (router.push of the current URL would only replace the popped entry), then ask
+      undoing.current = true
+      window.history.go(1)
       setPending(() => () => { leaving.current = true; r().back() })
       return false
     }
@@ -51,18 +55,24 @@ export function useDiscardGuard(dirty: boolean, onDiscard?: () => void): { guard
       if (here.pathname === to.pathname && ['section', 'item'].every((k) => here.searchParams.get(k) === to.searchParams.get(k))) return
       setPending(() => () => { void r().push(url) })
       r().events?.emit('routeChangeError')
-      throw Object.assign(new Error('Route change cancelled: unsaved changes'), { cancelled: true }) // Next treats `cancelled` as a quiet abort
+      // Next treats `cancelled` as a quiet abort, but <Link> never catches the rejected push: the dev overlay shows
+      // any Error (and blocks the page), so throw a plain object and keep it out of the console.
+      throw CANCEL
     }
     r().events?.on('routeChangeStart', onStart)
+    const quiet = (e: PromiseRejectionEvent) => { if (e.reason === CANCEL) e.preventDefault() }
     window.addEventListener('beforeunload', warn)
+    window.addEventListener('unhandledrejection', quiet)
     guards.push(onBack)
     r().beforePopState(onBack)
     return () => {
       r().events?.off('routeChangeStart', onStart)
       window.removeEventListener('beforeunload', warn)
+      window.removeEventListener('unhandledrejection', quiet)
       guards.splice(guards.indexOf(onBack), 1)
       r().beforePopState(guards[guards.length - 1] ?? (() => true))
       leaving.current = false
+      undoing.current = false
     }
   }, [dirty])
 

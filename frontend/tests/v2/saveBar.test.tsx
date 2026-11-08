@@ -86,12 +86,16 @@ test('useDiscardGuard adds beforeunload only while dirty', () => {
 test('useDiscardGuard blocks browser Back while dirty', async () => {
   const user = userEvent.setup()
   const { rerender } = wrap(<Probe dirty go={jest.fn()} />)
+  const go = jest.spyOn(window.history, 'go').mockImplementation(() => {})
   let r: boolean | undefined
   act(() => { r = fakeRouter.popHandler({}) })
   expect(r).toBe(false)
-  expect(fakeRouter.push).toHaveBeenCalledWith('/x', undefined, { shallow: true, scroll: false })
+  expect(go).toHaveBeenCalledWith(1) // undo the Back; router.push of the same URL would only replace the popped entry
+  expect(fakeRouter.push).not.toHaveBeenCalled()
+  act(() => { r = fakeRouter.popHandler({}) })
+  expect(r).toBe(false) // the popstate of our own go(1) is swallowed
   expect(await screen.findByText('Discard changes?')).toBeInTheDocument()
-  fakeRouter.push.mockClear()
+  go.mockRestore()
   await user.click(screen.getByRole('button', { name: 'Discard' }))
   expect(fakeRouter.back).toHaveBeenCalled()
   rerender(<MantineProvider env="test"><Probe dirty={false} go={jest.fn()} /></MantineProvider>)
@@ -106,13 +110,16 @@ test('useDiscardGuard resets beforePopState on unmount', () => {
 
 test('Discard on the Back sheet really goes back (no re-prompt loop)', async () => {
   const user = userEvent.setup()
+  const go = jest.spyOn(window.history, 'go').mockImplementation(() => {})
+  fakeRouter.stack.push({}) // a page to go back to
   wrap(<Probe dirty go={jest.fn()} />)
   act(() => { fakeRouter.popHandler({}) })
+  go.mockRestore()
   const depth = fakeRouter.stack.length
   await user.click(await screen.findByRole('button', { name: 'Discard' }))
   expect(fakeRouter.stack.length).toBe(depth - 1)
   await waitFor(() => expect(screen.queryByText('Discard changes?')).toBeNull())
-  expect(fakeRouter.push).toHaveBeenCalledTimes(1)
+  expect(fakeRouter.push).not.toHaveBeenCalled()
 })
 
 test('two guards do not clobber each other', () => {
