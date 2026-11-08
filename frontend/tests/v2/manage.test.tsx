@@ -417,20 +417,20 @@ describe('PIN', () => {
 })
 
 describe('settings', () => {
-  test('Save is disabled until something changes', async () => {
+  test('the Household row opens to the name, and nothing needs a Save button', async () => {
+    fakeRouter.reset('/settings', { section: 'family', open: 'hh' })
     render(wrap(<SettingsPage />))
-    const save = await screen.findByRole('button', { name: 'Save settings' })
-    expect(save).toBeDisabled()
-    await userEvent.type(screen.getByLabelText('Family name'), 'x')
-    expect(save).toBeEnabled()
+    expect(await screen.findByLabelText('Family name')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Save settings' })).toBeNull()
   })
 
-  test('an empty family name asks for one and cannot be saved', async () => {
+  test('an empty family name asks for one and is not sent', async () => {
+    fakeRouter.reset('/settings', { section: 'family', open: 'hh' })
     render(wrap(<SettingsPage />))
-    const save = await screen.findByRole('button', { name: 'Save settings' })
-    await userEvent.clear(screen.getByLabelText('Family name'))
+    await userEvent.clear(await screen.findByLabelText('Family name'))
     expect(screen.getByText('Give your family a name.')).toBeInTheDocument()
-    expect(save).toBeDisabled()
+    await userEvent.tab()
+    expect(apiMock.mock.calls.some((c) => (c as unknown[])[1] && (c[1] as { method?: string }).method === 'PATCH')).toBe(false)
   })
 })
 

@@ -6,6 +6,7 @@ import { Tooltip } from '@mantine/core'
 import { ListHeader } from '@/v2/parent/ListHeader'
 import { SegmentedControl } from '@/v2/parent/SegmentedControl'
 import type { Device, Group as DeviceGroup, Kid } from '@/v2/types'
+import { HomeNetworkRow } from './HomeNetworkRow'
 import { deviceSubline, DEVICE_TYPE_ICON, getDeviceType, type DeviceType } from './deviceMeta'
 
 interface Props {
@@ -149,6 +150,7 @@ export function DeviceList({
       <div className="p-list-items">
         {/* Devices tab */}
         <div role="tabpanel" aria-label="Devices" hidden={tab !== 'devices'}>
+          <HomeNetworkRow />
           {sorted.length === 0 ? (
             <p className="p-device-empty">No devices yet.</p>
           ) : (

@@ -13,6 +13,9 @@ import { KidAlerts } from '@/v2/kid/KidAlerts'
 import { severity } from '@/v2/components/bellRules'
 import { InboxRow } from '@/v2/components/InboxRow'
 import type { Family, Kid } from '@/v2/types'
+import { fakeRouter } from './helpers/fakeRouter'
+
+jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
 
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
@@ -152,12 +155,13 @@ describe('settings', () => {
     expect(screen.getByText(/After 2 quiet days/)).toBeTruthy()
   })
 
-  test('Streak freezes switch in Points rules', async () => {
+  test('Streak freezes switch in Points rules saves at once', async () => {
+    fakeRouter.reset('/settings', { section: 'family', open: 'pts' })
     wrap(<FamilyCard fam={fam()} />)
-    await userEvent.click(screen.getByLabelText('Streak freezes'))
-    expect(screen.getByText(/covers one missed day/)).toBeTruthy()
-    await userEvent.click(screen.getByRole('button', { name: 'Save settings' }))
+    await userEvent.click(screen.getByRole('switch', { name: 'Streak freezes' }))
     await waitFor(() => expect(sent('/family', 'PATCH')).toEqual([{ streak_freeze: false }]))
+    await userEvent.click(screen.getByRole('button', { name: 'About streak freezes' }))
+    expect(await screen.findByText(/covers one missed day/)).toBeTruthy()
   })
 })
 
