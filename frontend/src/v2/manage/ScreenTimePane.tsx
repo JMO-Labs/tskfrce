@@ -32,7 +32,7 @@ export function ScreenTimePane() {
       />
       {st.enabled ? (
         <>
-          <div className="st-grp">
+          <div>
             <div className="p-sec-h">Rules</div>
             <ScreenRules st={st} save={save} focus={focus} />
           </div>

@@ -231,6 +231,13 @@ describe('WizardFrame', () => {
       expect(within(bar).getByRole('button', { name: 'Step 5: Chores' })).toBeInTheDocument()
     })
 
+    test.each([[4, 'Phones', "Kids' phones"], [8, 'Extras', 'Optional extras']])('step %i shows the short label "%s" on phone', (n, short, full) => {
+      mq(true)
+      const { container } = wrap(<WizardFrame step={n} onNext={() => {}}><div /></WizardFrame>)
+      expect(within(steps(container)).getByText(short)).toBeInTheDocument()
+      expect(within(steps(container)).queryByText(full)).not.toBeInTheDocument()
+    })
+
     test('desktop step bar shows every label', () => {
       mq(false)
       const { container } = wrap(frame)

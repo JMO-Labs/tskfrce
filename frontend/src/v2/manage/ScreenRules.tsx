@@ -83,7 +83,7 @@ export function ScreenRules({ st, save, focus }: BodyProps & { focus: Focus }) {
   const cap = st.bank_cap ?? st.max_minutes_per_day
   const saveSummary = !st.rollover ? 'Off' : !bankable(st) ? 'Needs a max' : cap != null ? `On · up to ${cap} min` : 'On'
   return (
-    <FocusArea focus={focus} label="Rules">
+    <FocusArea focus={focus} label="Rules" grouped>
       <SummaryRow id="price" icon={ico('stars')} title="Price" summary={`${st.price} pts = 15 min`} focus={focus}>
         <PriceBody st={st} save={save} />
       </SummaryRow>

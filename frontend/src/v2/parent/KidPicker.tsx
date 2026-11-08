@@ -5,7 +5,8 @@ import { initial, nameOf } from '@/v2/manage/choreMeta'
 import { Icon } from './Icon'
 import { motionProps } from './reduceMotion'
 
-export interface PickerExtra { value: string; label: string; icon?: string }
+/** `short` replaces `label` on the pop-over trigger. */
+export interface PickerExtra { value: string; label: string; icon?: string; short?: string }
 interface Props {
   kids: Kid[]; value: string[]; onChange: (v: string[]) => void; label: string
   single?: boolean; extras?: PickerExtra[]; busy?: boolean; disabled?: boolean
@@ -23,8 +24,8 @@ export function KidPicker({ kids, value, onChange, label, single, extras = [], b
     else onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value.filter((x) => !isExtra(x)), v])
   }
   const items = [
-    ...kids.map((k) => ({ value: String(k.id), label: nameOf(k), av: initial(nameOf(k)), icon: undefined as string | undefined, extra: false })),
-    ...extras.map((x) => ({ value: x.value, label: x.label, av: undefined as string | undefined, icon: x.icon, extra: true })),
+    ...kids.map((k) => ({ value: String(k.id), label: nameOf(k), av: initial(nameOf(k)), icon: undefined as string | undefined, extra: false, short: undefined as string | undefined })),
+    ...extras.map((x) => ({ value: x.value, label: x.label, av: undefined as string | undefined, icon: x.icon, extra: true, short: x.short })),
   ]
   const btn = (i: (typeof items)[number], cls: string) => (
     <button key={i.value} type="button" className={cls} aria-pressed={value.includes(i.value)} disabled={disabled} aria-disabled={busy || undefined}
@@ -36,11 +37,11 @@ export function KidPicker({ kids, value, onChange, label, single, extras = [], b
   )
   if (variant === 'pills') return <div className="pk-pills" role="group" aria-label={label}>{items.map((i) => btn(i, 'pk-pill'))}</div>
 
-  const current = items.filter((i) => value.includes(i.value)).map((i) => i.label).join(', ') || placeholder
+  const current = items.filter((i) => value.includes(i.value)).map((i) => i.short ?? i.label).join(', ') || placeholder
   return (
     <Popover opened={open} onChange={setOpen} withinPortal position="bottom-start" returnFocus transitionProps={motionProps()}>
       <Popover.Target>
-        <button type="button" className="p-btn p-pk-pop" aria-label={label} aria-expanded={open} disabled={disabled} onClick={() => setOpen((o) => !o)}>
+        <button type="button" className="p-btn p-pk-pop" aria-label={value.length ? `${label}: ${current}` : label} aria-expanded={open} disabled={disabled} onClick={() => setOpen((o) => !o)}>
           {current}<Icon name="expand_more" size={16} />
         </button>
       </Popover.Target>

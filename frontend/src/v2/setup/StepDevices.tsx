@@ -14,7 +14,7 @@ import styles from './devices.module.css'
 const GUEST = 'guest'
 const UNSURE = 'unsure'
 const EXTRAS: PickerExtra[] = [
-  { value: GUEST, label: 'Guest (never blocked)', icon: 'shield' },
+  { value: GUEST, label: 'Guest (never blocked)', short: 'Guest', icon: 'shield' },
   { value: UNSURE, label: 'Not sure yet', icon: 'close' },
 ]
 const validRow = (id: string) => id === 'need' || id === 'done'
@@ -67,7 +67,7 @@ export function StepDevices({ kids }: { kids: Kid[] }) {
         <b>Looking for devices…{list.data ? ` ${list.data.length} found` : ''}</b>
       </div>
       {devices.length > 0 && (
-        <FocusArea focus={focus}>
+        <FocusArea focus={focus} grouped>
           <SummaryRow
             id="need"
             icon={<Icon name="warning" size={18} />}
@@ -83,6 +83,7 @@ export function StepDevices({ kids }: { kids: Kid[] }) {
           </SummaryRow>
         </FocusArea>
       )}
+      {list.data && devices.length === 0 && <p className={styles.none}>No devices yet. Unlock a device and open a web page, or skip and add them later.</p>}
       <div className={styles.tip}>
         <Icon name="info" size={20} />
         <span className={styles.grow}>Not seeing a device, or one keeps changing?</span>

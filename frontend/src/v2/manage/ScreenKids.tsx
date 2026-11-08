@@ -57,12 +57,12 @@ export function ScreenKids({ st, focus }: { st: ScreenTime; focus: Focus }) {
   useEffect(() => { if (gone) focus.close() }, [gone]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!st.kids.length) return null
   return (
-    <div className="st-grp">
+    <div>
       <div className="p-sec-h st-kh">
         Kids
         <span>bought today · resets {wallTime(st.reset_time)}</span>
       </div>
-      <FocusArea focus={focus} label="Kids">
+      <FocusArea focus={focus} label="Kids" grouped>
         {st.kids.map((k) => {
           const name = k.name ?? 'Kid'
           const cap = k.max_minutes ? k.max_minutes + k.saved : 0
