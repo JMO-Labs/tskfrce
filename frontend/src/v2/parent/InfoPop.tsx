@@ -7,8 +7,8 @@ import { motionProps } from './reduceMotion'
 const HOVER = '(hover: hover) and (pointer: fine)'
 const LEAVE_MS = 120
 
-/** "i" button with a pop-over: tap toggles, hover opens on mouse devices. */
-export function InfoPop({ label, children, target, width }: { label: string; children: ReactNode; target?: ReactElement<HTMLAttributes<HTMLElement>>; width?: number }) {
+/** "i" button with a pop-over: tap toggles, hover opens on mouse devices. Children may be a function that gets `close` (focus returns to the trigger). */
+export function InfoPop({ label, children, target, width }: { label: string; children: ReactNode | ((close: () => void) => ReactNode); target?: ReactElement<HTMLAttributes<HTMLElement>>; width?: number }) {
   const [opened, setOpened] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   useEffect(() => () => clearTimeout(timer.current), [])
@@ -53,7 +53,7 @@ export function InfoPop({ label, children, target, width }: { label: string; chi
         )}
       </Popover.Target>
       <Popover.Dropdown className="p-pop" maw="calc(100vw - 32px)" w={width} onMouseEnter={enter} onMouseLeave={leave}>
-        {children}
+        {typeof children === 'function' ? children(() => setOpened(false)) : children}
       </Popover.Dropdown>
     </Popover>
   )
