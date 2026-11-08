@@ -81,6 +81,14 @@ test('closing returns focus to the head button', () => {
   expect(document.activeElement).toBe(head(/^Trust/))
 })
 
+test('switching rows leaves focus in the newly opened body, not on the closed row head', () => {
+  render(<Page />)
+  click(head(/^Devices/))
+  click(head(/^Trust/))
+  const region = screen.getByRole('region', { name: /Trust/ })
+  expect(region).toContainElement(document.activeElement as HTMLElement)
+})
+
 test('tapping the open head closes it', () => {
   render(<Page />)
   click(head(/^Trust/))

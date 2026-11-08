@@ -74,8 +74,8 @@ test('a custom target keeps its own handlers', async () => {
 
 test('menu items get the mockup look and a 44px phone target', () => {
   const css = require('fs').readFileSync(require('path').join(__dirname, '../../src/v2/parent/declutter.css'), 'utf8')
-  expect(css).toMatch(/\.p-mi\s*{[^}]*border-radius:\s*8px/)
-  expect(css).toMatch(/\.p-mi\s*{\s*min-height:\s*44px/)
+  expect(css).toMatch(/\.p-pop \.p-mi\s*{[^}]*border-radius:\s*8px/)
+  expect(css).toMatch(/\.p-pop \.p-mi\s*{\s*min-height:\s*44px/)
 })
 
 test('reduced motion turns Popover and Menu transitions off', () => {
