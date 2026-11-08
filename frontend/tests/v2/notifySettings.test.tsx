@@ -178,3 +178,18 @@ describe('Settings › Notifications rows', () => {
     expect(await screen.findByRole('region', { name: 'Dad phone' })).toBeTruthy()
   })
 })
+
+describe('iPhones row summary', () => {
+  test('says Not set up when the box has no phone alerts', async () => {
+    apiMock.mockImplementation(async (p, i) => {
+      if (p === '/notify/places' && !i?.method) return [place]
+      if (p === '/notify/settings') return base
+      if (p === '/family') return { name: 'F', ntfy_upstream_relay: false }
+      if (p === '/kids') return [{ id: 7, full_name: 'Mia', username: 'mia', avatar: null, has_pin: false, age_group: 'kid' }]
+      if (p === '/kids/7/push') return { enabled: false, upstream: false, server: '', topic: '', link: '', qr_svg: '' }
+      return {}
+    })
+    wrap(<NotificationsPane />)
+    await waitFor(() => expect(screen.getByRole('button', { name: /iPhones/ })).toHaveTextContent('Not set up'))
+  })
+})
