@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, test } from '@jest/globals'
 import type { Mock } from 'jest-mock'
 import type { ReactNode } from 'react'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MantineProvider } from '@mantine/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -196,6 +196,18 @@ describe('custom badges, unsaved edits', () => {
     await userEvent.click(screen.getByRole('button', { name: /Kindness/, expanded: true }))
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
     expect(fakeRouter.query.pick).toBe('1')
+  })
+
+  test('browser Back out of an edited badge asks instead of dropping the edits', async () => {
+    show({})
+    await userEvent.click(await screen.findByRole('button', { name: /Brave try/ })) // pushes ?pick=
+    await waitFor(() => expect(fakeRouter.query.pick).toBe('2'))
+    await userEvent.type(await screen.findByLabelText('Badge name'), 'X')
+    const go = jest.spyOn(window.history, 'go').mockImplementation(() => {})
+    act(() => { expect(fakeRouter.popHandler({ as: '/kids?section=badges&item=custom' })).toBe(false) })
+    go.mockRestore()
+    expect(await screen.findByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument()
+    expect(fakeRouter.query.pick).toBe('2')
   })
 
   test('Esc on an edited row asks instead of closing', async () => {
