@@ -36,7 +36,7 @@ describe('WizardFrame', () => {
         <div>Content</div>
       </WizardFrame>,
     )
-    expect(screen.getByText(/Step 2 of 8/)).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: /Step 2 of 8/ })).toBeInTheDocument()
   })
 
   test('tracks maxStepReached when stepping forward', () => {
@@ -67,7 +67,7 @@ describe('WizardFrame', () => {
     )
 
     // Should show step 3 of 7
-    expect(screen.getByText(/Step 3 of 8/)).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: /Step 3 of 8/ })).toBeInTheDocument()
   })
 
   test('steps clickable and mark earlier steps done', () => {
@@ -227,7 +227,7 @@ describe('WizardFrame', () => {
       const { container } = wrap(frame)
       const bar = steps(container)
       expect(within(bar).getByText('Devices')).toBeInTheDocument()
-      for (const t of ['You', 'Family', 'Kids', "Kids' phones", 'Chores', 'Hours', 'Optional extras']) expect(within(bar).queryByText(t)).not.toBeInTheDocument()
+      for (const t of ['Welcome', 'Family', 'Kids', "Kids' phones", 'Chores', 'Hours', 'Optional extras']) expect(within(bar).queryByText(t)).not.toBeInTheDocument()
       expect(within(bar).getByRole('button', { name: 'Step 5: Chores' })).toBeInTheDocument()
     })
 
@@ -241,7 +241,7 @@ describe('WizardFrame', () => {
     test('desktop step bar shows every label', () => {
       mq(false)
       const { container } = wrap(frame)
-      for (const t of ['You', 'Family', 'Kids', 'Devices', 'Hours']) expect(within(steps(container)).getByText(t)).toBeInTheDocument()
+      for (const t of ['Welcome', 'Family', 'Kids', 'Devices', 'Hours']) expect(within(steps(container)).getByText(t)).toBeInTheDocument()
     })
   })
 })

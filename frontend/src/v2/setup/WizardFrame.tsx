@@ -1,20 +1,19 @@
-import { Icon } from '@/v2/parent/Icon'
 import type { ReactNode } from 'react'
-import { Fragment, useState, useEffect, useRef } from 'react'
-import { Button, Group } from '@mantine/core'
+import { Fragment, useState } from 'react'
+import { Button } from '@mantine/core'
 import { useMediaQuery } from '@mantine/hooks'
 import { useLook } from '../parent/useLook'
 import styles from './wizard.module.css'
 
 const STEPS = [
-  { num: 1, title: 'You', sub: 'Parent account' },
-  { num: 2, title: 'Family', sub: 'Name, time zone' },
-  { num: 3, title: 'Kids', sub: 'Names, PINs' },
-  { num: 4, title: "Kids' phones", short: 'Phones', sub: 'Scan to sign in', opt: true },
-  { num: 5, title: 'Chores', sub: 'Pick starters' },
-  { num: 6, title: 'Devices', sub: 'Who owns what' },
-  { num: 7, title: 'Hours', sub: 'Bedtime, school nights' },
-  { num: 8, title: 'Optional extras', short: 'Extras', sub: 'Trust, bedtime', opt: true },
+  { num: 1, title: 'Welcome' },
+  { num: 2, title: 'Family' },
+  { num: 3, title: 'Kids' },
+  { num: 4, title: "Kids' phones", short: 'Phones', opt: true },
+  { num: 5, title: 'Chores' },
+  { num: 6, title: 'Devices' },
+  { num: 7, title: 'Hours' },
+  { num: 8, title: 'Optional extras', short: 'Extras', opt: true },
 ]
 
 interface Props {
@@ -38,75 +37,52 @@ export function WizardFrame({
   step, children, title, subtitle, onBack, onNext, nextLabel = 'Next', onSkip, onStepClick, busy, done, note
 }: Props) {
   useLook('parent')
-  const phone = useMediaQuery('(max-width: 767px)') // phone: numbers and ticks, plus the current label only
+  const phone = useMediaQuery('(max-width: 767px)') // phone: dots and ticks, plus the current label only
   const [maxStepReached, setMaxStepReached] = useState(step)
 
   if (step > maxStepReached) setMaxStepReached(step) // adjust during render, not in an effect
 
-  // 768-900px: the step strip scrolls sideways; keep the active step in view
-  const stepsRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const el = stepsRef.current?.querySelector<HTMLElement>('[aria-current="step"]')
-    const strip = stepsRef.current
-    if (el && strip && strip.scrollWidth > strip.clientWidth) strip.scrollLeft = el.offsetLeft - (strip.clientWidth - el.offsetWidth) / 2
-  }, [step])
-
-  const estimatedMinLeft = Math.max(1, STEPS.length + 1 - step)
-
   return (
     <div className={styles.page}>
-    <main className={styles.wizard}>
-      {/* Left panel */}
-      <aside className={styles.side}>
+      {/* top bar: wordmark and the 8 steps (mockup declutter-v2 .wiz) */}
+      <header className={styles.wiz}>
         <div className={styles.wm}>
           <i>@</i>
           <span>t@sk4ce setup</span>
         </div>
-        <div className={styles.steps} ref={stepsRef}>
+        <div className={styles.steps} role="group" aria-label={step > STEPS.length ? 'All steps done' : `Step ${step} of ${STEPS.length}: ${STEPS[step - 1].title}`}>
           {STEPS.map((s, i) => {
             const isDone = i + 1 < step
             const isActive = i + 1 === step
             const canOpen = i + 1 <= Math.min(maxStepReached, step + 1) // the page only goes back or one ahead
             return (
               <Fragment key={s.num}>
-              {i > 0 && <span className={styles.ln} aria-hidden="true" />}
-              <div
-                data-step={s.num}
-                className={`${styles.st} ${isDone ? styles.done : ''} ${isActive ? styles.on : ''}`}
-                onClick={() => canOpen && onStepClick?.(i + 1)}
-                onKeyDown={(e) => {
-                  if (canOpen && (e.key === 'Enter' || e.key === ' ')) {
-                    e.preventDefault()
-                    onStepClick?.(i + 1)
-                  }
-                }}
-                role={canOpen ? 'button' : undefined}
-                tabIndex={canOpen ? 0 : -1}
-                aria-current={isActive ? 'step' : undefined}
-                aria-label={phone && !isActive ? `Step ${s.num}: ${s.title}` : undefined}
-              >
-                <span className={styles.dot}>{isDone ? <span className="ms" aria-hidden="true">check</span> : s.num}</span>
-                {(!phone || isActive) && (
-                  <div>
-                    {phone ? s.short ?? s.title : s.title}
-                    {!phone && <small>{s.sub}</small>}
-                  </div>
-                )}
-                {s.opt && !phone && <span className={styles.opt}>Optional</span>}
-              </div>
+                {i > 0 && <span className={styles.ln} aria-hidden="true" />}
+                <div
+                  data-step={s.num}
+                  className={`${styles.st} ${isDone ? styles.done : ''} ${isActive ? styles.on : ''}`}
+                  onClick={() => canOpen && onStepClick?.(i + 1)}
+                  onKeyDown={(e) => {
+                    if (canOpen && (e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault()
+                      onStepClick?.(i + 1)
+                    }
+                  }}
+                  role={canOpen ? 'button' : undefined}
+                  tabIndex={canOpen ? 0 : -1}
+                  aria-current={isActive ? 'step' : undefined}
+                  aria-label={phone && !isActive ? `Step ${s.num}: ${s.title}` : undefined}
+                >
+                  <span className={styles.dot}>{isDone ? <span className="ms" aria-hidden="true">check</span> : s.num}</span>
+                  {(!phone || isActive) && <div>{s.short ?? s.title}</div>}
+                </div>
               </Fragment>
             )
           })}
         </div>
-        <div className={styles.prog}>
-          {step > STEPS.length ? 'All steps done' : `Step ${step} of ${STEPS.length} · about ${estimatedMinLeft} min left`}
-          <div className={styles.pb}>
-            <i style={{ width: `${(Math.min(step, STEPS.length) / STEPS.length) * 100}%` }} />
-          </div>
-        </div>
-      </aside>
+      </header>
 
-      {/* Right panel */}
+      <main className={styles.wizard}>
       <form
         className={styles.main}
         noValidate
@@ -115,43 +91,46 @@ export function WizardFrame({
           if (!busy) onNext()
         }}
       >
-        {title && (
-          <>
-            {step <= STEPS.length && <div className={styles.eyebrow}>Step {step} of {STEPS.length}{STEPS[step - 1]?.opt ? ' · optional' : ''}</div>}
-            {done && (
-              <div className={styles.tile} aria-hidden="true">
-                <span className="ms">celebration</span>
-              </div>
+        <div className={styles.body}>
+          <div className={styles.wrap}>
+            {title && (
+              <>
+                {step <= STEPS.length && <div className={styles.eyebrow}>Step {step} of {STEPS.length}{STEPS[step - 1]?.opt ? ' · optional' : ''}</div>}
+                {done && (
+                  <div className={styles.tile} aria-hidden="true">
+                    <span className="ms">celebration</span>
+                  </div>
+                )}
+                <h1>{title}</h1>
+                {subtitle && <div className={styles.s}>{subtitle}</div>}
+              </>
             )}
-            <h1>{title}</h1>
-            {subtitle && <div className={styles.s}>{subtitle}</div>}
-          </>
-        )}
-        {children}
+            {children}
+          </div>
+        </div>
         {!done && (
-        <Group mt="lg" justify="space-between" wrap="wrap" className={styles.nav}>
-          {onBack ? (
-            <Button variant="subtle" onClick={onBack} leftSection={<span className="ms" aria-hidden="true">arrow_back</span>}>
-              Back
-            </Button>
-          ) : (
-            <span />
-          )}
-          <Group ml="auto">
-            {note && <span className={styles.picked}>{note}</span>}
-            {onSkip && (
-              <Button variant="subtle" onClick={onSkip}>
-                Skip
+          <div className={styles.foot}>
+            <div className={styles.footIn}>
+              {onBack ? (
+                <Button variant="default" onClick={onBack} leftSection={<span className="ms" aria-hidden="true">arrow_back</span>}>
+                  Back
+                </Button>
+              ) : null}
+              <span className={styles.grow} />
+              {note && <span className={styles.picked}>{note}</span>}
+              {onSkip && (
+                <Button variant="subtle" className={styles.skip} onClick={onSkip}>
+                  Skip
+                </Button>
+              )}
+              <Button type="submit" variant="filled" loading={busy} rightSection={<span className="ms" aria-hidden="true">{nextLabel === 'Finish' ? 'check' : 'arrow_forward'}</span>}>
+                {nextLabel}
               </Button>
-            )}
-            <Button type="submit" variant="filled" loading={busy} rightSection={<span className="ms" aria-hidden="true">{nextLabel === 'Finish' ? 'check' : 'arrow_forward'}</span>}>
-              {nextLabel}
-            </Button>
-          </Group>
-        </Group>
+            </div>
+          </div>
         )}
       </form>
-    </main>
+      </main>
     </div>
   )
 }
