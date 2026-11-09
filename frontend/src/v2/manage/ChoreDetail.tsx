@@ -151,7 +151,7 @@ export function ChoreDetail({ kids, chore, onSelect, onGuard }: Props) {
       (picked !== undefined && picked !== chore.type_id) ||
       !sameSteps(steps, stepsOf(chore))
     : !!(title.trim() || steps.length || picked !== undefined)))
-  const { guard, sheet } = useDiscardGuard(dirty, () => drafts.delete(key)) // Discard drops the draft before leaving
+  const { guard, sheet } = useDiscardGuard(dirty, () => drafts.delete(key), { inRecord: 'allow' }) // Discard drops the draft before leaving
   useEffect(() => {
     onGuard?.(guard)
     return () => onGuard?.(null)

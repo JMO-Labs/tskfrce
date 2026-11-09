@@ -169,6 +169,24 @@ test.describe('unsaved-changes guard', () => {
     }
   })
 
+  test('chore editor: Back from an open row closes it without a prompt and keeps the edit', async ({ page }) => {
+    const title = `Nav back ${tag}`
+    const chore = await (await api.post('/api/proxy/chores/', { data: { title, points: 5 } })).json()
+    try {
+      await page.goto(`/kids?section=chores&item=${chore.id}`)
+      await page.locator('[data-focus-head="basics"]').click()
+      await expect(page).toHaveURL(/open=basics/)
+      await page.getByLabel('Chore name', { exact: true }).fill(`${title} edited`)
+      await page.goBack()
+      await expect(page).not.toHaveURL(/open=/)
+      await expect(discardSheet(page)).toHaveCount(0)
+      await expect(page.getByRole('region', { name: 'Unsaved changes' })).toBeVisible()
+      await noNavErrors()
+    } finally {
+      await api.delete(`/api/proxy/chores/${chore.id}`)
+    }
+  })
+
   test.describe('desktop list beside the editor', () => {
     test.use({ viewport: { width: 1280, height: 800 } })
     test('picking another chore asks once, Discard brings the original back', async ({ page }) => {
@@ -205,7 +223,7 @@ test.describe('unsaved-changes guard', () => {
         .toBe(before + 1)
       await page.reload()
       await expect(page).toHaveURL(/screen/)
-      await page.locator('[data-focus-head="price"]').filter({ hasText: `${before + 1} pts` }).waitFor()
+      await expect(page.locator('[data-focus-head="price"]').filter({ hasText: `${before + 1} pts` })).toBeVisible()
     } finally {
       await api.patch('/api/proxy/family', { data: { screen_time_price: before } })
     }

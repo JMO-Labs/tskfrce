@@ -210,6 +210,18 @@ describe('calm, then focus', () => {
     expect((calls('PATCH').find(([p]) => p === '/assignments/504')![1]!.body as { kid_ids: number[] }).kid_ids).toEqual([7])
   })
 
+  test('closing a pushed row in a dirty chore needs no prompt and keeps the edits', async () => {
+    await editor()
+    await userEvent.click(head('basics'))
+    await waitFor(() => expect(fakeRouter.query.open).toBe('basics'))
+    await userEvent.type(screen.getByLabelText('Chore name'), ' x')
+    expect(screen.getByRole('region', { name: 'Unsaved changes' })).toBeInTheDocument()
+    await userEvent.click(head('basics'))
+    await waitFor(() => expect(fakeRouter.query.open).toBeUndefined())
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.getByRole('region', { name: 'Unsaved changes' })).toBeInTheDocument()
+  })
+
   test('Options holds Due by and two switches with (i) help', async () => {
     await editor({ open: 'opts' })
     expect(screen.getByLabelText(/Due by/)).toHaveValue('18:00')

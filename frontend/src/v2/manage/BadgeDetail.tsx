@@ -46,7 +46,7 @@ export function BadgeDetail({ badge, kids, tiers, onSelect, onGuard }: Props) {
     ? name.trim() !== badge.name || icon !== badge.icon || description.trim() !== badge.description
     : !!(name.trim() || icon || description.trim()))
   const discard = () => { setName(badge?.name ?? ''); setIcon(badge?.icon ?? ''); setDescription(badge?.description ?? '') }
-  const { guard, sheet } = useDiscardGuard(dirty, discard)
+  const { guard, sheet } = useDiscardGuard(dirty, discard, { inRecord: 'allow' })
   useEffect(() => { onGuard(guard); return () => onGuard(null) }, [onGuard, guard])
 
   // Esc closes the row: ask first when there are edits (capture phase, so it runs before the list's own Esc handler)
