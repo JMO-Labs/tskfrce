@@ -7,7 +7,7 @@ import { toastFail } from '../notify'
 import { multText, HappyHourButton } from '../today/HappyHourButton'
 import { Switch } from './RewardDetail'
 
-/** Rewards → Happy hour: defaults and the two automatic happy hours. Each change saves on its own. */
+/** Rewards → Happy Hour: defaults and the two automatic Happy Hours. Each change saves on its own. */
 export function HappyHourPane() {
   const q = useFamily()
   const patch = usePatchFamily()
@@ -19,7 +19,7 @@ export function HappyHourPane() {
     <div className="pk-detail">
       <header className="pk-head">
         <div className="pk-head-t">
-          <h2>Happy hour</h2>
+          <h2>Happy Hour</h2>
         </div>
         <div className="pk-actions">
           <HappyHourButton />
@@ -30,7 +30,7 @@ export function HappyHourPane() {
           <Icon name="bolt" size={18} className="rw-h3i" />
           Defaults
         </h3>
-        <span className="pk-hint">Chores finished during a happy hour earn extra base points.</span>
+        <span className="pk-hint">Chores finished during a Happy Hour earn extra base points.</span>
         <span className="pk-label">Default multiplier</span>
         <SegmentedControl
           label="Default multiplier"
@@ -51,10 +51,10 @@ export function HappyHourPane() {
           <Icon name="auto_awesome" size={18} className="rw-h3i" />
           Automatic
         </h3>
-        <Switch id="hh-weekly" label="Surprise happy hour once a week" on={fam.hh_weekly_surprise} onChange={(v) => save({ hh_weekly_surprise: v })} />
+        <Switch id="hh-weekly" label="Surprise Happy Hour once a week" on={fam.hh_weekly_surprise} onChange={(v) => save({ hh_weekly_surprise: v })} />
         <span className="pk-hint pk-hint-tight">We&apos;ll pick a random weekday afternoon.</span>
         <Switch id="hh-auto" label="Auto boost when things go quiet" on={fam.hh_auto_boost} onChange={(v) => save({ hh_auto_boost: v })} />
-        <span className="pk-hint pk-hint-tight">After 2 quiet days, we start a 1-hour happy hour for that kid and let you know.</span>
+        <span className="pk-hint pk-hint-tight">After 2 quiet days, we start a 1-hour Happy Hour for that kid and let you know.</span>
       </section>
     </div>
   )

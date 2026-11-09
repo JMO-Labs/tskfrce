@@ -60,7 +60,7 @@ export function TodayPage() {
   const calm = !kidFocus.open && !areaFocus.open
   const needsOpen = areaFocus.isOpen('needs')
   return (
-    <ParentShell title="Today" actions={<MoreMenu label="More for Today" items={[{ label: 'Start happy hour', icon: 'bolt', onClick: () => setHhOpen(true) }]} />}>
+    <ParentShell title="Today" actions={<MoreMenu label="More for Today" items={[{ label: 'Start Happy Hour', icon: 'bolt', onClick: () => setHhOpen(true) }]} />}>
       <HappyHourSheet opened={hhOpen} onClose={() => setHhOpen(false)} allKids />
       {isError && !data && <ErrorPanel kind="unreachable" error={error} onRetry={() => refetch()} />}
       {!data && !isError && <Skeleton rows={4} />}

@@ -77,7 +77,7 @@ test.each([
   [30, 60, '×3 points for an hour gets chores moving.'],
   [20, 90, 'Double points for 90 minutes gets chores moving.'],
   [20, 60, 'Double points for an hour gets chores moving.'],
-])('Happy hour card copy uses the family defaults (x10 %i, %i min)', async (mult, minutes, text) => {
+])('Happy Hour card copy uses the family defaults (x10 %i, %i min)', async (mult, minutes, text) => {
   localStorage.setItem('tskfrce.try', JSON.stringify({ day: '2000-01-01', key: 'try.celebrate' }))
   s.dismissed = ['try.celebrate']
   s.fam = { ...fam, hh_default_mult_x10: mult, hh_default_minutes: minutes }
@@ -138,7 +138,7 @@ test('hidden when the feature is already off', async () => {
   expect(screen.queryByRole('region', { name: 'Try this' })).toBeNull()
 })
 
-test('no happy hour card while one is running', async () => {
+test('no Happy Hour card while one is running', async () => {
   s.dismissed = ['try.celebrate']
   s.active = [{ id: 1 }]
   s.fam = { hh_auto_boost: false, streak_freeze: false }
@@ -155,7 +155,7 @@ test('quiet nudge shows only with auto boost off and a quiet kid', async () => {
   s.fam.hh_auto_boost = false
   s.quiet = true
   show()
-  expect(await screen.findByText('Mia has had a quiet couple of days. Start a happy hour?')).toBeInTheDocument()
+  expect(await screen.findByText('Mia has had a quiet couple of days. Start a Happy Hour?')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Start for Mia' })).toBeInTheDocument()
 })
 

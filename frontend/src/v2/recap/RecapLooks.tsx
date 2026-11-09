@@ -32,7 +32,7 @@ export function RecapLooks({ looks }: { looks: Look[] }) {
                 <small>{t.sub}</small>
               </span>
               {l.flag.action === 'happy_hour' ? (
-                <HappyHourButton kidId={l.kid.id} label="Happy hour" accent />
+                <HappyHourButton kidId={l.kid.id} label="Happy Hour" accent />
               ) : (
                 <Link className="p-btn" href={`/kids?section=kids&kid=${l.kid.id}${l.flag.action === 'trust' ? '#trust' : ''}`}>
                   Open

@@ -96,7 +96,7 @@ describe('calm', () => {
     expect(pts).toHaveFocus()
   })
 
-  test('no happy hour button on the kid page', () => {
+  test('no Happy Hour button on the kid page', () => {
     view()
     expect(screen.queryByRole('button', { name: /happy hour/i })).toBeNull()
   })

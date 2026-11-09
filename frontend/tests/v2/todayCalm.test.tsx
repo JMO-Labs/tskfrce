@@ -220,15 +220,15 @@ describe('calm Today', () => {
     expect(await screen.findByText('Hello widget')).toBeInTheDocument()
   })
 
-  test('Start happy hour lives in the header … menu', async () => {
+  test('Start Happy Hour lives in the header … menu', async () => {
     wrap()
     await userEvent.click(await screen.findByRole('button', { name: 'More for Today' }))
-    await userEvent.click(await screen.findByRole('menuitem', { name: 'Start happy hour' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Start Happy Hour' }))
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Start happy hour' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Start Happy Hour' })).toBeNull()
   })
 
-  test('Happy hour chip only while running, Stop in its pop-over', async () => {
+  test('Happy Hour chip only while running, Stop in its pop-over', async () => {
     const { unmount } = wrap()
     await screen.findByRole('button', { name: MAYA })
     expect(screen.queryByRole('button', { name: /Happy hour/i })).toBeNull()
@@ -240,7 +240,7 @@ describe('calm Today', () => {
     expect(await screen.findByText(/everyone/i)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Stop now' }))
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/happy-hour/7/stop', { method: 'POST' }))
-    expect(screen.queryByRole('button', { name: 'Start happy hour' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Start Happy Hour' })).toBeNull()
   })
 
   test('old ?tab=needs link becomes ?focus=needs', async () => {
