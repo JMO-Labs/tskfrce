@@ -57,7 +57,7 @@
 }
 [data-look='parent'] .pk-card[data-selected='true'] .pk-tile,
 [data-look='parent'] .pk-tile-lg { background: var(--p-acc); color: #292928; }
-[data-look='parent'] .pk-tile-lg { width: 58px; height: 58px; border-radius: 18px; }
+[data-look='parent'] .pk-tile-lg { width: 52px; height: 52px; border-radius: 14px; }
 
 /* letter avatars, overlapped in a row on chore cards */
 [data-look='parent'] .pk-avs { display: flex; flex: none; }
@@ -78,7 +78,7 @@
 [data-look='parent'] .pk-card[data-selected='true'] .pk-av { border-color: var(--p-card); }
 [data-look='parent'] .pk-av[data-size='lg'] { width: 36px; height: 36px; font-size: 14px; border: 0; }
 [data-look='parent'] .pk-card[data-selected='true'] .pk-av[data-size='lg'] { background: var(--p-acc); color: #292928; }
-[data-look='parent'] .pk-av[data-size='xl'] { width: 58px; height: 58px; font-size: 24px; border: 0; background: var(--p-acc); color: #292928; }
+[data-look='parent'] .pk-av[data-size='xl'] { width: 56px; height: 56px; font-size: 22px; border: 0; background: var(--p-acc); color: #292928; }
 
 /* ── detail ──────────────────────────────────────────────────────────────── */
 [data-look='parent'] .pk-detail { display: flex; flex-direction: column; gap: 16px; min-width: 0; padding-bottom: 72px; }
@@ -134,8 +134,8 @@
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--p-line);
-  border-radius: 12px;
-  background: var(--p-soft);
+  border-radius: 10px;
+  background: var(--p-bg);
   color: var(--p-ink);
   font: 500 14px var(--font-parent), system-ui, sans-serif;
 }
@@ -146,7 +146,7 @@
 
 [data-look='parent'] .pk-switch { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--p-line); font-size: 13.5px; color: var(--p-ink); }
 /* mockup 02 .sw: 38x22 line track + card knob; on = ink track + accent knob (one switch app-wide) */
-[data-look='parent'] .pk-switch button {
+[data-look='parent'] :is(.pk-switch button, .ch-sw) {
   position: relative;
   flex: none;
   width: 38px;
@@ -157,7 +157,8 @@
   background: var(--p-line);
   cursor: pointer;
 }
-[data-look='parent'] .pk-switch button::after {
+[data-look='parent'] :is(.pk-switch button, .ch-sw)::before { content: ''; position: absolute; inset: -11px -3px; } /* 44 px touch target */
+[data-look='parent'] :is(.pk-switch button, .ch-sw)::after {
   content: '';
   position: absolute;
   top: 3px;
@@ -168,9 +169,9 @@
   background: var(--p-card);
   transition: transform var(--dur-1) var(--ease-out);
 }
-[data-look='parent'] .pk-switch button[aria-checked='true'] { background: var(--p-ink); }
-[data-look='parent'] .pk-switch button[aria-checked='true']::after { background: var(--p-acc); transform: translateX(16px); }
-[data-look='parent'] .pk-switch button:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
+[data-look='parent'] :is(.pk-switch button, .ch-sw)[aria-checked='true'] { background: var(--p-ink); }
+[data-look='parent'] :is(.pk-switch button, .ch-sw)[aria-checked='true']::after { background: var(--p-acc); transform: translateX(16px); }
+[data-look='parent'] :is(.pk-switch button, .ch-sw):focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 
 /* steps */
 [data-look='parent'] .pk-steps { display: flex; flex-direction: column; gap: 6px; }

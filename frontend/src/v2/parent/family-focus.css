@@ -9,7 +9,6 @@
 [data-look='parent'] .fam-setr > .p-info-btn { order: 1; margin: -4px 0 -4px -6px; }
 [data-look='parent'] .fam-setr > :not(.ch-lb):not(.p-info-btn) { order: 2; margin-left: auto; }
 [data-look='parent'] .fam-setr > .ch-w { width: 104px; }
-[data-look='parent'] .fam-rows .pk-input { background: var(--p-bg); }
 @media (max-width: 767px) {
   [data-look='parent'] .fam-rows .pk-input { min-height: 44px; }
 }
