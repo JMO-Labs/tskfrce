@@ -8,7 +8,7 @@ import { Icon } from '@/v2/parent/Icon'
 import { InfoPop } from '@/v2/parent/InfoPop'
 import { useDiscardGuard } from '@/v2/parent/SaveBar'
 import { FocusArea } from '@/v2/parent/SummaryRow'
-import { useFocusParam, type Focus } from '@/v2/parent/useFocusParam'
+import { OVERLAY, useFocusParam, type Focus } from '@/v2/parent/useFocusParam'
 import type { Kid } from '@/v2/types'
 import { ConfirmDelete } from './ConfirmDelete'
 import { ChoresRow, DevicesRow, SettingsRow, TrustRow } from './KidRows'
@@ -69,7 +69,7 @@ export function KidDetail({ kid, onDeleted, guardRef }: { kid: Kid; onDeleted: (
   useEffect(() => {
     if (!dirty) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || e.defaultPrevented || document.querySelector('[role="dialog"], .mantine-Popover-dropdown, .mantine-Menu-dropdown')) return
+      if (e.key !== 'Escape' || e.defaultPrevented || document.querySelector(OVERLAY)) return
       e.preventDefault()
       guard(edit.close)
     }

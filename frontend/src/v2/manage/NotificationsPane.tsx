@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useResetState } from '@/v2/hooks/useResetState'
 import { Switch, TextInput } from '@mantine/core'
 import { TimeInput } from '@mantine/dates'
@@ -11,7 +11,7 @@ import { InfoPop } from '@/v2/parent/InfoPop'
 import { FocusArea, SummaryRow } from '@/v2/parent/SummaryRow'
 import { useFocusParam } from '@/v2/parent/useFocusParam'
 import { EmptyState, ErrorPanel, Skeleton } from '@/v2/parent/states'
-import { toastFail, toastOk } from '@/v2/notify'
+import { useSaveQueue } from '@/v2/hooks/useSaveQueue'
 import { IphoneBody, IphoneHelp, iphoneSummary, useBoxPush } from './IphoneRows'
 import { PlaceDetail, PlaceSwitch } from './PlaceDetail'
 import { PlaceForm } from './PlaceForm'
@@ -77,14 +77,9 @@ export function NotificationsPane() {
   const patch = usePatchNotifySettings()
   const [adding, setAdding] = useState(false)
   const focus = useFocusParam('open', { valid: (id) => /^place-\d+$/.test(id) || ['quiet', 'iphones', 'address'].includes(id) })
-  // one save at a time, in click order: a change made while another is saving waits, it is never dropped
-  const queue = useRef<Promise<unknown>>(Promise.resolve())
+  const queue = useSaveQueue()
   /** resolves false when the box refused it */
-  const save: Save = (p) => {
-    const run = queue.current.then(() => patch.mutateAsync(p)).then(() => (toastOk('Saved'), true), (e) => (toastFail(e), false))
-    queue.current = run
-    return run
-  }
+  const save: Save = (p) => queue(() => patch.mutateAsync(p))
   // a deleted place leaves a stale ?open=place-N: close it
   const gone = focus.open?.startsWith('place-') && !!places.data && !places.data.some((p) => `place-${p.id}` === focus.open)
   useEffect(() => { if (gone) focus.close() }, [gone]) // eslint-disable-line react-hooks/exhaustive-deps
