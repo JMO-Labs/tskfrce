@@ -86,6 +86,10 @@ describe('Needs you', () => {
     expect(screen.getByText('via Demo')).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'From an integration' }))
     expect(await screen.findByText('From an integration: Demo checked it off')).toBeInTheDocument()
+    // Close the pop-over and wait for it to unmount before opening the menu: left open, its click-outside close and
+    // its timer-driven focus return (Mantine transition) race the menu opening, which under load closed it again.
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByText('From an integration: Demo checked it off')).toBeNull())
     await userEvent.click(screen.getByRole('button', { name: /More for Dishes/ }))
     expect(await screen.findByRole('menuitem', { name: 'Send back' })).toBeInTheDocument()
   })
