@@ -13,6 +13,8 @@ const SC = {
   'focus-avatar': { path: '/setup', setupStep: 3, step: async (p) => { await p.getByRole('button', { name: /Pick an avatar/ }).click(); await p.waitForTimeout(300); await p.keyboard.press('Tab'); await p.keyboard.press('Tab') } },
   'focus-wizard': { path: '/setup', setupStep: 6, step: async (p) => { await p.keyboard.press('Tab'); await p.keyboard.press('Tab'); await p.keyboard.press('Tab') } },
   'savebar': { path: '/kids?section=badges&item=custom&pick=new', step: async (p) => { await p.getByLabel('Badge name').fill('Kindness'); await p.waitForTimeout(400) } },
+  'today-needs': { path: '/?focus=needs' },
+  'inbox': { path: '/notifications' },
   'chips-kid': { path: '/kids?section=kids&item=3' },
   'chips-chore': { path: '/kids?section=chores&item=400' },
   'back-settings': { path: '/settings?section=family' },

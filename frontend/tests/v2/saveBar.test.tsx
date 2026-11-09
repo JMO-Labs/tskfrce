@@ -182,3 +182,18 @@ test('release() lets a navigation through without the Discard prompt (record del
   expect(() => fakeRouter.events.emit('routeChangeStart', '/kids')).not.toThrow()
   expect(screen.queryByText('Discard changes?')).toBeNull()
 })
+
+test('Keep returns focus to the field that was focused before the form turned dirty, not the clicked link', async () => {
+  const user = userEvent.setup()
+  function Form({ dirty }: { dirty: boolean }) {
+    const { sheet } = useDiscardGuard(dirty)
+    return <><input aria-label="field" /><a href="#x">away</a>{sheet}</>
+  }
+  const { rerender } = wrap(<Form dirty={false} />)
+  await user.click(screen.getByLabelText('field'))
+  rerender(<MantineProvider env="test"><Form dirty /></MantineProvider>)
+  await user.click(screen.getByRole('link', { name: 'away' }))
+  act(() => { try { fakeRouter.events.emit('routeChangeStart', '/elsewhere') } catch { /* cancelled */ } })
+  await user.click(await screen.findByRole('button', { name: 'Keep' }))
+  await waitFor(() => expect(screen.getByLabelText('field')).toHaveFocus())
+})

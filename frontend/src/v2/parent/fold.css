@@ -5,7 +5,7 @@
 }
 [data-look='parent'] .p-fold > summary::-webkit-details-marker { display: none; }
 [data-look='parent'] .p-fold > summary:hover { color: var(--p-ink); background: var(--p-soft); }
-[data-look='parent'] .p-fold > summary:focus-visible { outline: 2px solid var(--p-acc); outline-offset: 2px; }
+[data-look='parent'] .p-fold > summary:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 [data-look='parent'] .p-fold-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 [data-look='parent'] .p-fold-n { font-size: 12px; padding: 1px 8px; border-radius: 10px; background: var(--p-soft); }
 [data-look='parent'] .p-fold-car { transition: transform 0.15s; }
