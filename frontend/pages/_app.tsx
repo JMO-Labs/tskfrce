@@ -64,6 +64,7 @@ import '../src/v2/parent/today-focus.css';
 import '../src/v2/parent/kid-focus.css';
 import '../src/v2/parent/chore-focus.css';
 import '../src/v2/parent/family-focus.css';
+import '../src/v2/parent/touch.css';
 
 // Suppress WebSocket connection errors in console since HTTP notifications work as fallback
 if (typeof window !== 'undefined') {
