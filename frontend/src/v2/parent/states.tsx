@@ -74,6 +74,40 @@ export function Skeleton({ rows = 3 }: { rows?: number }) {
   )
 }
 
+/** Loading placeholder shaped like grouped summary rows: same head height, so nothing jumps when the rows arrive. */
+export function RowsSkeleton({ rows = 3 }: { rows?: number }) {
+  return (
+    <div className="p-srows p-srows-sk" data-grp="" role="status" aria-label="Loading">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="p-srow">
+          <div className="p-srow-head" aria-hidden="true">
+            <span className="p-srow-l1">
+              <i className="p-srow-sk p-srow-sk-ic" />
+              <b>
+                <i className="p-srow-sk p-srow-sk-t" />
+              </b>
+              <i className="p-srow-sk" />
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** A failed load inside a pane or an open row: one calm line and a way to try again. */
+export function LoadFail({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+  return (
+    <div className="p-loadfail" role="alert">
+      <span>{errorText(error)}</span>
+      <button type="button" className="p-btn" onClick={onRetry}>
+        <Icon name="refresh" size={16} />
+        Try again
+      </button>
+    </div>
+  )
+}
+
 export type ErrorKind = 'unreachable' | 'crash' | 'notfound' | 'expired'
 
 const ERROR_COPY: Record<ErrorKind, { icon: string; title: string; body: string; tone: EmptyStateProps['tone'] }> = {

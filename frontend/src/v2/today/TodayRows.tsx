@@ -10,8 +10,11 @@ import type { Focus } from '../parent/useFocusParam'
 
 /** "Devices · N online": who is on the network now, tucked into one row. */
 export function DevicesRow({ focus }: { focus: Focus }) {
-  const devices = useDevices().data
+  const q = useDevices()
+  const devices = q.data
   const kids = useToday().data?.kids ?? []
+  // a quiet row of the same height while devices load, so the row arriving does not push the page
+  if (q.isPending) return <SummaryRow id="devices" icon={<Icon name="devices" size={18} />} title="Devices" summary="" loading focus={focus}>{null}</SummaryRow>
   if (!devices?.length) return null
   const online = devices.filter((d) => d.seen_now).length
   return (

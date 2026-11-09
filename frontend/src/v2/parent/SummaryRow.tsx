@@ -14,6 +14,8 @@ export interface SummaryRowProps {
   /** (i) button shown right after the title, outside the toggle button (a button cannot sit inside a button) */
   info?: ReactNode
   focus: Focus
+  /** the summary is still loading: a quiet bar of the same height shows instead, so the row never changes size */
+  loading?: boolean
   /** body, rendered only when open */
   children: ReactNode
 }
@@ -21,7 +23,7 @@ export interface SummaryRowProps {
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"])'
 const SWIPE_PX = 60
 
-export function SummaryRow({ id, icon, title, summary, line2, aside, info, focus, children }: SummaryRowProps) {
+export function SummaryRow({ id, icon, title, summary, line2, aside, info, focus, loading, children }: SummaryRowProps) {
   const open = focus.isOpen(id)
   const body = useRef<HTMLDivElement>(null)
   const startY = useRef<number | null>(null)
@@ -53,6 +55,7 @@ export function SummaryRow({ id, icon, title, summary, line2, aside, info, focus
           type="button"
           className="p-srow-head"
           aria-expanded={open}
+          aria-busy={loading || undefined}
           aria-controls={open ? `srow-${id}-body` : undefined}
           data-focus-head={id}
           onClick={() => focus.toggle(id)}
@@ -62,7 +65,7 @@ export function SummaryRow({ id, icon, title, summary, line2, aside, info, focus
           <span className="p-srow-l1">
             {icon}
             <b id={`srow-${id}-title`}>{title}</b>
-            <span className="p-srow-val">{summary}</span>
+            <span className="p-srow-val">{loading ? <i className="p-srow-sk" aria-hidden="true" /> : summary}</span>
             <Icon name="chevron_right" size={18} className="p-srow-chev" />
           </span>
         </button>

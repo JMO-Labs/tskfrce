@@ -12,19 +12,23 @@ export function HappyHourPane() {
   const q = useFamily()
   const patch = usePatchFamily()
   const fam = q.data
-  if (q.isPending) return <Skeleton />
-  if (q.isError || !fam) return <ErrorPanel kind="unreachable" error={q.error} onRetry={() => q.refetch()} />
+  const head = (
+    <header className="pk-head">
+      <div className="pk-head-t">
+        <h2>Happy Hour</h2>
+      </div>
+      <div className="pk-actions">
+        <HappyHourButton />
+      </div>
+    </header>
+  )
+  // the title stays put while the rest loads or fails, so nothing jumps
+  if (q.isPending) return <div className="pk-detail">{head}<Skeleton rows={2} /></div>
+  if (q.isError || !fam) return <div className="pk-detail">{head}<ErrorPanel kind="unreachable" error={q.error} onRetry={() => q.refetch()} /></div>
   const save = (p: Partial<Family>) => patch.mutate(p, { onError: toastFail })
   return (
     <div className="pk-detail">
-      <header className="pk-head">
-        <div className="pk-head-t">
-          <h2>Happy Hour</h2>
-        </div>
-        <div className="pk-actions">
-          <HappyHourButton />
-        </div>
-      </header>
+      {head}
       <section className="pk-panel" aria-label="Defaults">
         <h3>
           <Icon name="bolt" size={18} className="rw-h3i" />

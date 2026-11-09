@@ -1,6 +1,6 @@
 import { forwardRef } from 'react'
 import type { ButtonHTMLAttributes } from 'react'
-import { Skeleton } from '@/v2/parent/states'
+import { LoadFail, Skeleton } from '@/v2/parent/states'
 import type { Device } from '@/v2/types'
 import { useDeviceActivity } from '@/v2/hooks/useDeviceActivity'
 import { slotRuns } from './activityText'
@@ -29,11 +29,13 @@ export function useDailyHours(device: Device): string | null {
 
 /** "Online by hour": one 24 h bar per day (online / locked), newest first. */
 export function OnlineWeek({ device }: { device: Device }) {
-  const { data, isLoading } = useDeviceActivity(device.id)
+  const { data, isLoading, isError, error, refetch } = useDeviceActivity(device.id)
   const days = data?.days ?? []
   return (
     <div className="ow-pop" role="region" aria-label="Online this week">
-      {isLoading ? (
+      {!data && isError ? (
+        <LoadFail error={error} onRetry={() => void refetch()} />
+      ) : isLoading ? (
         <Skeleton rows={1} />
       ) : (
         <>

@@ -82,9 +82,19 @@ const happy = { active: [{ id: 1, starts_at: iso(15), ends_at: fut(45), multipli
 const runDetail = (id) => ({ id, title: 'Homework', points: 30, state: 'needs_you', due_time: null, kid_ids: [4], steps: [{ id: 1, title: 'Math sheet', done: true, due_time: null, due_at: null, after_previous: false, locked: false }, { id: 2, title: 'Reading', done: true, due_time: null, due_at: null, after_previous: true, locked: false }], due_at: null, type: types[2], sent_back: true, note: null, can_move: true, attempt: 2, photos: [] })
 
 export const S = { setup: { needed: false }, step: null }
+// Fake a state per path: FAKE="mode=regex;mode=regex" with mode = hang (never answers: the loading state), err (400 with a message), net (the box is unreachable), empty (an empty list or a family with nothing in it). First matching rule wins.
+const FAKE = (process.env.FAKE || '').split(';').filter(Boolean).map((x) => { const [m, ...re] = x.split('='); return [m, new RegExp(re.join('='))] })
+const EMPTY_OBJ = (p) => (p === '/today' ? { ...today(), kids: [], needs_you: [], pending_approvals: 0, new_devices: [], try_trust_kid: null } : null)
 export function route(r, misses) {
   const u = new URL(r.request().url()), p = u.pathname.replace('/api/proxy', '').replace(/\/$/, '') || '/'
   const j = (json) => r.fulfill({ json })
+  const fake = r.request().method() === 'GET' ? FAKE.find(([, re]) => re.test(p)) : undefined
+  if (fake) {
+    if (fake[0] === 'hang') return new Promise(() => {})
+    if (fake[0] === 'net') return r.abort('failed')
+    if (fake[0] === 'err') return r.fulfill({ status: 400, json: { detail: "Couldn't load this right now." } })
+    if (fake[0] === 'empty') return j(EMPTY_OBJ(p) ?? [])
+  }
   if (r.request().method() !== 'GET' && p !== '/auth/login') return j({})
   const M = {
     '/auth/login': { ...user, access_token: jwt, refresh_token: jwt, expires_in: 36000 }, '/auth/me': user, '/setup': S.setup, '/setup/step': { step: S.step },

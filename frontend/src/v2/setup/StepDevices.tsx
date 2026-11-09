@@ -5,6 +5,7 @@ import { Icon } from '../parent/Icon'
 import { InfoPop } from '../parent/InfoPop'
 import { KidPicker, type PickerExtra } from '../parent/KidPicker'
 import { FocusArea, SummaryRow } from '../parent/SummaryRow'
+import { LoadFail, RowsSkeleton } from '../parent/states'
 import { useFocusParam } from '../parent/useFocusParam'
 import { DEVICE_TYPE_ICON, getDeviceType } from '../manage/deviceMeta'
 import { isPrivateMac } from '../manage/privateMac'
@@ -61,11 +62,12 @@ export function StepDevices({ kids }: { kids: Kid[] }) {
   const names = need.slice(0, 2).map((d) => d.name).join(', ')
   return (
     <>
-      {list.error && <p role="alert">Couldn&apos;t load devices. {list.error.message}</p>}
+      {list.isError && !list.data && <LoadFail error={list.error} onRetry={() => void list.refetch()} />}
       <div className={styles.head}>
         <span className={styles.pulse} aria-hidden="true" />
         <b>Looking for devices…{list.data ? ` ${list.data.length} found` : ''}</b>
       </div>
+      {list.isPending && <RowsSkeleton rows={2} />}
       {devices.length > 0 && (
         <FocusArea focus={focus} grouped>
           <SummaryRow

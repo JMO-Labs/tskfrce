@@ -8,6 +8,7 @@ import { useSelfApproved } from '@/v2/hooks/useTrust'
 import { Chip } from '@/v2/parent/Chip'
 import { Icon } from '@/v2/parent/Icon'
 import { SummaryRow } from '@/v2/parent/SummaryRow'
+import { LoadFail } from '@/v2/parent/states'
 import type { Focus } from '@/v2/parent/useFocusParam'
 import { threadGlyph } from '@/v2/today/choreIcon'
 import type { Kid } from '@/v2/types'
@@ -25,21 +26,27 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 const CELEBRATE = { full: 'Full', small: 'Small', off: 'Off' } as const
 
 export function TrustRow({ kid, focus }: RowProps) {
-  const n = useSelfApproved(kid.id).data?.length
-  const summary = !kid.trust_mode ? 'Off' : n === undefined ? '' : n === 0 ? 'None approved yet' : `${n} approved on their own`
+  const q = useSelfApproved(kid.id)
+  const n = q.data?.length
+  const loading = !!kid.trust_mode && q.isPending
+  const summary = !kid.trust_mode ? 'Off' : q.isError ? "Couldn't load" : n === undefined ? '' : n === 0 ? 'None approved yet' : `${n} approved on their own`
   return (
-    <SummaryRow id="trust" icon={ico('verified_user')} title="Trust" summary={summary} line2={<TrustLine kid={kid} />} focus={focus}>
+    <SummaryRow id="trust" icon={ico('verified_user')} title="Trust" summary={summary} loading={loading} line2={<TrustLine kid={kid} />} focus={focus}>
+      {kid.trust_mode && q.isError && <LoadFail error={q.error} onRetry={() => void q.refetch()} />}
       <TrustBody kid={kid} />
     </SummaryRow>
   )
 }
 
 export function DevicesRow({ kid, focus }: RowProps) {
-  const devices = (useDevices().data ?? []).filter((d) => d.owner_ids.includes(kid.id))
+  const q = useDevices()
+  const devices = (q.data ?? []).filter((d) => d.owner_ids.includes(kid.id))
   const locked = devices.filter((d) => !d.exempt && !d.online).length
-  const summary = devices.length === 0 ? 'No devices yet' : locked === 0 ? `${plural(devices.length, 'device')} · all open` : `${devices.length - locked} open · ${locked} locked`
+  const summary = q.isError ? "Couldn't load" : devices.length === 0 ? 'No devices yet' : locked === 0 ? `${plural(devices.length, 'device')} · all open` : `${devices.length - locked} open · ${locked} locked`
   return (
-    <SummaryRow id="devices" icon={ico('devices')} title="Devices" summary={summary} focus={focus}>
+    <SummaryRow id="devices" icon={ico('devices')} title="Devices" summary={summary} loading={q.isPending} focus={focus}>
+      {q.isError && <LoadFail error={q.error} onRetry={() => void q.refetch()} />}
+      {q.isSuccess && devices.length === 0 && <p className="pk-hint">Give a device an owner from Devices.</p>}
       <div className="kd-list">
         {devices.map((d) => (
           <div key={d.id} className="kd-prow">
@@ -59,14 +66,16 @@ export function DevicesRow({ kid, focus }: RowProps) {
 }
 
 export function ChoresRow({ kid, focus }: RowProps) {
-  const chores = (useLibrary().data ?? []).filter((c) => c.assignments.some((a) => a.active && a.kid_ids.includes(kid.id)))
+  const lib = useLibrary()
+  const chores = (lib.data ?? []).filter((c) => c.assignments.some((a) => a.active && a.kid_ids.includes(kid.id)))
   const types = useChoreTypes().data
   const glyphs = new Map((Array.isArray(types) ? types : []).map((ty) => [ty.id, ty.glyph]))
   const mine = chores.flatMap((c) => c.assignments.filter((a) => a.active && a.kid_ids.includes(kid.id)))
-  const summary = chores.length === 0 ? 'No chores yet' : mine.every((a) => a.repeat.type === 'daily') ? `${chores.length} daily` : plural(chores.length, 'chore')
+  const summary = lib.isError ? "Couldn't load" : chores.length === 0 ? 'No chores yet' : mine.every((a) => a.repeat.type === 'daily') ? `${chores.length} daily` : plural(chores.length, 'chore')
   return (
-    <SummaryRow id="chores" icon={ico('checklist')} title="Chores" summary={summary} focus={focus}>
-      {chores.length === 0 && <p className="pk-hint">No chores assigned yet. Add one from Chores.</p>}
+    <SummaryRow id="chores" icon={ico('checklist')} title="Chores" summary={summary} loading={lib.isPending} focus={focus}>
+      {lib.isError && <LoadFail error={lib.error} onRetry={() => void lib.refetch()} />}
+      {lib.isSuccess && chores.length === 0 && <p className="pk-hint">No chores assigned yet. Add one from Chores.</p>}
       {chores.length > 0 && (
         <div className="kd-list">
           {chores.map((c) => {

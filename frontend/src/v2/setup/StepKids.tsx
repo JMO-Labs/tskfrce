@@ -3,6 +3,7 @@ import { Button, Popover, TextInput } from '@mantine/core'
 import { useMutation } from '@tanstack/react-query'
 import { api } from '../api'
 import { useSingleFlight } from '../hooks/useSingleFlight'
+import { errorText } from '../errorText'
 import { Icon } from '../parent/Icon'
 import { InfoPop } from '../parent/InfoPop'
 import { motionProps } from '../parent/reduceMotion'
@@ -81,7 +82,7 @@ export function StepKids({ kids, name, onName, draftError, onAdd }: Props) {
             onChange={(e) => setPin(e.currentTarget.value)} onKeyDown={enterAdds} error={pinBad} />
         </div>
         {pinBad && <p role="alert" className={styles.pinerr}>Use exactly 4 digits.</p>}
-        {add.error && <p role="alert">Couldn&apos;t add that kid. {add.error.message}</p>}
+        {add.error && <p role="alert">Couldn&apos;t add that kid. {errorText(add.error)}</p>}
         <div className={styles.actbar}>
           <Button variant="filled" leftSection={<Icon name="add" size={14} />} disabled={!name.trim() || pinBad} loading={add.isPending} onClick={addKid}>Add kid</Button>
         </div>

@@ -3,7 +3,7 @@ import { BackLink } from '@/v2/parent/ListDetail'
 import { useMediaQuery } from '@mantine/hooks'
 import { useRouter } from 'next/router'
 import { ParentShell } from '@/v2/parent/ParentShell'
-import { ErrorPanel, Skeleton } from '@/v2/parent/states'
+import { ErrorPanel, RowsSkeleton, Skeleton } from '@/v2/parent/states'
 import { RequireParent } from '@/v2/components/RequireParent'
 import { useFamily, usePatchFamily } from '@/v2/hooks/useFamily'
 import { FamilyCard, GifsCard } from './FamilyCards'
@@ -50,7 +50,8 @@ function SettingsBody() {
             <ErrorPanel kind="unreachable" error={family.error} onRetry={() => family.refetch()} />
           </>
         )}
-        {family.isPending && ['family', 'look', 'gifs'].includes(section) && <Skeleton />}
+        {family.isPending && section === 'family' && <div className="fam-rows"><RowsSkeleton rows={3} /></div>}
+        {family.isPending && ['look', 'gifs'].includes(section) && <Skeleton />}
         {section === 'family' && family.data && <FamilyCard fam={family.data} />}
         {section === 'look' && family.data && (
           <AppearancePane
