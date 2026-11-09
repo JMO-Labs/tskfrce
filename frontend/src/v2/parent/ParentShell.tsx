@@ -22,8 +22,11 @@ export function ParentShell({
   children,
   actions,
   phone,
+  back,
 }: {
   title: string
+  /** phone back-link label above a detail when it is not the title (e.g. "Rewards") */
+  back?: string
   /** phone only: shown instead of the list (e.g. Today's avatar strip above the day) */
   phone?: ReactNode
   list?: ReactNode
@@ -79,7 +82,7 @@ export function ParentShell({
           )}
           <BlockerBanner />
           <Freshness />
-          <ListDetail list={list} detail={children} listTitle={title} phone={phone} />
+          <ListDetail list={list} detail={children} listTitle={title} back={back} phone={phone} />
         </div>
         {small && <TabBar />}
         {dock}
