@@ -1,6 +1,6 @@
 {
   "name": "task4ce-frontend",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "private": true,
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0 --port 3000",
