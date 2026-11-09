@@ -1,4 +1,8 @@
 import '@testing-library/jest-dom/jest-globals'
+import { configure } from '@testing-library/react'
+
+// findBy/waitFor under a loaded CI box: the default 1 s is too tight for Mantine menus and dialogs
+configure({ asyncUtilTimeout: 4000 })
 import fs from 'fs'
 import path from 'path'
 
