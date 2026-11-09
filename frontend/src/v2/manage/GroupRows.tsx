@@ -63,10 +63,15 @@ export function SettingsBody({ saver: { save, once }, group, pricing, nameFocus 
   const busy = save.isPending || undefined
   const base = { id: group.id, name: group.name, device_ids: group.device_ids }
 
+  /** true when a rename was started */
   const rename = () => {
     const n = name.trim()
     if (!n) setName(group.name)
-    else if (n !== group.name) void once(() => toasted(save.mutateAsync({ ...base, name: n }), 'Renamed')).then((ran) => { if (!ran) retry.current.name = true })
+    else if (n !== group.name) {
+      void once(() => toasted(save.mutateAsync({ ...base, name: n }), 'Renamed')).then((ran) => { if (!ran) retry.current.name = true })
+      return true
+    }
+    return false
   }
   const setExtra = (extra: { icon?: string; chore_lock?: boolean }) =>
     once(() => toasted(save.mutateAsync({ ...base, icon: group.icon, chore_lock: group.chore_lock, ...extra }), 'Saved'))
@@ -83,7 +88,7 @@ export function SettingsBody({ saver: { save, once }, group, pricing, nameFocus 
     if (save.isPending || !(retry.current.name || retry.current.price)) return
     const { name: n, price: p } = retry.current
     retry.current = { name: false, price: false }
-    if (n) { rename(); retry.current.price = p } // the price waits for the rename to land
+    if (n && rename()) retry.current.price = p // the price waits for the rename to land
     else if (p) savePrice()
   }, [save.isPending, group]) // eslint-disable-line react-hooks/exhaustive-deps
 
