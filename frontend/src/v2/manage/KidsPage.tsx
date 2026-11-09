@@ -26,6 +26,8 @@ import { HappyHourPane } from './HappyHourPane'
 import { ScreenTimePane } from './ScreenTimePane'
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
+/** phone back-link label per pane (the mockups name the pane, not the page) */
+const BACK: Record<Section, string> = { chores: 'Chores', kids: 'Kids & chores', rewards: 'Rewards', badges: 'Badges' }
 const FIXED: Partial<Record<Section, string>> = { rewards: 'requests', badges: 'all' }
 
 function KidsBody() {
@@ -116,6 +118,7 @@ function KidsBody() {
     </Head>
     <ParentShell
       title="Kids & chores"
+      back={BACK[section]}
       list={
         <>
           <KidsTabs

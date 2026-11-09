@@ -85,6 +85,7 @@ function DevicesBody() {
   return (
     <ParentShell
       title="Devices"
+      back={tab === 'groups' ? 'Groups' : 'Devices'}
       list={
         devices.isPending ? (
           <Skeleton />

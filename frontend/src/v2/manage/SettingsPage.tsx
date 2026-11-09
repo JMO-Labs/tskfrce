@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import Link from 'next/link'
+import { BackLink } from '@/v2/parent/ListDetail'
 import { useMediaQuery } from '@mantine/hooks'
 import { useRouter } from 'next/router'
 import { ParentShell } from '@/v2/parent/ParentShell'
@@ -41,7 +41,7 @@ function SettingsBody() {
     <ParentShell
       title="Settings"
       list={<SettingsList sections={sections} section={small && !valid ? undefined : section} bare={small} />}
-      phone={valid ? <Link href="/settings" className="p-back-link">← Settings</Link> : undefined}
+      phone={valid ? <BackLink href="/settings">Settings</BackLink> : undefined}
     >
       <div className="ps-detail">
         {family.isError && ['family', 'look', 'gifs'].includes(section) && (
