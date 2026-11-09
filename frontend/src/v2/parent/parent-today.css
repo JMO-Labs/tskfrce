@@ -3,10 +3,7 @@
  * Ported from mockup 01-parent-today.html (classes .mh .prog .box .chore .row .ck .ty .t .pts).
  */
 
-[data-look='parent'] .pt-head-acts { display: flex; flex-wrap: wrap; gap: 8px; }
-
 /* progress line: ink on track in light, accent on track in dark (spec 2.4) */
-[data-look='parent'] .pt-prog { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; }
 [data-look='parent'] .pt-bar { flex: 1; height: 8px; border-radius: 8px; background: var(--p-track); overflow: hidden; }
 [data-look='parent'] .pt-bar i { display: block; height: 100%; background: var(--p-meter); transition: width var(--dur-2) var(--ease-out); }
 
