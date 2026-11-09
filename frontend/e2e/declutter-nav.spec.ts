@@ -97,7 +97,6 @@ test.describe('unsaved-changes guard', () => {
     const name = page.getByLabel('Name', { exact: true })
     await name.fill(`Renamed ${tag}`)
     // the guard registers its Back handler a render or two after the typing; a person is never that quick
-    await expect(page.getByText('Unsaved changes', { exact: true })).toBeVisible()
     await expect(page.getByRole('region', { name: 'Unsaved changes' })).toBeVisible() // the guard registers with the dirty state
     return name
   }
@@ -127,7 +126,6 @@ test.describe('unsaved-changes guard', () => {
     await page.getByRole('button', { name: 'Edit', exact: true }).click()
     const name = page.getByLabel('Name', { exact: true })
     await name.fill(`Renamed ${tag}`)
-    await expect(page.getByText('Unsaved changes', { exact: true })).toBeVisible()
     await expect(page.getByRole('region', { name: 'Unsaved changes' })).toBeVisible()
 
     await page.goBack()

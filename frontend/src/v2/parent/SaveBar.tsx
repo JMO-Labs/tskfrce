@@ -5,13 +5,15 @@ import { ConfirmDelete } from '@/v2/manage/ConfirmDelete'
 import { Icon } from './Icon'
 
 /** Sticky "Unsaved changes" bar for multi-field forms. Renders nothing until something changed. */
-export function SaveBar({ dirty, saving, onSave, onCancel, saveLabel = 'Save', disabled, note }: {
+export function SaveBar({ dirty, saving, onSave, onCancel, saveLabel = 'Save', disabled, note, inline }: {
   dirty: boolean; saving: boolean; onSave: () => void; onCancel: () => void; saveLabel?: string; disabled?: boolean; note?: ReactNode
+  /** plain Cancel / Save row at the end of a list (mockup kid-edit): not sticky, no note */
+  inline?: boolean
 }) {
   if (!dirty) return null
   return (
-    <div className="p-savebar" role="region" aria-label="Unsaved changes">
-      <span className="p-savebar-note" title={typeof note === 'string' ? note : undefined}>{note ?? 'Unsaved changes'}</span>
+    <div className="p-savebar" data-inline={inline || undefined} role="region" aria-label="Unsaved changes">
+      {!inline && <span className="p-savebar-note" title={typeof note === 'string' ? note : undefined}>{note ?? 'Unsaved changes'}</span>}
       <button type="button" className="p-btn" onClick={onCancel}>Cancel</button>
       <button type="button" className="p-btn" data-variant="accent" onClick={onSave} disabled={disabled} aria-busy={saving} data-loading={saving || undefined}>
         <Icon name="check" size={16} />{saveLabel}
