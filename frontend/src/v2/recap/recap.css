@@ -34,9 +34,14 @@
 [data-look='parent'] .v2-look-t b { font-size: 14px; text-wrap: balance; }
 [data-look='parent'] .v2-look-t small { color: var(--p-sub); font-size: 12.5px; }
 [data-look='parent'] .v2-look .p-btn { padding: 7px 12px; flex: none; }
+[data-look='parent'] .v2-look-act { flex: none; display: flex; align-items: center; gap: 6px; }
 @media (max-width: 767px) {
   [data-look='parent'] .rc-week h2 { font-size: 22px; }
   [data-look='parent'] .v2-sp { display: none; }
+  /* the action drops under the title (under it, not beside it: a running Happy Hour chip is wide) */
+  [data-look='parent'] .v2-look { flex-wrap: wrap; }
+  [data-look='parent'] .v2-look-act { flex: 1 1 100%; flex-wrap: wrap; padding-left: 48px; }
+  [data-look='parent'] .v2-look-act .p-chip { flex: 0 1 auto; min-width: 0; max-width: 100%; flex-wrap: wrap; column-gap: 4px; text-transform: none; letter-spacing: 0; font-size: 12px; } /* sentence case: the long running chip reads as a line, not as spaced capitals */
   [data-look='parent'] .v2-kid-t { flex: 1; }
   [data-look='parent'] .v2-kid-t small { white-space: nowrap; }
 }
