@@ -112,7 +112,7 @@ export function WizardFrame({
           <div className={styles.foot}>
             <div className={styles.footIn}>
               {onBack ? (
-                <Button variant="default" onClick={onBack} leftSection={<span className="ms" aria-hidden="true">arrow_back</span>}>
+                <Button variant="default" onClick={onBack} leftSection={<span className="ms" aria-hidden="true">chevron_left</span>}>
                   Back
                 </Button>
               ) : null}
@@ -123,7 +123,7 @@ export function WizardFrame({
                   Skip
                 </Button>
               )}
-              <Button type="submit" variant="filled" loading={busy} rightSection={<span className="ms" aria-hidden="true">{nextLabel === 'Finish' ? 'check' : 'arrow_forward'}</span>}>
+              <Button type="submit" variant="filled" loading={busy} rightSection={<span className="ms" aria-hidden="true">{nextLabel === 'Finish' ? 'check' : 'chevron_right'}</span>}>
                 {nextLabel}
               </Button>
             </div>
