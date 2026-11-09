@@ -42,11 +42,11 @@ export function DeviceNetwork({ device, timeZone }: { device: Device; timeZone?:
         {isPrivateMac(device.mac) && (
           <div className="pk-kv">
             <span className="dv-lbl">
-              Private MAC
-              <InfoPop label="About private MAC">
+              Random Wi-Fi address
+              <InfoPop label="About random Wi-Fi addresses">
                 <p className="ch-pop-p">
-                  This device can switch to a new random address, which would look like a new device. Turn off &ldquo;Private Wi-Fi Address&rdquo; for your
-                  home network on it so the lock keeps working.
+                  This device uses a private MAC: a made-up Wi-Fi address that can change, so it may look like a new device. Turn off &ldquo;Private Wi-Fi
+                  Address&rdquo; for your home network on it so the lock keeps working.
                 </p>
               </InfoPop>
             </span>

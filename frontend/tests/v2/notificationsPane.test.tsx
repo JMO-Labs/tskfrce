@@ -129,12 +129,22 @@ describe('NotificationsPane', () => {
     expect(await screen.findByText('No places yet')).toBeTruthy()
   })
 
+  test('the address field says "Place address"; its (i) explains Apprise in a line or two', async () => {
+    serve([])
+    wrap(<NotificationsPane />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Add a place' }))
+    expect(await screen.findByLabelText('Place address')).toBeTruthy()
+    expect(screen.queryByText('Apprise address')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'About place addresses' }))
+    expect((await screen.findByText(/Apprise, a free tool/)).textContent).toMatch(/Signal, Discord, email/)
+  })
+
   test('add a place posts name and url', async () => {
     serve([])
     wrap(<NotificationsPane />)
     await userEvent.click(await screen.findByRole('button', { name: 'Add a place' }))
     await userEvent.type(await screen.findByLabelText('Name'), 'Family Discord')
-    await userEvent.type(screen.getByLabelText('Apprise address'), 'json://127.0.0.1:9/nowhere')
+    await userEvent.type(screen.getByLabelText('Place address'), 'json://127.0.0.1:9/nowhere')
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(calls('/notify/places', 'POST')).toHaveLength(1))
     expect(calls('/notify/places', 'POST')[0][1]?.body).toEqual({ name: 'Family Discord', url: 'json://127.0.0.1:9/nowhere' })

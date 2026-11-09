@@ -20,7 +20,7 @@ test('apprise place: add, mask, test, chip, quiet hours, bell, delete', async ({
     await page.goto('/settings?section=notifications')
     await page.getByRole('button', { name: 'Add a place' }).first().click()
     await page.getByLabel('Name', { exact: true }).fill(name)
-    await page.getByLabel('Apprise address').fill('json://127.0.0.1:9/nowhere')
+    await page.getByLabel('Place address', { exact: true }).fill('json://127.0.0.1:9/nowhere')
     await page.getByRole('button', { name: 'Save', exact: true }).click()
 
     // places are calm rows now: open this one (the card is its body)
