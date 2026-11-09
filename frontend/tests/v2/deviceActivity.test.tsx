@@ -60,6 +60,15 @@ beforeEach(() => {
 })
 
 describe('device Activity', () => {
+  test('a failed load says so and Try again loads it (never a placeholder forever)', async () => {
+    apiMock.mockImplementation(async () => { throw new Error("Couldn't load this right now.") })
+    show()
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load this right now.")
+    apiMock.mockImplementation(async (path) => (path.endsWith('/activity') ? data : {}))
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByText('Bypass attempts · 7d')).toBeInTheDocument()
+  })
+
   test('KPI strip shows the 7-day counts, bypass in red when > 0', async () => {
     show()
     const kpi = await screen.findByText('Bypass attempts · 7d')

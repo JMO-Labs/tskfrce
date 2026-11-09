@@ -75,8 +75,15 @@ describe('Screen time pane', () => {
   test('header: sub text and the on switch', async () => {
     serve()
     wrap()
-    expect(await screen.findByText('Kids spend points on extra minutes. Changes save as you go.')).toBeInTheDocument()
-    expect(screen.getByRole('switch', { name: /kids can buy extra minutes/i })).toBeChecked()
+    expect(await screen.findByRole('switch', { name: /kids can buy extra minutes/i })).toBeChecked()
+    expect(screen.getByText('Kids spend points on extra minutes. Changes save as you go.')).toBeInTheDocument()
+  })
+
+  test('while loading the title stays and the rows wait as placeholders', async () => {
+    apiMock.mockImplementation(() => new Promise(() => {}))
+    wrap()
+    expect(screen.getByRole('heading', { name: 'Screen time' })).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument()
   })
 
   test('off: only the header switch and a hint', async () => {

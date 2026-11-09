@@ -1,6 +1,7 @@
 import { Icon } from '@/v2/parent/Icon'
 import { Chip } from '@/v2/parent/Chip'
 import { FocusArea, SummaryRow } from '@/v2/parent/SummaryRow'
+import { LoadFail } from '@/v2/parent/states'
 import { useFocusParam } from '@/v2/parent/useFocusParam'
 import { useBlocker } from '@/v2/hooks/useDevices'
 import { useFamily, usePatchFamily } from '@/v2/hooks/useFamily'
@@ -11,11 +12,21 @@ import { ago } from './settingsMeta'
 /** Family-wide network settings as one calm row at the top of the Devices list (opens in place). */
 export function HomeNetworkRow() {
   const focus = useFocusParam('net', { group: ['open'], valid: (id) => id === 'net' })
-  const fam = useFamily().data
+  const famQ = useFamily()
+  const fam = famQ.data
   const box = useBlocker().data
   const patch = usePatchFamily()
   const queue = useSaveQueue()
-  if (!fam) return null
+  if (!fam) {
+    // same row, quiet while loading; if it cannot load, say so and offer a retry (never an empty gap)
+    return (
+      <div className="fam-rows"><FocusArea focus={focus} label="Home network" grouped>
+        <SummaryRow id="net" icon={<Icon name="wifi" size={18} />} title="Home network" summary={famQ.isError ? "Couldn't load" : ''} loading={famQ.isPending} focus={focus}>
+          {famQ.isError && <LoadFail error={famQ.error} onRetry={() => void famQ.refetch()} />}
+        </SummaryRow>
+      </FocusArea></div>
+    )
+  }
   const blocked = fam.new_devices_blocked
   const line = `${blocked ? 'New devices blocked' : 'New devices allowed'}${box ? ` · Box ${box.online ? 'healthy' : 'offline'}` : ''}`
   return (

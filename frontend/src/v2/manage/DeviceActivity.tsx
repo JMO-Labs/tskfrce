@@ -5,7 +5,7 @@ import { ActionRow } from '@/v2/parent/ActionRow'
 import type { ChipTone } from '@/v2/parent/Chip'
 import { Icon } from '@/v2/parent/Icon'
 import type { MenuItem } from '@/v2/parent/MoreMenu'
-import { EmptyState, Skeleton } from '@/v2/parent/states'
+import { EmptyState, LoadFail, Skeleton } from '@/v2/parent/states'
 import type { Device, DeviceActivity as Activity, DeviceEvent, EventKind, Kid } from '@/v2/types'
 import { eventText, whenLabel } from './activityText'
 import { nameOf } from './choreMeta'
@@ -41,12 +41,13 @@ interface Props {
 
 /** Activity row: 7-day KPIs, attempts and alerts with actions, time online per day, lock history. */
 export function DeviceActivity({ device, kids, timeZone }: Props) {
-  const { data, isLoading } = useDeviceActivity(device.id)
+  const { data, isLoading, isError, error, refetch } = useDeviceActivity(device.id)
   const [filter, setFilter] = useState('all')
   const markOk = useMarkOk()
   const merge = useMergeDevice()
   const lockKid = useLockKid()
   const now = useNow()
+  if (!data && isError) return <LoadFail error={error} onRetry={() => void refetch()} />
   if (isLoading || !data) return <Skeleton rows={3} />
 
   const owner = kids.find((k) => k.id === device.owner_ids[0])
