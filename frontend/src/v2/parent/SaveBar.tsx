@@ -11,7 +11,7 @@ export function SaveBar({ dirty, saving, onSave, onCancel, saveLabel = 'Save', d
   if (!dirty) return null
   return (
     <div className="p-savebar" role="region" aria-label="Unsaved changes">
-      <span className="p-savebar-note">{note ?? 'Unsaved changes'}</span>
+      <span className="p-savebar-note" title={typeof note === 'string' ? note : undefined}>{note ?? 'Unsaved changes'}</span>
       <button type="button" className="p-btn" onClick={onCancel}>Cancel</button>
       <button type="button" className="p-btn" data-variant="accent" onClick={onSave} disabled={disabled} aria-busy={saving} data-loading={saving || undefined}>
         <Icon name="check" size={16} />{saveLabel}
@@ -57,7 +57,7 @@ export function useDiscardGuard(dirty: boolean, onDiscard?: () => void): { guard
       if (leaving.current) return
       const here = new URL(r().asPath, 'http://x'), to = new URL(url, 'http://x')
       if (here.pathname === to.pathname && ['section', 'item'].every((k) => here.searchParams.get(k) === to.searchParams.get(k))) return
-      setPending(() => () => { void r().push(url, undefined, opts?.shallow ? { shallow: true } : undefined) }) // the event carries only `shallow`, so replace/scroll of the original call can't be known
+      setPending(() => () => { void (opts?.shallow ? r().push(url, undefined, { shallow: true }) : r().push(url)) }) // the event carries only `shallow`, so replace/scroll of the original call can't be known
       r().events?.emit('routeChangeError')
       // Next treats `cancelled` as a quiet abort, but <Link> never catches the rejected push: the dev overlay shows
       // any Error (and blocks the page), so throw a plain object and keep it out of the console.
