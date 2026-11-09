@@ -13,7 +13,7 @@ export function NeedsStrip({ items, day, focus }: { items: NeedsItem[]; day?: st
   return (
     <div className="pt-needs" data-open={open ? '' : undefined}>
       <button type="button" className="pt-needs-head" aria-expanded={open} aria-controls={open ? 'needs-body' : undefined} data-focus-head="needs" onClick={() => focus.toggle('needs')}>
-        <Icon name="hourglass_top" size={18} />
+        <Icon name="hourglass_empty" size={18} />
         <span className="pt-needs-t">Needs you{items.length > 0 && ` · ${items.length}`}</span>
         <Icon name="chevron_right" size={18} className="pt-needs-chev" />
       </button>

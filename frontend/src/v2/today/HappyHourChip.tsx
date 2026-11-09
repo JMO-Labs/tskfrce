@@ -20,7 +20,7 @@ function Running({ h }: { h: HappyHour }) {
       target={
         <button type="button" className="p-pill" data-tone="acc">
           <Icon name="bolt" size={14} />
-          Happy hour {multText(h.mult_x10)} · {left} min
+          Happy Hour {multText(h.mult_x10)} · {left} min
         </button>
       }
     >

@@ -147,6 +147,7 @@
 [data-look='parent'] .pn-evs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: -4px; }
 [data-look='parent'] .pn-ev { font: 600 12px var(--font-parent), system-ui, sans-serif; border: 1px solid var(--p-line); border-radius: 999px; padding: 5px 11px; background: var(--p-soft); color: var(--p-sub); cursor: pointer; }
 [data-look='parent'] .pn-ev[aria-pressed='true'] { background: var(--p-ink); color: var(--p-card); border-color: var(--p-ink); }
+@media (max-width: 767px) { [data-look='parent'] .pn-ev { min-height: 44px; padding: 0 14px; } }
 [data-look='parent'] .pn-ev:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 [data-look='parent'] .pn-warnline { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--p-ambink); }
 [data-look='parent'] .pn-kv { padding: 8px 0; font-size: 13px; border-top: 1px solid var(--p-line); }

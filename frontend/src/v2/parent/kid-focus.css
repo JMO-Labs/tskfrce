@@ -35,7 +35,8 @@
 [data-look='parent'] .kd-next { display: flex; align-items: center; gap: 10px; }
 [data-look='parent'] .kd-next-t { flex: 1; min-width: 0; font-weight: 600; font-size: 14px; }
 [data-look='parent'] .kd-next-t small { display: block; font-weight: 400; font-size: 12px; color: var(--p-sub); }
-[data-look='parent'] .kd-list .p-arow-acts .p-btn:not(.p-ib) { padding: 7px 12px; min-height: 0; font-size: 13px; }
+[data-look='parent'] .kd-list .p-arow-acts .p-btn:not(.p-ib) { padding: 7px 12px; font-size: 13px; }
+@media (min-width: 768px) { [data-look='parent'] .kd-list .p-arow-acts .p-btn:not(.p-ib) { min-height: 0; } }
 
 /* Settings: Profile key/values, inputs in place, Celebrations */
 [data-look='parent'] .kd-kvs { padding: 0 12px; }
@@ -45,6 +46,7 @@
 [data-look='parent'] .kd-kv > span, [data-look='parent'] .kd-kv > .pk-hint { flex: 1; min-width: 0; color: var(--p-sub); }
 [data-look='parent'] .kd-kv > b { font-weight: 600; text-align: right; min-width: 0; overflow-wrap: anywhere; }
 [data-look='parent'] .kd-kv > div { flex: 1; }
+[data-look='parent'] .kd-kv > .kd-pick { flex: none; }
 [data-look='parent'] .kd-kv .kd-in { width: 52%; max-width: 240px; padding: 7px 10px; border-radius: 8px; border-color: var(--p-sub); background: var(--p-bg); text-align: right; }
 [data-look='parent'] .kd-cel-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 [data-look='parent'] .kd-sech { display: flex; align-items: center; gap: 6px; }
@@ -52,14 +54,13 @@
 @media (max-width: 767px) {
   [data-look='parent'] .kd-sw .mantine-Switch-input { inset: -12px -6px; width: auto; height: auto; }
   [data-look='parent'] .kd-lnk::after { content: ''; position: absolute; inset: -12px 0; }
-  [data-look='parent'] .kd-prow .p-btn, [data-look='parent'] .kd-next .p-btn { position: relative; padding: 7px 10px; min-height: 0; }
-  [data-look='parent'] .kd-prow .p-btn::after, [data-look='parent'] .kd-next .p-btn::after { content: ''; position: absolute; inset: -6px -2px; }
+  [data-look='parent'] .kd-prow .p-btn, [data-look='parent'] .kd-next .p-btn { padding: 7px 10px; }
   [data-look='parent'] .kd-kv .kd-in { min-height: 44px; }
   [data-look='parent'] .kd-link { min-height: 52px; }
 }
 
-/* phone: Edit and "…" stay beside the name (the points and Level pills wrap under it) */
-[data-look='parent'] .kd-page .p-dhead-meta { min-width: 110px; }
+/* phone: Edit and "…" take their own row, as on the device and group pages, so the Level pill never wraps */
+@media (max-width: 767px) { [data-look='parent'] .kd-page .p-dhead-act { flex-basis: 100%; } }
 [data-look='parent'] .kd-page [hidden] { display: none; } /* Edit hides while editing (mockup [data-edit] #editb) */
 
 /* Kids list: the ring sits on the name line so "Level 7 · 240 pts" keeps its own line */

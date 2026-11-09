@@ -38,7 +38,7 @@ export function KidStrip({ kids, selected, onSelect, onAll, waiting, onNeeds }: 
       <span className="pt-strip-grow" />
       {onNeeds && (
         <button type="button" className="p-pill" aria-label={`Needs you, ${waiting} waiting`} onClick={onNeeds}>
-          <Icon name="hourglass_top" size={14} />
+          <Icon name="hourglass_empty" size={14} />
           {waiting}
         </button>
       )}
