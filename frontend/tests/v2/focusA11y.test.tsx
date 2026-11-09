@@ -82,6 +82,7 @@ beforeEach(() => {
 const nameOf = (el: Element) => computeAccessibleName(el).trim()
 const idsOf = (el: Element) => (el.getAttribute('aria-controls') ?? '').split(/\s+/).filter(Boolean)
 
+/** ParentShell and Bell are mocked here, so the header back link and bell are not audited. */
 function audit() {
   const expanders = [...document.querySelectorAll('[aria-expanded]')]
   expect(expanders.length).toBeGreaterThan(0)
@@ -89,6 +90,7 @@ function audit() {
     const label = `${el.tagName.toLowerCase()}.${el.className} "${nameOf(el)}"`
     expect({ label, tag: el.tagName }).toEqual({ label, tag: 'BUTTON' })
     if (el.getAttribute('aria-expanded') === 'true') {
+      if (el.hasAttribute('data-focus-head')) expect({ label, ids: idsOf(el).length > 0 }).toEqual({ label, ids: true })
       for (const id of idsOf(el)) expect({ label, id, found: !!document.getElementById(id) }).toEqual({ label, id, found: true })
     }
   }
@@ -115,6 +117,7 @@ describe('focus screens: expanders and icon buttons', () => {
     render(wrap(ui()))
     await waitFor(() => expect(screen.getAllByText(ready).length).toBeGreaterThan(0))
     await waitFor(() => expect(document.querySelector('[aria-expanded="true"]')).not.toBeNull()) // the URL's section is open
+    if (_n === 'Today') expect(document.querySelector('[data-focus-head="needs"][aria-controls="needs-body"]')).not.toBeNull()
     audit()
   })
 })

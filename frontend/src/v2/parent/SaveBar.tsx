@@ -20,6 +20,7 @@ export function SaveBar({ dirty, saving, onSave, onCancel, saveLabel = 'Save', d
   )
 }
 
+const FIELD = { test: (e: HTMLElement) => e.matches('input, textarea, select, [contenteditable="true"]') }
 const CANCEL = { cancelled: true, message: 'Route change cancelled: unsaved changes' }
 type PopHandler = () => boolean
 const guards: PopHandler[] = [] // active dirty guards; the newest decides browser Back
@@ -31,6 +32,8 @@ export function useDiscardGuard(dirty: boolean, onDiscard?: () => void): { guard
   const undoing = useRef(false) // history.go(1) is on its way: its popstate is not a new Back
   const leaving = useRef(false) // Discard was chosen: let the popstate / route change / next guard() through, no second prompt
   const field = useRef<HTMLElement | null>(null) // last focused form field: a cancelled leave must hand focus back to it
+  const timer = useRef<number | undefined>(undefined)
+  useEffect(() => () => clearTimeout(timer.current), [])
   const chose = useRef(false) // Discard was clicked (the sheet then closes too); anything else on the sheet means Keep
   const release = useCallback(() => { leaving.current = true }, []) // the form's record is gone (deleted): nothing left to ask about
   const guard = useCallback((go: () => void) => { if (dirty && !leaving.current) setPending(() => go); else go() }, [dirty])
@@ -64,7 +67,9 @@ export function useDiscardGuard(dirty: boolean, onDiscard?: () => void): { guard
       throw CANCEL
     }
     const done = () => { leaving.current = false } // the navigation ended (or failed): ask again next time
-    const focusIn = (e: FocusEvent) => { const t = e.target; if (t instanceof HTMLElement && !t.closest('[role="dialog"]') && t !== document.body) field.current = t }
+    const focusIn = (e: FocusEvent) => { const t = e.target; if (t instanceof HTMLElement && FIELD.test(t) && !t.closest('[role="dialog"]')) field.current = t } // fields only: a clicked link must not replace it
+    const a0 = document.activeElement
+    if (a0 instanceof HTMLElement && FIELD.test(a0)) field.current = a0 // focused before the form turned dirty
     r().events?.on('routeChangeStart', onStart)
     r().events?.on('routeChangeComplete', done)
     r().events?.on('routeChangeError', done)
@@ -93,7 +98,7 @@ export function useDiscardGuard(dirty: boolean, onDiscard?: () => void): { guard
       onConfirm={() => { chose.current = true; leaving.current = true; discardRef.current?.(); pending?.() }}
       onClose={() => {
         setPending(null)
-        if (!chose.current) window.setTimeout(() => { if (field.current?.isConnected) field.current.focus() }, 60) // after Mantine returns focus to the opener; Keep / Esc: back to the field
+        if (!chose.current) { clearTimeout(timer.current); timer.current = window.setTimeout(() => { const a = document.activeElement; if (field.current?.isConnected && (!a || a === document.body || a.closest('[role="dialog"]') || a.matches('a, button'))) field.current.focus() }, 60) } // after Mantine returns focus to the opener; Keep / Esc: back to the field
         chose.current = false
       }} />
   )
