@@ -143,13 +143,13 @@
   overflow-wrap: anywhere;
 }
 .p-bell-text:hover { text-decoration: underline; }
-.p-bell-text:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
+.p-bell-text:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 .p-bell-ud { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--p-lav-ink); margin-right: 6px; vertical-align: 1px; }
 .p-bell-sendrow { padding-top: 0; min-height: 0; }
 .p-bell-sendrow .p-bell-note { flex: 1; min-width: 0; }
 .p-bell-setl, [data-look='parent'] a.p-bell-setl { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12.5px; font-weight: 700; color: var(--p-ink); text-decoration: none !important; }
 .p-bell-setl > span:last-child { text-decoration: underline; text-underline-offset: 3px; }
-.p-bell-setl:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; border-radius: 4px; }
+.p-bell-setl:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; border-radius: 4px; }
 @media (max-width: 767px) { .p-bell-card .p-arow-acts .p-btn:not(.p-ib), .p-bell-sendrow .p-btn, .p-bell-note, .p-bell-older { min-height: 44px; } .p-bell-tab, .p-bell-mark-read, .p-bell-setl { min-height: 44px; } .p-bell-mark-read, .p-bell-setl { display: inline-flex; align-items: center; } }
 
 .p-bell-note {
@@ -180,17 +180,17 @@
   text-decoration: none;
 }
 .p-bell-foot a:hover { color: var(--p-ink); }
-.p-bell-foot a:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; border-radius: 4px; }
+.p-bell-foot a:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; border-radius: 4px; }
 
 /* phone sheet: title in the parent face (the list's own header is hidden there) */
 [data-look='parent'] .p-bell-drawer-title { font: 700 18px var(--font-parent), system-ui, sans-serif; color: var(--p-ink); text-transform: none; letter-spacing: 0; }
 [data-look='parent'] .p-bell-drawer-header { background: var(--p-card); border-bottom: 1px solid var(--p-line); }
 [data-look='parent'] .p-bell-drawer-content { background: var(--p-card); }
 [data-look='parent'] .p-bell-drawer-close { color: var(--p-ink); }
-[data-look='parent'] .p-bell-drawer-close:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
+[data-look='parent'] .p-bell-drawer-close:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 .p-bell-tab, .p-bell-mark-read { transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
 .p-bell-tab:not(.on):hover { background: var(--p-line); }
 
 .p-bell-older { display: flex; flex: none; margin: 6px auto 10px; }
 .p-bell-scroll { overscroll-behavior: contain; }
-.p-bell-scroll:focus-visible { outline: 2px solid var(--p-ink); outline-offset: -2px; }
+.p-bell-scroll:focus-visible { outline: 2px solid var(--p-focus); outline-offset: -2px; }

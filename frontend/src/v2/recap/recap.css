@@ -14,11 +14,11 @@
 [data-look='parent'] .v2-sp .end { fill: var(--p-meter); stroke: var(--p-card); stroke-width: 2; }
 [data-look='parent'] .v2-sp .hit { fill: transparent; }
 [data-look='parent'] .v2-info { all: unset; display: inline-flex; margin-left: auto; padding: 4px; color: var(--p-sub); cursor: pointer; }
-[data-look='parent'] .v2-info:focus-visible { outline: 2px solid var(--p-ink); border-radius: 50%; }
+[data-look='parent'] .v2-info:focus-visible { outline: 2px solid var(--p-focus); border-radius: 50%; }
 [data-look='parent'] .rc-note { margin: 0; color: var(--p-sub); font-size: 12.5px; }
 [data-look='parent'] .v2-kids { display: grid; }
 [data-look='parent'] .v2-kid { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--p-line); cursor: pointer; font: inherit; color: var(--p-ink); }
-[data-look='parent'] .v2-kid:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; border-radius: 12px; }
+[data-look='parent'] .v2-kid:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; border-radius: 12px; }
 [data-look='parent'] .v2-kid .ms { color: var(--p-sub); }
 [data-look='parent'] .v2-kid .p-chip { margin-left: auto; }
 [data-look='parent'] .v2-kid-t { flex: 0 1 200px; min-width: 0; display: grid; }

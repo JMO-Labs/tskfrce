@@ -22,7 +22,7 @@ html[data-look='parent'] .f-btn.f-btn[data-variant='filled'] { background: var(-
 html[data-look='parent'] .f-btn.f-btn[data-variant='subtle'] { border-color: transparent; background: transparent; }
 html[data-look='parent'] .f-btn.f-btn[data-variant='subtle'][data-color='red'],
 html[data-look='parent'] .f-btn.f-btn[data-color='red'] { color: var(--p-red); }
-html[data-look='parent'] .f-btn.f-btn:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; border-radius: 999px; }
+html[data-look='parent'] .f-btn.f-btn:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; border-radius: 999px; }
 
 html[data-look='parent'] .f-input.f-input {
   min-height: 42px;
@@ -60,7 +60,7 @@ html[data-look='parent'] input:checked + .f-switch.f-switch { background: var(--
 html[data-look='parent'] input:checked + .f-switch.f-switch::before,
 html[data-look='parent'] input:checked + .f-switch .mantine-Switch-thumb { background: var(--p-acc); }
 
-html[data-look='parent'] input:focus-visible + .f-switch.f-switch { outline: 2px solid var(--p-ink); outline-offset: 2px; }
+html[data-look='parent'] input:focus-visible + .f-switch.f-switch { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 
 html[data-look='parent'] .f-check.f-check { border-radius: 6px; border: 1.5px solid var(--p-sub); background: var(--p-card); }
 html[data-look='parent'] .f-check.f-check:checked { background: var(--p-acc); border-color: var(--p-acc); color: #292928; }

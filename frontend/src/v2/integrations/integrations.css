@@ -2,7 +2,7 @@
 [data-look='parent'] .ig-top { display: flex; align-items: center; gap: 12px; }
 [data-look='parent'] .ig-icon { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: var(--p-soft); color: var(--p-ink); }
 [data-look='parent'] .ig-h { margin: 0; font-size: 20px; color: var(--p-ink); }
-[data-look='parent'] .ig-h:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 4px; border-radius: 6px; }
+[data-look='parent'] .ig-h:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 4px; border-radius: 6px; }
 [data-look='parent'] .ig-cap { margin: 0 0 10px; padding: 0; border: 0; }
 [data-look='parent'] .ig-list { display: grid; gap: 10px; padding-top: 4px; }
 [data-look='parent'] .ig-perms { list-style: none; margin: 0; padding: 0; border: 1px solid var(--p-line); border-radius: 14px; overflow: hidden; }
@@ -17,7 +17,7 @@
 [data-look='parent'] .ig-meta { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--p-sub); font-size: 13px; }
 [data-look='parent'] .ig-back { justify-self: start; width: fit-content; }
 [data-look='parent'] .ig-row { width: 100%; background: none; border: 0; border-top: 1px solid var(--p-line); font: inherit; color: inherit; text-align: left; cursor: pointer; border-radius: 0; }
-[data-look='parent'] .ig-row:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; border-radius: 8px; }
+[data-look='parent'] .ig-row:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; border-radius: 8px; }
 [data-look='parent'] .ig-row > .ms:last-child { color: var(--p-sub); }
 [data-look='parent'] .ig-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-radius: 14px; font-size: 13.5px; font-weight: 600; }
 [data-look='parent'] .ig-banner > span:not(.ms) { flex: 1; min-width: 0; overflow-wrap: anywhere; }
@@ -43,7 +43,7 @@
 [data-look='parent'] .ig-copy .p-btn { min-width: 96px; justify-content: center; }
 [data-look='parent'] .ig-code { font: 12.5px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--p-ink); background: var(--p-soft); padding: 1px 6px; border-radius: 6px; overflow-wrap: anywhere; }
 [data-look='parent'] .ig-pre { margin: 0; padding: 12px 14px; background: var(--p-soft); color: var(--p-ink); border: 1px solid var(--p-line); border-radius: 12px; font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
-[data-look='parent'] .ig-pre:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
+[data-look='parent'] .ig-pre:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 [data-look='parent'] .ig-perm .ig-ptext label { font-weight: 600; color: inherit; }
 [data-look='parent'] .ig-perm .ig-ptext [class*='description'] { color: inherit; opacity: .85; }
 [data-look='parent'] .ig-flow > .ig-cap { margin: 0 0 -8px; }

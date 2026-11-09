@@ -29,7 +29,7 @@
 }
 [data-look='parent'] .pt-row:hover,
 [data-look='parent'] .pt-chore[data-open='true'] > .pt-rowline { background: var(--p-soft); }
-[data-look='parent'] .pt-row:focus-visible { outline: 2px solid var(--p-ink); outline-offset: -2px; }
+[data-look='parent'] .pt-row:focus-visible { outline: 2px solid var(--p-focus); outline-offset: -2px; }
 
 [data-look='parent'] .pt-car { width: 20px; display: grid; color: var(--p-sub); transition: transform var(--dur-1) var(--ease-out); }
 [data-look='parent'] .pt-chore[data-open='true'] .pt-car { transform: rotate(90deg); }
@@ -205,7 +205,7 @@
 
 /* focus rings on every small control in Today */
 [data-look='parent'] :is(.pt-rp, .pt-amt, .pt-chat-head button, .pt-strip-kid, .pt-kav, .pt-krow, .pt-needs-head, .p-pill, .p-needs-thumb, .p-onboard-dismiss, .p-onboard-item a, .p-bell, .p-bell-tab, .p-bell-mark-read):focus-visible {
-  outline: 2px solid var(--p-ink);
+  outline: 2px solid var(--p-focus);
   outline-offset: 2px;
 }
 [data-look='parent'] .pt-strip-kid:focus-visible { border-radius: 8px; }

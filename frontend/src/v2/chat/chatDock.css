@@ -63,7 +63,7 @@
 }
 .msg-act-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 999px; padding: 0; cursor: pointer; background: transparent; color: var(--p-ink, inherit); line-height: 1; }
 .msg-act-btn:hover, .msg-act-btn[aria-expanded='true'] { background: var(--p-soft, rgba(128,128,128,.18)); }
-.msg-act-btn:focus-visible { outline: 2px solid var(--p-ink, currentColor); outline-offset: -2px; }
+.msg-act-btn:focus-visible { outline: 2px solid var(--p-focus, currentColor); outline-offset: -2px; }
 .msg-act-btn[data-danger]:hover { background: var(--p-redbg, #fde3e0); color: var(--p-red, #8f1d13); }
 .msg-emoji { font-size: 18px; transition: transform 100ms; }
 .msg-emoji:hover { transform: scale(1.2); background: transparent; }
@@ -81,7 +81,7 @@
 .msg-react { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 13px; background: var(--p-card, transparent); color: var(--p-ink, inherit); border: 1px solid var(--p-line, rgba(128,128,128,.4)); }
 .msg-react span { font-size: 12px; font-weight: 600; }
 .msg-react[aria-pressed='true'] { background: var(--p-soft, rgba(128,128,128,.18)); border-color: var(--p-ink, currentColor); }
-.msg-react:focus-visible { outline: 2px solid var(--p-ink, currentColor); outline-offset: 1px; }
+.msg-react:focus-visible { outline: 2px solid var(--p-focus, currentColor); outline-offset: 1px; }
 .msg-edit { width: 100%; min-width: 220px; resize: none; font: inherit; padding: 6px; border-radius: 8px; border: 1.5px solid currentColor; background: transparent; color: inherit; }
 
 /* typing line (both looks): three dots + who */
@@ -113,7 +113,7 @@
 }
 .pc-qr button:hover { border-color: var(--p-ink); }
 .pc-qr button[data-ok] { background: var(--p-acc); border-color: var(--p-acc); color: #292928; font-weight: 700; }
-.pc-qr button:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 1px; }
+.pc-qr button:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 1px; }
 .pc-qre { display: flex; flex-direction: column; gap: 6px; margin: 0 0 12px; padding: 0; list-style: none; }
 .pc-qre li { display: flex; align-items: center; gap: 2px; }
 .pc-qre li input { flex: 1; min-width: 0; margin-right: 4px; }
