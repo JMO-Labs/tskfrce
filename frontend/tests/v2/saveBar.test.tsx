@@ -197,3 +197,47 @@ test('Keep returns focus to the field that was focused before the form turned di
   await user.click(await screen.findByRole('button', { name: 'Keep' }))
   await waitFor(() => expect(screen.getByLabelText('field')).toHaveFocus())
 })
+
+test('Back within the same record is asked only for forms that do not opt in', () => {
+  function Form({ mode }: { mode?: 'allow' }) {
+    useDiscardGuard(true, undefined, mode ? { inRecord: mode } : undefined)
+    return null
+  }
+  fakeRouter.reset('/x', { item: '1', open: 'a' })
+  const go = jest.spyOn(window.history, 'go').mockImplementation(() => {})
+  const same = { as: '/x?item=1' }
+  const other = { as: '/x?item=2' }
+  const view = wrap(<Form mode="allow" />)
+  expect(fakeRouter.popHandler(same)).toBe(true)
+  act(() => { expect(fakeRouter.popHandler(other)).toBe(false) })
+  view.unmount()
+  wrap(<Form />)
+  act(() => { expect(fakeRouter.popHandler(same)).toBe(false) })
+  go.mockRestore()
+})
+
+test('the cancelled-navigation rejection is swallowed, other rejections are not', () => {
+  wrap(<Probe dirty go={jest.fn()} />)
+  let cancel: unknown
+  act(() => { try { fakeRouter.events.emit('routeChangeStart', '/elsewhere') } catch (e) { cancel = e } })
+  const fire = (reason: unknown) => { const e = new Event('unhandledrejection', { cancelable: true }) as Event & { reason: unknown }; e.reason = reason; window.dispatchEvent(e); return e.defaultPrevented }
+  expect(fire(cancel)).toBe(true)
+  expect(fire(new Error('real'))).toBe(false)
+})
+
+test('Keep does not focus a field from an earlier dirty spell', async () => {
+  const user = userEvent.setup()
+  function Form({ dirty }: { dirty: boolean }) {
+    const { sheet } = useDiscardGuard(dirty)
+    return <><input aria-label="field" /><button>other</button>{sheet}</>
+  }
+  const { rerender } = wrap(<Form dirty />)
+  await user.click(screen.getByLabelText('field'))
+  rerender(<MantineProvider env="test"><Form dirty={false} /></MantineProvider>)
+  await user.click(screen.getByRole('button', { name: 'other' }))
+  rerender(<MantineProvider env="test"><Form dirty /></MantineProvider>)
+  act(() => { try { fakeRouter.events.emit('routeChangeStart', '/elsewhere') } catch { /* cancelled */ } })
+  await user.click(await screen.findByRole('button', { name: 'Keep' }))
+  await new Promise((r) => setTimeout(r, 120))
+  expect(screen.getByLabelText('field')).not.toHaveFocus()
+})

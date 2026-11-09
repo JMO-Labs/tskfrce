@@ -99,7 +99,7 @@ test('chore model: type, chained steps, kid note, skip, deduction', async ({ pag
       await expect(kp.getByText('Note sent: Too cold')).toBeVisible()
       // 3. parent Today: Note chip and Skip today
       await page.goto('/')
-      await page.locator('.pt-krow').filter({ hasText: kidName }).click() // the kid's row opens their day
+      await page.getByRole('button', { name: new RegExp(`^${kidName}`), expanded: false }).click() // the kid's row opens their day
       const row = page.getByTestId('chore-row').filter({ hasText: choreName })
       await expect(row.getByText('Note').first()).toBeVisible()
       await row.getByRole('button', { name: 'Skip today (no penalty)' }).click()
@@ -125,7 +125,7 @@ test('chore model: type, chained steps, kid note, skip, deduction', async ({ pag
         data: { kid_ids: [kid.id], mode: 'each', repeat: { type: 'daily' } },
       })
       await page.goto('/')
-      await page.locator('.pt-krow').filter({ hasText: kidName }).click() // the kid's row opens their day
+      await page.getByRole('button', { name: new RegExp(`^${kidName}`), expanded: false }).click() // the kid's row opens their day
       await page.getByTestId('chore-row').filter({ hasText: thirdName }).getByRole('button').first().click()
       await page.getByRole('button', { name: 'Deduct points' }).click()
       await page.getByRole('button', { name: '−5', exact: true }).click()

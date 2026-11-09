@@ -22,11 +22,16 @@ export function SaveBar({ dirty, saving, onSave, onCancel, saveLabel = 'Save', d
 
 const FIELD = { test: (e: HTMLElement) => e.matches('input, textarea, select, [contenteditable="true"]') }
 const CANCEL = { cancelled: true, message: 'Route change cancelled: unsaved changes' }
-type PopHandler = () => boolean
+type PopHandler = (state?: { as?: string }) => boolean
+const sameRecord = (a: string, b: string) => {
+  const x = new URL(a, 'http://x'), y = new URL(b, 'http://x')
+  return x.pathname === y.pathname && ['section', 'item'].every((k) => x.searchParams.get(k) === y.searchParams.get(k))
+}
 const guards: PopHandler[] = [] // active dirty guards; the newest decides browser Back
 
-/** Confirm before leaving a dirty form: in-app links (guard), tab close and browser Back. */
-export function useDiscardGuard(dirty: boolean, onDiscard?: () => void): { guard: (go: () => void) => void; release: () => void; sheet: ReactNode } {
+/** Confirm before leaving a dirty form: in-app links (guard), tab close and browser Back.
+ *  `inRecord: 'allow'` lets Back steps within the same record (closing an open row) through unasked: for forms that outlive their rows. */
+export function useDiscardGuard(dirty: boolean, onDiscard?: () => void, { inRecord = 'ask' }: { inRecord?: 'allow' | 'ask' } = {}): { guard: (go: () => void) => void; release: () => void; sheet: ReactNode } {
   const router = useRouter()
   const [pending, setPending] = useState<(() => void) | null>(null)
   const undoing = useRef(false) // history.go(1) is on its way: its popstate is not a new Back
@@ -45,8 +50,9 @@ export function useDiscardGuard(dirty: boolean, onDiscard?: () => void): { guard
     if (!dirty) return
     const r = () => routerRef.current
     const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
-    const onBack: PopHandler = () => {
+    const onBack: PopHandler = (state) => {
       if (leaving.current) return true
+      if (inRecord === 'allow' && state?.as && sameRecord(r().asPath, state.as)) return true // closes a row, leaves nothing
       if (undoing.current) { undoing.current = false; return false } // the popstate from our own history.go(1) below
       // stay on the page: step forward again (router.push of the current URL would only replace the popped entry), then ask
       undoing.current = true
@@ -58,8 +64,7 @@ export function useDiscardGuard(dirty: boolean, onDiscard?: () => void): { guard
     // in-app links (back link, View as kid, tabs, nav): ask before a navigation that leaves this page's record
     const onStart = (url: string, opts?: { shallow?: boolean }) => {
       if (leaving.current) return
-      const here = new URL(r().asPath, 'http://x'), to = new URL(url, 'http://x')
-      if (here.pathname === to.pathname && ['section', 'item'].every((k) => here.searchParams.get(k) === to.searchParams.get(k))) return
+      if (sameRecord(r().asPath, url)) return
       setPending(() => () => { void (opts?.shallow ? r().push(url, undefined, { shallow: true }) : r().push(url)) }) // the event carries only `shallow`, so replace/scroll of the original call can't be known
       r().events?.emit('routeChangeError')
       // Next treats `cancelled` as a quiet abort, but <Link> never catches the rejected push: the dev overlay shows
@@ -69,7 +74,7 @@ export function useDiscardGuard(dirty: boolean, onDiscard?: () => void): { guard
     const done = () => { leaving.current = false } // the navigation ended (or failed): ask again next time
     const focusIn = (e: FocusEvent) => { const t = e.target; if (t instanceof HTMLElement && FIELD.test(t) && !t.closest('[role="dialog"]')) field.current = t } // fields only: a clicked link must not replace it
     const a0 = document.activeElement
-    if (a0 instanceof HTMLElement && FIELD.test(a0)) field.current = a0 // focused before the form turned dirty
+    field.current = a0 instanceof HTMLElement && FIELD.test(a0) ? a0 : null // focused before the form turned dirty; a stale field from an earlier dirty spell must not get Keep's focus
     r().events?.on('routeChangeStart', onStart)
     r().events?.on('routeChangeComplete', done)
     r().events?.on('routeChangeError', done)
@@ -91,7 +96,7 @@ export function useDiscardGuard(dirty: boolean, onDiscard?: () => void): { guard
       leaving.current = false
       undoing.current = false
     }
-  }, [dirty])
+  }, [dirty, inRecord])
 
   const sheet = (
     <ConfirmDelete opened={!!pending} title="Discard changes?" body="What you changed here won't be saved." confirmLabel="Discard"

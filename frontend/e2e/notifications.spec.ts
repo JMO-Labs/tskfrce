@@ -42,7 +42,7 @@ test('apprise place: add, mask, test, chip, quiet hours, bell, delete', async ({
     await expect(page.getByRole('region', { name, exact: true }).getByRole('button', { name: 'Badge / level up' })).toHaveAttribute('aria-pressed', now)
 
     const quiet = page.getByRole('switch', { name: 'Quiet hours' })
-    if (!(await quiet.isChecked())) await quiet.click({ force: true }) // the switch track sits over the input
+    if (!(await quiet.isChecked())) await page.locator('.mantine-Switch-root').filter({ has: quiet }).locator('.mantine-Switch-track').click() // the track sits over the input
     await expect(quiet).toBeChecked()
     await page.getByRole('button', { name: /^Quiet hours/ }).click() // From / To live in its body
     await expect(page.getByLabel('From')).toHaveValue('21:30')
