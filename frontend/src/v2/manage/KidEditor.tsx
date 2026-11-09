@@ -163,16 +163,16 @@ export function KidProfileForm({ kid, focusPin, onSaved, onCancel, onDirty, tail
         {(pin.bad || pin.letters) && <div className="kd-kv">{pinError(pin)}</div>}
         {kid.has_pin && !pin.bad && (
           <div className="kd-kv">
-            <span className="pk-hint">A PIN is set. Enter a new one to change it.</span>
+            <span>A PIN is set</span>
             <button type="button" className="p-btn" onClick={() => patchOnce({ id: kid.id, body: { clear_pin: true } }, { onError: toastFail, onSuccess: () => toastOk('PIN removed') })}>
               Remove PIN
             </button>
           </div>
         )}
         {tail}
-        <div className="kd-kv"><EmojiPicker label="Avatar (an emoji)" value={avatar} onChange={setAvatar} /></div>
+        <div className="kd-kv"><span>Avatar</span><EmojiPicker inline className="kd-pick" label="Avatar (an emoji)" value={avatar} onChange={setAvatar} /></div>
       </div>
-      <SaveBar dirty saving={patch.isPending} disabled={!dirty || !name.trim() || pin.bad} note={dirty ? undefined : 'Editing profile'} onSave={save} onCancel={() => onCancel?.()} />
+      <SaveBar inline dirty saving={patch.isPending} disabled={!dirty || !name.trim() || pin.bad} onSave={save} onCancel={() => onCancel?.()} />
     </>
   )
 }
