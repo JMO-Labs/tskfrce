@@ -155,3 +155,8 @@ test('kid names never break mid-word', () => {
   expect(css).toMatch(/\.p-kn\s*{[^}]*white-space:\s*nowrap/)
   expect(css).toMatch(/\.p-kn\s*{[^}]*word-break:\s*keep-all/)
 })
+
+test('the area is a named region, so its label is announced', () => {
+  render(<Page />)
+  expect(screen.getByRole('region', { name: 'Sections' })).toBeInTheDocument()
+})
