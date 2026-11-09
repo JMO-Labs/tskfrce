@@ -278,7 +278,8 @@
 [data-look='parent'] .pk-detail .pk-head-t { flex: 1 1 320px; }
 
 /* Device detail (calm rows) */
-[data-look='parent'] .dv-wk { display: inline-flex; align-items: flex-end; gap: 3px; height: 22px; }
+[data-look='parent'] .dv-wk { display: inline-flex; align-items: flex-end; gap: 3px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; position: relative; }
+[data-look='parent'] .dv-wk::before { content: ''; position: absolute; inset: -11px -6px; }
 [data-look='parent'] .dv-wk i { width: 7px; border-radius: 2px; background: var(--p-meter); }
 [data-look='parent'] .dv-hrs { font-size: 12px; color: var(--p-sub); }
 [data-look='parent'] .dv-lbl { display: inline-flex; align-items: center; gap: 4px; min-width: 0; }

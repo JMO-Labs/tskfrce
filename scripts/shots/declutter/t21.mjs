@@ -18,6 +18,9 @@ const SC = {
   'chips-kid': { path: '/kids?section=kids&item=3' },
   'chips-chore': { path: '/kids?section=chores&item=400' },
   'back-settings': { path: '/settings?section=family' },
+  'setup-extras': { path: '/setup', setupStep: 8 },
+  'setup-finish': { path: '/setup', setupStep: 9 },
+  'fam-bed-info': { path: '/settings?section=family&open=bed', step: async (p) => { await p.getByRole('button', { name: 'About bedtime auto-approve' }).click(); await p.waitForTimeout(400) } },
   'back-rewards': { path: '/kids?section=rewards&item=requests' },
 }
 if (TAG === 'audit') for (const [k, p] of Object.entries({ today: '/', 'today-needs': '/?focus=needs', 'kid-open': '/kids?section=kids&item=8&open=settings&edit=1', 'kid-trust': '/kids?section=kids&item=8&open=trust', 'chore-open': '/kids?section=chores&item=5&open=who', 'chore-basics': '/kids?section=chores&item=5&open=basics', devices: '/devices', 'dev-net': '/devices?net=net', 'dev-open': '/devices?item=1&open=now', 'dev-details': '/devices?item=1&open=details', groups: '/devices?tab=groups', 'settings-fam': '/settings?section=family&open=hh', 'settings-notif': '/settings?section=notifications&open=quiet', 'settings-list': '/settings', rewards: '/kids?section=rewards&item=catalogue', 'rewards-screen': '/kids?section=rewards&item=screen&open=price', badges: '/kids?section=badges&item=custom&pick=3', recap: '/recap' })) SC[k] = { path: p }

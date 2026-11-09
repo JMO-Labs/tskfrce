@@ -96,14 +96,13 @@ export function DetailsBody({ device, kids, groups, nameFocus = 0 }: Props) {
   )
 }
 
-/** Activity row's calm line: week bars, the daily average and the hourly pop-over. */
+/** Activity row's calm line: week bars (they open the hourly pop-over) and the daily average. */
 export function ActivityLine({ device }: { device: Device }) {
   const hours = useDailyHours(device)
   return (
     <>
-      <WeekBars device={device} />
+      <InfoPop label="Online by hour" width={340} target={<WeekBars device={device} />}><OnlineWeek device={device} /></InfoPop>
       {hours !== null && <span className="dv-hrs">Online {hours} a day</span>}
-      <InfoPop label="Online by hour" width={340}><OnlineWeek device={device} /></InfoPop>
     </>
   )
 }

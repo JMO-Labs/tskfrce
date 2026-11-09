@@ -104,7 +104,7 @@ export function IphoneBody() {
             <Icon name="qr_code_2" size={16} />
             QR
           </button>
-          <Modal opened={qr} onClose={close} title="Use the ntfy app instead" centered zIndex={300}>
+          <Modal opened={qr} onClose={close} title="Use the ntfy app instead" centered zIndex={300} classNames={{ body: 'ip-body' }}>
             {kids.map((k) => <KidPhone key={k.id} kid={k} />)}
           </Modal>
         </div>
