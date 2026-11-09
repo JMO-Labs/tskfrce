@@ -28,9 +28,9 @@ You should see: step 3, "Add your kids".
 
 ## Step 3. Kids
 
-For each kid: type their name, pick an avatar, and optionally set a 4-digit PIN. A PIN lets a kid prove it's them on a shared device. Tap **Add kid**. Add everyone, then tap **Next**.
+For each kid: type their name, tap the avatar button to pick an avatar from a small pop-over, and optionally set a 4-digit PIN. A PIN lets a kid prove it's them on a shared device. Tap **Add kid**. Add everyone, then tap **Next**.
 
-You should see: each kid in the list, marked "Added".
+You should see: each kid on one line at the top, marked "Added", with the form below ready for the next kid.
 
 Every kid starts with the **Kid (9–12)** look. You can switch a kid to **Little (5–8)** or **Teen (13+)** later, in **Kids & chores**. See [For kids](05-for-kids.md).
 
@@ -54,11 +54,11 @@ You should see: a tick on each chore you picked, and "4 picked" (or however many
 
 The page asks "Whose devices are these?" Devices show up here once the home box sees them on your Wi-Fi. This can take a minute or two. Ask each kid to unlock their phone, tablet or console and open a web page.
 
-For each device, tap the kid who owns it. A shared device can have more than one owner. Tap **Guest** for devices that should never be blocked, like a visitor's phone or the family TV.
+The page shows a short list: **Need an owner** and **Done**. Open **Need an owner**. For each device, tap **Owner** and pick the kid. A shared device can have more than one owner. Pick **Guest (never blocked)** for devices that should never be blocked, like a visitor's phone or the family TV, or **Not sure yet** to decide later.
 
 ![Choosing who owns each device](img/setup-devices.jpg)
 
-You should see: the kid's name highlighted on each device. Devices you skip wait under **Who's this?** on the **Devices** page, and you can finish there later.
+You should see: the kid's name on each device, and **Need an owner** getting shorter. Devices you skip wait under **Who's this?** on the **Devices** page, and you can finish there later.
 
 Not seeing a device? iPhones and iPads use a "Private Wi-Fi Address". Turn it off for your home Wi-Fi in the device's Wi-Fi settings. If nothing shows up after a few minutes, skip this step and see [Troubleshooting](06-troubleshooting.md).
 
@@ -99,9 +99,9 @@ You can put t@sk4ce on your own phone like an app. This works once your box has 
 - **iPhone:** open it in Safari, tap the Share button at the bottom of the screen, then tap **Add to Home Screen**, then **Add**.
 - **Android:** open it in Chrome, tap the menu (three dots), then tap **Add to Home screen** or **Install app**.
 
-![Today for one kid: seven chores, none done yet](img/today-kid.jpg)
+![Today for one kid: their chores and requests](img/today-kid.jpg)
 
-On a computer, Today shows a card for each kid on the left and the chosen kid's day on the right. On a phone, the kids are a row of avatars at the top.
+Today shows a card for each kid. Tap a kid to see their day, and tap **All** to go back. A **Needs you** bar appears when something is waiting.
 
 ## Test that pausing works
 

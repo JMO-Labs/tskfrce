@@ -11,17 +11,21 @@ A dot on **Chat** means there are unread messages.
 
 This is the page you will use most.
 
-![Today on a computer: kid cards on the left, the chosen kid's day on the right](img/today.jpg)
+![Today on a computer: Needs you, a card for each kid and Devices](img/today.jpg)
 
-Pick a kid to see their day: how many chores are done, their points, streak, next reward and when their devices lock. Each chore has a chip: **To do**, **Overdue**, **Needs OK**, **Redo**, **Approved** or **Skipped**. Tap a chore to open it. There you can approve it, send it back, mark it done yourself, open its chat or take points away (**Deduct points**).
+Today starts calm: a **Needs you** bar when something is waiting, one card for each kid, and a **Devices** line. Nothing else is on screen until you ask for it. A Happy Hour that is running shows as a small chip at the top. To start one, tap the **…** at the top right of Today and choose **Start Happy Hour** (see [Happy Hour](#happy-hour)).
+
+![One kid's day: chores on the left, requests on the right](img/today-kid.jpg)
+
+Tap a kid to see their day: how many chores are done, their points, streak and their chores. Tap **All** to go back. Each chore has a chip: **To do**, **Overdue**, **Needs OK**, **Redo**, **Approved** or **Skipped**. Tap a chore to open it. There you can approve it, send it back, mark it done yourself, open its chat or take points away (**Deduct points**).
 
 **View as kid** shows you exactly what that kid sees. **Add chore** makes a new chore for them.
 
 ## Needs you
 
-**Needs you** is the list of everything waiting for your decision, from all kids. On a phone it is the second tab at the top of Today. On a computer it is the second tab above the kid cards.
+**Needs you** is the list of everything waiting for your decision, from all kids. Tap the **Needs you** bar at the top of Today to open it. It is grouped by kid, oldest first. Each row has one main button, like **Approve**. The less common answers (**Send back**, **Decline**, **Reply**) are in the row's **…** menu.
 
-![The Needs you list: a chore, a redo, a screen time request and a reward request](img/needs-you.jpg)
+![The Needs you list, grouped by kid: chores, a redo, a screen time request, a reward request and a note](img/needs-you.jpg)
 
 - **Needs OK**: a kid says a chore is done.
 - **Redo**: a chore you sent back, done again ("2nd try").
@@ -37,7 +41,7 @@ A chore a kid finished stays here until you answer it, even after the daily rese
 ### Approve a chore or send it back
 
 1. Find the chore in **Needs you**. If the kid added a photo, tap it to see it larger.
-2. Tap **Approve**, or tap **Send back**.
+2. Tap **Approve**, or tap the row's **…** and choose **Send back**.
 3. If you send it back, type a short note, like "The sink still has dishes." You can't send it back without a note.
 
 You should see: for Approve, the item disappears and the kid gets their points (and the internet, if that was their last chore). For Send back, the kid sees your note and does the chore again.
@@ -46,13 +50,13 @@ Points come to the kid when you approve, not before. If a kid finishes early, th
 
 ### Answer a screen time or reward request
 
-Tap **Approve** or **Decline**. The points are only taken when you approve. A declined or ignored request costs nothing.
+Tap **Approve**, or tap the row's **…** and choose **Decline**. The points are only taken when you approve. A declined or ignored request costs nothing.
 
 You should see: the item leaves the list. The kid is told what you decided.
 
 ## The bell
 
-The bell shows what happened: chores to approve, kid notes, requests, new devices (not during setup), badges and level-ups, and security alerts such as a device that "got around the lock", "may be a different device", a "tried a VPN" workaround, or someone guessing a parent's password. Use the **All**, **Needs you** and **Alerts** tabs to filter. You can approve or send back right from the bell. Tap an item to go straight to it. **Mark all read** clears the count.
+The bell shows what happened: chores to approve, kid notes, requests, new devices (not during setup), badges and level-ups, and security alerts such as a device that "got around the lock", "may be a different device", a "tried a VPN" workaround, or someone guessing a parent's password. Use the **All**, **Needs you** and **Alerts** tabs to filter. You can approve right from the bell. Each row has one main button, and **Send back**, **Decline** and **Dismiss** are in its **…** menu. Tap an item to go straight to it. **Mark all read** clears the count.
 
 On a phone the bell opens as a sheet from the bottom of the screen.
 
@@ -62,15 +66,17 @@ On a phone the bell opens as a sheet from the bottom of the screen.
 
 ### Make a chore once, use it many times
 
+A chore is a few short rows. Open a row to change it.
+
 1. Tap **Kids & chores**, then **Chores**, then **New chore**.
-2. Type a **Chore name** and the number of **Points**. Pick a type, like Kitchen or Schoolwork.
-3. Add **steps** if you like (for example "Rinse", "Load", "Wipe"). Each step can have its own due time. Tap **Any order** under a step to make it **Must be done after the step above**. The kid can't say a chore is done until every step is ticked.
-4. Turn on **Needs a photo** if the kid must show proof. Turn on **Always check** if you always want to look at this chore yourself, even for a kid in trust mode.
+2. In **Basics**, type a **Chore name** and the number of **Points**. Pick a type, like Kitchen or Schoolwork.
+3. In **Steps**, add steps if you like (for example "Rinse", "Load", "Wipe"). Each step can have its own due time. Tap **Any order** under a step to make it **Must be done after the step above**. The kid can't say a chore is done until every step is ticked.
+4. In **Options**, turn on **Needs a photo** if the kid must show proof. Turn on **Always check** if you always want to look at this chore yourself, even for a kid in trust mode. **Due by** is here too.
 5. Tap **Save chore**.
 
 You should see: "Added. Now choose who does it."
 
-Now, under **Who & when**:
+Now, in **Who & when**:
 
 1. Pick who does it (one or more kids).
 2. If you picked several kids, choose how it works:
@@ -78,8 +84,7 @@ Now, under **Who & when**:
    - **First one wins**: one chore for everyone. The first kid to finish it gets the points.
    - **Team effort**: one chore for everyone. Any kid can tick it, and the points are split evenly.
 3. Choose **Repeat**: **Every day**, **Some days** (pick the days) or **One time** (pick the date).
-4. Optionally set **Due by**.
-5. Tap **Save chore**.
+4. Tap **Save chore**.
 
 You should see: the chore in the list with the kids' avatars. It appears on Today at your daily reset time (6:00 am unless you changed it in **Settings → Family**).
 
@@ -87,9 +92,9 @@ If you change a chore's name, points or steps, the change shows up everywhere, i
 
 ### Kids
 
-Open a kid to see their devices, chores and points history. The buttons at the top:
+Open a kid to see a short page: their points, level and a few rows (**Trust**, **Devices**, **Chores**, **Settings**). Open a row to see more. Tap the **points chip** to see their points history. The buttons at the top:
 
-- **Start Happy Hour**, **Edit** and a **More** (three dots) menu.
+- **Edit** and a **More** (three dots) menu. Happy Hour now starts from the **…** on Today.
 - **Edit**: change their name, avatar, PIN or **Age group** (Little, Kid or Teen).
 - **More** holds **Bonus** (give 1 to 500 points with a short note; they get a celebration), **Deduct** (take points away, with a reason the kid can see) and, on a phone, **View as kid**. On a computer **View as kid** is its own button.
 
@@ -100,7 +105,7 @@ Open **Kids & chores → Rewards**. It has four parts:
 - **Requests**: what kids are asking for.
 - **Catalogue**: tap **New reward** for things kids can save up for, with a price in points and an icon. Turn off **Needs approval** if a kid can just take it (the points come off right away and you get a ping). Turn off **Kids can see it** to hide it for now.
 - **Screen time**: lets kids spend points on extra internet time. It is on for new families (**Kids can buy extra minutes**), and every purchase still needs your OK. The price starts at 20 points for 15 minutes. Turn the switch off and the price, **Max per day**, **Save unused time**, **Save up to**, **Approve automatically** and **Only during allowed hours** settings are hidden until you turn it on again; what you saved is kept. Bought minutes never work during off hours like bedtime.
-- **History**: the last 30 days.
+- **History**: the last 30 days. A chip at the top shows the totals. Pick a kid to filter, and switch between **All**, **Rewards** and **Screen time**. **Export CSV** is the button in the header.
 
 A kid sees a progress bar toward each reward and can ask when they have enough.
 
@@ -140,12 +145,12 @@ When a kid finishes a chore, a comic-book moment pops up on their screen: a rand
 ![A celebration on a kid's phone: a cowboy dog, a coin burst and the word YEEHAW](img/celebrate.jpg)
 
 - **Levels** are **Full**, **Small** and **Off**, or **Mode default** (which means Small for teens, Full for the others).
-- Set the level for each kid on the kid's page, under **Celebrations**. **Preview a celebration** plays one so you can see it.
+- Set the level for each kid on the kid's page, in the **Settings** row, under **Celebrations**. **Preview a celebration** plays one so you can see it.
 - Phones and tablets set to reduce motion get a still badge instead.
 
 ### Happy Hour
 
-A Happy Hour gives bonus points for a little while. Tap **Start Happy Hour** on **Today** or on a kid's page. Pick 30, 60 or 90 minutes and **×1.5**, **×2** or **×3**, for all kids or only the kids you choose.
+A Happy Hour gives bonus points for a little while. Tap the **…** at the top right of **Today** and choose **Start Happy Hour**. Pick 30, 60 or 90 minutes and **×1.5**, **×2** or **×3**, for all kids or only the kids you choose.
 
 ![The Start Happy Hour sheet: length, multiplier and kids](img/happy-hour-start.jpg)
 
@@ -222,9 +227,9 @@ Every Sunday at 7:30 PM you get "Your week at (your family)" in your inbox, plus
 ### Where the settings live
 
 - **Kids & chores → the kid → Trust mode**, and **Always check** on each chore.
-- **Settings → Family → Extras**: **Bedtime auto-approve** (with its time) and **Weekly recap**.
+- **Settings → Family → Bedtime & recap**: **Bedtime auto-approve** (with its time) and **Weekly recap**.
 
-![The Extras card in Settings](img/extras.jpg)
+![Bedtime & recap in Settings → Family](img/extras.jpg)
 
 ### "Try this" cards
 
@@ -234,7 +239,7 @@ Two more cards on **Today**: one offers trust mode for a kid after 10 approved c
 
 ![The Devices page with one device open](img/devices.jpg)
 
-**Devices** lists every device the box has seen, grouped by owner: **Who's this?** (new devices), one group for each kid, **Shared**, **Guests** and **No owner**. New devices stay online until you give them an owner. To pause them until you do, turn on **Block new devices until I assign them** in **Settings → Family**.
+**Devices** lists every device the box has seen, grouped by owner: **Who's this?** (new devices), one group for each kid, **Shared**, **Guests** and **No owner**. New devices stay online until you give them an owner. To pause them until you do, open the **Home network** row at the top of the Devices list and turn on **Block new devices until I assign them**. That row also shows the **Home box** status (Healthy or Offline). It used to be under Settings → Family.
 
 Tap a device to open it:
 
@@ -319,7 +324,7 @@ t@sk4ce can send pings to the apps your family already uses, like a Signal group
 
 You should see: a test message in that app.
 
-During **Quiet hours** other pings wait: chores to approve, notes, requests and new devices are sent together when quiet hours end. Security alerts (a device getting around the lock, a different-looking device, password guessing, the box going offline) still send unless you turn off **Security alerts still send**. That switch only shows once quiet hours are on. Pings link back to your box by itself; if the link is wrong, open **Advanced** and set **App address** to the address you open t@sk4ce with.
+During **Quiet hours** other pings wait: chores to approve, notes, requests and new devices are sent together when quiet hours end. Security alerts (a device getting around the lock, a different-looking device, password guessing, the box going offline) still send unless you turn off **Security alerts still send**. That switch only shows once quiet hours are on. Pings link back to your box by itself; if the link is wrong, open **When and how** and set **App address** to the address you open t@sk4ce with.
 
 These pings leave your home: they go to the service you chose.
 
