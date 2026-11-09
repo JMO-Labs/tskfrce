@@ -1,3 +1,5 @@
+import { forwardRef } from 'react'
+import type { ButtonHTMLAttributes } from 'react'
 import { Skeleton } from '@/v2/parent/states'
 import type { Device } from '@/v2/types'
 import { useDeviceActivity } from '@/v2/hooks/useDeviceActivity'
@@ -5,17 +7,17 @@ import { slotRuns } from './activityText'
 
 const weekday = (date: string) => new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })
 
-/** Activity calm line: 7 mini bars, the time online each day relative to the busiest day, oldest first. */
-export function WeekBars({ device }: { device: Device }) {
+/** Activity calm line: 7 mini bars (the time online each day relative to the busiest day, oldest first). They are the "Online by hour" pop-over trigger, as in the mock. */
+export const WeekBars = forwardRef<HTMLButtonElement, { device: Device } & ButtonHTMLAttributes<HTMLButtonElement>>(function WeekBars({ device, ...rest }, ref) {
   const days = [...(useDeviceActivity(device.id).data?.days ?? [])].reverse()
-  if (!days.length) return null
   const peak = Math.max(1, ...days.map((d) => d.online_minutes))
+  const hs = days.length ? days.map((d) => Math.max(3, Math.round((d.online_minutes / peak) * 22))) : Array<number>(7).fill(3)
   return (
-    <span className="dv-wk" role="img" aria-label="Online time, last 7 days">
-      {days.map((d) => <i key={d.date} style={{ height: `${Math.max(3, Math.round((d.online_minutes / peak) * 22))}px` }} />)}
-    </span>
+    <button type="button" {...rest} ref={ref} className="dv-wk" aria-label="Online by hour">
+      {hs.map((h, i) => <i key={i} style={{ height: `${h}px` }} />)}
+    </button>
   )
-}
+})
 
 /** Mean online time per day as text ("~3 h", "<1 h"), from the activity feed; null until it loads. */
 export function useDailyHours(device: Device): string | null {

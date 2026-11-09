@@ -103,6 +103,11 @@
 }
 [data-look='parent'] .pk-panel :is(h2, h3) { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; font-weight: 700; color: var(--p-ink); }
 [data-look='parent'] .pk-panel p { margin: 0; }
+/* iPhones QR sheet: one card per kid, code centred like the mock's .qr */
+[data-look='parent'] .ip-body { display: flex; flex-direction: column; gap: 12px; }
+[data-look='parent'] .ip-body .pk-qr { display: block; margin: 0 auto; border-radius: 10px; }
+[data-look='parent'] .ip-body .pk-hint { text-align: center; }
+[data-look='parent'] .ip-body .pk-actions { justify-content: center; }
 [data-look='parent'] .pk-sub { display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 14px; background: var(--p-soft); }
 [data-look='parent'] .pk-kv { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--p-line); font-size: 13.5px; }
 [data-look='parent'] .pk-kv:last-child { border-bottom: 0; padding-bottom: 0; }

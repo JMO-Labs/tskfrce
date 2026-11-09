@@ -113,9 +113,9 @@ describe('device detail, calm', () => {
     expect(row(/^Details/).textContent).toContain('Maya · Phones')
     expect(row(/^Network/).textContent).toContain('192.168.1.12')
     expect(row(/^Activity/).textContent).toContain('2 alerts this week')
-    expect(await screen.findByRole('img', { name: 'Online time, last 7 days' })).toBeTruthy()
     expect(await screen.findByText(/Online ~3 h a day/)).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Online by hour' })).toBeTruthy()
+    const bars = screen.getByRole('button', { name: 'Online by hour' }) // the week bars are the trigger
+    expect(bars.querySelectorAll('i')).toHaveLength(7)
   })
 
   test('owners use KidPicker and save on change with Saved toast', async () => {
