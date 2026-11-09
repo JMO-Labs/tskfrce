@@ -47,3 +47,12 @@ Retaken 2026-11-08 for 2.8.0 declutter, mocked API (`scripts/shots/declutter`, l
 - `extras.jpg`: Retaken 2026-11-08 for 2.8.0 declutter, mocked API
 - `happy-hour-start.jpg`: Retaken 2026-11-08 for 2.8.0 declutter, mocked API
 - `site/img/today-hero.jpg`, `today-parent.jpg`, `needs-you.jpg`: Retaken 2026-11-08 for 2.8.0 declutter, mocked API
+
+Retaken 2026-11-08 after polish pass 5 (rail t@ and lime tile, 44px phone controls, Chat glyph, kid header), mocked API (`scripts/shots/declutter`, light, 1280x800 desktop or 390x844 phone at 2x resized to 600 wide, JPEG quality 82, focus ring cleared):
+- `today.jpg`: Retaken 2026-11-08, polish pass 5
+- `today-kid.jpg`: Retaken 2026-11-08, polish pass 5
+- `needs-you.jpg`: Retaken 2026-11-08, polish pass 5
+- `devices.jpg`: Retaken 2026-11-08, polish pass 5
+- `trust-kid.jpg`: Retaken 2026-11-08, polish pass 5
+- `recap.jpg`: Retaken 2026-11-08, polish pass 5
+- `site/img/today-hero.jpg`, `today-parent.jpg`, `needs-you.jpg`: Retaken 2026-11-08, polish pass 5
