@@ -13,7 +13,7 @@ This is the page you will use most.
 
 ![Today on a computer: Needs you, a card for each kid and Devices](img/today.jpg)
 
-Today starts calm: a **Needs you** bar when something is waiting, one card for each kid, and a **Devices** line. Nothing else is on screen until you ask for it. A Happy Hour that is running shows as a small chip at the top. To start one, tap the **…** at the top right of Today and choose **Start Happy Hour** (see [Happy Hour](#happy-hour)).
+Today starts calm: a **Needs you** bar when something is waiting, one card for each kid, and a **Devices** line. Only a little else shows: a small chip while a Happy Hour runs, and now and then one tip card. A Happy Hour that is running shows as a small chip at the top. To start one, tap the **…** at the top right of Today and choose **Start Happy Hour** (see [Happy Hour](#happy-hour)).
 
 ![One kid's day: chores on the left, requests on the right](img/today-kid.jpg)
 
@@ -94,9 +94,9 @@ If you change a chore's name, points or steps, the change shows up everywhere, i
 
 Open a kid to see a short page: their points, level and a few rows (**Trust**, **Devices**, **Chores**, **Settings**). Open a row to see more. Tap the **points chip** to see their points history. The buttons at the top:
 
-- **Edit** and a **More** (three dots) menu. Happy Hour now starts from the **…** on Today.
+- **Edit** and **More** (three dots) are at the top. Happy Hour starts from the **…** on Today.
 - **Edit**: change their name, avatar, PIN or **Age group** (Little, Kid or Teen).
-- **More** holds **Bonus** (give 1 to 500 points with a short note; they get a celebration), **Deduct** (take points away, with a reason the kid can see) and, on a phone, **View as kid**. On a computer **View as kid** is its own button.
+- **More** holds **Bonus** (give 1 to 500 points with a short note; they get a celebration), **Deduct** (take points away, with a reason the kid can see) and **View as kid**.
 
 ## Rewards and screen time
 
@@ -177,7 +177,7 @@ Cards on **Today** introduce each of these features, at most one new card a day.
 
 - **Kids & chores → Rewards → Happy Hour**: lengths, multiplier, auto boost and weekly surprise.
 - **Settings → Family → Points rules → Streak freezes**.
-- **Kids & chores → Kids → a kid's page → Celebrations**.
+- **Kids & chores → Kids → a kid's page → Settings → Celebrations**.
 
 ## Less tapping
 
@@ -185,7 +185,7 @@ Two optional ways to approve less by hand, and a weekly summary. Trust mode and 
 
 ### Trust mode
 
-Trust mode is per kid. Turn it on from the **Trust mode** card on the kid's page (**Kids & chores → the kid**). Its level then decides what happens when that kid finishes a chore:
+Trust mode is per kid. Turn it on in the **Trust** row on the kid's page (**Kids & chores → the kid**). Its level then decides what happens when that kid finishes a chore:
 
 | Level | When the kid finishes a chore |
 |---|---|
@@ -193,7 +193,7 @@ Trust mode is per kid. Turn it on from the **Trust mode** card on the kid's page
 | **Trusted** | Approves itself. 1 chore in 5 stays waiting as a spot check. |
 | **Proven** | Approves itself. 1 chore in 20 stays waiting as a spot check. |
 
-![The Trust mode card: level, progress and chores that approved on their own](img/trust-kid.jpg)
+![The Trust row open: level, progress and chores that approved on their own](img/trust-kid.jpg)
 
 - Everyone starts at **New** with a count of 0. Each chore approved after that counts, whether you approved it or it approved itself. After 10, a New kid becomes **Trusted**. After 30 more, a Trusted kid becomes **Proven**. You and the kid both get a message.
 - **Change** sets any level by hand, including Proven on day one.
@@ -226,7 +226,7 @@ Every Sunday at 7:30 PM you get "Your week at (your family)" in your inbox, plus
 
 ### Where the settings live
 
-- **Kids & chores → the kid → Trust mode**, and **Always check** on each chore.
+- **Kids & chores → the kid → Trust**, and **Always check** on each chore.
 - **Settings → Family → Bedtime & recap**: **Bedtime auto-approve** (with its time) and **Weekly recap**.
 
 ![Bedtime & recap in Settings → Family](img/extras.jpg)

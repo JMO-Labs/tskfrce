@@ -36,7 +36,7 @@ export const devices = [
   dv(11, "Maya's iPad", 3, { group_ids: [1] }), dv(12, "Maya's iPhone", 3, { group_ids: [2], alerts: 2, resisting: true, resisting_since: iso(40) }),
   dv(13, 'Leo Switch', 4, { vendor: 'Nintendo', online: false, seen_now: false, last_seen: iso(200), group_ids: [3], override: { action: 'lock', expires_at: fut(30) } }),
   dv(14, "Leo's Chromebook", 4, { vendor: 'Google', chores_done: 1, chores_total: 5 }), dv(15, 'Kids Fire tablet', 5, { vendor: 'Amazon', online: false, seen_now: false, last_seen: iso(600), group_ids: [1] }),
-  dv(16, 'Living room TV', null, { status: 'guest', vendor: 'Samsung', exempt: true, reason: 'Shared TV' }), dv(17, "Dad's laptop", null, { exempt: true, vendor: 'Dell' }),
+  dv(16, 'Living room TV', null, { status: 'guest', vendor: 'Samsung', exempt: true, reason: 'Shared TV' }), dv(17, "Dad's laptop", null, { vendor: 'Dell' }),
   dv(18, 'Xbox', null, { status: 'guest', vendor: 'Microsoft', group_ids: [3], owner_ids: [3, 4] }), dv(19, 'Unknown phone', null, { vendor: null, random_mac: true, hint_of_id: 12, hint_reason: 'model', first_seen: iso(30), blocked_since: iso(30) })]
 const groups = [{ id: 1, name: 'Tablets', device_ids: [11, 15], icon: 'tablet', owner_ids: [3, 5], chore_lock: true, screen_price: 20 }, { id: 2, name: 'Phones', device_ids: [12], icon: 'smartphone', chore_lock: true, screen_price: 30 }, { id: 3, name: 'Consoles', device_ids: [13, 18], icon: 'sports_esports', chore_lock: true, screen_price: 40 }]
 const asg = (id, kidIds, type = 'daily', days = []) => ({ id, chore_id: id, kid_ids: kidIds, mode: 'each', repeat: { type, days }, on_date: null, due_time: id % 3 ? null : '18:00', active: true })
