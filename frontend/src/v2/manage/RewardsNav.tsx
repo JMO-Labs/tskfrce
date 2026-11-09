@@ -8,7 +8,7 @@ export type RewardsItem = 'requests' | 'catalogue' | 'screen' | 'happy' | 'histo
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
-/** Rewards list column: Requests, Catalogue, Screen time, happy hour, History. */
+/** Rewards list column: Requests, Catalogue, Screen time, Happy Hour, History. */
 export function RewardsNav({ selected, onSelect }: { selected?: string; onSelect: (item: RewardsItem) => void }) {
   const waiting = usePendingRedemptions().data?.length
   const rewards = useRewards().data ?? []
@@ -34,7 +34,7 @@ export function RewardsNav({ selected, onSelect }: { selected?: string; onSelect
       sub: st?.price != null ? `${st.price} pts per 15 min` : 'Buy minutes with points',
       end: st && (st.enabled ? <Chip tone="acc" icon="toggle_on">On</Chip> : <Chip tone="grey" icon="toggle_off">Off</Chip>),
     },
-    { id: 'happy', icon: 'bolt', name: 'Happy hour', sub: 'Bonus points for a little while' },
+    { id: 'happy', icon: 'bolt', name: 'Happy Hour', sub: 'Bonus points for a little while' },
     { id: 'history', icon: 'history', name: 'History', sub: 'Last 30 days' },
   ]
   return (
