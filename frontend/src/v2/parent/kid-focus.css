@@ -35,7 +35,6 @@
 [data-look='parent'] .kd-next { display: flex; align-items: center; gap: 10px; }
 [data-look='parent'] .kd-next-t { flex: 1; min-width: 0; font-weight: 600; font-size: 14px; }
 [data-look='parent'] .kd-next-t small { display: block; font-weight: 400; font-size: 12px; color: var(--p-sub); }
-[data-look='parent'] .p-srow-body .v2-sub { padding-top: 0; border-top: 0; }
 [data-look='parent'] .kd-list .p-arow-acts .p-btn:not(.p-ib) { padding: 7px 12px; min-height: 0; font-size: 13px; }
 
 /* Settings: Profile key/values, inputs in place, Celebrations */

@@ -150,7 +150,6 @@
 [data-look='parent'] .pk-panel[data-tone='amber'] .pk-hint { color: var(--p-ambink); }
 [data-look='parent'] .pk-note { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 14px; background: var(--p-soft); }
 [data-look='parent'] .pk-note p { color: var(--p-sub); font-size: 13px; line-height: 1.45; }
-[data-look='parent'] .pk-head-t .pk-chips { margin-top: 8px; }
 
 /* ── craft + a11y (pass 2) ───────────────────────────────────────────────── */
 
@@ -181,10 +180,6 @@
 }
 
 /* header actions: one row on desktop, tidy 2x2 grid on phone (Lock / Unlock on top) */
-@media (max-width: 767px) {
-  [data-look='parent'] .pk-head .pk-actions-grid { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
-  [data-look='parent'] .pk-actions-grid .p-btn { width: 100%; }
-}
 
 /* ── extreme content (pass 3): long names, many IPv6 addresses, 30-device groups ── */
 [data-look='parent'] .pk-pill-plain { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -194,11 +189,6 @@
 [data-look='parent'] .pk-detail .pk-panel :is(h2, h3) { min-width: 0; overflow-wrap: anywhere; }
 [data-look='parent'] .pk-head .p-header-chip { max-width: 100%; min-width: 0; overflow-wrap: anywhere; }
 [data-look='parent'] .p-device-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 767px) {
-  [data-look='parent'] .pk-actions-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  [data-look='parent'] .pk-actions-grid .p-btn { white-space: normal; line-height: 1.2; }
-  [data-look='parent'] .pk-actions-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
-}
 
 /* device list: internet state as a colour-coded glyph (words live in the tooltip) */
 [data-look='parent'] .p-device-state {
@@ -223,8 +213,6 @@
 [data-look='parent'] .pk-group-icons .p-glyph-item .ms { font-size: 20px !important; }
 [data-look='parent'] .pk-group-icons .p-glyph-item.selected { color: #292928; }
 [data-look='parent'] .pk-group-icons .p-glyph-label { display: none; }
-[data-look='parent'] .pk-h3-link { margin-left: auto; color: var(--p-sub); font-size: 12px; font-weight: 500; text-decoration: none; }
-[data-look='parent'] .pk-h3-link:hover { color: var(--p-ink); text-decoration: underline; }
 [data-look='parent'] .pk-sumbar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 14px 18px; border: 1px solid var(--p-line); border-radius: 18px; background: var(--p-card); font-size: 11.5px; }
 [data-look='parent'] .pk-sumbar span { color: var(--p-sub); }
 [data-look='parent'] .pk-sumbar b { display: block; margin-top: 3px; font-size: 15px; color: var(--p-ink); }
@@ -251,7 +239,6 @@
 [data-look='parent'] .p-device-meta { display: flex; align-items: center; gap: 6px; }
 [data-look='parent'] .p-device-meta > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 [data-look='parent'] .p-device-meta .p-chip { flex: none; }
-[data-look='parent'] .pk-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; align-content: start; }
 [data-look='parent'] .p-segmented-button .p-chip { margin-left: 6px; }
 [data-look='parent'] .p-segmented-button { display: inline-flex; align-items: center; justify-content: center; }
 
