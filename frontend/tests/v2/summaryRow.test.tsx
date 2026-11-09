@@ -63,7 +63,7 @@ test('body itself takes focus when it has nothing focusable', () => {
   expect(document.activeElement).toBe(screen.getByRole('region', { name: /Devices/ }))
 })
 
-test('opening scrolls nearest, smooth unless reduced motion', () => {
+test('opening scrolls the row into view, smooth unless reduced motion', () => {
   render(<Page />)
   click(head(/^Trust/))
   expect(Element.prototype.scrollIntoView).toHaveBeenLastCalledWith({ block: 'nearest', behavior: 'smooth' })
@@ -71,6 +71,23 @@ test('opening scrolls nearest, smooth unless reduced motion', () => {
   ;(window.matchMedia as jest.Mock).mockReturnValue({ matches: true })
   click(head(/^Devices/))
   expect(Element.prototype.scrollIntoView).toHaveBeenLastCalledWith({ block: 'nearest', behavior: 'auto' })
+})
+
+test('a page that loads with the row already open stays put while its head is in view', () => {
+  fakeRouter.reset('/x', { open: 'trust' })
+  render(<Page />)
+  expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
+  click(head(/^Trust/))
+  click(head(/^Devices/))
+  expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1)
+})
+
+test('a row taller than the screen lines its head up at the top', () => {
+  Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get: () => 5000 })
+  render(<Page />)
+  click(head(/^Trust/))
+  expect(Element.prototype.scrollIntoView).toHaveBeenLastCalledWith({ block: 'start', behavior: 'smooth' })
+  delete (HTMLElement.prototype as { offsetHeight?: number }).offsetHeight
 })
 
 test('closing returns focus to the head button', () => {
@@ -159,4 +176,13 @@ test('kid names never break mid-word', () => {
 test('the area is a named group, so its label is announced', () => {
   render(<Page />)
   expect(screen.getByRole('group', { name: 'Sections' })).toBeInTheDocument()
+})
+
+test('row motion is one short beat (120 ms, within the 150 ms limit) and off under reduced motion', () => {
+  expect(css).toContain('--srow-ms: 120ms')
+  expect(css).not.toMatch(/\b1[6-9]\dms|\b[2-9]\d\dms/)
+  const body = css.match(/@media \(prefers-reduced-motion: no-preference\) \{[^}]*p-srow-body[^}]*\}/)
+  expect(body?.[0]).toContain('animation: p-srow-in var(--srow-ms)')
+  const reduce = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'))
+  expect(reduce).toContain('.p-srow-body { animation: none; }')
 })

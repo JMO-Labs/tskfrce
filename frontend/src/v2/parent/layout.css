@@ -146,8 +146,10 @@
   padding: 0;
 }
 
-[data-look='parent'] .p-list-header-top button:hover {
-  background: var(--p-soft);
+@media (hover: hover) {
+  [data-look='parent'] .p-list-header-top button:hover {
+    background: var(--p-soft);
+  }
 }
 
 [data-look='parent'] .p-list-items {
@@ -220,8 +222,10 @@
 }
 
 [data-look='parent'] .p-back-link:focus-visible { outline: 2px solid var(--p-focus); outline-offset: -2px; }
-[data-look='parent'] .p-back-link:hover {
-  background: var(--p-soft);
+@media (hover: hover) {
+  [data-look='parent'] .p-back-link:hover {
+    background: var(--p-soft);
+  }
 }
 
 [data-look='parent'] .p-detail-panel {
@@ -347,8 +351,10 @@
   text-align: left;
 }
 
-[data-look='parent'] .p-more-link:hover {
-  background: var(--p-soft);
+@media (hover: hover) {
+  [data-look='parent'] .p-more-link:hover {
+    background: var(--p-soft);
+  }
 }
 
 [data-look='parent'] .p-more-link .ms {
@@ -381,8 +387,10 @@
   font-size: 14px;
 }
 
-[data-look='parent'] .p-more-logout:hover {
-  background: var(--p-soft);
+@media (hover: hover) {
+  [data-look='parent'] .p-more-logout:hover {
+    background: var(--p-soft);
+  }
 }
 
 /* phone header: account initial, opens More */

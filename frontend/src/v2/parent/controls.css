@@ -17,7 +17,7 @@ html[data-look='parent'] .f-btn.f-btn {
   background: var(--p-card);
   color: var(--p-ink);
 }
-html[data-look='parent'] .f-btn.f-btn:hover { background: var(--p-soft); }
+@media (hover: hover) { html[data-look='parent'] .f-btn.f-btn:hover { background: var(--p-soft); } }
 html[data-look='parent'] .f-btn.f-btn[data-variant='filled'] { background: var(--p-ink); border-color: var(--p-ink); color: var(--p-card); }
 html[data-look='parent'] .f-btn.f-btn[data-variant='subtle'] { border-color: transparent; background: transparent; }
 html[data-look='parent'] .f-btn.f-btn[data-variant='subtle'][data-color='red'],

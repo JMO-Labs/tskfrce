@@ -31,14 +31,21 @@ export function SummaryRow({ id, icon, title, summary, line2, aside, info, focus
   const wasOpen = useRef(open)
   useEffect(() => {
     const was = wasOpen.current
+    const opening = !was && open
     wasOpen.current = open
     // closing unmounts the body, so hand focus back to this row's head (not when another row took over)
     if (was && !open && focus.open === null) document.querySelector<HTMLElement>(`[data-focus-head="${id}"]`)?.focus({ preventScroll: true })
     const el = body.current
     if (!open || !el) return
     ;(el.querySelector<HTMLElement>(FOCUSABLE) ?? el).focus({ preventScroll: true })
+    // Bring the whole row (head and body) into view; the other rows fold at once, so the target is already final.
+    // A row taller than the screen lines its head up at the top instead of its end at the bottom.
+    // A page that loads with this row already open (a link) stays put when the head is in view: its content is still arriving.
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    el.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' })
+    const row = el.closest<HTMLElement>('.p-srow') ?? el
+    const at = row.querySelector('.p-srow-top')?.getBoundingClientRect()
+    if (!opening && at && at.top >= 0 && at.bottom <= window.innerHeight) return
+    row.scrollIntoView({ block: row.offsetHeight > window.innerHeight * 0.7 ? 'start' : 'nearest', behavior: reduce ? 'auto' : 'smooth' })
   }, [open, id, focus.open])
 
   const onTouchStart = (e: TouchEvent) => { startY.current = e.touches[0]?.clientY ?? null }

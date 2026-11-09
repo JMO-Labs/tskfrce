@@ -35,8 +35,10 @@
   transition: all 0.15s ease;
 }
 
-[data-look='parent'] .p-rail-logo:hover {
-  background: var(--p-soft);
+@media (hover: hover) {
+  [data-look='parent'] .p-rail-logo:hover {
+    background: var(--p-soft);
+  }
 }
 
 [data-look='parent'] .p-rail-item {
@@ -56,9 +58,11 @@
   text-decoration: none;
 }
 
-[data-look='parent'] .p-rail-item:hover {
-  background: var(--p-soft);
-  color: var(--p-ink);
+@media (hover: hover) {
+  [data-look='parent'] .p-rail-item:hover {
+    background: var(--p-soft);
+    color: var(--p-ink);
+  }
 }
 
 [data-look='parent'] .p-rail-item[aria-current] {

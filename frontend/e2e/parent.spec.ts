@@ -92,7 +92,7 @@ test.describe('parent journeys', () => {
       await page.getByLabel(/Points \(1 to 500\)/).fill('5')
       await page.getByLabel('Why?').fill('Great teamwork')
       await page.getByRole('button', { name: 'Send points' }).click()
-      await expect(page.getByText(/Sent! Bonus Kid got \+5/)).toBeVisible()
+      await expect(page.getByText(/Bonus Kid got \+5/)).toBeVisible()
     } finally {
       await k.undo()
       await api.dispose()

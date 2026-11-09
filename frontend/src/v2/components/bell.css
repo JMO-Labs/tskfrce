@@ -11,7 +11,7 @@
   color: var(--p-ink);
   cursor: pointer;
 }
-.p-bell:hover { background: var(--p-soft); }
+@media (hover: hover) { .p-bell:hover { background: var(--p-soft); } }
 .p-bell-count {
   position: absolute;
   top: -6px;
@@ -76,8 +76,10 @@
   padding: 0;
 }
 
-.p-bell-mark-read:hover {
-  color: var(--p-ink);
+@media (hover: hover) {
+  .p-bell-mark-read:hover {
+    color: var(--p-ink);
+  }
 }
 
 .p-bell-tabs {
@@ -142,7 +144,7 @@
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.p-bell-text:hover { text-decoration: underline; }
+@media (hover: hover) { .p-bell-text:hover { text-decoration: underline; } }
 .p-bell-text:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 .p-bell-ud { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--p-lav-ink); margin-right: 6px; vertical-align: 1px; }
 .p-bell-sendrow { padding-top: 0; min-height: 0; }
@@ -179,7 +181,7 @@
   color: var(--p-sub);
   text-decoration: none;
 }
-.p-bell-foot a:hover { color: var(--p-ink); }
+@media (hover: hover) { .p-bell-foot a:hover { color: var(--p-ink); } }
 .p-bell-foot a:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; border-radius: 4px; }
 
 /* phone sheet: title in the parent face (the list's own header is hidden there) */
@@ -189,7 +191,7 @@
 [data-look='parent'] .p-bell-drawer-close { color: var(--p-ink); }
 [data-look='parent'] .p-bell-drawer-close:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 .p-bell-tab, .p-bell-mark-read { transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
-.p-bell-tab:not(.on):hover { background: var(--p-line); }
+@media (hover: hover) { .p-bell-tab:not(.on):hover { background: var(--p-line); } }
 
 .p-bell-older { display: flex; flex: none; margin: 6px auto 10px; }
 .p-bell-scroll { overscroll-behavior: contain; }
