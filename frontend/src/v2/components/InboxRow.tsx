@@ -1,5 +1,5 @@
 import type { InboxItem } from '../hooks/useInbox'
-import { openChat } from '../chat/dock'
+import { openChat, openChatAfterNav } from '../chat/dock'
 import type { ChipTone } from '../parent/Chip'
 import { ActionRow } from '../parent/ActionRow'
 import type { MenuItem } from '../parent/MoreMenu'
@@ -37,7 +37,7 @@ const LABEL: Record<string, string> = {
 export function InboxRow({ n, live, busy, sending, note, onNote, onApprove, onSendBack, onDecide, onDismiss, onLock, onOpen, go }: Props) {
   const needs = isNeedsYou(n)
   const device = n.device_id ? `/devices?item=${n.device_id}` : '/devices'
-  const reply = () => void go(`/?chore=${n.run_id}`).then(() => openChat('chore', String(n.run_id)))
+  const reply = () => void go(`/?chore=${n.run_id}`).then(() => openChatAfterNav('chore', String(n.run_id)))
   const ask = () => void go(null).then(() => openChat('private', String(n.kid_id)))
   let main: { label: string; onClick: () => void; plain?: boolean } | undefined
   let menu: MenuItem[] = []

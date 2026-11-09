@@ -113,11 +113,12 @@ test('kid note shows in the bell under Needs you and Reply opens the chore chat'
     await expect(item).toBeVisible()
     await item.getByRole('button', { name: 'Reply' }).click()
     await expect(page).toHaveURL(new RegExp(`chore=${run.id}`))
-    // Today opens the chore's chat inline (the chat column). Reply can also pop the dock when it fires before
-    // Today has claimed the thread (existing race, see dock.ts openChat/claimChat), so don't match the dock too.
+    // Today opens the chore's chat inline (the chat column); the dock must not open the same thread beside it.
     const chat = page.getByTestId('chat-column')
     await expect(chat.getByText(`Note: ${label}`)).toBeVisible()
     await expect(chat.getByRole('textbox', { name: 'Message' })).toBeVisible()
+    await page.waitForTimeout(2_000) // longer than the dock handoff delay
+    await expect(page.locator('#f-chat-dock')).toHaveCount(0)
   } finally {
     if (deviceId) {
       await api.patch(`/api/proxy/devices/${deviceId}`, { data: { owner_ids: [] } })

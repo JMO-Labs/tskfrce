@@ -5,7 +5,7 @@ import { notifications } from '@mantine/notifications'
 import type { NeedsItem } from '../types'
 import { useApproveChore, useSendBack } from '../hooks/useToday'
 import { useDecideRedemption } from '../hooks/useRewards'
-import { openChat } from '../chat/dock'
+import { openChatAfterNav } from '../chat/dock'
 import { errorText } from '../errorText'
 import { toastFail, toastOk } from '../notify'
 
@@ -75,7 +75,7 @@ export function useNeedsActions() {
         pathname: '/',
         query: i.kid_id == null ? { chore: String(i.id) } : { kid: String(i.kid_id), chore: String(i.id) },
       })
-      openChat('chore', String(i.id))
+      openChatAfterNav('chore', String(i.id))
     },
   }
 }

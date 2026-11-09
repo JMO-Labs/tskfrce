@@ -6,13 +6,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MantineProvider } from '@mantine/core'
 import { api } from '@/v2/api'
 import { Bell, tabLabel } from '@/v2/components/Bell'
-import { openChat } from '@/v2/chat/dock'
+import { openChat, openChatAfterNav } from '@/v2/chat/dock'
 
 const push = jest.fn()
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
 jest.mock('next/router', () => ({ useRouter: () => ({ push }) }))
-jest.mock('@/v2/chat/dock', () => ({ openChat: jest.fn() }))
+jest.mock('@/v2/chat/dock', () => ({ openChat: jest.fn(), openChatAfterNav: jest.fn() }))
 
 const apiMock = api as unknown as Mock<(p: string, i?: { method?: string; kid?: boolean }) => Promise<unknown>>
 const item = (id: number, over: object = {}) => ({
@@ -36,6 +36,7 @@ beforeEach(() => {
   apiMock.mockReset()
   push.mockReset().mockResolvedValue(true)
   ;(openChat as unknown as Mock).mockReset()
+  ;(openChatAfterNav as unknown as Mock).mockReset()
   window.matchMedia =
     window.matchMedia ||
     ((() => ({ matches: false, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} })) as never)
@@ -304,7 +305,7 @@ describe('Bell', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Notifications/ }))
     await userEvent.click(await screen.findByRole('button', { name: /Reply/, hidden: true }))
     expect(push).toHaveBeenCalledWith('/?chore=7')
-    await waitFor(() => expect(openChat).toHaveBeenCalledWith('chore', '7'))
+    await waitFor(() => expect(openChatAfterNav).toHaveBeenCalledWith('chore', '7'))
   })
 
   test("Who's this? shows for an unassigned device on any day, not once assigned", async () => {

@@ -50,6 +50,10 @@ export function openChat(kind: ThreadKind, ref: string, reply?: ChatReply): void
   const claimed = inline.get(`${kind}:${ref}`)
   if (claimed) return claimed(reply)
   pending = { key: `${kind}:${ref}`, reply, at: Date.now() }
+  openDock(kind, ref, reply)
+}
+
+function openDock(kind: ThreadKind, ref: string, reply?: ChatReply): void {
   const parent = document.documentElement.dataset.look === 'parent'
   const noDock = window.location.pathname === '/chat' && !window.matchMedia?.('(max-width: 767px)').matches
   if (parent && noDock) {
@@ -58,4 +62,15 @@ export function openChat(kind: ThreadKind, ref: string, reply?: ChatReply): void
     return
   }
   window.dispatchEvent(new CustomEvent(OPEN_CHAT_EVENT, { detail: { kind, ref, reply } }))
+}
+
+/** Like openChat, right after a navigation to the page whose inline chat will claim this thread: the dock
+ *  opens only if nothing claimed it within AFTER_NAV_MS, so Reply never shows the same chat twice. */
+const AFTER_NAV_MS = 1500
+export function openChatAfterNav(kind: ThreadKind, ref: string, reply?: ChatReply): void {
+  if (typeof window === 'undefined' || !validRef(kind, ref)) return
+  if (inline.get(`${kind}:${ref}`)) return openChat(kind, ref, reply)
+  const mine = { key: `${kind}:${ref}`, reply, at: Date.now() }
+  pending = mine
+  window.setTimeout(() => { if (pending === mine) openDock(kind, ref, reply) }, AFTER_NAV_MS)
 }

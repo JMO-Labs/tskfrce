@@ -1,4 +1,4 @@
-import { claimChat, openChat } from '@/v2/chat/dock'
+import { claimChat, openChat, openChatAfterNav, OPEN_CHAT_EVENT } from '@/v2/chat/dock'
 
 describe('pending chat request', () => {
   afterEach(() => jest.restoreAllMocks())
@@ -52,5 +52,29 @@ describe('pending chat request', () => {
     const next = jest.fn()
     claimChat('chore', '12', next)()
     expect(next).not.toHaveBeenCalled()
+  })
+
+  describe('openChatAfterNav', () => {
+    beforeEach(() => jest.useFakeTimers())
+    afterEach(() => jest.useRealTimers())
+
+    test('a claim right after navigation keeps the dock closed', () => {
+      const dock = jest.fn(); window.addEventListener(OPEN_CHAT_EVENT, dock)
+      openChatAfterNav('chore', '20', { label: 'R' })
+      const fn = jest.fn(); const release = claimChat('chore', '20', fn)
+      jest.advanceTimersByTime(5_000)
+      expect(fn).toHaveBeenCalledWith({ label: 'R' })
+      expect(dock).not.toHaveBeenCalled()
+      release(); window.removeEventListener(OPEN_CHAT_EVENT, dock)
+    })
+
+    test('nobody claims: the dock opens after the handoff delay', () => {
+      const dock = jest.fn(); window.addEventListener(OPEN_CHAT_EVENT, dock)
+      openChatAfterNav('chore', '21')
+      expect(dock).not.toHaveBeenCalled()
+      jest.advanceTimersByTime(5_000)
+      expect(dock).toHaveBeenCalledTimes(1)
+      window.removeEventListener(OPEN_CHAT_EVENT, dock)
+    })
   })
 })
