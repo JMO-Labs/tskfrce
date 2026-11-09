@@ -18,7 +18,7 @@
 .tip :global(.ms) { flex: none; font-size: 20px; }
 .grow { flex: 1; min-width: 0; }
 .more { flex: none; min-height: 32px; padding: 0 4px; border: 0; background: none; color: var(--p-ink); font: inherit; font-size: 13px; font-weight: 600; text-decoration: underline; cursor: pointer; }
-.more:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; border-radius: 6px; }
+.more:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; border-radius: 6px; }
 .pp { margin: 0 0 8px; font-size: 13px; line-height: 1.5; }
 .pp:last-child { margin-bottom: 0; }
 @media (max-width: 767px) { .more { min-height: 44px; min-width: 44px; } }

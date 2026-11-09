@@ -14,7 +14,7 @@
 [data-look='parent'] .iw-text[data-tone='warn'] { color: var(--p-ambink); background: var(--p-amb); border-radius: 8px; padding: 6px 10px; font-weight: 600; }
 [data-look='parent'] .iw-link { display: inline-flex; align-items: center; gap: 3px; margin-left: 8px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--p-line); color: var(--p-ink); font-size: 12px; font-weight: 600; text-decoration: none; vertical-align: baseline; }
 [data-look='parent'] .iw-link:hover { border-color: var(--p-ink); background: var(--p-soft); }
-[data-look='parent'] .iw-link:focus-visible, [data-look='parent'] .iw-btn:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
+[data-look='parent'] .iw-link:focus-visible, [data-look='parent'] .iw-btn:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 [data-look='parent'] .iw-list-items { margin: 0; padding: 0 0 0 18px; display: grid; gap: 4px; font-size: 13.5px; color: var(--p-ink); }
 [data-look='parent'] .iw-list-items li { overflow-wrap: anywhere; }
 [data-look='parent'] .iw-list-items li::marker { color: var(--p-sub); }

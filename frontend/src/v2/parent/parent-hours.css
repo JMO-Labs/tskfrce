@@ -53,7 +53,7 @@
 [data-look='parent'] .ph-tl[data-edit='true'] .ph-ax { margin-right: 40px; }
 [data-look='parent'] .ph-ed { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 1px solid var(--p-line); border-radius: 50%; background: var(--p-card); color: var(--p-sub); cursor: pointer; }
 [data-look='parent'] .ph-ed:hover { border-color: var(--p-ink); color: var(--p-ink); }
-[data-look='parent'] .ph-ed:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
+[data-look='parent'] .ph-ed:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 
 /* ── legend and precedence ───────────────────────────────────────────────── */
 [data-look='parent'] .ph-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 4px; color: var(--p-ink); font-size: 12px; }

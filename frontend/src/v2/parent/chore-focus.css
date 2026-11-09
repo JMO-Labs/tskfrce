@@ -44,7 +44,7 @@
 [data-look='parent'] .ch-sw::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--p-card); transition: transform 180ms; }
 [data-look='parent'] .ch-sw[aria-checked='true'] { background: var(--p-ink); }
 [data-look='parent'] .ch-sw[aria-checked='true']::after { background: var(--p-acc); transform: translateX(16px); }
-[data-look='parent'] .ch-sw:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
+[data-look='parent'] .ch-sw:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 
 @media (max-width: 767px) {
   [data-look='parent'] .p-srow-info > button { margin-left: -12px; } /* ponytail: pulls the 44px target's icon back beside the title */

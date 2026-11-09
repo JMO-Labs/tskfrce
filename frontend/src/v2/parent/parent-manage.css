@@ -26,7 +26,7 @@
 }
 [data-look='parent'] .pk-card:hover { border-color: var(--p-line); }
 [data-look='parent'] .pk-card[data-selected='true'] { background: var(--p-card); border-color: var(--p-ink); }
-[data-look='parent'] .pk-card:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
+[data-look='parent'] .pk-card:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 
 [data-look='parent'] .pk-card-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 [data-look='parent'] .pk-card-t b { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -146,7 +146,7 @@
 [data-look='parent'] .pk-input { transition: border-color var(--dur-1) var(--ease-out); }
 [data-look='parent'] .pk-input:hover { border-color: var(--p-sub); }
 [data-look='parent'] .pk-input::placeholder { color: var(--p-sub); }
-[data-look='parent'] .pk-input:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 1px; }
+[data-look='parent'] .pk-input:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 1px; }
 
 [data-look='parent'] .pk-switch { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--p-line); font-size: 13.5px; color: var(--p-ink); }
 /* mockup 02 .sw: 38x22 line track + card knob; on = ink track + accent knob (one switch app-wide) */
@@ -174,7 +174,7 @@
 }
 [data-look='parent'] .pk-switch button[aria-checked='true'] { background: var(--p-ink); }
 [data-look='parent'] .pk-switch button[aria-checked='true']::after { background: var(--p-acc); transform: translateX(16px); }
-[data-look='parent'] .pk-switch button:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
+[data-look='parent'] .pk-switch button:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 
 /* steps */
 [data-look='parent'] .pk-steps { display: flex; flex-direction: column; gap: 6px; }
@@ -219,7 +219,7 @@
 [data-look='parent'] .pk-type[data-on='true'] button:first-child { padding-right: 2px; }
 [data-look='parent'] .pk-type .pk-type-edit { padding: 6px 8px 6px 4px; }
 [data-look='parent'] .pk-type[data-new] { border-style: dashed; color: var(--p-sub); }
-[data-look='parent'] .pk-type button:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 1px; }
+[data-look='parent'] .pk-type button:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 1px; }
 [data-look='parent'] .pk-hint-tight { margin-top: -4px; }
 [data-look='parent'] .pk-hint a { color: var(--p-ink); font-weight: 600; }
 [data-look='parent'] .pk-notes { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -324,7 +324,7 @@ html[data-look='parent'] .mantine-Modal-close { color: var(--p-sub); }
 [data-look='parent'] .pk-age b { display: block; font-size: 15px; font-weight: 700; }
 [data-look='parent'] .pk-age small { display: block; color: var(--p-sub); font-size: 12.5px; margin-top: 2px; }
 [data-look='parent'] .pk-age[aria-pressed='true'] { border: 2px solid var(--p-ink); padding: 11px; box-shadow: 3px 3px 0 var(--p-acc); }
-[data-look='parent'] .pk-age:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
+[data-look='parent'] .pk-age:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 @media (max-width: 599px) { [data-look='parent'] .pk-ages { grid-template-columns: 1fr; } }
 
 /* Kid phone codes */
