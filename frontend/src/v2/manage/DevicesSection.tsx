@@ -1,6 +1,7 @@
 import { useRouter } from 'next/router'
 import { useCallback } from 'react'
 import type { Device, Group, Kid } from '@/v2/types'
+import { withoutFocus } from '@/v2/parent/useFocusParam'
 import { DeviceList } from './DeviceList'
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
@@ -26,14 +27,14 @@ export function DevicesSection({
 
   const handleSelectDevice = useCallback(
     (id: number) => {
-      const { tab: _t, ...rest } = router.query
+      const { tab: _t, ...rest } = withoutFocus(router.query)
       router.push({ pathname: router.pathname, query: { ...rest, item: id } }, undefined, { shallow: true })
     },
     [router],
   )
 
   const handleSelectGroup = useCallback(
-    (id: number | 'new') => router.push({ pathname: router.pathname, query: { ...router.query, item: id, tab: 'groups' } }, undefined, { shallow: true }),
+    (id: number | 'new') => router.push({ pathname: router.pathname, query: { ...withoutFocus(router.query), item: id, tab: 'groups' } }, undefined, { shallow: true }),
     [router],
   )
 

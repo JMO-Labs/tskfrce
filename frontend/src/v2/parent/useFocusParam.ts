@@ -10,6 +10,8 @@ export interface FocusOptions {
   clears?: string[]
   /** values that may be open; any other value is removed with router.replace. undefined = not checked yet (data still loading) */
   valid?: (id: string) => boolean
+  /** open with router.replace, never a new history entry (screens whose Back must not step through rows) */
+  replace?: boolean
   /** element that scrolls; default document.scrollingElement ?? document.documentElement */
   scroller?: () => HTMLElement | null
 }
@@ -41,6 +43,10 @@ function blurOpenBody() {
   const a = document.activeElement
   if (a instanceof HTMLElement && a.closest('.p-srow-body')) a.blur()
 }
+
+/** Every focus param: a record switch must not inherit the previous record's open row. */
+export const FOCUS_PARAMS = ['open', 'edit', 'pin', 'pick', 'net']
+export const withoutFocus = (q: Query): Query => without(q, FOCUS_PARAMS)
 
 function without(q: Query, keys: string[]): Query {
   const out = { ...q }
@@ -76,7 +82,7 @@ export function useFocusParam(param: string, opts: FocusOptions = {}): Focus {
     const key = `open:${id}:${JSON.stringify(extra)}`
     if (pending.current === key) return
     const swapped = group.find((g) => r.query[g] !== undefined)
-    const replace = o.replace || r.query[param] !== undefined || swapped !== undefined
+    const replace = o.replace || live.current.opts.replace || r.query[param] !== undefined || swapped !== undefined
     pending.current = key
     go(replace ? 'replace' : 'push', { ...without(r.query, [...group, ...clears]), [param]: id, ...extra })
     if (!replace) PUSHED.add(param)
