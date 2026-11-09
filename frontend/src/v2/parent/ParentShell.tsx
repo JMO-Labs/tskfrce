@@ -23,6 +23,7 @@ export function ParentShell({
   actions,
   phone,
   back,
+  above,
 }: {
   title: string
   /** phone back-link label above a detail when it is not the title (e.g. "Rewards") */
@@ -32,6 +33,8 @@ export function ParentShell({
   list?: ReactNode
   children: ReactNode
   actions?: ReactNode
+  /** full-width row between the header and the page (a "‹ Today" back row) */
+  above?: ReactNode
 }) {
   const { logout, user } = useUnifiedAuth()
   const router = useRouter()
@@ -102,6 +105,7 @@ export function ParentShell({
         </header>
         <BlockerBanner />
         <Freshness />
+        {above}
         <main className="p-main">{children}</main>
       </div>
       {small && <TabBar />}
