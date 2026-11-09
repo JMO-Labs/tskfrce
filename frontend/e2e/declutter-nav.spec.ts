@@ -155,7 +155,7 @@ test.describe('unsaved-changes guard', () => {
       const name = page.getByLabel('Chore name', { exact: true })
       await expect(name).toHaveValue(title)
       await name.fill(`${title} edited`)
-      await page.getByRole('link', { name: /^← / }).click() // the way to another chore on a phone
+      await page.locator('a.p-back-link').click() // the way to another chore on a phone
       await expect(discardSheet(page)).toHaveCount(1)
       await discardSheet(page).getByRole('button', { name: 'Discard' }).click()
       await expect(page).not.toHaveURL(/item=/)
