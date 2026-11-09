@@ -83,7 +83,7 @@ export function FamilyCard({ fam }: { fam: Family }) {
   const line = (id: string, t: string) => (focus.isOpen(id) ? undefined : t) // the open row shows its form instead
   return (
     <section aria-label="Family" className="pn fam-rows">
-      <DetailHeader media={<span className="pk-tile pk-tile-lg"><Icon name="home" size={30} /></span>} title="Family" sub="The basics for your household." />
+      <DetailHeader media={<span className="pk-tile pk-tile-lg"><Icon name="home" size={26} /></span>} title="Family" sub="The basics for your household." />
       <FocusArea focus={focus} label="Family settings" grouped>
         <SummaryRow id="hh" icon={ico('home')} title="Household" summary="" line2={line("hh", householdLine(fam))} focus={focus}>
           <HouseholdBody fam={fam} save={save} />

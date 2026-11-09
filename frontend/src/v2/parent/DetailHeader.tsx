@@ -18,11 +18,11 @@ export function DetailHeader({ media, title, sub, chips, status, main, menu, men
       {media}
       <div className="p-dhead-meta">
         <h2>{title}</h2>
-        {sub && <div className="p-dhead-sub">{sub}</div>}
+        {sub && <div className="p-dhead-sub" title={typeof sub === 'string' ? sub : undefined}>{sub}</div>}
         {(status || chips) && (
           <div className="p-dhead-chips">
             {status && (status.pop ? (
-              <InfoPop label={status.label} target={<button type="button" className="p-chip" data-tone={status.tone}><Icon name={status.icon} size={16} />{status.label}</button>}>{status.pop}</InfoPop>
+              <InfoPop label={status.label} target={<button type="button" className="p-chip" data-tone={status.tone}><Icon name={status.icon} size={12} />{status.label}</button>}>{status.pop}</InfoPop>
             ) : <Chip tone={status.tone} icon={status.icon}>{status.label}</Chip>)}
             {chips}
           </div>

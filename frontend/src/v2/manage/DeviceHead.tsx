@@ -84,7 +84,7 @@ export function DeviceHead({ device, locked, ov, timeZone, blockNew, pendingActi
   const busy = (a: string) => pendingAction === a
   return (
     <DetailHeader
-      media={<span className="pk-tile pk-tile-lg"><Icon name={DEVICE_TYPE_ICON[getDeviceType(device.name, device.vendor)]} size={30} /></span>}
+      media={<span className="pk-tile pk-tile-lg"><Icon name={DEVICE_TYPE_ICON[getDeviceType(device.name, device.vendor)]} size={26} /></span>}
       title={device.name}
       status={status}
       main={locked ? (

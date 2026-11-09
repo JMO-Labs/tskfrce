@@ -48,7 +48,7 @@ export function BadgesCustom() {
   return (
     <div className="pk-detail bd-page">
       <DetailHeader
-        media={<span className="pk-tile pk-tile-lg"><Icon name="military_tech" size={30} /></span>}
+        media={<span className="pk-tile pk-tile-lg"><Icon name="military_tech" size={26} /></span>}
         title="Custom badges"
         sub="Each award moves a kid up a tier."
         main={<button type="button" className="p-btn" data-variant="accent" onClick={() => focus.openTo('new')}><Icon name="add" size={16} />New</button>}
