@@ -153,6 +153,8 @@
 .p-bell-setl, [data-look='parent'] a.p-bell-setl { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12.5px; font-weight: 700; color: var(--p-ink); text-decoration: none !important; }
 .p-bell-setl > span:last-child { text-decoration: underline; text-underline-offset: 3px; }
 .p-bell-setl:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; border-radius: 4px; }
+/* inbox page, phone: settings link ~33px under the list (audit 27); the 44px tap box overlaps the list gap */
+@media (max-width: 767px) { .p-bell-list[data-page] .p-bell-scroll { padding-bottom: 0; } .p-bell-list[data-page] .p-bell-setl { margin-top: -5px; } }
 @media (max-width: 767px) { .p-bell-card .p-arow-acts .p-btn:not(.p-ib), .p-bell-sendrow .p-btn, .p-bell-note, .p-bell-older { min-height: 44px; } .p-bell-tab, .p-bell-mark-read, .p-bell-setl { min-height: 44px; } .p-bell-mark-read, .p-bell-setl { display: inline-flex; align-items: center; } }
 
 .p-bell-note {
