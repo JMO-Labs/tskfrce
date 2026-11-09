@@ -239,7 +239,7 @@ export default function SetupPage() {
   const stepTitles = {
     1: { title: 'Make your parent account', sub: "You'll use this to log in. You can invite another parent later." },
     2: { title: 'Your family', sub: 'Shown on the kids\' screens and in notifications.' },
-    3: { title: 'Add your kids', sub: 'Add each child. You can add more later from Kids & chores.' },
+    3: { title: 'Who are your kids?', sub: 'Add each kid, one at a time. You can add more later.' },
     4: { title: "Kids' phones", sub: "Each kid scans their code with their phone's camera. No phone? Skip it. You can do this later from the kid's page." },
     5: { title: 'Pick some starter chores', sub: 'Tap to choose. Everything can be changed later.' },
     6: { title: 'Whose devices are these?', sub: 'Give each one an owner, or mark it Guest so it\'s never blocked.' },

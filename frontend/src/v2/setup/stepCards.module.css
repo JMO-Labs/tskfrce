@@ -30,7 +30,7 @@
 .kidline .chip { display: inline-flex; align-items: center; gap: 4px; }
 .pair { display: flex; gap: 10px; align-items: flex-end; margin-top: 12px; }
 .fldlabel { font-size: 12.5px; font-weight: 600; line-height: 1.55; margin-bottom: 6px; }
-.pinlabel { display: inline-flex; align-items: center; gap: 2px; }
+.pinlabel { display: flex; align-items: center; gap: 2px; height: 24px; } /* 24px like the mockup's label row: Avatar sits ~2px lower, not 8 */
 .pinlabel :global(.p-info-btn) { margin: -4px 0; }
 .avbtn { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 12px; border-radius: 10px; border: 1px solid var(--p-line); background: var(--p-card); color: var(--p-ink); font-size: 20px; line-height: 1; cursor: pointer; }
 .actbar { display: flex; justify-content: flex-end; margin-top: 14px; }
@@ -40,5 +40,5 @@
 @media (max-width: 767px) { .avgrid { grid-template-columns: repeat(6, 44px); } .avgrid button { width: 44px; height: 44px; } }
 .avgrid button:hover, .avgrid button[aria-pressed='true'] { background: var(--p-acc); border-color: var(--p-acc); color: #292928; }
 .avtitle { margin: 4px 8px 0; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--p-sub); }
-.pinerr { color: var(--p-red); font-size: 12px; }
+.card .pinerr { margin: 8px 0 0; color: var(--p-red); font-size: 12px; }
 @media (max-width: 767px) { .avgrid { grid-template-columns: repeat(6, 44px); } .avgrid button { width: 44px; height: 44px; } }

@@ -83,6 +83,20 @@ describe('StepKids calm', () => {
     expect(screen.getByRole('button', { name: /Add kid/ })).toBeDisabled()
   })
 
+  test('PIN error line is an alert under the pair, flags the field, and clears when fixed', async () => {
+    const user = userEvent.setup()
+    setup([], 'Ava')
+    const pin = screen.getByRole('textbox', { name: /PIN \(optional\)/ })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await user.type(pin, '12')
+    expect(screen.getByRole('alert')).toHaveTextContent('Use exactly 4 digits.')
+    expect(pin).toHaveAttribute('aria-invalid', 'true')
+    await user.type(pin, '34')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(pin).not.toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('button', { name: /Add kid/ })).toBeEnabled()
+  })
+
   test('Add kid posts the picked avatar and PIN', async () => {
     const user = userEvent.setup()
     const { onAdd } = setup([], 'Ava')
