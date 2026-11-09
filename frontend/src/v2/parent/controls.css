@@ -27,8 +27,8 @@ html[data-look='parent'] .f-btn.f-btn:focus-visible { outline: 2px solid var(--p
 html[data-look='parent'] .f-input.f-input {
   min-height: 42px;
   border: 1px solid var(--p-line);
-  border-radius: 12px;
-  background: var(--p-card);
+  border-radius: 10px;
+  background: var(--p-bg); /* fields sit on the page colour inside cards (mockup .inp) */
   color: var(--p-ink);
   font-family: inherit;
 }
@@ -73,14 +73,8 @@ html[data-look='parent'] .f-sheet-head.f-sheet-head { background: var(--p-card);
 html[data-look='parent'] .f-sheet-head.f-sheet-head { border-bottom: 1px solid var(--p-line); }
 html[data-look='parent'] .f-sheet-title.f-sheet-title { font-family: inherit; text-transform: none; letter-spacing: 0; }
 
-/* disabled: quiet grey, not Mantine's navy disabled fill */
-html[data-look='parent'] .f-btn.f-btn:is(:disabled, [data-disabled]) {
-  background: var(--p-soft);
-  border-color: var(--p-line);
-  color: var(--p-sub);
-  opacity: 0.7;
-  cursor: not-allowed;
-}
+/* disabled keeps the variant's own fill, faded (mockup .btn:disabled), not Mantine's navy disabled fill */
+html[data-look='parent'] .f-btn.f-btn:is(:disabled, [data-disabled]) { opacity: 0.45; cursor: default; filter: none; }
 
 /* shared kid-look text/card helpers still used on parent screens (settings cards, window
    editor, hours): parent font, radius and digits instead of Space Grotesk and mono */

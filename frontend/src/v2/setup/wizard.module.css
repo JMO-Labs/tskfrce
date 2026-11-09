@@ -40,16 +40,12 @@
 
 /* footer: pinned to the bottom of the screen (sticky), Back outlined, Next in the accent */
 .foot { position: sticky; bottom: 0; z-index: 2; border-top: 1px solid var(--p-line); background: var(--p-card); padding: 10px 16px 14px; flex: none; }
-.footIn { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.footIn { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; max-width: 1120px; margin-inline: auto; } /* mockup desktop frame */
 .grow { flex: 1; }
 .foot :global(.f-btn.f-btn) { min-height: 44px; }
 .page .skip.skip { text-decoration: underline; text-underline-offset: 3px; font-weight: 700; }
 .page :global(.mantine-Button-root.f-btn.f-btn[data-variant='filled']) { background: var(--p-acc); border-color: var(--p-acc); color: #292928; }
 .page :global(.mantine-Button-root.f-btn.f-btn[data-variant='filled']:hover) { background: var(--p-acc); filter: brightness(0.95); }
-/* disabled keeps the accent, dimmed (mockup .btn:disabled) */
-.page :global(.mantine-Button-root.f-btn.f-btn[data-variant='filled']:is(:disabled, [data-disabled])) { background: var(--p-acc); border-color: var(--p-acc); color: #292928; opacity: 0.45; filter: none; }
-/* fields fill with the page colour inside cards (mockup .inp) */
-.page :global(.mantine-Input-input.f-input.f-input) { background: var(--p-bg); border-radius: 10px; }
 
 /* phone: smaller dots and gaps so the 8-step bar plus the current label fits 360px */
 @media (max-width: 767px) {

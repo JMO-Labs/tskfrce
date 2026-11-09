@@ -112,10 +112,13 @@
 [data-look='parent'] .p-dhead h2 { margin: 0; font-size: 24px; line-height: 1.2; }
 [data-look='parent'] .p-dhead-meta { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 150px; }
 [data-look='parent'] .p-dhead-sub { font-size: 13px; line-height: 1.35; color: var(--p-sub); }
+@media (max-width: 767px) { /* mockup: two lines at most; the whole text stays in the DOM and in the title */
+  [data-look='parent'] .p-dhead-sub { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+}
 [data-look='parent'] .p-dhead-chips { display: flex; gap: 6px; flex-wrap: wrap; }
 [data-look='parent'] .p-dhead-act { display: flex; gap: 6px; align-items: center; }
 [data-look='parent'] button.p-chip { position: relative; border: 0; font-family: inherit; cursor: pointer; }
-[data-look='parent'] button.p-chip::after { content: ''; position: absolute; inset: -10px -4px; } /* 44 px touch target, mockup-size chip */
+[data-look='parent'] button.p-chip::after { content: ''; position: absolute; inset: -12px -4px; } /* 44 px touch target, mockup-size chip */
 /* Header pills (kid points, chore type): shared by the kid and chore headers */
 [data-look='parent'] .kd-pill {
   position: relative; display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px 4px 8px; border-radius: 999px;

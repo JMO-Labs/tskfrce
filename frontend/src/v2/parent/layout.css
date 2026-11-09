@@ -189,6 +189,13 @@
   z-index: 1;
 }
 
+/* Every detail screen caps and centres its content (mockup .wrap.narrow); chat threads fill the pane */
+[data-look='parent'] :is(.p-detail-column, .p-detail-panel) > :not(.pc-thread) {
+  width: 100%;
+  max-width: 720px;
+  margin-inline: auto;
+}
+
 /* Mobile-only: detail-only view (when item is selected) */
 [data-look='parent'] .p-detail-only {
   display: flex;

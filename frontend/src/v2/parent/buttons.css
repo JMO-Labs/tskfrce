@@ -65,13 +65,8 @@
 /* keyboard focus, pressed, disabled and in-flight states (shared by every .p-btn) */
 [data-look='parent'] .p-btn:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 [data-look='parent'] .p-btn:active:not(:disabled) { transform: scale(0.97); }
-[data-look='parent'] .p-btn:disabled {
-  background: var(--p-soft);
-  border-color: var(--p-line);
-  color: var(--p-sub);
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* disabled keeps the variant's own fill, faded (mockup .btn:disabled) */
+[data-look='parent'] .p-btn:disabled { opacity: 0.45; cursor: default; }
 [data-look='parent'] .p-btn[data-loading='true'] { position: relative; pointer-events: none; color: transparent; }
 [data-look='parent'] .p-btn[data-loading='true'] > * { opacity: 0; }
 [data-look='parent'] .p-btn[data-loading='true']::after {

@@ -3,7 +3,7 @@
  * Look copied from the owner-approved mockup declutter-v1 (kid-calm, kid-trust, kid-edit): .khead .pill .l2 .bar .kv .editbar .miniseg .lg.
  */
 
-[data-look='parent'] .kd-page { max-width: 720px; width: 100%; margin: 0 auto; gap: 10px; }
+[data-look='parent'] .kd-page { gap: 10px; }
 
 /* Header pills (.kd-pill) live in declutter.css: the chore page shares them */
 .kd-pts { display: grid; gap: 2px; min-width: 240px; }
