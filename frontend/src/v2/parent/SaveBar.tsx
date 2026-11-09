@@ -20,7 +20,8 @@ export function SaveBar({ dirty, saving, onSave, onCancel, saveLabel = 'Save', d
   )
 }
 
-const FIELD = { test: (e: HTMLElement) => e.matches('input, textarea, select, [contenteditable="true"]') }
+// typed-in fields only: a toggle or picker that made the form dirty is not somewhere Keep should send the cursor
+const FIELD = { test: (e: HTMLElement) => e.matches('input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"]), textarea, select, [contenteditable="true"]') }
 const CANCEL = { cancelled: true, message: 'Route change cancelled: unsaved changes' }
 type PopHandler = (state?: { as?: string }) => boolean
 const sameRecord = (a: string, b: string) => {
@@ -103,7 +104,7 @@ export function useDiscardGuard(dirty: boolean, onDiscard?: () => void, { inReco
       onConfirm={() => { chose.current = true; leaving.current = true; discardRef.current?.(); pending?.() }}
       onClose={() => {
         setPending(null)
-        if (!chose.current) { clearTimeout(timer.current); timer.current = window.setTimeout(() => { const a = document.activeElement; if (field.current?.isConnected && (!a || a === document.body || a.closest('[role="dialog"]') || a.matches('a, button'))) field.current.focus() }, 60) } // after Mantine returns focus to the opener; Keep / Esc: back to the field
+        if (!chose.current) { clearTimeout(timer.current); timer.current = window.setTimeout(() => { const a = document.activeElement; if (field.current?.isConnected && (!a || a === document.body || a.closest('[role="dialog"]') || a.matches('a, button, input[type="checkbox"], input[type="radio"]'))) field.current.focus() }, 60) } // after Mantine returns focus to the opener; Keep / Esc: back to the field
         chose.current = false
       }} />
   )

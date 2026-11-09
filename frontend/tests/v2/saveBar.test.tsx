@@ -241,3 +241,34 @@ test('Keep does not focus a field from an earlier dirty spell', async () => {
   await new Promise((r) => setTimeout(r, 120))
   expect(screen.getByLabelText('field')).not.toHaveFocus()
 })
+
+test('Keep after a toggle or picker made the form dirty: last typed field, or nothing', async () => {
+  const user = userEvent.setup()
+  function Form({ dirty }: { dirty: boolean }) {
+    const { sheet } = useDiscardGuard(dirty)
+    return <><input aria-label="field" /><input type="checkbox" aria-label="toggle" /><button>picker</button><a href="#x">away</a>{sheet}</>
+  }
+  const leave = async () => {
+    act(() => { try { fakeRouter.events.emit('routeChangeStart', '/elsewhere') } catch { /* cancelled */ } })
+    await user.click(await screen.findByRole('button', { name: 'Keep' }))
+    await new Promise((r) => setTimeout(r, 120))
+  }
+  // field focused earlier, then a picker button makes it dirty: nothing is refocused
+  const a = wrap(<Form dirty={false} />)
+  await user.click(screen.getByLabelText('field'))
+  await user.click(screen.getByRole('button', { name: 'picker' }))
+  a.rerender(<MantineProvider env="test"><Form dirty /></MantineProvider>)
+  await leave()
+  expect(screen.getByLabelText('field')).not.toHaveFocus()
+  expect(screen.getByLabelText('toggle')).not.toHaveFocus()
+  a.unmount()
+  // the toggle makes it dirty, then the user types: Keep returns to the typed field, not the toggle
+  const b = wrap(<Form dirty={false} />)
+  await user.click(screen.getByLabelText('toggle'))
+  b.rerender(<MantineProvider env="test"><Form dirty /></MantineProvider>)
+  await leave()
+  await user.type(screen.getByLabelText('field'), 'x')
+  await user.click(screen.getByLabelText('toggle'))
+  await leave()
+  await waitFor(() => expect(screen.getByLabelText('field')).toHaveFocus())
+})

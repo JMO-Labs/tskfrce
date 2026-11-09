@@ -163,3 +163,25 @@ test('bedtimeLatest stays on a 15-minute step', () => {
   expect(bedtimePossible('18:14')).toBe(false)
   expect(bedtimePossible('18:15')).toBe(true)
 })
+
+test('A to B to A before a refetch still sends the second name change', async () => {
+  show(fam(), 'hh')
+  const name = screen.getByLabelText('Family name')
+  fireEvent.change(name, { target: { value: 'B' } }); fireEvent.blur(name)
+  fireEvent.change(name, { target: { value: 'R' } }); fireEvent.blur(name) // back to the prop value, which has not refetched
+  await waitFor(() => expect(patches()).toEqual([{ name: 'B' }, { name: 'R' }]))
+})
+
+test('A to B to A before a refetch still sends the second bedtime time', async () => {
+  show(fam({ bedtime_auto: true, bedtime_auto_at: '21:00' }))
+  const t = screen.getByLabelText('Approve at')
+  fireEvent.change(t, { target: { value: '22:00' } }); fireEvent.blur(t)
+  fireEvent.change(t, { target: { value: '21:00' } }); fireEvent.blur(t)
+  await waitFor(() => expect(patches()).toEqual([{ bedtime_auto_at: '22:00' }, { bedtime_auto_at: '21:00' }]))
+})
+
+test('switch off then on before a refetch sends both', async () => {
+  show(fam({ bedtime_auto: true, bedtime_auto_at: '21:00' }))
+  await userEvent.click(bedSwitch()); await userEvent.click(bedSwitch())
+  await waitFor(() => expect(patches()).toEqual([{ bedtime_auto: false }, { bedtime_auto: true }]))
+})
