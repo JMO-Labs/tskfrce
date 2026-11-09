@@ -116,6 +116,21 @@ test('moving the reset past a saved bedtime pulls the bedtime earlier in the sam
   await waitFor(() => expect(patches()).toEqual([{ reset_time: '20:00', bedtime_auto_at: '19:45' }]))
 })
 
+test('a day-reset save keeps the bedtime saved just before it', async () => {
+  let server = fam({ bedtime_auto: true, bedtime_auto_at: '21:00' })
+  apiMock.mockImplementation(async (_p, i) => (i?.method ? (server = { ...server, ...(i.body as object) }) : undefined))
+  show(server)
+  const t = screen.getByLabelText('Approve at')
+  fireEvent.change(t, { target: { value: '19:00' } })
+  fireEvent.blur(t)
+  await waitFor(() => expect(patches()).toEqual([{ bedtime_auto_at: '19:00' }]))
+  await userEvent.click(document.querySelector<HTMLElement>('[data-focus-head="hh"]')!) // the props above stay stale, like a slow refetch
+  const r = await screen.findByLabelText('Day resets at')
+  fireEvent.change(r, { target: { value: '20:10' } })
+  fireEvent.blur(r)
+  await waitFor(() => expect(patches()[1]).toEqual({ reset_time: '20:10', bedtime_auto_at: '19:00' }))
+})
+
 test('a reset with no room for a bedtime disables the switch and says why', () => {
   show(fam({ reset_time: '18:10' }))
   expect(bedSwitch()).toBeDisabled()

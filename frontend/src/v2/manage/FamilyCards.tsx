@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Input, PasswordInput, SegmentedControl, Switch } from '@mantine/core'
+import { useQueryClient } from '@tanstack/react-query'
 import { usePatchFamily } from '@/v2/hooks/useFamily'
 import { useSingleFlight } from '@/v2/hooks/useSingleFlight'
 import type { Family } from '@/v2/types'
@@ -77,7 +78,8 @@ export function FamilyCard({ fam }: { fam: Family }) {
   const focus = useFocusParam('open', { valid: (id) => ROWS.includes(id) })
   const patch = usePatchFamily()
   const queue = useSaveQueue()
-  const save: SaveFamily = (p) => queue(() => patch.mutateAsync(p))
+  const qc = useQueryClient()
+  const save: SaveFamily = (p) => queue(() => patch.mutateAsync(typeof p === 'function' ? p(qc.getQueryData<Family>(['family']) ?? fam) : p))
   const line = (id: string, t: string) => (focus.isOpen(id) ? undefined : t) // the open row shows its form instead
   return (
     <section aria-label="Family" className="pn fam-rows">
