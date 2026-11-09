@@ -83,7 +83,7 @@ export function SummaryRow({ id, icon, title, summary, line2, aside, info, focus
 /** `grouped`: one card with dividers and a left bar on the open row. */
 export function FocusArea({ focus, label, grouped, children }: { focus: Focus; label?: string; grouped?: boolean; children: ReactNode }) {
   return (
-    <div className="p-srows" data-focused={focus.open ? '' : undefined} data-grp={grouped ? '' : undefined} role={label ? 'region' : undefined} aria-label={label}>
+    <div className="p-srows" data-focused={focus.open ? '' : undefined} data-grp={grouped ? '' : undefined} role={label ? 'group' : undefined} aria-label={label}>
       {children}
     </div>
   )
