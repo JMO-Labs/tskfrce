@@ -11,7 +11,7 @@ interface Props {
   onSelect: (id: number | 'new') => void
 }
 
-/** Kid cards (letter avatar, balance line, today's progress ring, status chip) and the dashed "Add a kid" card. */
+/** Kid cards (letter avatar, balance line, today's progress ring over the status chip in a fixed right column) and the dashed "Add a kid" card. */
 export function KidsList({ kids, selected, onSelect }: Props) {
   const today = new Map<number, TodayKid>((useToday().data?.kids ?? []).map((t) => [t.id, t]))
   return (
@@ -20,17 +20,15 @@ export function KidsList({ kids, selected, onSelect }: Props) {
         const t = today.get(k.id)
         const bits = [t?.progress ? `Level ${t.progress.level}` : '', t?.points !== undefined ? `${t.points} pts` : k.username]
         return (
-          <button key={k.id} type="button" className="pk-card" data-selected={selected === String(k.id)} onClick={() => onSelect(k.id)}>
+          <button key={k.id} type="button" className="pk-card kl-card" data-selected={selected === String(k.id)} onClick={() => onSelect(k.id)}>
             <span className="pk-av" data-size="lg" aria-hidden="true">
               {initial(nameOf(k))}
             </span>
             <span className="pk-card-t">
-              <span className="kl-line">
-                <b>{nameOf(k)}</b>
-                {t && <ProgressRing done={t.done ?? 0} total={t.total ?? 0} />}
-              </span>
+              <b>{nameOf(k)}</b>
               <small>{bits.filter(Boolean).join(' · ')}</small>
             </span>
+            <span className="kl-ring">{t && <ProgressRing done={t.done ?? 0} total={t.total ?? 0} />}</span>
             {t?.online_all ? (
               <Chip tone="acc" icon="cloud_done">
                 Online
