@@ -72,5 +72,5 @@ export function openChatAfterNav(kind: ThreadKind, ref: string, reply?: ChatRepl
   if (inline.get(`${kind}:${ref}`)) return openChat(kind, ref, reply)
   const mine = { key: `${kind}:${ref}`, reply, at: Date.now() }
   pending = mine
-  window.setTimeout(() => { if (pending === mine) openDock(kind, ref, reply) }, AFTER_NAV_MS)
+  window.setTimeout(() => { if (pending === mine) { pending = null; openDock(kind, ref, reply) } }, AFTER_NAV_MS) // cleared: a late claim must not add the column on top of the dock
 }

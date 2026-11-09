@@ -76,5 +76,15 @@ describe('pending chat request', () => {
       expect(dock).toHaveBeenCalledTimes(1)
       window.removeEventListener(OPEN_CHAT_EVENT, dock)
     })
+
+    test('a claim after the dock opened does not open the thread a second time', () => {
+      const dock = jest.fn(); window.addEventListener(OPEN_CHAT_EVENT, dock)
+      openChatAfterNav('chore', '22')
+      jest.advanceTimersByTime(5_000)
+      expect(dock).toHaveBeenCalledTimes(1)
+      const fn = jest.fn(); claimChat('chore', '22', fn)()
+      expect(fn).not.toHaveBeenCalled()
+      window.removeEventListener(OPEN_CHAT_EVENT, dock)
+    })
   })
 })
