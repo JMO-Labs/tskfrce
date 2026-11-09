@@ -8,13 +8,13 @@ import { notifications } from '@mantine/notifications'
 import { api } from '@/v2/api'
 import { NeedsYouList } from '@/v2/today/NeedsYouList'
 import type { NeedsItem } from '@/v2/types'
-import { openChat } from '@/v2/chat/dock'
+import { openChatAfterNav } from '@/v2/chat/dock'
 
 jest.mock('@/v2/api', () => ({ api: jest.fn(), kidToken: () => null }))
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
 const push = jest.fn()
 jest.mock('next/router', () => ({ useRouter: () => ({ push }) }))
-jest.mock('@/v2/chat/dock', () => ({ openChat: jest.fn() }))
+jest.mock('@/v2/chat/dock', () => ({ openChatAfterNav: jest.fn() }))
 const apiMock = api as unknown as Mock<(p: string, init?: object) => Promise<unknown>>
 
 const chore: NeedsItem = { type: 'chore', id: 11, kid_id: 1, kid_name: 'Mia', title: 'Dishes', attempt: 2, submitted_at: '2026-10-24T20:00:00Z' }
@@ -117,7 +117,7 @@ test('a kid note shows the note and only Reply, which opens the chore thread', a
   expect(within(card('Clean bathroom')).queryByRole('button', { name: 'More for Clean bathroom' })).toBeNull()
   await userEvent.click(within(card('Clean bathroom')).getByRole('button', { name: 'Reply' }))
   expect(push).toHaveBeenCalledWith({ pathname: '/', query: { kid: '1', chore: '21' } })
-  expect(openChat).toHaveBeenCalledWith('chore', '21')
+  expect(openChatAfterNav).toHaveBeenCalledWith('chore', '21')
 })
 
 test('a list with only a note is not all caught up', () => {
