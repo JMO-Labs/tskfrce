@@ -393,16 +393,8 @@
   }
 }
 
-/* phone header: account initial, opens More */
+/* header account initial, opens More (box: .p-htool in declutter.css) */
 [data-look='parent'] .p-head-me {
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  border: 1px solid var(--p-line);
-  background: var(--p-card);
-  color: var(--p-ink);
   font-weight: 700;
   text-decoration: none;
 }

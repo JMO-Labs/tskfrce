@@ -31,19 +31,15 @@ jest.mock('@/v2/parent/Freshness', () => ({
 }))
 
 jest.mock('@/v2/components/Bell', () => ({
-  Bell: ({ placement }: { placement?: string }) => {
+  Bell: () => {
     const { useThreads } = require('@/v2/hooks/useChat')
-    const threads = useThreads()
-    const unread = threads.data?.total ?? 0
-    if (placement === 'rail') {
-      return (
-        <div className="f-bell" data-testid="rail-bell">
-          <button aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'} />
-          {unread > 0 && <span className="f-bell-count" data-testid="bell-count">{unread > 9 ? '9+' : unread}</span>}
-        </div>
-      )
-    }
-    return null
+    const unread = useThreads().data?.total ?? 0
+    const n = unread > 9 ? '9+' : unread
+    return (
+      <button type="button" className="p-bell p-htool" aria-label={unread ? `Notifications, ${n} unread` : 'Notifications'}>
+        {unread > 0 && <span className="p-bell-count" data-testid="bell-count">{n}</span>}
+      </button>
+    )
   },
 }))
 
@@ -183,7 +179,7 @@ describe('Rail', () => {
     })
   })
 
-  test('rail has 8 items in order with aria-labels', () => {
+  test('rail has 7 items, no bell (see headerTools.test.tsx)', () => {
     const { container } = render(
       <MantineProvider>
         <Rail />
@@ -198,7 +194,7 @@ describe('Rail', () => {
     )
 
     expect(items).toContain('t@sk4ce')
-    expect(items).toContain('Notifications')
+    expect(items).not.toContain('Notifications')
     expect(items).toContain('Today')
     expect(items).toContain('Devices')
     expect(items).toContain('Kids & chores')
@@ -242,39 +238,6 @@ describe('Rail', () => {
     expect(devicesLink).toHaveAttribute('aria-current', 'page')
   })
 
-  test('rail bell shows count badge when threads have unread messages', () => {
-    const { useThreads } = require('@/v2/hooks/useChat')
-    useThreads.mockReturnValue({
-      data: { total: 3 },
-    })
-
-    const { container } = render(
-      <MantineProvider>
-        <Rail />
-      </MantineProvider>
-    )
-    const bellCount = container.querySelector('[data-testid="bell-count"]')
-
-    expect(bellCount).toBeInTheDocument()
-    expect(bellCount).toHaveTextContent('3')
-  })
-
-  test('rail bell shows 9+ when unread count exceeds 9', () => {
-    const { useThreads } = require('@/v2/hooks/useChat')
-    useThreads.mockReturnValue({
-      data: { total: 15 },
-    })
-
-    const { container } = render(
-      <MantineProvider>
-        <Rail />
-      </MantineProvider>
-    )
-    const bellCount = container.querySelector('[data-testid="bell-count"]')
-
-    expect(bellCount).toBeInTheDocument()
-    expect(bellCount).toHaveTextContent('9+')
-  })
 })
 
 describe('TabBar', () => {
