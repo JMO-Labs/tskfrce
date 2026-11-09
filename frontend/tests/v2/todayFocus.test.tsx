@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MantineProvider } from '@mantine/core'
 import { api } from '@/v2/api'
-import { openChat } from '@/v2/chat/dock'
+import { openChatAfterNav } from '@/v2/chat/dock'
 import { TodayPage } from '@/v2/today/TodayPage'
 import { fakeRouter } from './helpers/fakeRouter'
 import type { NeedsItem, Today, TodayKid } from '@/v2/types'
@@ -13,7 +13,7 @@ import type { NeedsItem, Today, TodayKid } from '@/v2/types'
 jest.mock('@/v2/api', () => ({ api: jest.fn(), kidToken: () => null }))
 jest.mock('@/v2/chat/dock', () => {
   const real = jest.requireActual<typeof import('@/v2/chat/dock')>('@/v2/chat/dock')
-  return { ...real, openChat: jest.fn(real.openChat) }
+  return { ...real, openChatAfterNav: jest.fn(real.openChatAfterNav) }
 })
 jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
 jest.mock('@/contexts/UnifiedAuthContext', () => ({ useUnifiedAuth: () => ({ logout: jest.fn(), user: { id: 1 } }) }))
@@ -177,7 +177,7 @@ describe('Today kid focus', () => {
     await userEvent.click(within(row).getByRole('button', { name: /^More/ }))
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Reply' }))
     expect(fakeRouter.push).toHaveBeenCalledWith({ pathname: '/', query: { kid: '3', chore: '103' } })
-    expect(openChat).toHaveBeenCalledWith('chore', '103')
+    expect(openChatAfterNav).toHaveBeenCalledWith('chore', '103')
   })
 
   test('Send back on a waiting chore asks for a note', async () => {

@@ -146,7 +146,7 @@ describe('device detail, calm', () => {
     show(dev(), { open: 'bogus' })
     await waitFor(() => expect(fakeRouter.replace).toHaveBeenCalled())
     expect(fakeRouter.query.open).toBeUndefined()
-    expect(screen.queryByRole('region')).toBeNull()
+    expect(screen.queryByRole('region', { name: /Right now|Details|Network|Activity/ })).toBeNull() // no open row (the Device area itself is a region)
   })
 
   test('unassigned device opens Details by default', async () => {
