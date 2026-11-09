@@ -59,7 +59,7 @@ export function GroupNew({ devices, kids, onSelect }: { devices: Device[]; kids:
           </h3>
           {devices.length > 0 && ids.length === 0 && <p className="pk-hint">No devices in this group yet. Tap a device to add it.</p>}
           {devices.length === 0 ? (
-            <p className="pk-hint">No devices yet.</p>
+            <p className="pk-hint">No devices yet. Open a web page on one to add it.</p>
           ) : (
             <div className="pk-pills" role="group" aria-label="Devices in group">
               {devices.map((d) => (

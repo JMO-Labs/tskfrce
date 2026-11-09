@@ -30,7 +30,7 @@ const TONE: Record<Tone, ChipTone | undefined> = { hi: 'red', md: 'amb', lv: 'la
 const LABEL: Record<string, string> = {
   chore_submitted: 'Chore done', integration_done: 'Chore done', chore_note: 'Note', redemption_request: 'Reward request',
   new_device: 'New device', device_resisting: 'Security alert', device_bypass: 'Security alert', workaround_try: 'Security alert',
-  password_guess: 'Security alert', box_offline: 'Home box', boost: 'Happy Hour',
+  password_guess: 'Security alert', box_offline: 'Home box', boost: 'Happy hour',
 }
 
 /** One inbox row (v3): one main button; Send back, Decline, Ask, Dismiss live in the "..." menu. */
@@ -57,7 +57,7 @@ export function InboxRow({ n, live, busy, sending, note, onNote, onApprove, onSe
       ]
     } else if (n.kind === 'password_guess') main = { label: 'Change password', onClick: () => void go('/settings?section=parents#password'), plain: true }
     else if (n.kind === 'box_offline') main = { label: 'View', onClick: () => void go('/devices'), plain: true }
-    else if (n.kind === 'boost') menu = [{ label: 'See Happy Hour', icon: 'bolt', onClick: () => void go('/') }]
+    else if (n.kind === 'boost') menu = [{ label: 'See happy hour', icon: 'bolt', onClick: () => void go('/') }]
   }
   menu = menu.map((m) => ({ ...m, disabled: busy }))
   menu.push({ label: 'Dismiss', icon: 'close', onClick: onDismiss, divider: menu.some((m) => !m.hidden) })

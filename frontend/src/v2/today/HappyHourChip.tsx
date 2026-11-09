@@ -12,10 +12,10 @@ function Running({ h }: { h: HappyHour }) {
   const kids = useKids().data ?? []
   const clock = useClock()
   const stop = useStopHappyHour()
-  const onStop = () => stop.mutate(h.id, { onSuccess: () => toastOk('Happy Hour stopped'), onError: toastFail })
+  const onStop = () => stop.mutate(h.id, { onSuccess: () => toastOk('Happy hour stopped'), onError: toastFail })
   return (
     <InfoPop
-      label="Happy Hour"
+      label="Happy hour"
       width={250}
       target={
         <button type="button" className="p-pill" data-tone="acc">
@@ -35,7 +35,7 @@ function Running({ h }: { h: HappyHour }) {
   )
 }
 
-/** Shows while a Happy Hour runs; Stop lives in its pop-over. Starting one is in the Today header "…". */
+/** Shows while a happy hour runs; Stop lives in its pop-over. Starting one is in the Today header "…". */
 export function HappyHourChip() {
   const active = useHappyHours().data?.active ?? []
   if (!active.length) return null

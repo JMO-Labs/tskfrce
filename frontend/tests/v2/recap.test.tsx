@@ -93,7 +93,7 @@ describe('Worth a look', () => {
     serve(FLAGGED)
     await show()
     const card = screen.getByRole('region', { name: 'Worth a look' })
-    expect(within(card).getByRole('button', { name: 'Happy Hour for 1' })).toBeTruthy()
+    expect(within(card).getByRole('button', { name: 'Happy hour for 1' })).toBeTruthy()
     const links = within(card).getAllByRole('link', { name: 'Open' })
     expect(links[0].getAttribute('href')).toBe('/kids?section=kids&kid=1#trust') // trust
     expect(links[1].getAttribute('href')).toBe('/kids?section=kids&kid=1') // kid
@@ -144,11 +144,11 @@ describe('This week', () => {
   })
 })
 
-describe('Happy Hour action', () => {
+describe('Happy hour action', () => {
   test('is the accent button', async () => {
     serve(FLAGGED)
     await show()
-    expect(screen.getByRole('button', { name: /Happy Hour for 1/ }).getAttribute('data-variant')).toBe('accent')
+    expect(screen.getByRole('button', { name: /Happy hour for 1/ }).getAttribute('data-variant')).toBe('accent')
   })
 })
 

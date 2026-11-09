@@ -23,16 +23,16 @@ export function useMinutesLeft(endsAt: string | undefined) {
   return endsAt ? Math.max(1, Math.ceil((new Date(endsAt).getTime() - now) / 60000)) : 0
 }
 
-/** Who a Happy Hour covers: kid names or "everyone". */
+/** Who a happy hour covers: kid names or "everyone". */
 export const hhWho = (h: HappyHour, kids: Kid[]) =>
   h.kid_ids ? h.kid_ids.map((id) => kids.find((k) => k.id === id)).map((k) => k?.full_name ?? k?.username ?? 'a kid').join(', ') : 'everyone'
 
 /**
- * "Start Happy Hour": opens a quick sheet (length, multiplier, kids) whose Start uses the family defaults.
- * With `kidId`, only Happy Hours covering that kid show as running (with a Stop each).
+ * "Start happy hour": opens a quick sheet (length, multiplier, kids) whose Start uses the family defaults.
+ * With `kidId`, only happy hours covering that kid show as running (with a Stop each).
  * `allKids`: the sheet starts on "All kids" (Today) instead of just `kidId`.
  */
-export function HappyHourButton({ kidId, allKids = false, label = 'Start Happy Hour', accent = false }: { kidId?: number; allKids?: boolean; label?: string; accent?: boolean }) {
+export function HappyHourButton({ kidId, allKids = false, label = 'Start happy hour', accent = false }: { kidId?: number; allKids?: boolean; label?: string; accent?: boolean }) {
   const hh = useHappyHours().data
   const kids = useKids().data ?? []
   const running = (hh?.active ?? []).filter((h) => kidId == null || !h.kid_ids || h.kid_ids.includes(kidId))
@@ -40,8 +40,8 @@ export function HappyHourButton({ kidId, allKids = false, label = 'Start Happy H
   const [open, setOpen] = useState(false)
   const who = (h: HappyHour) => hhWho(h, kids)
   const stopIt = (h: HappyHour) => {
-    if (!h.kid_ids && kidId != null && !window.confirm('This Happy Hour is for everyone. Stop it for all kids?')) return
-    stop.mutate(h.id, { onSuccess: () => toastOk('Happy Hour stopped'), onError: toastFail })
+    if (!h.kid_ids && kidId != null && !window.confirm('This happy hour is for everyone. Stop it for all kids?')) return
+    stop.mutate(h.id, { onSuccess: () => toastOk('Happy hour stopped'), onError: toastFail })
   }
   return (
     <>
@@ -64,9 +64,9 @@ function RunningHH({ h, who, busy, onStop }: { h: HappyHour; who: string; busy: 
   return (
     <>
       <Chip tone="acc" icon="bolt">
-        Happy Hour {multText(h.mult_x10)} · <span role="status">{left} min left</span> · {who}
+        Happy hour {multText(h.mult_x10)} · <span role="status">{left} min left</span> · {who}
       </Chip>
-      <button type="button" className="p-btn" disabled={busy} aria-label={`Stop Happy Hour for ${who}`} onClick={onStop}>
+      <button type="button" className="p-btn" disabled={busy} aria-label={`Stop happy hour for ${who}`} onClick={onStop}>
         <Icon name="stop_circle" size={17} />
         Stop
       </button>
@@ -92,10 +92,10 @@ function StartSheet({ kidId, onClose }: { kidId?: number; onClose: () => void })
   const go = () =>
     start.mutate(
       { minutes, mult_x10, ...(picked.length && { kid_ids: picked }) },
-      { onSuccess: () => (toastOk('Happy Hour started'), onClose()), onError: toastFail },
+      { onSuccess: () => (toastOk('Happy hour started'), onClose()), onError: toastFail },
     )
   return (
-    <Modal opened onClose={onClose} title="Start Happy Hour" centered>
+    <Modal opened onClose={onClose} title="Start happy hour" centered>
       <div className="pt-hh-sheet">
         <span className="pk-label">Length</span>
         <SegmentedControl label="Length" value={String(minutes)} onChange={(v) => setLen(Number(v))} options={LENGTHS.map((m) => ({ value: String(m), label: `${m} min` }))} />

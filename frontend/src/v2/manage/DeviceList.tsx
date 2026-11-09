@@ -152,7 +152,7 @@ export function DeviceList({
         <div role="tabpanel" aria-label="Devices" hidden={tab !== 'devices'}>
           <HomeNetworkRow />
           {sorted.length === 0 ? (
-            <p className="p-device-empty">No devices yet.</p>
+            <p className="p-device-empty">No devices yet. Open a web page on one to add it.</p>
           ) : (
             <div className="p-device-list">
               {byOwner(sorted, kids).map((g) => (

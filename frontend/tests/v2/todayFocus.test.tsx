@@ -191,7 +191,7 @@ describe('Today kid focus', () => {
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/chores/103/send-back', expect.anything()))
   })
 
-  test('kid … menu has Bonus, Deduct, View as kid, Open page and no Happy Hour', async () => {
+  test('kid … menu has Bonus, Deduct, View as kid, Open page and no happy hour', async () => {
     wrap()
     await focused()
     await userEvent.click(screen.getByRole('button', { name: 'More for Maya' }))
@@ -199,7 +199,7 @@ describe('Today kid focus', () => {
     expect(screen.getByRole('menuitem', { name: 'Deduct' })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'View as kid' })).toHaveAttribute('href', expect.stringContaining('/kid?as=3'))
     expect(screen.getByRole('menuitem', { name: 'Open page' })).toHaveAttribute('href', '/kids?section=kids&item=3')
-    expect(screen.queryByRole('menuitem', { name: /Happy Hour/i })).toBeNull()
+    expect(screen.queryByRole('menuitem', { name: /Happy hour/i })).toBeNull()
     expect(screen.getByRole('link', { name: /Add chore/ })).toHaveAttribute('href', '/kids?section=chores&item=new')
   })
 

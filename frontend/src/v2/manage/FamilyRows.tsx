@@ -55,22 +55,22 @@ const commitOnEnter = (e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'E
 export function HouseholdBody({ fam, save }: Props) {
   const [name, setName] = useResetState(fam.name)
   const [reset, setReset] = useResetState(fam.reset_time)
-  const sentName = useSent(fam.name)
-  const sentReset = useSent(fam.reset_time)
+  const sentNameRef = useSent(fam.name)
+  const sentResetRef = useSent(fam.reset_time)
   const blank = !name.trim()
   const commitName = () => {
     const v = name.trim()
-    if (blank || v === sentName.current) return
-    const prev = sentName.current
-    sentName.current = v
-    void save({ name: v }).then((ok) => { if (!ok) { sentName.current = prev; setName(prev) } })
+    if (blank || v === sentNameRef.current) return
+    const prev = sentNameRef.current
+    sentNameRef.current = v
+    void save({ name: v }).then((ok) => { if (!ok) { sentNameRef.current = prev; setName(prev) } })
   }
   const commitReset = () => {
-    if (!hhmm.test(reset) || reset === sentReset.current) return
-    const prev = sentReset.current
-    sentReset.current = reset
+    if (!hhmm.test(reset) || reset === sentResetRef.current) return
+    const prev = sentResetRef.current
+    sentResetRef.current = reset
     void save((f) => (f.bedtime_auto && bedtimePossible(reset) ? { reset_time: reset, bedtime_auto_at: bedtimeAt(f.bedtime_auto_at, reset) } : { reset_time: reset }))
-      .then((ok) => { if (!ok) { sentReset.current = prev; setReset(prev) } })
+      .then((ok) => { if (!ok) { sentResetRef.current = prev; setReset(prev) } })
   }
   return (
     <>
@@ -100,39 +100,39 @@ export function BedtimeBody({ fam, save }: Props) {
   const saved = fam.bedtime_auto_at ? bedtimeAt(fam.bedtime_auto_at, fam.reset_time) : ''
   const [on, setOn] = useResetState(!!fam.bedtime_auto)
   const [at, setAt] = useResetState(saved)
-  const sentOn = useSent(!!fam.bedtime_auto)
-  const sentAt = useSent(fam.bedtime_auto_at)
+  const sentOnRef = useSent(!!fam.bedtime_auto)
+  const sentAtRef = useSent(fam.bedtime_auto_at)
   const [asked, setAsked] = useState(false) // the hint waits until the parent has tried
   const okAt = (t: string) => hhmm.test(t) && t >= '18:00' && t <= latest
   /** The pair (switch + time) saves only when both are good; until then it stays a local draft. */
   const commit = (nextOn: boolean, nextAt: string) => {
     if (!okAt(nextAt)) return
     const p: Partial<Family> = {}
-    const prevOn = sentOn.current, prevAt = sentAt.current
+    const prevOn = sentOnRef.current, prevAt = sentAtRef.current
     if (nextOn !== prevOn) p.bedtime_auto = nextOn
     if (nextAt !== prevAt) p.bedtime_auto_at = nextAt
     if (!Object.keys(p).length) return
-    sentOn.current = nextOn; sentAt.current = nextAt
+    sentOnRef.current = nextOn; sentAtRef.current = nextAt
     void save(p).then((ok) => { // revert only what that save carried
       if (ok) return
-      if ('bedtime_auto' in p) { sentOn.current = prevOn; setOn(prevOn) }
-      if ('bedtime_auto_at' in p) { sentAt.current = prevAt; setAt(prevAt ? bedtimeAt(prevAt, fam.reset_time) : '') }
+      if ('bedtime_auto' in p) { sentOnRef.current = prevOn; setOn(prevOn) }
+      if ('bedtime_auto_at' in p) { sentAtRef.current = prevAt; setAt(prevAt ? bedtimeAt(prevAt, fam.reset_time) : '') }
     })
   }
   const flip = (v: boolean) => {
     setOn(v)
     setAsked(true)
     if (!v) {
-      const prev = sentOn.current
-      sentOn.current = false
-      if (prev) void save({ bedtime_auto: false }).then((ok) => { if (!ok) { sentOn.current = prev; setOn(prev) } })
+      const prev = sentOnRef.current
+      sentOnRef.current = false
+      if (prev) void save({ bedtime_auto: false }).then((ok) => { if (!ok) { sentOnRef.current = prev; setOn(prev) } })
     } else commit(true, at)
   }
   const hint = on && possible && !okAt(at) && asked
   const recap = fam.recap_weekly !== false
   return (
     <div className="ch-setl">
-      <Setr label="Bedtime auto-approve" info={<Info label="About bedtime auto-approve"><p>Chores still waiting for your OK approve themselves each night.</p><p>Needs the day reset set later than 6:15 PM; otherwise move it and come back. Pick a time from 6 PM to 15 minutes before the day resets.</p></Info>}>
+      <Setr label="Bedtime auto-approve" info={<Info label="About bedtime auto-approve"><p>Chores still waiting for your OK approve themselves each night.</p><p>Needs the day reset later than 6:15 PM. Pick a time from 6 PM to 15 minutes before the day resets.</p></Info>}>
         <Sw label="Bedtime auto-approve" checked={on} disabled={!possible && !fam.bedtime_auto} onChange={flip} />
       </Setr>
       {!possible && <span className="pk-hint ch-hint">Move the day reset later than 6:15 PM to use this.</span>}
@@ -168,13 +168,13 @@ export function BedtimeBody({ fam, save }: Props) {
 
 export function PointsBody({ fam, save }: Props) {
   const [cap, setCap] = useResetState(String(fam.early_bonus_cap))
-  const sentCap = useSent(fam.early_bonus_cap)
+  const sentCapRef = useSent(fam.early_bonus_cap)
   const err = intError(cap, 0, 50)
   const commit = () => {
-    if (err || Number(cap) === sentCap.current) return
-    const prev = sentCap.current
-    sentCap.current = Number(cap)
-    void save({ early_bonus_cap: Number(cap) }).then((ok) => { if (!ok) { sentCap.current = prev; setCap(String(prev)) } })
+    if (err || Number(cap) === sentCapRef.current) return
+    const prev = sentCapRef.current
+    sentCapRef.current = Number(cap)
+    void save({ early_bonus_cap: Number(cap) }).then((ok) => { if (!ok) { sentCapRef.current = prev; setCap(String(prev)) } })
   }
   return (
     <div className="ch-setl">

@@ -11,7 +11,7 @@ export function LockHistory({ history, timeZone, now }: { history: DeviceEvent[]
         Lock history
       </h3>
       {history.length === 0 ? (
-        <p className="pk-hint pk-empty">No locks yet.</p>
+        <p className="pk-hint pk-empty">No locks yet. Locks and opens show here.</p>
       ) : (
         <div className="da-lh">
           {history.map((e) => {

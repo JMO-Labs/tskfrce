@@ -8,7 +8,7 @@ export function PointsPop({ kidId }: { kidId: number }) {
   return (
     <div className="kd-pts">
       <div className="p-sec-h">Last 6 changes</div>
-      {data && rows.length === 0 && <p className="pk-hint">No points yet.</p>}
+      {data && rows.length === 0 && <p className="pk-hint">No points yet. Bonuses and chores show here.</p>}
       {rows.map((p) => (
         <div key={p.id} className="kd-lg">
           <span>{`${dayTime(p.at)} · ${p.label}`}</span>

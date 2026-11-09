@@ -16,7 +16,7 @@ import styles from '../components/QuickTip.module.css'
 const TEXT: Record<Exclude<(typeof TRY_ORDER)[number], 'try.trust' | 'try.bedtime'>, { icon: string; text: string }> = {
   'try.celebrate': { icon: 'celebration', text: 'Kids now get a comic-book cheer when they finish a chore.' },
   'try.happyhour': { icon: 'bolt', text: 'Double points for an hour gets chores moving.' },
-  'try.autoboost': { icon: 'auto_awesome', text: 'If a kid goes quiet for 2 days, we start a Happy Hour for them and let you know.' },
+  'try.autoboost': { icon: 'auto_awesome', text: 'If a kid goes quiet for 2 days, we start a happy hour for them and let you know.' },
   'try.streakfreeze': { icon: 'ac_unit', text: 'Kids earn a freeze every 7 days in a row, so one missed day doesn\'t break their streak.' },
 }
 
@@ -131,7 +131,7 @@ export function TryCards({ compact = false }: { compact?: boolean } = {}) {
   } else {
     const k = quietKid!
     icon = 'bolt'
-    text = `${k.name} has had a quiet couple of days. Start a Happy Hour?`
+    text = `${k.name} has had a quiet couple of days. Start a happy hour?`
     actions = (
       <>
         <HappyHourButton kidId={k.id} label={`Start for ${k.name}`} />

@@ -26,7 +26,7 @@ const CELEBRATE = { full: 'Full', small: 'Small', off: 'Off' } as const
 
 export function TrustRow({ kid, focus }: RowProps) {
   const n = useSelfApproved(kid.id).data?.length
-  const summary = !kid.trust_mode ? 'Off' : n === undefined ? '' : n === 0 ? 'None yet' : `${n} approved on their own`
+  const summary = !kid.trust_mode ? 'Off' : n === undefined ? '' : n === 0 ? 'None approved yet' : `${n} approved on their own`
   return (
     <SummaryRow id="trust" icon={ico('verified_user')} title="Trust" summary={summary} line2={<TrustLine kid={kid} />} focus={focus}>
       <TrustBody kid={kid} />
@@ -66,7 +66,7 @@ export function ChoresRow({ kid, focus }: RowProps) {
   const summary = chores.length === 0 ? 'No chores yet' : mine.every((a) => a.repeat.type === 'daily') ? `${chores.length} daily` : plural(chores.length, 'chore')
   return (
     <SummaryRow id="chores" icon={ico('checklist')} title="Chores" summary={summary} focus={focus}>
-      {chores.length === 0 && <p className="pk-hint">No chores assigned yet.</p>}
+      {chores.length === 0 && <p className="pk-hint">No chores assigned yet. Add one from Chores.</p>}
       {chores.length > 0 && (
         <div className="kd-list">
           {chores.map((c) => {

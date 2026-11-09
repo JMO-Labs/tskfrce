@@ -51,11 +51,11 @@ beforeEach(() => {
   })
 })
 
-describe('Happy Hour button', () => {
+describe('Happy hour button', () => {
   test('one-tap Start uses the family defaults', async () => {
     family = fam({ hh_default_mult_x10: 30, hh_default_minutes: 90 })
     wrap(<HappyHourButton />)
-    await userEvent.click(await screen.findByRole('button', { name: 'Start Happy Hour' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Start happy hour' }))
     await waitFor(() => expect(screen.getByRole('button', { name: '×3' }).getAttribute('aria-pressed')).toBe('true'))
     expect(screen.getByRole('button', { name: '90 min' }).getAttribute('aria-pressed')).toBe('true')
     await userEvent.click(screen.getByRole('button', { name: 'Start' }))
@@ -64,7 +64,7 @@ describe('Happy Hour button', () => {
 
   test('picked length, multiplier and kids are sent', async () => {
     wrap(<HappyHourButton />)
-    await userEvent.click(await screen.findByRole('button', { name: 'Start Happy Hour' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Start happy hour' }))
     await userEvent.click(await screen.findByRole('button', { name: '30 min' }))
     await userEvent.click(screen.getByRole('button', { name: '×1.5' }))
     await userEvent.click(screen.getByRole('button', { name: 'Bo' }))
@@ -74,7 +74,7 @@ describe('Happy Hour button', () => {
 
   test('on a kid page that kid is preselected', async () => {
     wrap(<HappyHourButton kidId={3} />)
-    await userEvent.click(await screen.findByRole('button', { name: 'Start Happy Hour' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Start happy hour' }))
     expect((await screen.findByRole('button', { name: 'Ana' })).getAttribute('aria-pressed')).toBe('true')
     await userEvent.click(screen.getByRole('button', { name: 'Start' }))
     await waitFor(() => expect(sent('/happy-hour')).toEqual([{ minutes: 60, mult_x10: 20, kid_ids: [3] }]))
@@ -85,37 +85,37 @@ describe('Happy Hour button', () => {
     wrap(<HappyHourButton />)
     expect((await screen.findByRole('status')).textContent).toBe('25 min left')
     expect(screen.getByText(/everyone/)).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Start Happy Hour' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Start happy hour' })).toBeNull()
     await userEvent.click(screen.getByRole('button', { name: /Stop/ }))
     await waitFor(() => expect(sent('/happy-hour/7/stop')).toHaveLength(1))
   })
 
-  test("a Happy Hour for another kid does not take over this kid's button", async () => {
+  test("a happy hour for another kid does not take over this kid's button", async () => {
     active = [hh({ kid_ids: [4] })]
     wrap(<HappyHourButton kidId={3} />)
-    expect(await screen.findByRole('button', { name: 'Start Happy Hour' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Start happy hour' })).toBeTruthy()
   })
 })
 
 describe('scoped running state', () => {
-  test('several Happy Hours: a kid page shows and stops only the ones covering that kid', async () => {
+  test('several happy hours: a kid page shows and stops only the ones covering that kid', async () => {
     active = [hh({ id: 1, kid_ids: [4] }), hh({ id: 2, kid_ids: [3] }), hh({ id: 3, kid_ids: [3, 4], mult_x10: 30 })]
     wrap(<HappyHourButton kidId={3} />)
     expect(await screen.findAllByRole('status')).toHaveLength(2)
     expect(screen.getByText(/· Ana$/)).toBeTruthy()
     expect(screen.queryByText(/· Bo$/)).toBeNull()
-    await userEvent.click(screen.getByRole('button', { name: 'Stop Happy Hour for Ana' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Stop happy hour for Ana' }))
     await waitFor(() => expect(sent('/happy-hour/2/stop')).toHaveLength(1))
     expect(sent('/happy-hour/1/stop')).toHaveLength(0)
   })
 
-  test('stopping an all-kids Happy Hour from a kid page asks first', async () => {
+  test('stopping an all-kids happy hour from a kid page asks first', async () => {
     active = [hh()]
     const ask = jest.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
     wrap(<HappyHourButton kidId={3} />)
     const stop = await screen.findByRole('button', { name: /Stop/ })
     await userEvent.click(stop)
-    expect(ask).toHaveBeenCalledWith('This Happy Hour is for everyone. Stop it for all kids?')
+    expect(ask).toHaveBeenCalledWith('This happy hour is for everyone. Stop it for all kids?')
     expect(sent('/happy-hour/7/stop')).toHaveLength(0)
     await userEvent.click(stop)
     await waitFor(() => expect(sent('/happy-hour/7/stop')).toHaveLength(1))
@@ -124,7 +124,7 @@ describe('scoped running state', () => {
 
   test('Today: sheet defaults to All kids even with a kid in scope; Escape closes it', async () => {
     wrap(<HappyHourButton kidId={3} allKids />)
-    await userEvent.click(await screen.findByRole('button', { name: 'Start Happy Hour' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Start happy hour' }))
     expect((await screen.findByRole('button', { name: 'All kids' })).getAttribute('aria-pressed')).toBe('true')
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Start' })).toBeNull())
@@ -133,22 +133,22 @@ describe('scoped running state', () => {
 
 describe('placement', () => {
   const src = (f: string) => require('fs').readFileSync(require('path').join(__dirname, '../../src/v2', f), 'utf8') as string
-  test('Start Happy Hour is in the Today header menu, not on the kid page', () => {
-    expect(src('today/TodayPage.tsx')).toContain("label: 'Start Happy Hour'")
+  test('Start happy hour is in the Today header menu, not on the kid page', () => {
+    expect(src('today/TodayPage.tsx')).toContain("label: 'Start happy hour'")
     expect(src('today/TodayPage.tsx')).not.toContain('<HappyHourButton')
     expect(src('manage/KidDetail.tsx')).not.toContain('HappyHour')
   })
 })
 
 describe('settings', () => {
-  test('Happy Hour pane saves each change on its own', async () => {
+  test('Happy hour pane saves each change on its own', async () => {
     wrap(<HappyHourPane />)
     await userEvent.click(await screen.findByRole('button', { name: '×3' }))
     await waitFor(() => expect(sent('/family', 'PATCH')).toContainEqual({ hh_default_mult_x10: 30 }))
     await userEvent.click(screen.getByRole('button', { name: '30 min' }))
     await waitFor(() => expect(sent('/family', 'PATCH')).toContainEqual({ hh_default_minutes: 30 }))
     expect(screen.getByText("We'll pick a random weekday afternoon.")).toBeTruthy()
-    await userEvent.click(screen.getByRole('switch', { name: 'Surprise Happy Hour once a week' }))
+    await userEvent.click(screen.getByRole('switch', { name: 'Surprise happy hour once a week' }))
     await waitFor(() => expect(sent('/family', 'PATCH')).toContainEqual({ hh_weekly_surprise: true }))
     await userEvent.click(screen.getByRole('switch', { name: 'Auto boost when things go quiet' }))
     await waitFor(() => expect(sent('/family', 'PATCH')).toContainEqual({ hh_auto_boost: false }))
@@ -199,23 +199,23 @@ describe('kid celebrations', () => {
 })
 
 describe('alerts', () => {
-  test('boost has a bolt and a See Happy Hour action', async () => {
+  test('boost has a bolt and a See happy hour action', async () => {
     const n = { id: 1, kind: 'boost', glyph: null } as never
     expect(severity(n)).toEqual({ name: 'bolt', tone: 'ok' })
     const go = jest.fn(async () => {})
     const f = () => {}
     render(<MantineProvider env="test"><InboxRow n={{ ...n, pending: false, title: 'Boost', created_at: new Date().toISOString() } as never} live busy={false} sending={false} note="" onNote={f} onApprove={f} onSendBack={f} onDecide={f} onDismiss={f} onLock={f} onOpen={f} go={go} /></MantineProvider>)
     await userEvent.click(screen.getByRole('button', { name: 'More for Boost' }))
-    await userEvent.click(await screen.findByRole('menuitem', { name: 'See Happy Hour' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'See happy hour' }))
     expect(go).toHaveBeenCalledWith('/')
   })
 
   test('kid happy_hour alert gets a bolt', async () => {
     apiMock.mockImplementation(async (p) =>
-      p === '/notifications' ? { items: [{ id: 1, kind: 'happy_hour', title: 'Happy Hour started!', body: null, created_at: new Date().toISOString(), read: false, run_id: null }], unread: 1, has_more: false } : undefined,
+      p === '/notifications' ? { items: [{ id: 1, kind: 'happy_hour', title: 'Happy hour started!', body: null, created_at: new Date().toISOString(), read: false, run_id: null }], unread: 1, has_more: false } : undefined,
     )
     wrap(<KidAlerts onChores={() => {}} />)
-    const row = await screen.findByText('Happy Hour started!')
+    const row = await screen.findByText('Happy hour started!')
     expect(within(row.closest('button')!).getByText('bolt')).toBeTruthy()
   })
 })

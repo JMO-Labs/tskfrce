@@ -175,7 +175,7 @@ export function List({ onGo, sheet, page }: { onGo: () => void; sheet?: boolean;
         ) : (
           <EmptyState
             icon="notifications_off"
-            title={filter === 'alerts' ? 'No alerts' : filter === 'needs-you' ? 'Nothing needs you' : 'No notifications'}
+            title={filter === 'alerts' ? 'No alerts' : filter === 'needs-you' ? 'All caught up' : 'No notifications'}
             body={
               filter === 'alerts'
                 ? "We'll tell you if a device resists or the box goes offline."

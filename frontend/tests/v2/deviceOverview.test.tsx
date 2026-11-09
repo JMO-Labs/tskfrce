@@ -115,7 +115,7 @@ describe('device Network history rows', () => {
 
   test('shows address changes and a healthy hold', async () => {
     const c = await net(dev())
-    expect(within(c).getByText('Address changes (7 days)')).toBeTruthy()
+    expect(within(c).getByText('Address changes · 7 days')).toBeTruthy()
     expect(within(c).getByText('Resisting blocker')).toBeTruthy()
     expect(await within(c).findByText('Healthy')).toBeTruthy()
   })
