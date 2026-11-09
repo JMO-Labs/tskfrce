@@ -96,7 +96,7 @@ describe('calm', () => {
     expect(pts).toHaveFocus()
   })
 
-  test('no Happy Hour button on the kid page', () => {
+  test('no happy hour button on the kid page', () => {
     view()
     expect(screen.queryByRole('button', { name: /happy hour/i })).toBeNull()
   })
@@ -133,7 +133,7 @@ describe('rows', () => {
   test('Trust row says None yet when nothing approved itself', async () => {
     apiMock.mockImplementation(async (p) => (p.endsWith('/self-approved') ? [] : p === '/today' ? { kids: [] } : []))
     view()
-    expect(await screen.findByText('None yet')).toBeInTheDocument()
+    expect(await screen.findByText('None approved yet')).toBeInTheDocument()
   })
 
   test('Devices row merges phones and ends with + Add a phone', async () => {

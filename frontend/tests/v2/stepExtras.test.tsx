@@ -16,7 +16,7 @@ function show(over: Partial<Parameters<typeof StepExtras>[0]> = {}) {
 test('a switch per kid and one for bedtime, all off, with the mockup copy', () => {
   show()
   expect(screen.getByText('Chores approve themselves as a kid earns it, with random spot checks.')).toBeInTheDocument()
-  expect(screen.getByText('At 9:00 PM, chores still waiting approve themselves.')).toBeInTheDocument()
+  expect(screen.getByText('At 9:00 PM, chores still waiting for your OK approve themselves.')).toBeInTheDocument()
   expect(screen.getByText('Kid (9–12)')).toBeInTheDocument()
   for (const n of ['Trust mode for Maya', 'Trust mode for Leo', 'Trust mode for Sam', 'Bedtime auto-approve'])
     expect(screen.getByRole('switch', { name: n })).toHaveAttribute('aria-checked', 'false')

@@ -23,7 +23,7 @@ export function DevicesBody({ saver: { save, once }, group, devices, kids }: { s
     const next = group.device_ids.includes(id) ? group.device_ids.filter((i) => i !== id) : [...group.device_ids, id]
     once(() => toasted(save.mutateAsync({ id: group.id, name: group.name, device_ids: next }), 'Saved'))
   }
-  if (!devices.length) return <p className="pk-hint">No devices yet.</p>
+  if (!devices.length) return <p className="pk-hint">No devices yet. Open a web page on one to add it.</p>
   return (
     <div className="gd-list">
       {[...devices].sort((a, b) => Number(group.device_ids.includes(b.id)) - Number(group.device_ids.includes(a.id))).map((d) => {

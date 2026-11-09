@@ -12,5 +12,5 @@ test('finish screen says the fun features are on and introduce themselves', () =
       <StepFinish chores={0} kids={0} lock={false} />
     </MantineProvider>,
   )
-  expect(screen.getByText('Celebrations, Happy Hour and streak freezes are on. Each one introduces itself on Today.')).toBeInTheDocument()
+  expect(screen.getByText('Celebrations, happy hour and streak freezes are on. Each one introduces itself on Today.')).toBeInTheDocument()
 })

@@ -99,7 +99,7 @@ export function DeviceNetwork({ device, timeZone }: { device: Device; timeZone?:
         </div>
         {device.address_changes !== undefined && (
           <div className="pk-kv">
-            <span>Address changes (7 days)</span>
+            <span>Address changes · 7 days</span>
             <b>{device.address_changes}</b>
           </div>
         )}
