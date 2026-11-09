@@ -25,7 +25,7 @@ const CANCEL = { cancelled: true, message: 'Route change cancelled: unsaved chan
 type PopHandler = (state?: { as?: string }) => boolean
 const sameRecord = (a: string, b: string) => {
   const x = new URL(a, 'http://x'), y = new URL(b, 'http://x')
-  return x.pathname === y.pathname && ['section', 'item'].every((k) => x.searchParams.get(k) === y.searchParams.get(k))
+  return x.pathname === y.pathname && ['section', 'item', 'pick'].every((k) => x.searchParams.get(k) === y.searchParams.get(k))
 }
 const guards: PopHandler[] = [] // active dirty guards; the newest decides browser Back
 
