@@ -14,7 +14,7 @@ import { isChore, useNeedsActions } from './needsActions'
 
 type Kind = { label: string; icon: string; tone: ChipTone; help: string }
 const KIND: Record<NeedsItem['type'], Kind> = {
-  chore: { label: 'Needs OK', icon: 'hourglass_top', tone: 'lav', help: 'Needs OK: they marked it done' },
+  chore: { label: 'Needs OK', icon: 'hourglass_empty', tone: 'lav', help: 'Needs OK: they marked it done' },
   redo: { label: 'Redo', icon: 'undo', tone: 'red', help: 'Redo: they tried again' },
   screen_time: { label: 'Screen time', icon: 'timer', tone: 'lav', help: 'Screen time request: spends points' },
   reward: { label: 'Reward', icon: 'redeem', tone: 'lav', help: 'Reward request: spends points' },

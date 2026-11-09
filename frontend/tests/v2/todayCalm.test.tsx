@@ -235,7 +235,7 @@ describe('calm Today', () => {
     unmount()
     state.hh = [{ id: 7, starts_at: new Date().toISOString(), ends_at: new Date(Date.now() + 44.5 * 60000).toISOString(), multiplier: 2, mult_x10: 20, source: 'parent', kid_ids: null }]
     wrap()
-    const chip = await screen.findByRole('button', { name: /Happy hour ×2 · 45 min/ })
+    const chip = await screen.findByRole('button', { name: /Happy Hour ×2 · 45 min/ })
     await userEvent.click(chip)
     expect(await screen.findByText(/everyone/i)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Stop now' }))
