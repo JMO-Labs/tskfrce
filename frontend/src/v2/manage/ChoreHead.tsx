@@ -38,7 +38,7 @@ export function ChoreHead({ title, sub, type, onDuplicate, onDelete, onEditType 
   )
   return (
     <DetailHeader
-      media={<span className="pk-tile pk-tile-lg"><Icon name={type?.glyph ?? 'task_alt'} size={30} /></span>}
+      media={<span className="pk-tile pk-tile-lg"><Icon name={type?.glyph ?? 'task_alt'} size={26} /></span>}
       title={title}
       sub={sub}
       chips={chip}

@@ -23,7 +23,7 @@ export function ScreenTimePane() {
   return (
     <div className="pk-detail st">
       <DetailHeader
-        media={<span className="pk-tile pk-tile-lg"><Icon name="timer" size={30} /></span>}
+        media={<span className="pk-tile pk-tile-lg"><Icon name="timer" size={26} /></span>}
         title="Screen time"
         sub="Kids spend points on extra minutes. Changes save as you go."
         main={

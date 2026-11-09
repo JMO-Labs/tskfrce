@@ -47,7 +47,7 @@ export function GroupHead({ group, icon, members, locked, owners, timeZone, pend
   const idle = !!pendingAction || members.length === 0
   return (
     <DetailHeader
-      media={<span className="pk-tile pk-tile-lg"><Icon name={icon} size={30} /></span>}
+      media={<span className="pk-tile pk-tile-lg"><Icon name={icon} size={26} /></span>}
       title={group.name}
       status={status}
       main={<ActionButton icon="lock" variant="red" busy={pendingAction === 'lock'} disabled={idle} onClick={() => onOverride('lock')}>Lock group</ActionButton>}

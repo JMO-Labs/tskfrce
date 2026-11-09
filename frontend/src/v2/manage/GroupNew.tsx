@@ -43,7 +43,7 @@ export function GroupNew({ devices, kids, onSelect }: { devices: Device[]; kids:
     <div className="pk-detail">
       <header className="pk-head">
         <span className="pk-tile pk-tile-lg">
-          <Icon name={icon} size={30} />
+          <Icon name={icon} size={26} />
         </span>
         <div className="pk-head-t">
           <h2>{name.trim() || 'New group'}</h2>

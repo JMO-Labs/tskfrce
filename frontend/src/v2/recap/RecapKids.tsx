@@ -76,9 +76,9 @@ export function RecapKids({ kids, line }: { kids: RecapKid[]; line: string | nul
                   </span>
                 )}
                 {k.flags.length ? (
-                  <span className="p-chip" data-tone="amb"><Icon name="flag" size={16} />{k.flags.length} to look at</span>
+                  <span className="p-chip" data-tone="amb"><Icon name="flag" size={12} />{k.flags.length} to look at</span>
                 ) : (
-                  <span className="p-chip" data-tone="acc"><Icon name="check" size={16} />All good</span>
+                  <span className="p-chip" data-tone="acc"><Icon name="check" size={12} />All good</span>
                 )}
                 <Icon name={isOpen ? 'expand_less' : 'expand_more'} size={20} />
               </button>

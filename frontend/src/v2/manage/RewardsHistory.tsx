@@ -81,7 +81,7 @@ export function RewardsHistory() {
   return (
     <div className="pk-detail rh">
       <DetailHeader
-        media={<span className="pk-tile pk-tile-lg"><Icon name="history" size={30} /></span>}
+        media={<span className="pk-tile pk-tile-lg"><Icon name="history" size={26} /></span>}
         title="History"
         sub="Every reward and screen-time purchase."
         main={

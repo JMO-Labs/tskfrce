@@ -31,13 +31,13 @@ export function MorePage({ onLogout }: { onLogout: () => void }) {
         </div>
         {blocker.data?.online === false && (
           <span className="p-chip" data-tone="amb">
-            <Icon name="router" size={16} />
+            <Icon name="router" size={12} />
             Box offline
           </span>
         )}
         {blocker.data?.online === true && (
           <span className="p-chip" data-tone="acc">
-            <Icon name="check_circle" size={16} />
+            <Icon name="check_circle" size={12} />
             Box healthy
           </span>
         )}

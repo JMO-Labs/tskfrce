@@ -92,7 +92,7 @@ export function NotificationsPane() {
   return (
     <div className="pn">
       <DetailHeader
-        media={<span className="pk-tile pk-tile-lg"><Icon name="notifications" size={30} /></span>}
+        media={<span className="pk-tile pk-tile-lg"><Icon name="notifications" size={26} /></span>}
         title="Notifications"
         sub="Pings to the chat apps your family already uses."
         main={
