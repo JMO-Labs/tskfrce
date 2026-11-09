@@ -7,8 +7,9 @@ import { bedtimeAt, bedtimeLatest, bedtimePossible } from '@/v2/trustTypes'
 import type { Family } from '@/v2/types'
 import { intError } from './choreMeta'
 
-/** Saves a partial change; resolves false when the box refused it. */
-export type SaveFamily = (p: Partial<Family>) => Promise<boolean>
+/** Saves a partial change; resolves false when the box refused it. A function is given the latest saved family
+ *  when its turn comes, so a field derived from other settings never goes out stale. */
+export type SaveFamily = (p: Partial<Family> | ((latest: Family) => Partial<Family>)) => Promise<boolean>
 interface Props { fam: Family; save: SaveFamily }
 
 const city = (tz: string) => (tz.split('/').pop() ?? tz).replace(/_/g, ' ')
@@ -54,8 +55,7 @@ export function HouseholdBody({ fam, save }: Props) {
   }
   const commitReset = () => {
     if (!hhmm.test(reset) || reset === fam.reset_time) return
-    const p: Partial<Family> = fam.bedtime_auto && bedtimePossible(reset) ? { reset_time: reset, bedtime_auto_at: bedtimeAt(fam.bedtime_auto_at, reset) } : { reset_time: reset }
-    void save(p).then((ok) => ok || setReset(fam.reset_time))
+    void save((f) => (f.bedtime_auto && bedtimePossible(reset) ? { reset_time: reset, bedtime_auto_at: bedtimeAt(f.bedtime_auto_at, reset) } : { reset_time: reset })).then((ok) => ok || setReset(fam.reset_time))
   }
   return (
     <>
