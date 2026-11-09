@@ -24,8 +24,8 @@
   cursor: pointer;
   transition: background var(--dur-1) var(--ease-out);
 }
-[data-look='parent'] .pt-row:hover,
 [data-look='parent'] .pt-chore[data-open='true'] > .pt-rowline { background: var(--p-soft); }
+@media (hover: hover) { [data-look='parent'] .pt-row:hover { background: var(--p-soft); } }
 [data-look='parent'] .pt-row:focus-visible { outline: 2px solid var(--p-focus); outline-offset: -2px; }
 
 [data-look='parent'] .pt-car { width: 20px; display: grid; color: var(--p-sub); transition: transform var(--dur-1) var(--ease-out); }
@@ -104,8 +104,8 @@
 
 /* kid note flag (mockup 03): amber wash over the row and its actions */
 [data-look='parent'] .pt-chore[data-flag='true'] { background: color-mix(in srgb, var(--p-amb) 55%, transparent); }
-[data-look='parent'] .pt-chore[data-flag='true'] > .pt-rowline > .pt-row:hover,
 [data-look='parent'] .pt-chore[data-flag='true'][data-open='true'] > .pt-rowline { background: color-mix(in srgb, var(--p-amb) 80%, transparent); }
+@media (hover: hover) { [data-look='parent'] .pt-chore[data-flag='true'] > .pt-rowline > .pt-row:hover { background: color-mix(in srgb, var(--p-amb) 80%, transparent); } }
 [data-look='parent'] .pt-note { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12.5px; font-weight: 600; color: var(--p-ambink); }
 [data-look='parent'] .pt-note .ms { flex: none; }
 [data-look='parent'] .pt-note-acts { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 14px 124px; }
@@ -206,9 +206,9 @@
   outline-offset: 2px;
 }
 [data-look='parent'] .pt-strip-kid:focus-visible { border-radius: 8px; }
-[data-look='parent'] :is(.pt-rp, .pt-amt:not([data-on='true'])):hover { background: var(--p-soft); }
+@media (hover: hover) { [data-look='parent'] :is(.pt-rp, .pt-amt:not([data-on='true'])):hover { background: var(--p-soft); } }
 [data-look='parent'] .pt-chat-head button { border-radius: 6px; }
-[data-look='parent'] .pt-chat-head button:hover { color: var(--p-ink); }
+@media (hover: hover) { [data-look='parent'] .pt-chat-head button:hover { color: var(--p-ink); } }
 [data-look='parent'] .pt-amt:active { transform: scale(0.96); }
 
 /* open chore eases in; chat column too (the global reduced-motion rule zeroes these) */

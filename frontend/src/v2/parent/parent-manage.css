@@ -24,7 +24,7 @@
   cursor: pointer;
   transition: background var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
 }
-[data-look='parent'] .pk-card:hover { border-color: var(--p-line); }
+@media (hover: hover) { [data-look='parent'] .pk-card:hover { border-color: var(--p-line); } }
 [data-look='parent'] .pk-card[data-selected='true'] { background: var(--p-card); border-color: var(--p-ink); }
 [data-look='parent'] .pk-card:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 
@@ -41,7 +41,7 @@
   font-size: 13px;
   font-weight: 600;
 }
-[data-look='parent'] .pk-new:hover { border-color: var(--p-ink); color: var(--p-ink); }
+@media (hover: hover) { [data-look='parent'] .pk-new:hover { border-color: var(--p-ink); color: var(--p-ink); } }
 [data-look='parent'] .pk-new[data-selected='true'] { background: var(--p-card); border-style: solid; color: var(--p-ink); }
 
 /* icon tile: accent when its card is selected (neon only as a filled tile, dark glyph) */
@@ -145,7 +145,7 @@
   font: 500 14px var(--font-parent), system-ui, sans-serif;
 }
 [data-look='parent'] .pk-input { transition: border-color var(--dur-1) var(--ease-out); }
-[data-look='parent'] .pk-input:hover { border-color: var(--p-sub); }
+@media (hover: hover) { [data-look='parent'] .pk-input:hover { border-color: var(--p-sub); } }
 [data-look='parent'] .pk-input::placeholder { color: var(--p-sub); }
 [data-look='parent'] .pk-input:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 1px; }
 
@@ -183,7 +183,7 @@
 [data-look='parent'] .pk-step { display: flex; align-items: center; gap: 6px; padding: 4px 4px 4px 10px; border: 1px solid var(--p-line); border-radius: 12px; background: var(--p-soft); font-size: 13.5px; font-weight: 500; color: var(--p-ink); }
 [data-look='parent'] .pk-step-t { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 [data-look='parent'] input.pk-step-t { border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; padding: 4px 2px; }
-[data-look='parent'] input.pk-step-t:hover { background: var(--p-card); }
+@media (hover: hover) { [data-look='parent'] input.pk-step-t:hover { background: var(--p-card); } }
 [data-look='parent'] .pk-step .ms { color: var(--p-sub); }
 [data-look='parent'] .pk-grab { display: grid; cursor: grab; touch-action: none; }
 /* ↑/↓ are for keyboard users (pointer users drag the handle): shown only while the keyboard is in the row */
@@ -198,7 +198,7 @@
 [data-look='parent'] .pk-link[aria-pressed='true']::before { background: var(--p-ink); }
 [data-look='parent'] .pk-warn { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 10px; background: var(--p-amb); color: var(--p-ambink); font-size: 11.5px; }
 [data-look='parent'] .pk-ib { width: 32px; height: 32px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--p-sub); cursor: pointer; transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
-[data-look='parent'] .pk-ib:hover:not(:disabled) { background: var(--p-card); color: var(--p-ink); }
+@media (hover: hover) { [data-look='parent'] .pk-ib:hover:not(:disabled) { background: var(--p-card); color: var(--p-ink); } }
 [data-look='parent'] .pk-ib:disabled { opacity: 0.35; cursor: default; }
 /* "+ Add a step" / "+ Add a note": one dashed row that is the input */
 [data-look='parent'] .pk-add { display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px dashed var(--p-line); border-radius: 12px; color: var(--p-sub); cursor: text; }
@@ -280,7 +280,7 @@ html[data-look='parent'] .pk-sheet-foot { position: sticky; bottom: 0; margin-to
   cursor: pointer;
   transition: background var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
 }
-[data-look='parent'] .pk-day:hover { border-color: var(--p-ink); color: var(--p-ink); }
+@media (hover: hover) { [data-look='parent'] .pk-day:hover { border-color: var(--p-ink); color: var(--p-ink); } }
 [data-look='parent'] .pk-day[aria-pressed='true'] { background: var(--p-acc); border-color: var(--p-acc); color: #292928; }
 
 [data-look='parent'] .pk-seg .p-segmented-control { width: 100%; }
@@ -292,7 +292,8 @@ html[data-look='parent'] .pk-sheet-foot { position: sticky; bottom: 0; margin-to
 .pk-pick-pop { background: var(--p-card, #fff); }
 .pk-pick-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
 .pk-pick-cell { width: 34px; height: 34px; border: 1px solid transparent; border-radius: 8px; background: transparent; font-size: 20px; cursor: pointer; }
-.pk-pick-cell:hover, .pk-pick-cell[data-on] { border-color: var(--p-ink, #292928); }
+.pk-pick-cell[data-on] { border-color: var(--p-ink, #292928); }
+@media (hover: hover) { .pk-pick-cell:hover { border-color: var(--p-ink, #292928); } }
 
 [data-look='parent'] .p-glyph-picker { display: flex; flex-direction: column; gap: 8px; }
 [data-look='parent'] .p-glyph-search { padding: 8px 12px; border: 1px solid var(--p-line); border-radius: 12px; background: var(--p-soft); color: var(--p-ink); font: 500 13px var(--font-parent), system-ui, sans-serif; }

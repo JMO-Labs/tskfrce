@@ -24,9 +24,11 @@
   white-space: nowrap;
 }
 
-[data-look='parent'] .p-btn:hover {
-  border-color: var(--p-ink);
-  background: var(--p-soft);
+@media (hover: hover) {
+  [data-look='parent'] .p-btn:hover {
+    border-color: var(--p-ink);
+    background: var(--p-soft);
+  }
 }
 
 [data-look='parent'] .p-btn[data-variant='accent'] {
@@ -35,8 +37,10 @@
   color: #292928;
 }
 
-[data-look='parent'] .p-btn[data-variant='accent']:hover {
-  opacity: 0.9;
+@media (hover: hover) {
+  [data-look='parent'] .p-btn[data-variant='accent']:hover {
+    opacity: 0.9;
+  }
 }
 
 [data-look='parent'] .p-btn[data-variant='ink'] {
@@ -45,8 +49,10 @@
   color: var(--p-card);
 }
 
-[data-look='parent'] .p-btn[data-variant='ink']:hover {
-  opacity: 0.9;
+@media (hover: hover) {
+  [data-look='parent'] .p-btn[data-variant='ink']:hover {
+    opacity: 0.9;
+  }
 }
 
 [data-look='parent'] .p-btn[data-variant='red'] {
@@ -54,8 +60,10 @@
   border-color: color-mix(in srgb, var(--p-red) 40%, var(--p-line));
 }
 
-[data-look='parent'] .p-btn[data-variant='red']:hover {
-  background: color-mix(in srgb, var(--p-red) 10%, transparent);
+@media (hover: hover) {
+  [data-look='parent'] .p-btn[data-variant='red']:hover {
+    background: color-mix(in srgb, var(--p-red) 10%, transparent);
+  }
 }
 
 [data-look='parent'] .p-btn .ms {
@@ -92,7 +100,7 @@
 /* safety net: any other parent control still shows the one ring. The whole selector is in :where(), so specificity is 0,1,0 (just :focus-visible) and every rule above wins */
 :where([data-look='parent'] :is(button, a[href], summary, [role='button'], [role='switch'], [role='tab'])):focus-visible { outline: 2px solid var(--p-focus, #292928); outline-offset: 2px; }
 [data-look='parent'] .p-btn[aria-busy='true'] { cursor: progress; }
-[data-look='parent'] .pk-pill:hover:not(:disabled) { border-color: var(--p-ink); }
+@media (hover: hover) { [data-look='parent'] .pk-pill:hover:not(:disabled) { border-color: var(--p-ink); } }
 [data-look='parent'] .pk-pill:active:not(:disabled),
 [data-look='parent'] .pk-day:active { transform: scale(0.96); }
 [data-look='parent'] .pk-pill:disabled { opacity: 0.5; cursor: not-allowed; }

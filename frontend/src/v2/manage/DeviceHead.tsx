@@ -1,4 +1,3 @@
-import { notifications } from '@mantine/notifications'
 import { useTestBlock } from '@/v2/hooks/useDevices'
 import { useSingleFlight } from '@/v2/hooks/useSingleFlight'
 import { clockText } from '@/v2/clockText'
@@ -46,7 +45,7 @@ export function DeviceHead({ device, locked, ov, timeZone, blockNew, pendingActi
   const runTest = () =>
     onceTest(() =>
       test.mutateAsync(device.id).then(
-        (r) => (r.reason === 'ok' ? toastOk(r.message) : notifications.show({ message: r.message, color: 'fridgeRed' })),
+        (r) => (r.reason === 'ok' ? toastOk(r.message) : toastFail(new Error(r.message))),
         toastFail,
       ),
     )

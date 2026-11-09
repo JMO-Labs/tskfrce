@@ -20,7 +20,7 @@
 [data-look='parent'] .kd-prow .p-btn { flex: none; }
 [data-look='parent'] .kd-ty { width: 30px; height: 30px; flex: none; display: grid; place-items: center; border-radius: 10px; background: var(--p-soft); color: var(--p-sub); }
 [data-look='parent'] .kd-link { color: inherit; text-decoration: none; }
-[data-look='parent'] .kd-link:hover { background: var(--p-soft); }
+@media (hover: hover) { [data-look='parent'] .kd-link:hover { background: var(--p-soft); } }
 [data-look='parent'] .kd-lnk {
   position: relative; padding: 4px 6px 4px 0; border: 0; background: transparent; color: var(--p-ink); cursor: pointer;
   font: 700 13px var(--font-parent), system-ui, sans-serif; text-decoration: underline; text-underline-offset: 3px; text-align: left;

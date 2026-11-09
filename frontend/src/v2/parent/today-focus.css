@@ -18,7 +18,7 @@
   flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 12px 14px 12px 8px;
   border: 0; border-radius: 18px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
 }
-[data-look='parent'] .pt-krow:hover { background: var(--p-soft); }
+@media (hover: hover) { [data-look='parent'] .pt-krow:hover { background: var(--p-soft); } }
 [data-look='parent'] .pt-kname { flex: 1; min-width: 72px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; font-weight: 700; font-size: 15px; }
 [data-look='parent'] .pt-kpts { font-weight: 700; font-size: 13px; min-width: 52px; text-align: right; white-space: nowrap; }
 [data-look='parent'] .pt-kchev { color: var(--p-sub); transition: transform 180ms; }
@@ -60,7 +60,7 @@
 .pt-tip-t { flex: 1; min-width: 0; }
 .pt-tip-more { border: 0; background: transparent; color: var(--p-ink); font: 700 12.5px var(--font-parent), system-ui, sans-serif; padding: 4px 6px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .pt-tip-x { flex: none; width: 32px; height: 32px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--p-card); color: var(--p-sub); cursor: pointer; }
-.pt-tip-x:hover { color: var(--p-ink); background: var(--p-soft); }
+@media (hover: hover) { .pt-tip-x:hover { color: var(--p-ink); background: var(--p-soft); } }
 .pt-tip-body { padding: 0 14px 12px; }
 .pt-tip-acts { display: flex; flex-wrap: wrap; gap: 8px; }
 

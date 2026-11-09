@@ -45,7 +45,7 @@
 .foot :global(.f-btn.f-btn) { min-height: 44px; }
 .page .skip.skip { text-decoration: underline; text-underline-offset: 3px; font-weight: 700; }
 .page :global(.mantine-Button-root.f-btn.f-btn[data-variant='filled']) { background: var(--p-acc); border-color: var(--p-acc); color: #292928; }
-.page :global(.mantine-Button-root.f-btn.f-btn[data-variant='filled']:hover) { background: var(--p-acc); filter: brightness(0.95); }
+@media (hover: hover) { .page :global(.mantine-Button-root.f-btn.f-btn[data-variant='filled']:hover) { background: var(--p-acc); filter: brightness(0.95); } }
 
 /* phone: smaller dots and gaps so the 8-step bar plus the current label fits 360px */
 @media (max-width: 767px) {

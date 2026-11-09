@@ -47,4 +47,4 @@
 [data-look='parent'] .ig-perm .ig-ptext label { font-weight: 600; color: inherit; }
 [data-look='parent'] .ig-perm .ig-ptext [class*='description'] { color: inherit; opacity: .85; }
 [data-look='parent'] .ig-flow > .ig-cap { margin: 0 0 -8px; }
-[data-look='parent'] .ig-copy .p-btn:hover { opacity: 1; }
+@media (hover: hover) { [data-look='parent'] .ig-copy .p-btn:hover { opacity: 1; } }

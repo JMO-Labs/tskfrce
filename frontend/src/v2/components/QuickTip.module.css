@@ -82,8 +82,10 @@
   color: var(--p-sub);
 }
 
-.parentMode .dismiss:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+@media (hover: hover) {
+  .parentMode .dismiss:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
 }
 
 .parentMode .dismiss:active {
@@ -94,8 +96,10 @@
   color: var(--f-sub);
 }
 
-.kidMode .dismiss:hover {
-  background-color: rgba(0, 0, 0, 0.1);
+@media (hover: hover) {
+  .kidMode .dismiss:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+  }
 }
 
 .kidMode .dismiss:active {
@@ -103,8 +107,10 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  .parentMode .dismiss:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+  @media (hover: hover) {
+    .parentMode .dismiss:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
   }
 
   .parentMode .dismiss:active {

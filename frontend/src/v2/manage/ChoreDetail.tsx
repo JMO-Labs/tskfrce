@@ -132,7 +132,7 @@ export function ChoreDetail({ kids, chore, onSelect, onGuard }: Props) {
       drafts.delete(key)
       setDue(undefined)
       setPending({}) // saved; an open form reports again if it changes
-      toastOk(chore ? 'Saved' : 'Added. Now choose who does it.')
+      toastOk(chore ? 'Saved' : 'Added. Now choose who does it')
       if (!chore) setExit({ id: c.id })
     } catch (e) {
       toastFail(e)

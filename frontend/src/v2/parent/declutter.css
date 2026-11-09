@@ -3,12 +3,15 @@
  * Look copied from the owner-approved mockups (declutter-v1/v2 .srow .shead .l1 .val .chev .sb .pop).
  */
 
+/* one short, calm beat for every open / close of a row: the border, the chevron and the body fade (the other rows fold at once) */
+:root { --srow-ms: 120ms; }
 [data-look='parent'] .p-srows { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
 [data-look='parent'] .p-srow {
   background: var(--p-card);
   border: 1px solid var(--p-line);
   border-radius: 16px;
-  transition: border-color 180ms;
+  transition: border-color var(--srow-ms) ease-out;
+  scroll-margin-block: 8px; /* scrollIntoView stops a little short of the edge */
 }
 [data-look='parent'] .p-srow[data-open] { border-color: var(--p-ink); }
 [data-look='parent'] .p-srow-top { display: flex; align-items: center; }
@@ -24,13 +27,12 @@
   padding: 12px 14px;
   border-radius: 16px;
   cursor: pointer;
-  transition: padding 180ms;
 }
-[data-look='parent'] .p-srow-head:hover { background: var(--p-soft); }
+@media (hover: hover) { [data-look='parent'] .p-srow-head:hover { background: var(--p-soft); } }
 [data-look='parent'] .p-srow-l1 { display: flex; align-items: center; gap: 10px; }
 [data-look='parent'] .p-srow-l1 b { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14.5px; }
 [data-look='parent'] .p-srow-val { font-size: 13px; color: var(--p-sub); font-weight: 500; white-space: nowrap; min-width: 0; max-width: 55%; overflow: hidden; text-overflow: ellipsis; }
-[data-look='parent'] .p-srow-chev { color: var(--p-sub); transition: transform 180ms; }
+[data-look='parent'] .p-srow-chev { color: var(--p-sub); transition: transform var(--srow-ms) ease-out; }
 [data-look='parent'] .p-srow[data-open] .p-srow-chev { transform: rotate(90deg); }
 [data-look='parent'] .p-srow-aside { flex: none; padding-right: 14px; }
 /* with an aside the control sits before the chevron (mockup: summary, switch, chevron) */
@@ -45,6 +47,10 @@
 [data-look='parent'] .p-srow-info > button { pointer-events: auto; margin-left: -8px; }
 [data-look='parent'] .p-srow-l2 { display: flex; align-items: center; gap: 10px; padding: 0 14px 12px 42px; }
 [data-look='parent'] .p-srow-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; outline: none; }
+@media (prefers-reduced-motion: no-preference) {
+  [data-look='parent'] .p-srow-body { animation: p-srow-in var(--srow-ms) ease-out; }
+}
+@keyframes p-srow-in { from { opacity: 0; transform: translateY(-4px); } }
 
 /* Grouped rows: one card, dividers, left bar on the open row (mockup .srows.grp) */
 [data-look='parent'] .p-srows[data-grp] { gap: 0; margin-top: 0; background: var(--p-card); border: 1px solid var(--p-line); border-radius: 16px; overflow: hidden; }
@@ -70,7 +76,7 @@
   color: var(--p-sub);
   cursor: pointer;
 }
-[data-look='parent'] .p-info-btn:hover { color: var(--p-ink); background: var(--p-soft); }
+@media (hover: hover) { [data-look='parent'] .p-info-btn:hover { color: var(--p-ink); background: var(--p-soft); } }
 .p-pop, [data-look='parent'] .p-pop {
   min-width: 200px;
   background: var(--p-card);
@@ -84,7 +90,8 @@
 
 /* MoreMenu items (mockup .pop .mi) */
 .p-pop .p-mi { border-radius: 8px; padding: 8px 10px; font-size: 13px; font-weight: 500; }
-.p-pop .p-mi:hover, .p-pop .p-mi[data-hovered] { background: var(--p-soft); }
+.p-pop .p-mi[data-hovered] { background: var(--p-soft); }
+@media (hover: hover) { .p-pop .p-mi:hover { background: var(--p-soft); } }
 
 /* Helpers */
 .p-kn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; word-break: keep-all; overflow-wrap: normal; }
@@ -105,6 +112,7 @@
   [data-look='parent'] .p-srow,
   [data-look='parent'] .p-srow-head,
   [data-look='parent'] .p-srow-chev { transition-duration: 0ms; }
+  [data-look='parent'] .p-srow-body { animation: none; }
 }
 
 /* DetailHeader (mockup .khead) */

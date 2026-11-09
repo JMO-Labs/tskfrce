@@ -5,6 +5,9 @@ import { Icon } from './parent/Icon'
 
 const okIcon = <Icon name="check" size={16} />
 
+/** How long an Undo toast stays (and how long the action waits): the same on every screen. */
+export const UNDO_MS = 5000
+
 /**
  * Custom notification content component that displays a message with an optional action button.
  */
@@ -55,6 +58,7 @@ export const toastOk = (message: string, options?: { undo?: () => void }) => {
     message: undo ? <NotificationContent message={message} onAction={() => (notifications.hide(id), undo())} /> : message,
     color: 'fridgeGreen',
     icon: okIcon,
+    autoClose: undo ? UNDO_MS : undefined,
   })
 }
 
@@ -98,7 +102,7 @@ export const toasted = (p: Promise<unknown>, done: string) => p.then(() => toast
 export function withUndo<T>(
   run: () => Promise<T>,
   message: string,
-  ms: number = 5000
+  ms: number = UNDO_MS
 ): Promise<void> {
   let cancelled = false;
   let timeoutId: NodeJS.Timeout | null = null;
@@ -119,6 +123,7 @@ export function withUndo<T>(
     message: <NotificationContent message={message} onAction={undo} />,
     color: 'fridgeGreen',
     icon: okIcon,
+    autoClose: ms,
   });
 
   timeoutId = setTimeout(async () => {
