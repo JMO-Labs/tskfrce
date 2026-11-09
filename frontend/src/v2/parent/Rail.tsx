@@ -23,7 +23,7 @@ export function Rail({ onLogout }: { onLogout?: () => void }) {
     { icon: 'home', href: '/', label: 'Today' },
     { icon: 'devices', href: '/devices', label: 'Devices' },
     { icon: 'group', href: '/kids', label: 'Kids & chores' },
-    { icon: 'forum', href: '/chat', label: 'Chat', dot: unread > 0 },
+    { icon: 'chat', href: '/chat', label: 'Chat', dot: unread > 0 },
     { icon: 'spacer', label: 'Spacer' },
     { icon: 'settings', href: '/settings', label: 'Settings' },
     { icon: 'logout', label: 'Log out' },
@@ -36,7 +36,7 @@ export function Rail({ onLogout }: { onLogout?: () => void }) {
         if (item.label === 'Logo')
           return (
             <Link key={idx} href="/" className="p-rail-logo" aria-label="t@sk4ce">
-              @
+              t@
             </Link>
           )
         if (item.label === 'Bell')
@@ -61,7 +61,7 @@ export function Rail({ onLogout }: { onLogout?: () => void }) {
             <Link
               href={item.href || ''}
               className="p-rail-item"
-              aria-current={router.pathname === item.href ? 'page' : undefined}
+              aria-current={router.pathname === item.href || (item.href === '/' && router.pathname === '/notifications') ? 'page' : undefined}
               aria-label={item.dot ? `${item.label}, ${unread} unread` : item.label}
             >
               <Icon name={item.icon} />

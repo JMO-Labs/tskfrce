@@ -143,6 +143,7 @@
   border-radius: 6px;
   min-width: 0;
   overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; /* the server sentence, two lines at most */
 }
 @media (hover: hover) { .p-bell-text:hover { text-decoration: underline; } }
 .p-bell-text:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }

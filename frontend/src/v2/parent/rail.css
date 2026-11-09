@@ -27,7 +27,7 @@
   border-radius: 50%;
   border: 2px solid var(--p-ink);
   font-weight: 700;
-  font-size: 14px;
+  font-size: 12px;
   color: var(--p-ink);
   margin-bottom: 16px;
   text-decoration: none;
@@ -66,8 +66,8 @@
 }
 
 [data-look='parent'] .p-rail-item[aria-current] {
-  background: var(--p-soft);
-  color: var(--p-ink);
+  background: var(--p-acc);
+  color: #292928;
 }
 
 [data-look='parent'] .p-rail-bell {
