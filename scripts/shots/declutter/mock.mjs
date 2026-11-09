@@ -84,7 +84,9 @@ const runDetail = (id) => ({ id, title: 'Homework', points: 30, state: 'needs_yo
 export const S = { setup: { needed: false }, step: null }
 // Fake a state per path: FAKE="mode=regex;mode=regex" with mode = hang (never answers: the loading state), err (400 with a message), net (the box is unreachable), empty (an empty list or a family with nothing in it). First matching rule wins.
 const FAKE = (process.env.FAKE || '').split(';').filter(Boolean).map((x) => { const [m, ...re] = x.split('='); return [m, new RegExp(re.join('='))] })
-const EMPTY_OBJ = (p) => (p === '/today' ? { ...today(), kids: [], needs_you: [], pending_approvals: 0, new_devices: [], try_trust_kid: null } : null)
+const EMPTY_OBJ = (p) => (p === '/today' ? { ...today(), kids: [], needs_you: [], pending_approvals: 0, new_devices: [], try_trust_kid: null }
+  : /^\/devices\/\d+\/activity$/.test(p) ? { counts: { bypass: 0, locked_tries: 0, outside_hours: 0, wrong_pins: 0 }, events: [], history: [], days: [] }
+  : p === '/notifications' ? { unread: 0, has_more: false, items: [] } : null)
 export function route(r, misses) {
   const u = new URL(r.request().url()), p = u.pathname.replace('/api/proxy', '').replace(/\/$/, '') || '/'
   const j = (json) => r.fulfill({ json })

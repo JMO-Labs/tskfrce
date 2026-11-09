@@ -34,6 +34,7 @@ export function InfoPop({ label, children, target, width }: { label: string; chi
       position="bottom"
       middlewares={{ flip: true, shift: { padding: 16 } }}
       closeOnEscape
+      zIndex={500} // above Mantine modals and sheets (400), so an (i) inside a form still shows
       closeOnClickOutside
       returnFocus
       transitionProps={motionProps()}

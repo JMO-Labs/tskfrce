@@ -132,3 +132,14 @@ describe('device Network history rows', () => {
     expect(await within(c).findByText('Box offline')).toBeTruthy()
   })
 })
+
+describe('technical labels get plain words and an (i)', () => {
+  test('a private MAC reads as a random Wi-Fi address; the (i) names the term and the fix', async () => {
+    show(dev({ mac: 'ae:bb:cc:dd:ee:01' }), 'network')
+    expect(screen.getByText('Random Wi-Fi address')).toBeTruthy()
+    expect(screen.queryByText('Private MAC')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'About random Wi-Fi addresses' }))
+    const tip = await screen.findByText(/private MAC: a made-up Wi-Fi address/)
+    expect(tip.textContent).toMatch(/Private Wi-Fi Address/)
+  })
+})

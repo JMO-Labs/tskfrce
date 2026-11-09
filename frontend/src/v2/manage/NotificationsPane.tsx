@@ -126,7 +126,7 @@ export function NotificationsPane() {
         </div>
       )}
       {list?.length === 0 && (
-        <EmptyState icon="notifications" title="No places yet" body="Add a Signal group, Discord channel, email or any Apprise address." />
+        <EmptyState icon="notifications" title="No places yet" body="Add a Signal group, Discord channel, email or another chat app." />
       )}
       {s && list && (
         <div>
