@@ -4,6 +4,7 @@ import { ReactNode } from 'react'
 import { useMediaQuery } from '@mantine/hooks'
 import { VisuallyHidden } from '@mantine/core'
 import { Icon } from './Icon'
+import { withoutFocus } from './useFocusParam'
 
 /** Phone "‹ Label" bar above a detail (mockup .back). */
 export function BackLink({ href, children }: { href: React.ComponentProps<typeof Link>['href']; children: ReactNode }) {
@@ -46,7 +47,7 @@ export function ListDetail({
   if (small && selectedItem) {
     return (
       <main className="p-detail-only">
-        <BackLink href={{ pathname: router.pathname, query: rest }}>{back ?? listTitle}</BackLink>
+        <BackLink href={{ pathname: router.pathname, query: withoutFocus(rest) }}>{back ?? listTitle}</BackLink>
         <div className="p-detail-panel">{detail}</div>
       </main>
     )

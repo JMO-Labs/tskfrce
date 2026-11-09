@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { useFocusParam, type FocusOptions } from '@/v2/parent/useFocusParam'
+import { useFocusParam, withoutFocus, type FocusOptions } from '@/v2/parent/useFocusParam'
 import { fakeRouter } from './helpers/fakeRouter'
 
 jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
@@ -282,5 +282,20 @@ describe('closing blurs a focused field in the open body first', () => {
     act(() => screen.getByLabelText('g').focus())
     act(() => h.focus.close())
     expect(onBlur).not.toHaveBeenCalled()
+  })
+})
+
+describe('replace option and withoutFocus', () => {
+  test('replace: true opens without a history entry, and close does not go Back', () => {
+    render(<Harness opts={{ replace: true }} />)
+    click('A')
+    expect(fakeRouter.push).not.toHaveBeenCalled()
+    expect(fakeRouter.replace).toHaveBeenCalled()
+    act(() => h.focus.close())
+    expect(fakeRouter.back).not.toHaveBeenCalled()
+    expect(screen.getByTestId('open').textContent).toBe('')
+  })
+  test('withoutFocus drops every focus param and keeps the rest', () => {
+    expect(withoutFocus({ item: '3', tab: 'groups', open: 'a', edit: '1', pin: '1', pick: '2', net: 'x' })).toEqual({ item: '3', tab: 'groups' })
   })
 })

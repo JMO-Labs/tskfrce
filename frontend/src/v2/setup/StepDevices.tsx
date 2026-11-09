@@ -23,7 +23,7 @@ const validRow = (id: string) => id === 'need' || id === 'done'
 export function StepDevices({ kids }: { kids: Kid[] }) {
   const qc = useQueryClient()
   const run = useSaveQueue()
-  const focus = useFocusParam('open', { valid: validRow })
+  const focus = useFocusParam('open', { valid: validRow, replace: true }) // the wizard step is not in the URL: no history entry for a row
   const list = useQuery({ queryKey: ['setup-devices'], queryFn: () => api<Device[]>('/devices'), refetchInterval: 5000, refetchIntervalInBackground: false })
 
   // The owner shown is always the server's; a failed save toasts and the next refetch shows the old owner again.

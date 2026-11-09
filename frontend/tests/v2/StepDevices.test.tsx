@@ -133,3 +133,13 @@ describe('StepDevices', () => {
     expect(await screen.findByRole('button', { name: 'Owner for Fire tablet: Mia' })).toBeInTheDocument()
   })
 })
+
+describe('StepDevices history', () => {
+  test('opening a row adds no history entry (the step is not in the URL)', async () => {
+    apiMock.mockResolvedValue(three)
+    view()
+    await userEvent.click(await screen.findByRole('button', { name: /Need an owner/ }))
+    await waitFor(() => expect(fakeRouter.query.open).toBe('need'))
+    expect(fakeRouter.push).not.toHaveBeenCalled()
+  })
+})
