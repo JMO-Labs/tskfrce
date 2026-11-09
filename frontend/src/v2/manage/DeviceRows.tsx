@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useResetState } from '@/v2/hooks/useResetState'
 import { usePatchDevice, useSaveGroup, type DevicePatch } from '@/v2/hooks/useDevices'
+import { useSaveQueue } from '@/v2/hooks/useSaveQueue'
 import { useSingleFlight } from '@/v2/hooks/useSingleFlight'
 import { InfoPop } from '@/v2/parent/InfoPop'
 import { KidPicker } from '@/v2/parent/KidPicker'
@@ -18,6 +19,7 @@ export function DetailsBody({ device, kids, groups, nameFocus = 0 }: Props) {
   const patch = usePatchDevice()
   const saveGroup = useSaveGroup()
   const once = useSingleFlight()
+  const queue = useSaveQueue() // a name blur that lands during another save waits its turn instead of being dropped
   const [name, setName] = useResetState(device.name)
   const nameRef = useRef<HTMLInputElement>(null)
   useEffect(() => { if (nameFocus) nameRef.current?.focus() }, [nameFocus])
@@ -27,7 +29,7 @@ export function DetailsBody({ device, kids, groups, nameFocus = 0 }: Props) {
   const rename = () => {
     const n = name.trim()
     if (!n) setName(device.name)
-    else if (n !== device.name) once(() => toasted(patch.mutateAsync({ id: device.id, patch: { name: n } }), 'Renamed'))
+    else if (n !== device.name) void queue(() => patch.mutateAsync({ id: device.id, patch: { name: n } }))
   }
   const toggleGroup = (g: Group) => {
     const ids = g.device_ids.includes(device.id) ? g.device_ids.filter((i) => i !== device.id) : [...g.device_ids, device.id]

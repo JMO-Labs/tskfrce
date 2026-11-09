@@ -126,6 +126,22 @@ describe('device detail, calm', () => {
     await waitFor(() => expect(notifications.show).toHaveBeenCalledWith(expect.objectContaining({ message: 'Saved' })))
   })
 
+  test('a name blur during another save is saved after it, not dropped', async () => {
+    let release = () => {}
+    apiMock.mockImplementation(async (_p, o) => {
+      if (o?.method === 'PATCH' && (o.body as { owner_ids?: number[] }).owner_ids) await new Promise<void>((r) => (release = r))
+      return {}
+    })
+    show(dev({ owner_ids: [], status: 'unassigned' }), { open: 'details' })
+    await userEvent.click(within(screen.getByRole('group', { name: 'Owners' })).getByRole('button', { name: 'Maya' }))
+    const name = screen.getByLabelText('Device name')
+    await userEvent.clear(name)
+    await userEvent.type(name, 'Den iPad')
+    await userEvent.tab()
+    release()
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/devices/12', { method: 'PATCH', body: { name: 'Den iPad' } }))
+  })
+
   test('unknown open value shows calm', async () => {
     show(dev(), { open: 'bogus' })
     await waitFor(() => expect(fakeRouter.replace).toHaveBeenCalled())

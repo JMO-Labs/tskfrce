@@ -241,4 +241,28 @@ describe('group detail, focus', () => {
     await new Promise((r) => setTimeout(r, 50))
     expect(patches()).toHaveLength(2)
   })
+
+  test('a dropped price is still saved when the dropped rename turns into a no-op', async () => {
+    let release = () => {}
+    let n = 0
+    apiMock.mockImplementation(async (path, o) => {
+      if (path === '/screen-time') return { enabled: true, price: 20, group_pricing: true }
+      if (o?.method === 'PATCH' && n++ === 0) await new Promise<void>((r) => (release = r))
+      return {}
+    })
+    show(group, { open: 'gset' })
+    await userEvent.click(await screen.findByRole('switch', { name: /Lock with the kids/ })) // held open
+    const name = screen.getByLabelText('Group name')
+    await userEvent.clear(name)
+    await userEvent.type(name, 'Screens')
+    await userEvent.tab() // dropped: remembered for retry
+    await userEvent.clear(name)
+    await userEvent.type(name, 'Tablets') // back to the saved name: the retry is a no-op
+    await userEvent.type(screen.getByLabelText('Screen time price'), '25')
+    await userEvent.tab() // dropped too
+    expect(patches()).toHaveLength(1)
+    release()
+    await waitFor(() => expect(patches()).toHaveLength(2))
+    expect(patches()[1][1]?.body).toMatchObject({ screen_price: 25 })
+  })
 })
