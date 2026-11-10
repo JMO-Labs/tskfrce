@@ -91,3 +91,31 @@ def test_penalties_migration_round_trips(tmp_path):
     assert "penalties" in insp.get_table_names()
     sql = "".join(str(c["sqltext"]) for c in insp.get_check_constraints("points"))
     assert "goal_save" in sql and "'penalty'" in sql
+
+
+def test_penalties_downgrade_removes_makeup_chores(tmp_path):
+    from app.models.penalty import Penalty
+    from app.models.user import UserRole
+    from app.services import penalties
+    from sqlalchemy import text
+    from sqlalchemy.orm import Session
+
+    from tests.conftest import _make_user
+
+    url = f"sqlite:///{tmp_path / 'pdn.db'}"
+    env = {**os.environ, "DATABASE_URL": url}
+    run = [sys.executable, "-m", "alembic"]
+    subprocess.run([*run, "upgrade", "head"], cwd=BACKEND, env=env, check=True)
+    eng = create_engine(url)
+    with Session(eng) as db:
+        parent = _make_user(db, "mom", UserRole.PARENT)
+        kid = _make_user(db, "kid", UserRole.KID)
+        p = Penalty(kid_id=kid.id, kind="points", amount=1)
+        db.add(p)
+        db.flush()
+        penalties._makeup_runs(db, kid, p, ["Sweep"], parent, None)
+        db.commit()
+    subprocess.run([*run, "downgrade", "h3b4c5d6e7f8"], cwd=BACKEND, env=env, check=True)
+    with eng.connect() as c:
+        for t in ("chores", "chore_assignments", "assignment_kids", "chore_runs"):
+            assert c.execute(text(f"SELECT COUNT(*) FROM {t}")).scalar() == 0, t

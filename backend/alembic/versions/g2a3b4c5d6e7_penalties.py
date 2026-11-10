@@ -88,8 +88,40 @@ def upgrade() -> None:
         b.add_column(sa.Column("makeup_chores", sa.Text(), nullable=True))
 
 
+ASSIGNS = (
+    "SELECT id FROM chore_assignments WHERE chore_id IN (SELECT id FROM chores WHERE makeup = 1)"
+)
+RUN_WHERE = f"penalty_id IS NOT NULL OR assignment_id IN ({ASSIGNS})"
+RUNS = f"SELECT id FROM chore_runs WHERE {RUN_WHERE}"
+THREADS = f"SELECT id FROM threads WHERE run_id IN ({RUNS})"
+MSGS = f"SELECT id FROM thread_messages WHERE thread_id IN ({THREADS})"
+
+
+def _drop_makeup_chores() -> None:
+    """Make-up chores only exist for penalties: remove them and everything hanging off them."""
+    for sql in (
+        f"DELETE FROM message_reactions WHERE message_id IN ({MSGS})",
+        f"DELETE FROM thread_messages WHERE thread_id IN ({THREADS})",
+        f"DELETE FROM thread_reads WHERE thread_id IN ({THREADS})",
+        f"DELETE FROM chat_photos WHERE thread_id IN ({THREADS})",
+        f"DELETE FROM threads WHERE run_id IN ({RUNS})",
+        f"DELETE FROM chore_photos WHERE run_id IN ({RUNS})",
+        f"UPDATE trust_events SET run_id = NULL WHERE run_id IN ({RUNS})",
+        f"UPDATE points SET run_id = NULL WHERE run_id IN ({RUNS})",
+        f"DELETE FROM run_step_ticks WHERE run_id IN ({RUNS})",
+        f"DELETE FROM run_kids WHERE run_id IN ({RUNS})",
+        f"DELETE FROM chore_runs WHERE {RUN_WHERE}",
+        f"DELETE FROM assignment_kids WHERE assignment_id IN ({ASSIGNS})",
+        f"DELETE FROM chore_seen WHERE assignment_id IN ({ASSIGNS})",
+        f"DELETE FROM chore_assignments WHERE id IN ({ASSIGNS})",
+        "DELETE FROM chores WHERE makeup = 1",
+    ):
+        op.execute(sql)
+
+
 def downgrade() -> None:
     op.execute("DELETE FROM points WHERE reason = 'penalty'")
+    _drop_makeup_chores()
     op.execute("DELETE FROM overrides WHERE source = 'penalty'")
     with op.batch_alter_table("family_settings") as b:
         for c in ("makeup_chores", "penalty_sizes", "penalties_enabled"):
