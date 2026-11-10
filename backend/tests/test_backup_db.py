@@ -42,3 +42,19 @@ def test_postgres_json_dump(tmp_path, monkeypatch, _pg_engine):
     (dest,) = (tmp_path / "backups").glob("pre-upgrade-*.json.gz")
     data = json.loads(gzip.open(dest).read())
     assert set(data) == {t.name for t in Base.metadata.sorted_tables}
+
+
+def test_backup_is_a_single_self_contained_file(tmp_path):
+    import sqlite3
+
+    from app.utils.backup_db import backup_sqlite
+
+    src = tmp_path / "live.db"
+    c = sqlite3.connect(src)
+    c.execute("PRAGMA journal_mode=WAL")
+    c.execute("CREATE TABLE t (x)")
+    c.commit()
+    dest = tmp_path / "b.db"
+    backup_sqlite(src, dest)
+    c.close()
+    assert sqlite3.connect(dest).execute("PRAGMA journal_mode").fetchone()[0] == "delete"
