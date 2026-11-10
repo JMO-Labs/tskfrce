@@ -52,4 +52,4 @@
   [data-look='parent'] .p-pen-sum { min-height: 44px; }
   [data-look='parent'] .p-pen-input { min-height: 44px; }
 }
-[data-look='parent'] .p-pen-sheet button:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
+[data-look='parent'] .p-pen-sheet button:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
