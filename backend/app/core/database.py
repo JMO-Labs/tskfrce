@@ -46,6 +46,8 @@ def make_engine(url: str, echo: bool = False):
         return eng
     return create_engine(
         url,
+        # stored times are naive UTC; never let a server's local zone shift them
+        connect_args={"options": "-c timezone=UTC"} if url.startswith("postgresql") else {},
         pool_pre_ping=True,
         pool_recycle=300,
         pool_size=10,
