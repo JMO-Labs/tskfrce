@@ -3,8 +3,8 @@ import { useElapsed } from '../useElapsed'
 import type { Micro, MicroProps } from '../types'
 import s from './microC.module.css'
 
-function ShhGame({ level, rng, onDone }: MicroProps) {
-  const fuse = 900 - level * 80
+function ShhGame({ level, rng, onDone, easier }: MicroProps) {
+  const fuse = (900 - level * 80) * (easier ? 1.1 : 1)
   const [ringing] = useState(() => Math.floor(rng() * 3))
   const done = useRef(false)
   const ms = useElapsed()

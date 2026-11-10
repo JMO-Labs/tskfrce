@@ -4,7 +4,7 @@ import s from './microC.module.css'
 
 const NAMES = ['small', 'medium', 'large']
 
-function MatchGame({ level, rng, onDone }: MicroProps) {
+function MatchGame({ level, rng, onDone, easier }: MicroProps) {
   const [{ pot, lids }] = useState(() => {
     const order = [0, 1, 2]
     for (let i = 2; i > 0; i--) {
@@ -14,7 +14,7 @@ function MatchGame({ level, rng, onDone }: MicroProps) {
     return { pot: Math.floor(rng() * 3), lids: order }
   })
   const done = useRef(false)
-  const step = Math.max(24, 36 - level * 4)
+  const step = Math.max(24, 36 - level * 4) * (easier ? 1.1 : 1)
   const w = (size: number) => 60 + size * step
   const pick = (size: number) => {
     if (done.current) return

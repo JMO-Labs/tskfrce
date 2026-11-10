@@ -2,8 +2,8 @@ import { useRef, useState } from 'react'
 import type { Micro, MicroProps } from '../types'
 import s from './microB.module.css'
 
-function SqueezeGame({ level, onDone }: MicroProps) {
-  const need = 6 + level
+function SqueezeGame({ level, onDone, easier }: MicroProps) {
+  const need = 6 + level - (easier ? 1 : 0)
   const [n, setN] = useState(0)
   const done = useRef(false)
   const tap = () => {

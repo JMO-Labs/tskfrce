@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import type { Micro, MicroProps } from '../types'
 import s from './microC.module.css'
 
-function WaterGame({ level, onDone }: MicroProps) {
+function WaterGame({ level, onDone, easier }: MicroProps) {
   const dur = 1400 - level * 120
-  const lo = 59 + level * 0.4
-  const hi = 81 - level * 0.4
+  const pad = easier ? (22 - level * 0.8) * 0.05 : 0
+  const lo = 59 + level * 0.4 - pad
+  const hi = 81 - level * 0.4 + pad
   const done = useRef(false)
   const t0 = useRef<number | null>(null)
   const [fill, setFill] = useState(0)

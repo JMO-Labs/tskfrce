@@ -5,9 +5,9 @@ import s from './microC.module.css'
 
 const H = 200
 
-function CatchGame({ level, onDone }: MicroProps) {
+function CatchGame({ level, onDone, easier }: MicroProps) {
   const dur = 1200 - level * 100
-  const win = Math.max(110, 180 - level * 15)
+  const win = Math.max(110, 180 - level * 15) * (easier ? 1.1 : 1)
   const [t0] = useState(() => Date.now())
   const done = useRef(false)
   const ms = useElapsed()

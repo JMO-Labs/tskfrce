@@ -22,12 +22,12 @@ function Sock({ c, big }: { c: string; big?: boolean }) {
   )
 }
 
-function SockSnatchGame({ level, rng, onDone }: MicroProps) {
+function SockSnatchGame({ level, rng, onDone, easier }: MicroProps) {
   const done = useRef(false)
   const [picks] = useState(() => {
     const pool = [...COLOURS]
     const out: typeof COLOURS = []
-    const n = Math.min(3 + level, pool.length)
+    const n = Math.min(3 + level - (easier ? 1 : 0), pool.length)
     for (let i = 0; i < n; i++) out.push(pool.splice(Math.floor(rng() * pool.length), 1)[0])
     return { target: out[0], list: [...out].sort(() => rng() - 0.5) }
   })

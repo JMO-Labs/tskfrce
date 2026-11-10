@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Micro, MicroProps } from '../types'
 import s from './microD.module.css'
 
-function FeedGame({ onDone }: MicroProps) {
+function FeedGame({ onDone, easier }: MicroProps) {
   const taps = useRef(0)
   const done = useRef(false)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -14,7 +14,7 @@ function FeedGame({ onDone }: MicroProps) {
     taps.current += 1
     setN(taps.current)
     if (taps.current === 1) {
-      timer.current = setTimeout(() => { done.current = true; onDone(true) }, 700)
+      timer.current = setTimeout(() => { done.current = true; onDone(true) }, easier ? 630 : 700)
     } else {
       clearTimeout(timer.current)
       done.current = true

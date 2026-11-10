@@ -3,18 +3,18 @@ import type { Micro, MicroProps } from '../types'
 import s from './microD.module.css'
 
 /** three distinct answers (>=1) that include `n`, shuffled by rng */
-const choices = (n: number, rng: () => number) => {
+const choices = (n: number, rng: () => number, size = 3) => {
   const set = new Set([n])
-  while (set.size < 3) {
+  while (set.size < size) {
     const c = n + (rng() < 0.5 ? -1 : 1) * (1 + Math.floor(rng() * 2))
     if (c >= 1) set.add(c)
   }
   return [...set].sort((a, b) => a - b)
 }
 
-function CountGame({ level, rng, onDone }: MicroProps) {
+function CountGame({ level, rng, onDone, easier }: MicroProps) {
   const [n] = useState(() => Math.min(7, 3 + Math.floor(rng() * (2 + level))))
-  const [opts] = useState(() => choices(n, rng))
+  const [opts] = useState(() => choices(n, rng, easier ? 2 : 3))
   const [shown, setShown] = useState(true)
   const done = useRef(false)
   useEffect(() => {

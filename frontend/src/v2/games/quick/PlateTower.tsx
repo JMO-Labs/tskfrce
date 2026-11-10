@@ -3,11 +3,11 @@ import type { Micro, MicroProps } from '../types'
 import { useElapsed } from '../useElapsed'
 import s from './microA.module.css'
 
-function PlateTowerGame({ level, onDone }: MicroProps) {
+function PlateTowerGame({ level, onDone, easier }: MicroProps) {
   const t = useElapsed()
   const done = useRef(false)
   const x = Math.sin((t / 1000) * (1.5 + level * 0.4))
-  const tol = Math.max(0.13, 0.25 - level * 0.03)
+  const tol = Math.max(0.13, 0.25 - level * 0.03) * (easier ? 1.1 : 1)
   const drop = () => {
     if (done.current) return
     done.current = true

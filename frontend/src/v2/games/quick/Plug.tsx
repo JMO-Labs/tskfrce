@@ -6,12 +6,13 @@ import s from './microB.module.css'
 const SHAPES = ['▲', '●', '■', '◆']
 const NAMES: Record<string, string> = { '▲': 'triangle', '●': 'circle', '■': 'square', '◆': 'diamond' }
 
-function PlugGame({ rng, onDone }: MicroProps) {
+function PlugGame({ rng, onDone, easier }: MicroProps) {
   const [{ target, sockets }] = useState(() => {
+    const n = easier ? 2 : 3
     const pool = [...SHAPES]
     const picks: string[] = []
-    for (let i = 0; i < 3; i++) picks.push(pool.splice(Math.floor(rng() * pool.length), 1)[0])
-    return { target: picks[Math.floor(rng() * 3)], sockets: picks }
+    for (let i = 0; i < n; i++) picks.push(pool.splice(Math.floor(rng() * pool.length), 1)[0])
+    return { target: picks[Math.floor(rng() * n)], sockets: picks }
   })
   const done = useRef(false)
   const pick = (shape: string) => {

@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import type { Micro, MicroProps } from '../types'
 import s from './microB.module.css'
 
-function ZipGame({ level, onDone }: MicroProps) {
-  const need = 1 + Math.floor(level / 2)
+function ZipGame({ level, onDone, easier }: MicroProps) {
+  const base = 1 + Math.floor(level / 2)
+  const need = easier && base > 1 ? base - 1 : base
   const [ups, setUps] = useState(0)
   const done = useRef(false)
   const count = useRef(0)

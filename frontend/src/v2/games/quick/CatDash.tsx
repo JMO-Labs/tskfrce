@@ -2,12 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Micro, MicroProps } from '../types'
 import s from './microD.module.css'
 
-function CatDashGame({ level, rng, onDone }: MicroProps) {
+function CatDashGame({ level, rng, onDone, easier }: MicroProps) {
   const [treat] = useState(() => Math.floor(rng() * 3))
   const [lane, setLane] = useState(1)
   const laneRef = useRef(1)
   const done = useRef(false)
-  const fall = 1500 - level * 100
+  const fall = (1500 - level * 100) * (easier ? 1.1 : 1)
 
   const move = useCallback((d: -1 | 1) => {
     if (done.current) return

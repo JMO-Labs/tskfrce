@@ -3,12 +3,12 @@ import { useElapsed } from '../useElapsed'
 import type { Micro, MicroProps } from '../types'
 import s from './microB.module.css'
 
-function FlipGame({ level, rng, onDone }: MicroProps) {
+function FlipGame({ level, rng, onDone, easier }: MicroProps) {
   const [start] = useState(() => 600 + Math.floor(rng() * 700))
   const ms = useElapsed()
   const [flipped, setFlipped] = useState(false)
   const done = useRef(false)
-  const hot = ms >= start && ms <= start + (Math.max(350, 500 - level * 50))
+  const hot = ms >= start && ms <= start + Math.max(350, 500 - level * 50) * (easier ? 1.1 : 1)
   const tap = () => {
     if (done.current) return
     done.current = true
