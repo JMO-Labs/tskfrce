@@ -68,7 +68,7 @@ export function PackBox({ level, seed, age, upgrades = [], powerUp = null, onEnd
     const sh = shapeOf(p)
     const rows = Math.max(...sh.map((c) => c[0])) + 1, cols = Math.max(...sh.map((c) => c[1])) + 1
     return (
-      <span className={s.mini} style={{ gridTemplateColumns: `repeat(${cols}, 14px)`, gridTemplateRows: `repeat(${rows}, 14px)`, opacity: dim ? 0.45 : 1 }}>
+      <span className={s.mini} style={{ gridTemplateColumns: `repeat(${cols}, 22px)`, gridTemplateRows: `repeat(${rows}, 22px)`, opacity: dim ? 0.45 : 1 }}>
         {sh.map(([r, c]) => <i key={`${r}-${c}`} style={{ gridRow: r + 1, gridColumn: c + 1, background: `hsl(${hue(p.id)} 70% 60%)` }} />)}
       </span>
     )
