@@ -38,6 +38,7 @@ export function useKidGoalAction(onExpired: () => void) {
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ['kid', 'goals'] })
       qc.invalidateQueries({ queryKey: ['kid', 'rewards'] })
+      qc.invalidateQueries({ queryKey: ['kid', 'today'] }) // balance in the header
     },
   })
 }

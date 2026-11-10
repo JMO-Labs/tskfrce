@@ -137,6 +137,9 @@ def test_delete_family_returns_each_kid(db, parent, kid):
 
 def test_fulfill_family_parties_for_every_kid(db, parent, kid):
     k2 = _kid2(db, "ann")
+    gone = _kid2(db, "old")
+    gone.is_active = False
+    db.commit()
     fg = _goal(db, parent, None, target=10)
     _status(409, goals.fulfill, db, fg, parent)
     goals.chip_in(db, fg, parent, 10)

@@ -187,7 +187,9 @@ def fulfill(db: Session, goal: Goal, parent: User) -> None:
         if goal.kid_id:
             kids = [goal.kid_id]
         else:
-            kids = [i for (i,) in db.query(User.id).filter(User.role == UserRole.KID)]
+            kids = [
+                i for (i,) in db.query(User.id).filter(User.role == UserRole.KID, User.is_active)
+            ]
         for kid_id in kids:
             db.add(GoalParty(goal_id=goal.id, kid_id=kid_id))
         if goal.kind == "screen" and goal.kid_id:
