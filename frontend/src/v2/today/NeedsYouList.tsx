@@ -10,7 +10,7 @@ import { SendBackBox } from './WaitingActions'
 import { groupNeeds } from './needsGroups'
 import { initial } from './KidFacts'
 import { useClock } from './useClock'
-import { isChore, useNeedsActions } from './needsActions'
+import { isChore, isGoal, useNeedsActions } from './needsActions'
 
 type Kind = { label: string; icon: string; tone: ChipTone; help: string }
 const KIND: Record<NeedsItem['type'], Kind> = {
@@ -48,9 +48,10 @@ export function NeedsYouList({ items, today }: { items: NeedsItem[]; today?: str
     return <EmptyState icon="celebration" tone="acc" title="All caught up" body="Nothing needs your OK right now. Nice." />
   }
 
-  const approvable = items.filter((i) => i.type !== 'note')
+  const approvable = items.filter((i) => i.type !== 'note' && !isGoal(i))
   const sub = (i: NeedsItem) => {
     if (i.type === 'note') return i.note ?? ''
+    if (isGoal(i)) return `${i.cost} pts`
     const via = i.integration ? `via ${i.integration.name}` : ''
     const parts = isChore(i)
       ? [i.attempt && i.attempt > 1 ? `${ordinal(i.attempt)} try` : '', i.subtasks_total ? `${i.subtasks_done}/${i.subtasks_total} steps` : '', i.submitted_at ? `Done ${clock(i.submitted_at)}` : '']
@@ -80,6 +81,7 @@ export function NeedsYouList({ items, today }: { items: NeedsItem[]; today?: str
             const older = today && i.day && i.day < today && isChore(i) ? dayName(i.day, today) : null
             const note = i.type === 'note'
             const chore = isChore(i)
+            const goal = isGoal(i)
             const key = `${i.type}-${i.id}`
             return (
               <ActionRow
@@ -96,8 +98,16 @@ export function NeedsYouList({ items, today }: { items: NeedsItem[]; today?: str
                   </span>
                 }
                 sub={sub(i)}
-                main={note ? { label: 'Reply', onClick: () => act.reply(i) } : { label: 'Approve', onClick: () => act.approve(i), busy: act.busy === `a${i.type}${i.id}`, disabled: !!act.busy }}
-                menu={note ? undefined : chore
+                main={
+                  note
+                    ? { label: 'Reply', onClick: () => act.reply(i) }
+                    : i.type === 'goal_full'
+                      ? { label: 'Fulfilled', onClick: () => act.fulfill(i), busy: act.busy === `f${i.id}`, disabled: !!act.busy }
+                      : i.type === 'goal_suggested'
+                        ? { label: 'Set price', onClick: () => act.setPrice() }
+                        : { label: 'Approve', onClick: () => act.approve(i), busy: act.busy === `a${i.type}${i.id}`, disabled: !!act.busy }
+                }
+                menu={note || goal ? undefined : chore
                   ? [{ label: 'Send back', icon: 'undo', onClick: () => setSending(i.id) }, { label: 'Reply', icon: 'chat', onClick: () => act.reply(i) }]
                   : [{ label: 'Decline', icon: 'close', tone: 'red', onClick: () => act.decline(i) }]}
                 menuLabel={`More for ${i.title}`}
