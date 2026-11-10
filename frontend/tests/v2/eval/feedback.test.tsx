@@ -45,6 +45,12 @@ async function openDrawer() {
   return screen.findByRole('dialog', { name: 'Send feedback' })
 }
 
+test('a closed drawer leaves no dialog behind for Esc handlers to see', async () => {
+  await openDrawer()
+  act(() => closeFeedback())
+  await waitFor(() => expect(document.querySelector('[role="dialog"]')).toBeNull())
+})
+
 test('send with empty text shows the note error and sends nothing', async () => {
   await openDrawer()
   await userEvent.click(screen.getByRole('button', { name: 'Send' }))
