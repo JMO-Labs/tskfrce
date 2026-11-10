@@ -8,7 +8,11 @@ from app.models.goal import Goal, GoalAuto, GoalContribution
 from app.models.user import User
 from app.services import goals, inbox
 
-JAIL_NAME = "Get out of jail free card"
+JAIL_NAME = "Get out of jail free"
+
+
+def builtin_name(fam: FamilySettings, kind: str) -> str:
+    return f"{fam.goal_screen_minutes} min extra screen time" if kind == "screen" else JAIL_NAME
 
 
 def _auto_target(db: Session, kid_id: int) -> Goal | None:
@@ -53,7 +57,7 @@ def builtins(fam: FamilySettings) -> list[dict]:
         out.append(
             {
                 "kind": "screen",
-                "name": f"{fam.goal_screen_minutes} min of screen time",
+                "name": builtin_name(fam, "screen"),
                 "target": fam.goal_screen_price,
                 "minutes": fam.goal_screen_minutes,
             }
@@ -102,7 +106,7 @@ def start(db: Session, kid: User, kind: str) -> Goal:
     _check_limit(db, fam, kid)
     screen = kind == "screen"
     g = Goal(
-        name=f"{fam.goal_screen_minutes} min of screen time" if screen else JAIL_NAME,
+        name=builtin_name(fam, kind),
         kind=kind,
         kid_id=kid.id,
         status="active",

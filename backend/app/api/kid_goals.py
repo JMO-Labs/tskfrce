@@ -31,6 +31,8 @@ class AmountIn(BaseModel):
 
 def _mine(db: Session, kid: User, goal_id: int) -> Goal:
     g = db.get(Goal, goal_id)
+    if not get_family(db).goals_on:
+        raise HTTPException(403, "A parent turned off goals.")
     if g is None or g.kid_id not in (kid.id, None):
         raise HTTPException(404, "We couldn't find that goal.")
     return g

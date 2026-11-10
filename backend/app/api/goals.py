@@ -10,7 +10,7 @@ from app.api.deps import get_db, require_parent
 from app.models.family import get_family
 from app.models.goal import Goal
 from app.models.user import User, UserRole
-from app.services import economy, goals, goals_out
+from app.services import economy, goals, goals_auto, goals_out
 
 router = APIRouter(prefix="/api/v1/goals", tags=["goals"], dependencies=[Depends(require_parent)])
 
@@ -122,12 +122,12 @@ def create_goal(
             if not (fam.goal_screen_on and goals_out.settings_out(db, fam)["screen_ok"]):
                 raise HTTPException(400, "Extra screen time goals are off.")
             minutes, target = fam.goal_screen_minutes, fam.goal_screen_price
-            name = f"{minutes} min extra screen time"
+            name = goals_auto.builtin_name(fam, "screen")
         else:
             if not fam.goal_jail_on:
                 raise HTTPException(400, "Get out of jail free goals are off.")
             target = fam.goal_jail_price
-            name = "Get out of jail free"
+            name = goals_auto.JAIL_NAME
     elif name is None or target is None:
         raise HTTPException(400, "A goal needs a name and a target.")
     if body.family:

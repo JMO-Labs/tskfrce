@@ -214,6 +214,14 @@ def test_goals_off_empty(client, db, parent, kid, kid_headers):
     assert j["goals"] == j["party"] == j["builtins"] == j["done"] == []
 
 
+def test_goals_off_blocks_writes(client, db, parent, kid, kid_headers):
+    g = _goal(db, parent, kid)
+    _fund(db, kid, 50)
+    _fam(db, goals_on=False)
+    r = client.post(f"{U}/{g.id}/add", json={"amount": 10}, headers=kid_headers)
+    assert r.status_code == 403
+
+
 def test_preview_get_ok_post_403(client, db, parent, kid, parent_headers):
     h = {**parent_headers, "X-View-As": str(kid.id)}
     assert client.get(U, headers=h).status_code == 200
