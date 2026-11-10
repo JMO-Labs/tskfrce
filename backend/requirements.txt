@@ -5,7 +5,7 @@ python-multipart==0.0.33
 Pillow==13.0.0
 
 # Database
-sqlalchemy==2.1.6
+sqlalchemy==2.1.8
 alembic==1.20.1
 
 # Authentication and Security
@@ -15,7 +15,7 @@ email-validator==2.3.0
 
 # Environment and Configuration
 python-dotenv==1.2.4
-pydantic==2.14.2
+pydantic==2.14.3
 pydantic-settings==2.16.2
 
 # HTTP Client (httpx also backs the test client)
