@@ -94,7 +94,7 @@ jobs:
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
     - name: Shellcheck
-      run: shellcheck install.sh scripts/test-install.sh scripts/start.sh scripts/prep-box.sh edge/edge.sh edge/test-edge.sh scripts/enable-hostname.sh scripts/test-enable-hostname.sh registry/scripts/new-box.sh registry/scripts/test-new-box.sh
+      run: shellcheck install.sh scripts/test-install.sh scripts/start.sh scripts/prep-box.sh edge/edge.sh edge/test-edge.sh scripts/enable-hostname.sh scripts/test-enable-hostname.sh registry/scripts/new-box.sh registry/scripts/test-new-box.sh scripts/db-migrate.sh scripts/test-db-migrate.sh
     - name: Installer smoke test
       run: bash scripts/test-install.sh
     - name: Edge tests
@@ -103,6 +103,8 @@ jobs:
       run: bash scripts/test-enable-hostname.sh
     - name: New-box test
       run: bash registry/scripts/test-new-box.sh
+    - name: DB migrate wrapper test
+      run: bash scripts/test-db-migrate.sh
 
   lab:
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
