@@ -32,6 +32,7 @@ MICRO = (
     "water hang shh catch match fold feed spot count cat-dash"
 ).split()
 TICKETS = (1, 3, 6, 10)
+BADGE_KEYS = ("arcade_ace", "triple_star", "try_it_all", "house_record", "cat_snack_champ")
 START_LEVEL = {"little": 1, "kid": 2, "teen": 3}
 MAX_PARTS, MAX_MISSES = 45, 3
 PART_MS = (150, 6000)
@@ -72,11 +73,17 @@ def eligible_think(age: str) -> list[str]:
     return [k for k, g in GAMES.items() if g.kind == "think" and age in g.ages]
 
 
+def wheel_slots(think: list[str], game: str) -> list[str]:
+    """Six wheel slots: quick-fire and thinking games alternate; `game` is always on it."""
+    slots = [("quickfire", think[i // 2 % len(think)])[i % 2] for i in range(6)]
+    if game not in slots:  # a thinking game the cycle didn't reach
+        slots[1] = game
+    return slots
+
+
 def pick(age: str, rng: random.Random) -> tuple[str, list[str], int]:
     """(game, 6 wheel slots, index of the slot the wheel lands on)."""
     think = eligible_think(age)
     game = "quickfire" if rng.random() < 0.5 else rng.choice(think)
-    slots = [("quickfire", think[i // 2 % len(think)])[i % 2] for i in range(6)]
-    if game not in slots:  # a thinking game the cycle didn't reach
-        slots[1] = game
+    slots = wheel_slots(think, game)
     return game, slots, rng.choice([i for i, s in enumerate(slots) if s == game])
