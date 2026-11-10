@@ -210,34 +210,50 @@ def give(db: Session, kid_ids: list[int], g: Give, by: User, now: datetime) -> l
     return out_rows
 
 
-def out(db: Session, p: Penalty) -> dict:
-    by = db.get(User, p.given_by_id) if p.given_by_id else None
-    runs = (
+def out_many(db: Session, ps: list[Penalty]) -> list[dict]:
+    """Penalty dicts in a fixed number of queries (givers, make-up runs)."""
+    if not ps:
+        return []
+    ids = [p.id for p in ps]
+    by = {
+        u.id: u.full_name
+        for u in db.query(User).filter(User.id.in_({p.given_by_id for p in ps} - {None}))
+    }
+    runs: dict[int, list[ChoreRun]] = {}
+    for r in (
         db.query(ChoreRun)
         .options(joinedload(ChoreRun.assignment).joinedload(ChoreAssignment.chore))
-        .filter(ChoreRun.penalty_id == p.id)
+        .filter(ChoreRun.penalty_id.in_(ids))
         .order_by(ChoreRun.id)
-        .all()
-    )
-    return {
-        "id": p.id,
-        "kid_id": p.kid_id,
-        "group_id": p.group_id,
-        "kind": p.kind,
-        "amount": p.amount,
-        "amount_taken": p.amount_taken,
-        "amount_returned": p.amount_returned,
-        "back_total": p.back_total,
-        "label": p.label,
-        "earn_back": p.earn_back,
-        "reason": p.reason,
-        "given_by": by.full_name if by else None,
-        "created_at": utc_z(p.created_at),
-        "ends_at": utc_z(p.ends_at),
-        "status": p.status,
-        "seen_by_kid": p.seen_by_kid,
-        "summary": summary(p),
-        "makeup": [
-            {"run_id": r.id, "title": r.assignment.chore.title, "status": r.status} for r in runs
-        ],
-    }
+    ):
+        runs.setdefault(r.penalty_id, []).append(r)
+    return [
+        {
+            "id": p.id,
+            "kid_id": p.kid_id,
+            "group_id": p.group_id,
+            "kind": p.kind,
+            "amount": p.amount,
+            "amount_taken": p.amount_taken,
+            "amount_returned": p.amount_returned,
+            "back_total": p.back_total,
+            "label": p.label,
+            "earn_back": p.earn_back,
+            "reason": p.reason,
+            "given_by": by.get(p.given_by_id),
+            "created_at": utc_z(p.created_at),
+            "ends_at": utc_z(p.ends_at),
+            "status": p.status,
+            "seen_by_kid": p.seen_by_kid,
+            "summary": summary(p),
+            "makeup": [
+                {"run_id": r.id, "title": r.assignment.chore.title, "status": r.status}
+                for r in runs.get(p.id, [])
+            ],
+        }
+        for p in ps
+    ]
+
+
+def out(db: Session, p: Penalty) -> dict:
+    return out_many(db, [p])[0]
