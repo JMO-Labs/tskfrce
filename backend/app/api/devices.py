@@ -13,7 +13,7 @@ from app.lock.loop import trigger
 from app.lock.overrides import clear_override, set_override
 from app.lock.rules import block_reason, open_reason
 from app.lock.schedule import local_now
-from app.lock.state import Prefetch, device_facts
+from app.lock.state import Prefetch, device_facts, device_penalty
 from app.models.device_activity import DeviceEvent, DevicePresence
 from app.models.family import FamilySettings, get_family
 from app.models.hours import HourRuleTarget
@@ -76,6 +76,9 @@ def device_out(
             None,
         )
         pen = {"id": po.penalty_id, "ends_at": utc_z(po.expires_at)} if po else None
+        wk = device_penalty(db, d, now, pre)
+        if wk and (po is None or wk.id > (po.penalty_id or 0)):
+            pen = {"id": wk.id, "ends_at": utc_z(wk.ends_at)}
     now_local = local_now(fam.timezone, now)
     reason = block_reason(f, now_local)
     online = reason is None

@@ -28,6 +28,7 @@ class Penalty(Base):
     makeup_count = Column(Integer, nullable=False, default=0, server_default="0")
     earn_back = Column(String(4), nullable=False, default="none", server_default="none")
     device_ids = Column(Text, nullable=True)  # JSON list
+    all_devices = Column(Boolean, nullable=False, default=False, server_default="0")
     label = Column(String(100), nullable=True)  # block target, e.g. "Nintendo" / "devices"
     reason = Column(String(200), nullable=True)
     chore_run_id = Column(Integer, ForeignKey("chore_runs.id", ondelete="SET NULL"), nullable=True)

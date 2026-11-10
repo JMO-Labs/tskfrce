@@ -39,6 +39,7 @@ def upgrade() -> None:
         sa.Column("makeup_count", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("earn_back", sa.String(4), nullable=False, server_default="none"),
         sa.Column("device_ids", sa.Text(), nullable=True),
+        sa.Column("all_devices", sa.Boolean(), nullable=False, server_default="0"),
         sa.Column("label", sa.String(100), nullable=True),
         sa.Column("reason", sa.String(200), nullable=True),
         sa.Column(
