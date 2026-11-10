@@ -3,7 +3,7 @@
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func
-from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.orm import Session
 
 from app.lock.rules import DeviceFacts, block_reason, open_reason
@@ -55,6 +55,7 @@ def log(
 def sample(db: Session, device: Device, now: datetime) -> None:
     """Record that the box saw `device` in this 10-minute slot (once per slot)."""
     slot = now.replace(minute=now.minute // 10 * 10, second=0, microsecond=0)
+    insert = postgresql.insert if db.get_bind().dialect.name == "postgresql" else sqlite.insert
     db.execute(
         insert(DevicePresence)
         .values(device_id=device.id, slot=slot, locked=device.blocked_since is not None)
