@@ -173,6 +173,10 @@ def award_chore(db: Session, run: ChoreRun, fam: FamilySettings) -> int:
             )
     for k, before in levels.items():
         level_check(db, k, before)
+    from app.services import goals_auto  # late: goals imports economy
+
+    for kid_id in kids:
+        goals_auto.auto_share(db, kid_id, base + bonus)
     return (base + bonus) * n
 
 
