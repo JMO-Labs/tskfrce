@@ -142,7 +142,7 @@ describe('chore editor: type, steps, notes', () => {
     expect(screen.getByRole('button', { name: 'by 4:30 PM, due time for Math worksheet' })).toHaveTextContent('by 4:30 PM')
   })
 
-  test('the type chip pop-over lists the type notes and the universal notes', async () => {
+  test('the type tile pop-over lists the type notes and the universal notes', async () => {
     await show()
     await userEvent.click(screen.getByRole('button', { name: /type, notes kids can send/ }))
     expect(await screen.findByText('Notes kids can send')).toBeInTheDocument()

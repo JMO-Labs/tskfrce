@@ -48,6 +48,13 @@ test('celebrations card comes first, with Preview, Turn off and Got it', async (
   for (const n of ['Preview', 'Turn off for all kids', 'Got it']) expect(screen.getByRole('button', { name: n })).toBeInTheDocument()
 })
 
+test('the celebrations tip uses the sparkle, not the party popper (audit 25)', async () => {
+  show()
+  const tip = (await screen.findByText(/comic-book cheer/)).closest('section') as HTMLElement
+  expect(tip).toHaveTextContent('auto_awesome')
+  expect(tip).not.toHaveTextContent('celebration')
+})
+
 test('Got it dismisses through the tips API and the next card waits for tomorrow', async () => {
   show()
   await userEvent.click(await screen.findByRole('button', { name: 'Got it' }))
