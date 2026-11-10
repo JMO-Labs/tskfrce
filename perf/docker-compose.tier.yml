@@ -1,0 +1,90 @@
+# Tier harness: the prod stack under a board's CPU/RAM caps. Run via scripts/tier.sh.
+# SAFETY: the blocker sits on an internal-only bridge (no host network, no real interface).
+name: task4ce-tier
+
+x-limits: &platform
+  platform: ${TIER_PLATFORM:-linux/amd64}
+
+services:
+  backend:
+    <<: *platform
+    image: ${TIER_IMAGE_PREFIX:-task4ce-tier}/backend:${TIER_TAG:-local}
+    build:
+      context: ../backend
+    mem_limit: ${BACKEND_MEM:-1g}
+    memswap_limit: ${BACKEND_MEM:-1g}
+    cpus: ${BACKEND_CPUS:-16}
+    ports:
+      - "127.0.0.1:18000:8000"
+    environment:
+      ENVIRONMENT: production
+      DEBUG: "false"
+      DATA_DIR: /app/data
+      DATABASE_URL: ${DATABASE_URL:-}
+      SECRET_KEY: ${SECRET_KEY:?use scripts/tier.sh}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:?use scripts/tier.sh}
+      TRUSTED_HOSTS: localhost,127.0.0.1,backend
+      CORS_ORIGINS: http://localhost:13000
+      TRUSTED_PROXY_IPS: 127.0.0.1,::1,172.29.61.10
+      NTFY_URL: http://ntfy:80
+      NTFY_UPSTREAM_URL: ""
+    networks:
+      front:
+      lan:
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+
+  frontend:
+    <<: *platform
+    image: ${TIER_IMAGE_PREFIX:-task4ce-tier}/frontend:${TIER_TAG:-local}
+    build:
+      context: ../frontend
+    mem_limit: ${FRONTEND_MEM:-1g}
+    memswap_limit: ${FRONTEND_MEM:-1g}
+    cpus: ${FRONTEND_CPUS:-16}
+    ports:
+      - "127.0.0.1:13000:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: /api/proxy
+      BACKEND_INTERNAL_URL: http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      front:
+        ipv4_address: 172.29.61.10
+
+  blocker:
+    <<: *platform
+    image: ${TIER_IMAGE_PREFIX:-task4ce-tier}/blocker:${TIER_TAG:-local}
+    build:
+      context: ../blocker
+    mem_limit: ${BLOCKER_MEM:-1g}
+    memswap_limit: ${BLOCKER_MEM:-1g}
+    cpus: ${BLOCKER_CPUS:-16}
+    cap_add: [NET_ADMIN, NET_RAW]
+    environment:
+      BACKEND_URL: http://backend:8000
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:?use scripts/tier.sh}
+      LAN_IFACE: eth0
+      PORTAL_REDIRECT_URL: http://frontend:3000/kid
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - lan
+
+networks:
+  front:
+    ipam:
+      config:
+        - subnet: 172.29.61.0/24
+  lan:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.29.62.0/24
