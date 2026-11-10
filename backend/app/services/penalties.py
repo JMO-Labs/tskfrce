@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from fastapi import HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.chores import Chore, ChoreAssignment, ChoreRun
@@ -86,6 +87,17 @@ def recent_count(db: Session, kid_id: int, now: datetime) -> int:
         )
         .count()
     )
+
+
+def recent_counts(db: Session, now: datetime) -> dict[int, int]:
+    """kid id -> recent_count for every kid, in one query."""
+    since = _naive(now) - timedelta(days=7)
+    rows = (
+        db.query(Penalty.kid_id, func.count(Penalty.id))
+        .filter(Penalty.created_at >= since, Penalty.status != "cancelled")
+        .group_by(Penalty.kid_id)
+    )
+    return dict(rows)
 
 
 def _plural(n: int, word: str) -> str:

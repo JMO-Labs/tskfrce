@@ -23,7 +23,7 @@ export interface Penalty {
   label: string | null
   earn_back: EarnBack
   reason: string | null
-  given_by: string
+  given_by: string | null
   created_at: string
   ends_at: string | null
   status: 'active' | 'ended' | 'cancelled' | 'forgiven'

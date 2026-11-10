@@ -55,8 +55,12 @@ class PenaltyIn(_Amount):
 
     @model_validator(mode="after")
     def _target(self):
-        if (self.device_id or self.group_id) and len(set(self.kid_ids)) > 1:
+        if self.device_id is not None and self.group_id is not None:
+            raise ValueError("pick a device or a group, not both")
+        if (self.device_id is not None or self.group_id is not None) and len(set(self.kid_ids)) > 1:
             raise ValueError("a device or group target needs exactly one kid")
+        if self.makeup == [] and self.earn_back != "none":
+            raise ValueError("Pick at least one make-up chore, or choose no earn-back.")
         return self
 
 

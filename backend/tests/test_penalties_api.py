@@ -157,3 +157,33 @@ def test_family_patch_penalty_settings(client, db, parent_headers):
         client.patch(f"{B}/family", json={"penalty_sizes": bad}, headers=parent_headers).status_code
         == 422
     )
+
+
+def test_give_unknown_links_and_empty_makeup(client, db, kid, parent_headers):
+    _on(db)
+    assert _give(client, parent_headers, [kid.id], chore_run_id=9999).status_code == 404
+    assert _give(client, parent_headers, [kid.id], notification_id=9999).status_code == 404
+    assert _give(client, parent_headers, [kid.id], makeup=[]).status_code == 422
+    assert _give(client, parent_headers, [kid.id], device_id=1, group_id=1).status_code == 422
+    assert _give(client, parent_headers, [kid.id], makeup=[], earn_back="none").status_code == 201
+
+
+def test_give_run_of_other_kid_is_422(client, db, kid, parent_headers):
+    from tests.factories import api_chore
+
+    _on(db)
+    k2 = _make_user(db, "kid2", UserRole.KID)
+    api_chore(client, parent_headers, [k2], "each", title="x")
+    from app.models.chores import ChoreRun
+
+    run = db.query(ChoreRun).filter_by(kid_id=k2.id).first()
+    assert _give(client, parent_headers, [kid.id], chore_run_id=run.id).status_code == 422
+    assert _give(client, parent_headers, [k2.id], chore_run_id=run.id).status_code == 201
+
+
+def test_inactive_kid_is_404(client, db, kid, parent_headers):
+    _on(db)
+    kid.is_active = False
+    db.commit()
+    assert _give(client, parent_headers, [kid.id]).status_code == 404
+    assert client.get(f"{B}/kids/{kid.id}/penalties", headers=parent_headers).status_code == 404
