@@ -103,7 +103,7 @@ class FamilyPatch(BaseModel):
     makeup_chores: (
         list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]]
         | None
-    ) = Field(default=None, max_length=12)
+    ) = Field(default=None, min_length=1, max_length=12)
     accent: (
         Literal[
             "neon", "sun", "tangerine", "bubblegum", "lilac", "sky", "aqua", "mint", "peach", "ice"

@@ -187,3 +187,43 @@ def test_inactive_kid_is_404(client, db, kid, parent_headers):
     db.commit()
     assert _give(client, parent_headers, [kid.id]).status_code == 404
     assert client.get(f"{B}/kids/{kid.id}/penalties", headers=parent_headers).status_code == 404
+
+
+def test_family_patch_rejects_empty_makeup(client, db, parent_headers):
+    r = client.patch(f"{B}/family", json={"makeup_chores": []}, headers=parent_headers)
+    assert r.status_code == 422
+
+
+def test_list_includes_recently_ended(client, db, kid, parent_headers):
+    from datetime import datetime, timedelta
+
+    from app.models.penalty import Penalty
+
+    _on(db)
+    _pts(db, kid)
+    [a] = _give(client, parent_headers, [kid.id], earn_back="none").json()
+    [b] = _give(client, parent_headers, [kid.id], earn_back="none").json()
+    [c] = _give(client, parent_headers, [kid.id]).json()
+    client.post(f"{B}/penalties/{c['id']}/forgive", headers=parent_headers)
+    db.get(Penalty, b["id"]).ended_at = datetime.utcnow() - timedelta(days=8)
+    db.commit()
+    rows = client.get(f"{B}/kids/{kid.id}/penalties", headers=parent_headers).json()
+    assert [(x["id"], x["status"]) for x in rows] == [(a["id"], "ended")]
+
+
+def test_out_has_cause(client, db, kid, parent_headers):
+    from app.models.chores import ChoreRun
+    from app.models.inbox import Notification
+
+    from tests.factories import api_chore
+
+    _on(db)
+    api_chore(client, parent_headers, [kid], "each", title="Dishes")
+    run = db.query(ChoreRun).filter_by(kid_id=kid.id).first()
+    n = Notification(user_id=kid.id, kind="points_taken", title="x")
+    db.add(n)
+    db.commit()
+    [p] = _give(client, parent_headers, [kid.id], chore_run_id=run.id).json()
+    [q] = _give(client, parent_headers, [kid.id], notification_id=n.id).json()
+    [r] = _give(client, parent_headers, [kid.id]).json()
+    assert (p["cause"], q["cause"], r["cause"]) == ("Dishes", "Security alert", None)

@@ -84,3 +84,12 @@ def test_device_payload_has_penalty(client, db, kid, parent_headers):
     assert row["penalty"]["id"] == p.id
     assert row["penalty"]["ends_at"]
     assert row["reason"] == "penalty"
+
+
+def test_device_payload_penalty_null_when_unlocked(client, db, kid, parent, parent_headers):
+    d, _ = _setup(db, kid, _now() + timedelta(hours=1))
+    set_override(db, [d.id], "unlock", 5, parent.id)
+    db.commit()
+    rows = client.get("/api/v1/devices", headers=parent_headers).json()
+    row = next(r for r in rows if r["id"] == d.id)
+    assert row["penalty"] is None and row["reason"] != "penalty"

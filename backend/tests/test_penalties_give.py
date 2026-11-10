@@ -125,11 +125,11 @@ def test_custom_makeup_picks(db, parent, kid):
 def test_recent_count_skips_cancelled(db, parent, kid):
     [_a] = penalties.give(db, [kid.id], Give("points", 5, "none"), parent, NOW)
     [b] = penalties.give(db, [kid.id], Give("points", 5, "none"), parent, NOW)
-    assert penalties.recent_count(db, kid.id, NOW) == 2
+    assert penalties.recent_counts(db, NOW) == {kid.id: 2}
     b.status = "cancelled"
     db.commit()
-    assert penalties.recent_count(db, kid.id, NOW) == 1
-    assert penalties.recent_count(db, kid.id, NOW + timedelta(days=8)) == 0
+    assert penalties.recent_counts(db, NOW) == {kid.id: 1}
+    assert penalties.recent_counts(db, NOW + timedelta(days=8)) == {}
 
 
 def test_notification_to_kid_only(db, parent, kid):
@@ -207,3 +207,23 @@ def test_device_not_owned_rejected(db, parent, kid):
     d = _dev(db, 1, sib)
     with pytest.raises(HTTPException):
         penalties.give(db, [kid.id], _block(device_id=d.id), parent, NOW)
+
+
+def test_empty_makeup_list_means_no_earn_back(db, parent, kid):
+    _pts(db, kid, 50)
+    get_family(db).makeup_chores = "[]"
+    db.commit()
+    [p] = penalties.give(db, [kid.id], Give("points", 20, "all"), parent, NOW)
+    assert p.back_total == 0 and p.makeup_count == 0 and p.status == "ended"
+
+
+def test_group_without_kids_devices_is_422(db, parent, kid):
+    sib = _make_user(db, "sis", UserRole.KID)
+    g = DeviceGroup(name="Consoles")
+    g.devices = [_dev(db, 2, sib)]
+    db.add(g)
+    db.commit()
+    with pytest.raises(HTTPException) as e:
+        penalties.give(db, [kid.id], _block(group_id=g.id), parent, NOW)
+    assert e.value.status_code == 422
+    assert e.value.detail == "None of Timmy's devices are in that group."

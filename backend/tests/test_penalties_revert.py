@@ -140,3 +140,12 @@ def test_undo_api_reverses(client, db, parent, kid, parent_headers):
     _approve(db, db.get(ChoreRun, r1.id))
     _approve(db, db.get(ChoreRun, r2.id))
     assert db.get(Penalty, p.id).amount_returned == 20
+
+
+def test_expire_ends_points_penalty_with_all_runs_done(db, parent, kid):
+    p = _points_pen(db, parent, kid)
+    for r in _runs(db, p):
+        r.status = "done"
+    db.commit()
+    assert eb.expire(db, NOW) == 1
+    assert p.status == "ended"

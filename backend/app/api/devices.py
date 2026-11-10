@@ -63,8 +63,10 @@ def device_out(
     if ov and ov.expires_at and ov.expires_at <= now.replace(tzinfo=None):
         ov = None
     f = device_facts(db, d, fam, now, pre)
+    now_local = local_now(fam.timezone, now)
+    reason = block_reason(f, now_local)
     pen = None
-    if f.penalty:
+    if reason == "penalty":
         naive = now.replace(tzinfo=None)
         q = pre.overrides[d.id] if pre else db.query(Override).filter(Override.device_id == d.id)
         po = next(
@@ -79,8 +81,6 @@ def device_out(
         wk = device_penalty(db, d, now, pre)
         if wk and (po is None or wk.id > (po.penalty_id or 0)):
             pen = {"id": wk.id, "ends_at": utc_z(wk.ends_at)}
-    now_local = local_now(fam.timezone, now)
-    reason = block_reason(f, now_local)
     online = reason is None
     alerts, changes = (stats or {}).get(d.id, (0, 0))
     lock_at = None

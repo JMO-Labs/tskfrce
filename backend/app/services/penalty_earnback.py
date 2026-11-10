@@ -156,6 +156,19 @@ def expire(db: Session, now: datetime) -> int:
     """End active penalties whose time is up. Flushes; the caller commits."""
     n = _naive(now)
     due = db.query(Penalty).filter(Penalty.status == "active", Penalty.ends_at <= n).all()
+    # hardening: a points/screen penalty whose make-up runs are all done is over
+    rest = db.query(Penalty).filter(
+        Penalty.status == "active", Penalty.kind != "block", Penalty.makeup_count > 0
+    )
+    rest = [p for p in rest if p not in due]
+    if rest:
+        open_ids = {
+            pid
+            for (pid,) in db.query(ChoreRun.penalty_id).filter(
+                ChoreRun.penalty_id.in_([p.id for p in rest]), ChoreRun.status != "done"
+            )
+        }
+        due += [p for p in rest if p.id not in open_ids]
     for p in due:
         _end(db, p, "ended", now)
     return len(due)

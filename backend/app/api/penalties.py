@@ -1,6 +1,6 @@
 """Parent API: give, list and adjust penalties."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session, selectinload
@@ -60,7 +60,6 @@ def options(db: Session = Depends(get_db)):
                 "groups": [{"id": i, "name": n} for i, n in groups.items()],
             }
         )
-    db.commit()
     return {
         "enabled": fam.penalties_enabled,
         "sizes": penalties.sizes(fam),
@@ -105,7 +104,14 @@ def kid_penalties(kid_id: int, db: Session = Depends(get_db)):
     _kid(db, kid_id)
     rows = (
         db.query(Penalty)
-        .filter(Penalty.kid_id == kid_id, Penalty.status == "active")
+        .filter(
+            Penalty.kid_id == kid_id,
+            (Penalty.status == "active")
+            | (
+                (Penalty.status == "ended")
+                & (Penalty.ended_at >= datetime.now(UTC).replace(tzinfo=None) - timedelta(days=7))
+            ),
+        )
         .order_by(Penalty.created_at.desc(), Penalty.id.desc())
         .all()
     )

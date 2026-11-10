@@ -74,23 +74,15 @@ def target_devices(db: Session, kid: User, g: Give) -> tuple[list[Device], str]:
         grp = db.get(DeviceGroup, g.group_id)
         if grp is None:
             raise HTTPException(404, "Group not found.")
-        return [d for d in grp.devices if kid in d.owners], grp.name
+        devs = [d for d in grp.devices if kid in d.owners]
+        if not devs:
+            raise HTTPException(422, f"None of {kid.full_name}'s devices are in that group.")
+        return devs, grp.name
     return [d for d in kid.devices if not d.exempt], "devices"
 
 
-def recent_count(db: Session, kid_id: int, now: datetime) -> int:
-    since = _naive(now) - timedelta(days=7)
-    return (
-        db.query(Penalty)
-        .filter(
-            Penalty.kid_id == kid_id, Penalty.created_at >= since, Penalty.status != "cancelled"
-        )
-        .count()
-    )
-
-
 def recent_counts(db: Session, now: datetime) -> dict[int, int]:
-    """kid id -> recent_count for every kid, in one query."""
+    """kid id -> penalties (not cancelled) in the last 7 days, for every kid, in one query."""
     since = _naive(now) - timedelta(days=7)
     rows = (
         db.query(Penalty.kid_id, func.count(Penalty.id))
@@ -195,6 +187,8 @@ def _give_one(db: Session, kid: User, g: Give, by: User, now: datetime, group: s
     num, den = SHARES[g.earn_back]
     p.back_total = p.amount_taken * num // den  # points, minutes, or block minutes
     titles = (g.makeup if g.makeup is not None else makeup_list(fam)[:2]) if p.back_total else []
+    if not titles:
+        p.back_total = 0  # nothing to make up: nothing to earn back
     p.makeup_count = len(titles)
     if titles:
         if g.kind != "block":
@@ -239,6 +233,12 @@ def out_many(db: Session, ps: list[Penalty]) -> list[dict]:
         .order_by(ChoreRun.id)
     ):
         runs.setdefault(r.penalty_id, []).append(r)
+    causes = {
+        r.id: r.assignment.chore.title
+        for r in db.query(ChoreRun)
+        .options(joinedload(ChoreRun.assignment).joinedload(ChoreAssignment.chore))
+        .filter(ChoreRun.id.in_({p.chore_run_id for p in ps} - {None}))
+    }
     return [
         {
             "id": p.id,
@@ -258,6 +258,8 @@ def out_many(db: Session, ps: list[Penalty]) -> list[dict]:
             "status": p.status,
             "seen_by_kid": p.seen_by_kid,
             "summary": summary(p),
+            "cause": causes.get(p.chore_run_id)
+            or ("Security alert" if p.notification_id else None),
             "makeup": [
                 {"run_id": r.id, "title": r.assignment.chore.title, "status": r.status}
                 for r in runs.get(p.id, [])
