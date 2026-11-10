@@ -40,8 +40,9 @@ def load(fn, n, threads=4):
 
 # ---- docker stats -------------------------------------------------------------------
 def _mb(s):
-    m = re.match(r"([\d.]+)\s*([KMG]i?B)", s)
-    return float(m[1]) * {"KiB": 1 / 1024, "KB": 1 / 1024, "MiB": 1, "MB": 1, "GiB": 1024, "GB": 1024}[m[2]]
+    m = re.match(r"([\d.]+)\s*([KMG]?i?B)", s)  # "0B" when a container died (e.g. OOM)
+    unit = {"B": 1 / 1048576, "KiB": 1 / 1024, "KB": 1 / 1024, "MiB": 1, "MB": 1, "GiB": 1024, "GB": 1024}
+    return float(m[1]) * unit[m[2]]
 
 
 def stats():
