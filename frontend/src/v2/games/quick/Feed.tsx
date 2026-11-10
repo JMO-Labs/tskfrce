@@ -5,7 +5,7 @@ import s from './microD.module.css'
 function FeedGame({ onDone }: MicroProps) {
   const taps = useRef(0)
   const done = useRef(false)
-  const timer = useRef<ReturnType<typeof setTimeout>>()
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const [n, setN] = useState(0)
   useEffect(() => () => clearTimeout(timer.current), [])
 
