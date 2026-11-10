@@ -1,6 +1,6 @@
 import { beforeEach, expect, test } from '@jest/globals'
 import type { Mock } from 'jest-mock'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MantineProvider } from '@mantine/core'
@@ -28,7 +28,6 @@ const wrap = (ui: React.ReactElement) => (
     <MantineProvider>{ui}</MantineProvider>
   </QueryClientProvider>
 )
-const card = (t: string) => screen.getAllByText(t)[0].closest('.p-needs-item') as HTMLElement
 
 test('paused kid sees the button and it posts', async () => {
   render(wrap(<StatusBanner d={kid({})} size="big" />))
@@ -53,23 +52,30 @@ test('unlocked kid has no button', () => {
   expect(screen.queryByRole('button', { name: /Ask for homework/ })).toBeNull()
 })
 
-test('parent approves with chosen minutes via the homework route', async () => {
-  render(wrap(<NeedsYouList items={[hw, reward]} />))
-  await userEvent.selectOptions(within(card('Homework time')).getByLabelText('Minutes'), '90')
-  await userEvent.click(within(card('Homework time')).getByRole('button', { name: 'Approve' }))
-  await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/homework/requests/7/approve', { method: 'POST', body: { minutes: 90 } }))
+test('Approve gives the default hour via the homework route', async () => {
+  render(wrap(<NeedsYouList items={[hw]} />))
+  await userEvent.click(screen.getByRole('button', { name: 'Approve' }))
+  await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/homework/requests/7/approve', { method: 'POST', body: { minutes: 60 } }))
   expect(apiMock).not.toHaveBeenCalledWith('/redemptions/7/approve', expect.anything())
+})
+
+test('parent picks other minutes from the More menu', async () => {
+  render(wrap(<NeedsYouList items={[hw]} />))
+  await userEvent.click(screen.getByRole('button', { name: 'More for Homework time' }))
+  await userEvent.click(await screen.findByRole('menuitem', { name: 'Approve 90 min' }))
+  await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/homework/requests/7/approve', { method: 'POST', body: { minutes: 90 } }))
 })
 
 test('decline posts deny', async () => {
   render(wrap(<NeedsYouList items={[hw]} />))
-  await userEvent.click(screen.getByRole('button', { name: 'Decline' }))
+  await userEvent.click(screen.getByRole('button', { name: 'More for Homework time' }))
+  await userEvent.click(await screen.findByRole('menuitem', { name: 'Decline' }))
   await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/homework/requests/7/deny', { method: 'POST' }))
 })
 
 test('approve all includes homework at 60 min', async () => {
   render(wrap(<NeedsYouList items={[hw, reward]} />))
-  await userEvent.click(screen.getByRole('button', { name: /Approve all 2/ }))
+  await userEvent.click(screen.getByRole('button', { name: 'Approve all' }))
   await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/homework/requests/7/approve', { method: 'POST', body: { minutes: 60 } }))
   expect(apiMock).toHaveBeenCalledWith('/redemptions/7/approve', { method: 'POST' })
 })

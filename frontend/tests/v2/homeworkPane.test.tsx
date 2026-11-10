@@ -6,9 +6,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MantineProvider } from '@mantine/core'
 import { api } from '@/v2/api'
 import { HomeworkPane } from '@/v2/manage/HomeworkPane'
-import { KidHomeworkSites } from '@/v2/manage/KidHomeworkSites'
+import { HomeworkRow } from '@/v2/manage/KidHomeworkSites'
+import { useFocusParam } from '@/v2/parent/useFocusParam'
+import type { Kid } from '@/v2/types'
+import { fakeRouter } from './helpers/fakeRouter'
 
 jest.mock('@/v2/api', () => ({ api: jest.fn(), kidToken: () => null, ApiError: class extends Error {} }))
+jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
 const apiMock = api as unknown as Mock<(p: string, init?: { method?: string; body?: unknown }) => Promise<unknown>>
 const sites = { starter: ['khanacademy.org', 'wikipedia.org'], allow: ['school.edu'], block: ['tiktok.com'], kids: { '3': ['mia.org'] } }
@@ -64,11 +68,18 @@ describe('HomeworkPane', () => {
   })
 })
 
-describe('KidHomeworkSites', () => {
+function Row() {
+  const focus = useFocusParam('open')
+  return <HomeworkRow kid={{ id: 3, full_name: 'Mia', username: 'mia' } as Kid} focus={focus} />
+}
+
+describe('HomeworkRow (kid page)', () => {
   test('lists this kid and posts with kid_id', async () => {
-    show(<KidHomeworkSites kidId={3} name="Mia" />)
+    fakeRouter.reset('/kids', { open: 'homework' })
+    Element.prototype.scrollIntoView = jest.fn()
+    show(<Row />)
     expect(await screen.findByText('mia.org')).toBeInTheDocument()
-    expect(screen.getByText('Extra homework sites for Mia')).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Extra homework sites for Mia' })).toBeInTheDocument()
     expect(screen.getByText('Adds to the family list. Blocked sites stay blocked.')).toBeInTheDocument()
     await userEvent.type(screen.getByRole('textbox'), 'ixl.com')
     await userEvent.click(screen.getByRole('button', { name: 'Add' }))
