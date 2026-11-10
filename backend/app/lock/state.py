@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.lock import activity, hours
 from app.lock.reset import current_chore_day, reset_due
@@ -67,11 +67,7 @@ def device_facts(
     return DeviceFacts(
         status=device.status,
         owners=tuple(
-            OwnerChores(t, a)
-            for a, t in (
-                pre.counts[o.id] if pre and o.id in pre.counts else chores.counts(db, o.id, day)
-                for o in device.owners
-            )
+            OwnerChores(t, a) for a, t in (_counts(db, o.id, day, pre) for o in device.owners)
         ),
         allowed_sets=r.allowed_sets,
         free=r.free,
@@ -86,10 +82,19 @@ def device_facts(
     )
 
 
+def _counts(db: Session, kid_id: int, day, pre: Prefetch | None) -> tuple[int, int]:
+    """A kid's (approved, total), counted once per Prefetch (one chore day per call)."""
+    if pre is None:
+        return chores.counts(db, kid_id, day)
+    if kid_id not in pre.counts:
+        pre.counts[kid_id] = chores.counts(db, kid_id, day)
+    return pre.counts[kid_id]
+
+
 def desired_blocked(db: Session, now_utc: datetime) -> list[str]:
     fam = get_family(db)
     now_local = local_now(fam.timezone, _aware_utc(now_utc))
-    devs = db.query(Device).all()
+    devs = db.query(Device).options(selectinload(Device.owners), selectinload(Device.groups)).all()
     pre = Prefetch(db, devs)
     return sorted(
         d.mac for d in devs if not is_online(device_facts(db, d, fam, now_utc, pre), now_local)
