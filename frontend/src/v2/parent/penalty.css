@@ -29,7 +29,9 @@
 [data-look='parent'] .p-pen-list .p-pen-edit { padding: 0; }
 [data-look='parent'] .p-pen-list .p-pen-edit[data-open='true'] { padding-bottom: 12px; }
 [data-look='parent'] .p-pen-row { width: 100%; background: none; border: 0; border-bottom: 0; font: inherit; font-size: 13px; color: inherit; text-align: left; cursor: pointer; }
+[data-look='parent'] .p-pen-row { flex-wrap: wrap; }
 [data-look='parent'] .p-pen-row > span { display: inline-flex; align-items: center; gap: 6px; }
+[data-look='parent'] .p-pen-row > em { margin-left: auto; text-align: right; }
 [data-look='parent'] .p-pen-acts { margin-top: 10px; }
 /* Settings: each size is a soft tile (mockup .size) */
 [data-look='parent'] .p-pen-size { border: 1px solid var(--p-line); border-radius: 12px; background: var(--p-soft); padding: 10px 12px 2px; margin: 0 0 8px; color: var(--p-ink); }
