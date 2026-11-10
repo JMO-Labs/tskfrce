@@ -3,6 +3,8 @@ import { ApiError } from '../api'
 import type { AgeGroup, CelebrateLevel } from '../types'
 import { HungryCat } from './hungryCat/HungryCat'
 import { QuickFire } from './QuickFire'
+import { devMicro } from './devMicro'
+import { MICROS } from './quick'
 import { GamesWelcome, markWelcomed, welcomeSeen } from './GamesWelcome'
 import { Results } from './Results'
 import { partScore } from './scoring'
@@ -15,7 +17,16 @@ type Phase = 'shelf' | 'wheel' | 'play' | 'results'
 const msg = (e: unknown) => (e instanceof ApiError ? e.detail : 'Something went wrong. Try again.')
 
 /** Games tab: shelf -> wheel -> play -> results. The server owns every number. */
-export function GamesPage({ mode, celebrate, preview, autoStart = false, name = 'your kid', kidId = null, tz }: { mode: AgeGroup; celebrate: CelebrateLevel; preview: boolean; autoStart?: boolean; name?: string; kidId?: number | null; /** family time zone for the wake time */ tz?: string }) {
+type Props = { mode: AgeGroup; celebrate: CelebrateLevel; preview: boolean; autoStart?: boolean; name?: string; kidId?: number | null; /** family time zone for the wake time */ tz?: string }
+
+/** The Games tab. In development, /kid?micro=<key> runs one microgame on repeat (screenshots, play-testing). */
+export function GamesPage(p: Props) {
+  const [dev] = useState(() => (typeof window === 'undefined' ? null : devMicro(window.location.search)))
+  if (dev) return <QuickFire age={p.mode} startLevel={2} seed={1} micros={MICROS.filter((m) => m.key === dev)} onEnd={() => {}} />
+  return <GamesFlow {...p} />
+}
+
+function GamesFlow({ mode, celebrate, preview, autoStart = false, name = 'your kid', kidId = null, tz }: Props) {
   const shelf = useGamesShelf()
   const start = useStartGame()
   const finish = useFinishGame()
