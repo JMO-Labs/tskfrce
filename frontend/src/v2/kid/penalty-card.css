@@ -1,0 +1,14 @@
+/* Kid penalty card: the fridge look, neutral tone (penalties-v2 mockup .kid) */
+.k-pen { background: #fffaf0; border: 2px solid #f0dfb8; border-radius: 18px; padding: 16px; color: #2b2416; margin: 0 0 12px; }
+.k-pen h3 { margin: 0 0 4px; font-size: 17px; }
+.k-pen-by { font-size: 13px; opacity: 0.8; }
+.k-pen-meter { height: 10px; border-radius: 999px; background: rgba(0, 0, 0, 0.1); overflow: hidden; margin: 6px 0 2px; }
+.k-pen-meter i { display: block; height: 100%; background: #7cb518; }
+.k-pen-line { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; margin-top: 8px; }
+.k-pen-line > span:first-child { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.k-pen-todo { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
+.k-pen-todo:disabled { opacity: 0.6; cursor: default; }
+@media (prefers-color-scheme: dark) {
+  .k-pen { background: #2a2418; border-color: #4a3d22; color: #f6ead2; }
+  .k-pen-meter { background: rgba(255, 255, 255, 0.14); }
+}

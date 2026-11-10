@@ -37,6 +37,7 @@ test('stepAmount', () => {
 test('kidTitle', () => {
   const p = (o: Partial<KidPenalty>) => ({ kind: 'block', label: 'Nintendo', amount_taken: 20, ends_at: null, ...o }) as KidPenalty
   const now = new Date(2026, 10, 10, 9, 0)
+  expect(kidTitle(p({}), now)).toBe('No Nintendo')
   expect(kidTitle(p({ kind: 'points' }), now)).toBe('20 points taken')
   expect(kidTitle(p({ kind: 'screen' }), now)).toBe('20 min of saved screen time taken')
   expect(kidTitle(p({ ends_at: new Date(2026, 10, 10, 15, 30).toISOString() }), now)).toBe('No Nintendo until 3:30 pm')

@@ -98,6 +98,7 @@ export function stepAmount(kind: PenaltyKind, amount: number, dir: 1 | -1): numb
 export function kidTitle(p: KidPenalty, now: Date): string {
   if (p.kind === 'points') return `${p.amount_taken} points taken`
   if (p.kind === 'screen') return `${p.amount_taken} min of saved screen time taken`
+  if (!p.ends_at) return `No ${p.label ?? 'devices'}`
   const end = dayjs(p.ends_at)
   const sameDay = end.isSame(dayjs(now), 'day')
   return `No ${p.label ?? 'devices'} until ${end.format(sameDay ? 'h:mm a' : 'dddd')}`
