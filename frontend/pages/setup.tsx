@@ -275,7 +275,7 @@ export default function SetupPage() {
           onBack={step > 2 || (step === 2 && !accountDone) ? () => go(step - 1) : undefined}
           onNext={next}
           nextLabel={step === LAST ? 'Finish' : 'Next'}
-          onSkip={step >= 3 && step <= LAST && !(step === 4 && kids.length === 0) ? () => go(step + 1) : undefined}
+          onSkip={step >= 4 && step <= LAST && !(step === 4 && kids.length === 0) ? () => go(step + 1) : undefined}
           onStepClick={(n) => {
             if (n > step && n > step + 1) return // Can't skip ahead multiple steps
             go(n)
