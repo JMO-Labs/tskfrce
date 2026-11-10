@@ -250,7 +250,7 @@ export function ReasonLine({
   if (value) return <Row text={`“${value}”`} action="edit" onOpen={onOpen} />;
   return (
     <div className="p-pen-sum">
-      <button type="button" className="p-pen-link" onClick={onOpen}>
+      <button type="button" className="p-pen-plain" onClick={onOpen}>
         + Add a reason {name} sees
       </button>
     </div>

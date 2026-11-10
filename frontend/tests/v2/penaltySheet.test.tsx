@@ -173,4 +173,16 @@ describe("PenaltySheet", () => {
         .filter((b) => many.includes(b.textContent ?? "")),
     ).toHaveLength(5);
   });
+
+  test("stale make-up picks are not posted when earn-back is none", async () => {
+    const u = userEvent.setup();
+    show([1]);
+    await screen.findByText("Give penalty", { selector: "button" });
+    await u.click(screen.getAllByRole("button", { name: "change" })[1]);
+    await u.click(screen.getByRole("button", { name: "Sweep" }));
+    await u.click(screen.getByRole("button", { name: "No earn-back" }));
+    await u.click(screen.getByRole("button", { name: "Give penalty" }));
+    await waitFor(() => expect(posted()).toBeTruthy());
+    expect(posted()).not.toHaveProperty("makeup");
+  });
 });

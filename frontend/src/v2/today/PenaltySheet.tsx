@@ -74,7 +74,7 @@ function Body({
       ...(reason.trim() && { reason: reason.trim() }),
       ...(device_id && { device_id }),
       ...(group_id && { group_id }),
-      ...(makeup?.length && { makeup }),
+      ...(core.earn_back !== "none" && makeup?.length && { makeup }),
       ...from,
     };
     give.mutate(body as GiveBody, { onSuccess: onClose });
