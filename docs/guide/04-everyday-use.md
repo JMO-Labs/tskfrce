@@ -165,6 +165,17 @@ A Happy Hour gives bonus points for a little while. Tap the **…** at the top r
 
 **Weekly surprise** starts a surprise Happy Hour once a week. It is off by default.
 
+### Goals
+
+Kids save points toward something bigger, like a bike, a game or a family trip. Open **Kids & chores**, then **Rewards**, then **Goals**.
+
+- **+ New goal** makes a goal with a name, a price and an optional emoji, for one kid, several kids (each gets their own meter) or the whole **Family** (one shared meter).
+- Kids can suggest goals. A suggestion shows under **Waiting on you** and on **Today**: tap **Set price** to approve it, or **…** then **Decline**.
+- When a meter fills you get a notice. Tap **Fulfilled** once it's done, and the kid gets a mascot party the next time they open the app. A family goal parties for every kid.
+- **+ Chip in** adds your own points to a family goal. They don't come from any kid.
+- Saved points leave a kid's balance. Removing a goal gives every kid back what they saved.
+- **Goal settings** (the link at the bottom) turns Goals on or off and sets whether kids can suggest goals or take points back, whether kids see what siblings gave, automatic saving (a share of each approved chore goes to the kid's chosen goal), how many goals each age can have, and the built-in goals: extra screen time (needs screen time banking) and Get out of jail free.
+
 ### Streak freezes
 
 On by default. A kid earns one freeze for every 7 days in a row and can hold 2. A freeze covers a missed day and keeps the streak alive, but it doesn't add a day. Badges count the streak with its freezes.

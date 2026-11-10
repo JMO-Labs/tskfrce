@@ -1,0 +1,77 @@
+/* Goal party: colors are the approved mockup's fixed palette (goals-v1.html .party) */
+.party {
+  position: fixed;
+  inset: 0;
+  z-index: 1001; /* above CelebrationLayer (999) and AwardOverlay (1000) */
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 38%, #ffe27a 0, #ffc93c 30%, #ff8a5c 70%, #d94a8c 100%);
+  color: #1d2b53;
+  text-align: center;
+  font-family: var(--font-body), Inter, system-ui, sans-serif;
+  cursor: pointer;
+}
+.party h2 {
+  font: 700 clamp(30px, 6vw, 52px) / 1.1 var(--font-display), 'Space Grotesk', system-ui;
+  margin: 12vh 16px 8px;
+  white-space: pre-line;
+}
+.party p {
+  margin: 0 16px;
+  font-weight: 600;
+  font-size: clamp(18px, 3vw, 26px);
+}
+.badge {
+  display: inline-block;
+  margin-top: 20px;
+  background: #fff;
+  border: 2px solid #1d2b53;
+  box-shadow: 4px 4px 0 #1d2b53;
+  border-radius: 12px;
+  padding: 8px 14px;
+  font: 700 clamp(18px, 3vw, 24px) var(--font-display), 'Space Grotesk', system-ui;
+}
+.dance {
+  position: absolute;
+  bottom: 18px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 2px;
+  padding: 0 6px;
+}
+.dance img {
+  width: clamp(96px, 26vw, 150px);
+  height: clamp(96px, 26vw, 150px);
+  animation: bop 0.9s ease-in-out infinite alternate;
+  transform-origin: 50% 100%;
+}
+.dance img:nth-child(2) { animation-delay: 0.15s; }
+.dance img:nth-child(3) { animation-delay: 0.3s; }
+.dance img:nth-child(4) { animation-delay: 0.45s; }
+.dance img:nth-child(5) { animation-delay: 0.6s; }
+.dance img:nth-child(6) { animation-delay: 0.75s; }
+@keyframes bop {
+  0% { transform: translateY(0) rotate(-8deg); }
+  100% { transform: translateY(-22px) rotate(8deg); }
+}
+.conf {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.conf i {
+  position: absolute;
+  top: -12px;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  animation: fall 2.6s linear infinite;
+}
+@keyframes fall {
+  to { transform: translateY(110vh) rotate(540deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dance img, .conf i { animation: none; }
+}

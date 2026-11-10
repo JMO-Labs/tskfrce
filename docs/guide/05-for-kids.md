@@ -73,6 +73,10 @@ Tap **Rewards** (**Prizes** in Little). Ask for screen time (you pick the minute
 
 ![Asking for screen time: What for? and how many minutes](img/kid-screen-for.jpg)
 
+## My goals
+
+Saving for something big? It's at the top of **Rewards**. Tap **+ Add** on a goal to move points in, or **+ Suggest a goal** to ask for a new one. A parent sets the price. Family goals are shared, and everyone adds to them. When a goal is full, a parent makes it official, and then all the mascots throw you a party. You can take points back out of your own goal unless it's full (or a parent turned that off). Points in a family goal stay there.
+
 ## Chat and alerts
 
 In **Chat** you can talk to your parents (just you and them), to the whole family, or about a chore. Be kind. Parents can read the chats you are in.

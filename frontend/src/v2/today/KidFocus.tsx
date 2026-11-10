@@ -11,7 +11,7 @@ import { EmptyState } from '../parent/states'
 import type { Focus } from '../parent/useFocusParam'
 import type { NeedsItem, TodayKid } from '../types'
 import { ChoreRow } from './ChoreRow'
-import { isChore, useNeedsActions } from './needsActions'
+import { isChore, isGoal, useNeedsActions } from './needsActions'
 import { useClock } from './useClock'
 
 const REQ: Record<string, { icon: string; label: string }> = {
@@ -29,7 +29,7 @@ export function KidFocus({ kid, requests, chore }: { kid: TodayKid; requests: Ne
   const [points, setPoints] = useState<'bonus' | 'deduct' | null>(null)
   const name = kid.name ?? 'Kid'
   const waitingFor = (id: number, state: string) => (state === 'needs_you' ? requests.find((r) => isChore(r) && r.id === id) : undefined)
-  const asks = requests.filter((r) => !isChore(r))
+  const asks = requests.filter((r) => !isChore(r) && !isGoal(r))
   return (
     <div className="pt-kb">
       <div>

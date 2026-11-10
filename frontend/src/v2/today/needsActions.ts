@@ -5,11 +5,13 @@ import { notifications } from '@mantine/notifications'
 import type { NeedsItem } from '../types'
 import { useApproveChore, useSendBack } from '../hooks/useToday'
 import { useDecideRedemption } from '../hooks/useRewards'
+import { useGoalAction } from '../hooks/useGoals'
 import { openChatAfterNav } from '../chat/dock'
 import { errorText } from '../errorText'
 import { toastFail, toastOk } from '../notify'
 
 /** Chores, redos and integration check-offs are runs (id = run id); the rest are requests. */
+export const isGoal = (i: NeedsItem) => i.type === 'goal_full' || i.type === 'goal_suggested'
 export const isChore = (i: NeedsItem) => i.type === 'chore' || i.type === 'redo' || i.type === 'integration'
 
 /** What a parent can do with a "needs you" item; shared by the Needs list and the kid focus. */
@@ -20,6 +22,7 @@ export function useNeedsActions() {
   const approveRun = useApproveChore()
   const sendBackRun = useSendBack()
   const decide = useDecideRedemption()
+  const goal = useGoalAction()
   const [busy, setBusy] = useState<string | null>(null)
   const lock = useRef(false) // synchronous guard: Enter-mashing fires before React re-renders
 
@@ -67,6 +70,10 @@ export function useNeedsActions() {
       }
     },
     sendBack: (runId: number, note: string) => run(() => sendBackRun.mutateAsync({ id: runId, note }), 'Sent back', `s${runId}`),
+    /** A full goal is done: the parent has handed over the real thing. */
+    fulfill: (i: NeedsItem) => run(() => goal.mutateAsync({ id: i.id, action: 'fulfill' }), 'Fulfilled', `f${i.id}`),
+    /** A suggested goal needs a price, set in the Goals pane. */
+    setPrice: () => void router.push('/kids?section=rewards&item=goals'),
     /** Screen-time and reward requests. */
     decline: (i: NeedsItem) => run(() => decide.mutateAsync({ id: i.id, approve: false }), 'Declined', `d${i.id}`),
     /** Open the chore's thread on its kid (chore and note items: id is the run id). */

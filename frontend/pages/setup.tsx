@@ -51,6 +51,7 @@ export default function SetupPage() {
   const [hours, setHours] = useState<RuleBody[]>(DEFAULT_DRAFTS)
   const [trustKids, setTrustKids] = useState<number[]>([])
   const [bedtimeAuto, setBedtimeAuto] = useState(false)
+  const [goalsOn, setGoalsOn] = useState(true)
   const [choresLock, setChoresLock] = useState(true)
   const applied = useRef(new Set<string>())
   const [schedules, setSchedules] = useState(0) // applied schedule rules, mirrored for render
@@ -227,6 +228,7 @@ export default function SetupPage() {
       return run([
         ...trustKids.map((id) => ({ key: `trust:${id}`, run: () => api(`/kids/${id}`, { method: 'PATCH', body: { trust_mode: true } }) })),
         ...(bedtimeAuto ? [{ key: 'bedtime', run: () => api('/family', { method: 'PATCH', body: { bedtime_auto: true } }) }] : []),
+        { key: `goals:${goalsOn}`, run: () => api('/goals/settings', { method: 'PATCH', body: { on: goalsOn } }) },
       ])
     }
     if (step > LAST) return
@@ -301,7 +303,7 @@ export default function SetupPage() {
           {step === 5 && <StepChores selected={chores} made={addedStarters} hasKids={kids.length > 0} onChange={setChores} />}
           {step === 6 && <StepDevices kids={kids} />}
           {step === 7 && <StepHours drafts={hours} onChange={setHours} choresLock={choresLock} onChoresLock={setChoresLock} />}
-          {step === 8 && <StepExtras kids={kids} trust={trustKids} bedtime={bedtimeAuto} onTrust={setTrustKids} onBedtime={setBedtimeAuto} />}
+          {step === 8 && <StepExtras kids={kids} trust={trustKids} bedtime={bedtimeAuto} goals={goalsOn} onTrust={setTrustKids} onBedtime={setBedtimeAuto} onGoals={setGoalsOn} />}
           {step > LAST && (
             <StepFinish resetTime={fam.data?.reset_time} chores={made.data?.chores ?? chores.length} kids={kids.length} lock={fam.data?.chores_lock ?? choresLock} />
           )}

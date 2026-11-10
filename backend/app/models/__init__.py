@@ -12,6 +12,7 @@ from .chores import Chore, ChoreAssignment, ChoreRun, ChoreSeen, ChoreStep, RunS
 from .device_activity import DeviceEvent, DevicePresence
 from .family import FamilySettings, get_family
 from .flair import KidFlair
+from .goal import Goal, GoalAuto, GoalContribution, GoalParty
 from .happy_hour import HappyHour
 from .hours import HourRule, HourRuleTarget, HourRuleTime
 from .inbox import Notification
@@ -37,6 +38,10 @@ from .user import PendingInvite, UsedInvite, User
 __all__ = [
     "BadgeAward",
     "KidFlair",
+    "Goal",
+    "GoalAuto",
+    "GoalContribution",
+    "GoalParty",
     "HappyHour",
     "CustomBadge",
     "ChatPhoto",

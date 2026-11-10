@@ -242,7 +242,7 @@ export interface TodayKid {
 
 /** Item in GET /today needs_you. */
 export interface NeedsItem extends RunTrustFields {
-  type: 'chore' | 'redo' | 'screen_time' | 'reward' | 'note' | 'integration'
+  type: 'chore' | 'redo' | 'screen_time' | 'reward' | 'note' | 'integration' | 'goal_full' | 'goal_suggested'
   id: number
   kid_id: number | null
   kid_name: string | null

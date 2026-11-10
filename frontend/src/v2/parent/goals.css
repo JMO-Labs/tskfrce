@@ -1,0 +1,32 @@
+/* Goals (parent): mockup .superpowers/mockups/goals-v1.html, parent tokens. */
+[data-look='parent'] .gl-pane .ask { background: var(--p-amb); color: var(--p-ambink); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; font-size: 14px; }
+[data-look='parent'] .gl-pane .card { background: var(--p-card); border: 1px solid var(--p-line); border-radius: 12px; padding: 4px 12px; margin-bottom: 12px; }
+[data-look='parent'] .gl-pane .li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--p-line); font-size: 14px; }
+[data-look='parent'] .gl-pane .ask .li { border-color: transparent; }
+[data-look='parent'] .gl-pane .li:last-child { border-bottom: 0; }
+[data-look='parent'] .gl-pane .li small { color: var(--p-sub); font-size: 12px; }
+[data-look='parent'] .gl-pane .sec { font-size: 12px; color: var(--p-sub); margin: 4px 0 6px; }
+[data-look='parent'] .gl-pane .ask .sec { color: inherit; opacity: 0.8; }
+[data-look='parent'] .mini { height: 6px; border-radius: 999px; background: var(--p-soft); overflow: hidden; margin-top: 5px; width: 120px; }
+[data-look='parent'] .mini i { display: block; height: 100%; background: var(--p-ink); }
+[data-look='parent'] .pill { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--p-line); background: var(--p-soft); color: var(--p-ink); white-space: nowrap; cursor: pointer; }
+[data-look='parent'] .pill.dark, [data-look='parent'] .pill[data-on] { background: var(--p-ink); color: var(--p-card); border-color: var(--p-ink); }
+[data-look='parent'] .pill:disabled { opacity: 0.5; cursor: default; }
+[data-look='parent'] .gl-pane .setl { display: block; margin: 0 auto; background: none; border: 0; font-size: 13px; color: var(--p-sub); text-decoration: underline; cursor: pointer; }
+[data-look='parent'] .gl-new { width: 100%; background: none; border: 0; color: var(--p-ink); font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+[data-look='parent'] .gl-ask, [data-look='parent'] .gl-who, [data-look='parent'] .gl-acts, [data-look='parent'] .gl-name { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding-bottom: 10px; }
+[data-look='parent'] .gl-form { display: flex; flex-direction: column; gap: 10px; padding: 6px 0 10px; }
+[data-look='parent'] .gl-acts { justify-content: flex-end; }
+[data-look='parent'] .gl-back { align-self: flex-start; background: none; border: 0; padding: 0; color: var(--p-sub); font: inherit; font-size: 13px; cursor: pointer; }
+[data-look='parent'] .gl-num { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; }
+[data-look='parent'] .gl-num .pk-input { width: 90px; }
+[data-look='parent'] .gl-pane .gl-r { display: flex; align-items: center; gap: 6px; flex: none; }
+/* small "…" trigger: keeps the pill and numbers where the mockup has them, also on touch */
+[data-look='parent'] .gl-pane .gl-r .p-ib { width: 28px; height: 28px; margin-right: -6px; color: var(--p-sub); }
+[data-look='parent'] .gl-pane .gl-off { font-size: 13px; color: var(--p-sub); margin: 0 0 12px; }
+[data-look='parent'] .gl-pane .gl-link { background: none; border: 0; padding: 0; font: inherit; color: var(--p-ink); text-decoration: underline; cursor: pointer; }
+[data-look='parent'] .gl-num { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0; }
+[data-look='parent'] .gl-num .pk-label { margin: 0; text-align: left; }
+[data-look='parent'] .gl-num .pk-input { width: 104px; flex: none; text-align: right; }
+[data-look='parent'] .gl-form .p-segmented-control { flex-wrap: wrap; max-width: 100%; height: auto; }
+[data-look='parent'] .gl-form .p-segmented-button { flex: 1 1 auto; white-space: nowrap; }

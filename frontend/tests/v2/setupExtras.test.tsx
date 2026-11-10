@@ -76,7 +76,7 @@ describe('optional extras step', () => {
     })
   }
   const puts = () => apiMock.mock.calls.filter((c) => c[0] === '/setup/step' && c[1]?.method === 'PUT').map((c) => (c[1] as { body: unknown }).body)
-  const patches = () => apiMock.mock.calls.filter(([p, i]) => p !== '/setup/step' && i?.method === 'PATCH' && !JSON.stringify(i).includes('chores_lock'))
+  const patches = () => apiMock.mock.calls.filter(([p, i]) => p !== '/setup/step' && i?.method === 'PATCH' && !JSON.stringify(i).includes('chores_lock') && p !== '/goals/settings')
 
   test('a family stored at step 8 lands on the extras step, everything off', async () => {
     resume(8)
@@ -110,6 +110,17 @@ describe('optional extras step', () => {
     await screen.findByText("You're all set")
     expect(apiMock).toHaveBeenCalledWith('/kids/7', { method: 'PATCH', body: { trust_mode: true } })
     expect(apiMock).toHaveBeenCalledWith('/family', { method: 'PATCH', body: { bedtime_auto: true } })
+    expect(apiMock).toHaveBeenCalledWith('/goals/settings', { method: 'PATCH', body: { on: true } })
+  })
+
+  test('Finish with Goals switched off saves on:false', async () => {
+    const user = userEvent.setup()
+    resume(8)
+    wrap()
+    await user.click(await screen.findByRole('switch', { name: 'Goals' }))
+    await user.click(screen.getByRole('button', { name: 'Finish' }))
+    await screen.findByText("You're all set")
+    expect(apiMock).toHaveBeenCalledWith('/goals/settings', { method: 'PATCH', body: { on: false } })
   })
 
   test('Finish with all off patches nothing', async () => {
