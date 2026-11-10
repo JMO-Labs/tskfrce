@@ -13,7 +13,7 @@ On Postgres: add `TEST_DATABASE_URL=postgresql+psycopg://postgres:pg@localhost:5
 psycopg 3, dialect-aware presence upsert, `postgresql_where` on partial indexes, fresh server DB = create_all +
 stamp head (alembic/env.py), conftest Postgres mode, prod compose passes `DATABASE_URL`.
 
-### Task 2 — Portable pre-upgrade backup (`backend/app/utils/backup_db.py`)
+### Task 2 — Portable pre-upgrade backup (`backend/app/utils/backup_db.py`) (DONE)
 1. Test (`tests/test_backup_db.py`): SQLite file DB in WAL mode with an uncommitted-to-main-file row (open a
    second connection, insert, keep the WAL) → `main()` writes `DATA_DIR/backups/pre-upgrade-*.db` and the backup
    contains the row.
@@ -23,7 +23,7 @@ stamp head (alembic/env.py), conftest Postgres mode, prod compose passes `DATABA
 4. Implement: `dump_json(engine, path)` in the same file using SQLAlchemy core selects, `default=str` for JSON.
 5. Keep "no DB file yet → do nothing" behaviour.
 
-### Task 3 — `migrate-to` (`backend/app/services/db_move.py` + `backend/app/cli.py`)
+### Task 3 — `migrate-to` (`backend/app/services/db_move.py` + `backend/app/cli.py`) (DONE)
 `python -m app.cli migrate-to <url>`; exit 0 on success, 1 on any failure, message says SQLite is untouched.
 1. `normalize(url)`: `postgres://` and `postgresql://` → `postgresql+psycopg://`. Test.
 2. `move(src_url, dst_url)`:
@@ -39,7 +39,7 @@ stamp head (alembic/env.py), conftest Postgres mode, prod compose passes `DATABA
    rollback (monkeypatch the counter) leaves dst empty, src file bytes identical before/after (sha256).
 4. CLI wiring + usage text.
 
-### Task 4 — Box wrapper `scripts/db-migrate.sh <postgres-url>`
+### Task 4 — Box wrapper `scripts/db-migrate.sh <postgres-url>` (DONE)
 Run from the install dir (where `.env` + `docker-compose.prod.yml` live). `set -eu`.
 1. `docker compose stop backend` → `docker compose run --rm --no-deps backend python -m app.cli migrate-to "$1"`.
 2. Success: copy `.env` to `.env.bak-<stamp>`, set/replace `DATABASE_URL=` line, `docker compose up -d`.
@@ -47,12 +47,12 @@ Run from the install dir (where `.env` + `docker-compose.prod.yml` live). `set -
 4. Test `scripts/test-db-migrate.sh` with a fake `docker` on PATH (both paths). Add both files to the CI
    shellcheck line and run the test in the `installer` job. Document in `docs/` (find the self-hosting doc).
 
-### Task 5 — CI matrix (`.github/workflows/ci-cd.yml`)
+### Task 5 — CI matrix (`.github/workflows/ci-cd.yml`) (DONE)
 `test` job: `strategy.matrix.db: [sqlite, postgres]`. Postgres leg: `docker run -d --name ci-pg -p 5432:5432
 -e POSTGRES_PASSWORD=pg postgres:16-alpine`, wait for `pg_isready`, set `TEST_DATABASE_URL`, always remove the
 container. Install `pytest-xdist` and run with `-n auto`.
 
-### Task 6 — Tier harness (`perf/` + `scripts/tier.sh`)
+### Task 6 — Tier harness (`perf/` + `scripts/tier.sh`) (DONE)
 - `perf/docker-compose.tier.yml`: backend, frontend (prod runtime target), blocker on an `internal: true`
   bridge (never host network), images from `TASK4CE_IMAGE_PREFIX`/`TASK4CE_TAG` or local builds; `mem_limit`
   and `cpus` from env; `platform: ${TIER_PLATFORM}`. Project name `task4ce-tier` (never touch `task4ce-lab`).
@@ -68,15 +68,15 @@ container. Install `pytest-xdist` and run with `-n auto`.
   GHCR arm64 images and drops CPU caps.
 - Unit tests for bench math (percentile, growth check, target compare) in `perf/test_bench.py`.
 
-### Task 7 — CI perf gate
+### Task 7 — CI perf gate (DONE)
 Job `perf` on `ubuntu-latest`, needs `[lint, test]`: build the three images, `scripts/tier.sh pi4-2g gate`,
 then `soak 10`; upload `perf/results`.
 
-### Task 8 — Profile report `docs/perf/2026-11-profile.md`
+### Task 8 — Profile report `docs/perf/2026-11-profile.md` (DONE)
 Run every tier native + pi4/zero2w arm64; rank the biggest costs; set lower-tier targets.
 
 ## Phase 2 (after rebase onto the newest open feature PR)
-### Task 9 — Fix the ranked costs (from Task 8), each with a before/after number in the report.
-### Task 10 — Binary evaluation: build a PyInstaller backend, compare RSS/startup to Docker on pi3/zero2w;
+### Task 9 — Fix the ranked costs (from Task 8), each with a before/after number in the report. (DONE)
+### Task 10 — Binary evaluation: build a PyInstaller backend, compare RSS/startup to Docker on pi3/zero2w; (DONE)
 ship only if it wins, else document why not.
 ### Task 11 — Verification sweep, 5 polish passes, local CI on both DBs, version bump, PR.

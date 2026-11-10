@@ -146,6 +146,7 @@ CI (`.github/workflows/ci-cd.yml`): `lint` (ruff on backend and blocker, eslint,
 - **Home box:** `install.sh` installs Docker if asked, writes `.env`, and runs `docker-compose.prod.yml` (backend, frontend, ntfy, and the blocker through `COMPOSE_PROFILES=blocker`). Running it again updates the app and keeps `.env` and data. Smoke test: `scripts/test-install.sh`.
 - **Dev:** `docker-compose.yml` mounts the source and reloads. `scripts/start.sh` creates `.env` from `.env.example` and starts it.
 - **Move to Postgres (optional):** from the install dir run `bash scripts/db-migrate.sh postgresql://user:pass@host:5432/db`. It stops the backend, copies all data from SQLite into the (empty) Postgres database, then saves `.env` as `.env.bak-<UTC time>`, sets `DATABASE_URL` (mode 600, URL never printed) and restarts. If the copy fails, `.env` and the SQLite data are untouched, the app is restarted as before, and the script exits 1. The SQLite file is kept as a backup. Test: `scripts/test-db-migrate.sh`.
+- **Small-box tiers:** `bash scripts/tier.sh <pi4-2g|laptop-4g|pi3-1g|zero2w-512> gate` builds and runs the stack capped like that board (`--arm64` pulls GHCR arm64 images under QEMU), seeds a family, benches the hot endpoints and fails on a target miss. CI gates `pi4-2g` plus a 10-minute soak. Results and ranked costs: `docs/perf/2026-11-profile.md`. Backend tests on Postgres: set `TEST_DATABASE_URL=postgresql+psycopg://…`.
 - **Backend alone:** see [backend/README.md](../backend/README.md).
 
 ## Repository map
