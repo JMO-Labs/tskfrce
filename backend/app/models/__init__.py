@@ -27,6 +27,7 @@ from .kid_device import KidDevice, KidEnrollToken
 from .lock import Device, DeviceGroup, DeviceHintRejection, Override, Vlan
 from .notify import NotifyHeld, NotifyPlace
 from .password_reset import PasswordReset
+from .penalty import Penalty
 from .points import Points, PointsType
 from .reward import Redemption, Reward
 from .screen_bank import ScreenBank
@@ -80,6 +81,7 @@ __all__ = [
     "Override",
     "Notification",
     "TrustEvent",
+    "Penalty",
     "IntegrationInstall",
     "IntegrationKid",
     "IntegrationChore",

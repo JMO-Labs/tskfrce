@@ -41,7 +41,7 @@ class Points(Base):
     __table_args__ = (
         CheckConstraint("run_id IS NULL OR redemption_id IS NULL", name="ck_points_one_ref"),
         CheckConstraint(
-            "reason IN ('chore','early_bonus','team_share','redemption','bonus','adjustment','deduction','goal_save','goal_return')",
+            "reason IN ('chore','early_bonus','team_share','redemption','bonus','adjustment','deduction','goal_save','goal_return','penalty')",
             name="ck_points_reason",
         ),
     )
@@ -55,6 +55,7 @@ class Points(Base):
     by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     run_id = Column(Integer, ForeignKey("chore_runs.id"), nullable=True, index=True)
     redemption_id = Column(Integer, ForeignKey("redemptions.id"), nullable=True, index=True)
+    penalty_id = Column(Integer, ForeignKey("penalties.id", ondelete="SET NULL"), nullable=True)
     seen_by_kid = Column(Boolean, nullable=False, default=True, server_default="1")
     created_at = Column(DateTime, default=datetime.utcnow)
 

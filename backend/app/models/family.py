@@ -87,6 +87,9 @@ class FamilySettings(Base):
     goal_screen_minutes = Column(Integer, nullable=False, default=60, server_default="60")
     goal_jail_on = Column(Boolean, nullable=False, default=False, server_default="0")
     goal_jail_price = Column(Integer, nullable=False, default=500, server_default="500")
+    penalties_enabled = Column(Boolean, nullable=False, default=False, server_default="0")
+    penalty_sizes = Column(Text, nullable=True)  # JSON; NULL = defaults
+    makeup_chores = Column(Text, nullable=True)  # JSON; NULL = defaults
 
 
 def get_family(db: Session) -> FamilySettings:

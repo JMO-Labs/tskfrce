@@ -57,7 +57,7 @@ def test_goals_migration_round_trips(tmp_path):
         )
 
     alembic("upgrade", "head")
-    alembic("downgrade", "-1")
+    alembic("downgrade", "f1a2b3c4d5e7")
     assert "goals" not in inspect(create_engine(url)).get_table_names()
     alembic("upgrade", "head")
     insp = inspect(create_engine(url))
@@ -66,3 +66,28 @@ def test_goals_migration_round_trips(tmp_path):
     )
     sql = "".join(str(c["sqltext"]) for c in insp.get_check_constraints("points"))
     assert "goal_save" in sql and "goal_return" in sql
+
+
+def test_penalties_migration_round_trips(tmp_path):
+    url = f"sqlite:///{tmp_path / 'pen.db'}"
+
+    def alembic(*args):
+        subprocess.run(
+            [sys.executable, "-m", "alembic", *args],
+            cwd=BACKEND,
+            env={**os.environ, "DATABASE_URL": url},
+            check=True,
+        )
+
+    alembic("upgrade", "head")
+    assert "penalties" in inspect(create_engine(url)).get_table_names()
+    alembic("downgrade", "h3b4c5d6e7f8")
+    insp = inspect(create_engine(url))
+    assert "penalties" not in insp.get_table_names()
+    sql = "".join(str(c["sqltext"]) for c in insp.get_check_constraints("points"))
+    assert "goal_save" in sql and "'penalty'" not in sql
+    alembic("upgrade", "head")
+    insp = inspect(create_engine(url))
+    assert "penalties" in insp.get_table_names()
+    sql = "".join(str(c["sqltext"]) for c in insp.get_check_constraints("points"))
+    assert "goal_save" in sql and "'penalty'" in sql

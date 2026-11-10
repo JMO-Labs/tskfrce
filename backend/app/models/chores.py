@@ -49,6 +49,7 @@ class Chore(Base):
     points = Column(Integer, nullable=False, default=10)
     needs_photo = Column(Boolean, nullable=False, default=False)
     always_check = Column(Boolean, nullable=False, default=False, server_default="0")
+    makeup = Column(Boolean, nullable=False, default=False, server_default="0")
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -147,6 +148,9 @@ class ChoreRun(Base):
     spot_check = Column(Boolean, nullable=False, default=False, server_default="0")
     approved_via = Column(String(11), nullable=True)  # parent|trust|bedtime|integration
     completed_at = Column(DateTime, nullable=True)
+    penalty_id = Column(
+        Integer, ForeignKey("penalties.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     created_at = Column(DateTime, default=datetime.utcnow)
 
     assignment = relationship("ChoreAssignment")
