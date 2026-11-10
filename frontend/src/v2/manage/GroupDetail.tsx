@@ -80,7 +80,7 @@ function Existing({ group, devices, kids, groups, rules, onSelect, onRequestOver
       <FocusArea focus={rows} label="Group">
         <SummaryRow
           id="gdev"
-          icon={ico('devices_other')}
+          icon={ico('devices')}
           title="Devices"
           summary={`${members.length} of ${devices.length} ${devices.length === 1 ? 'device' : 'devices'}`}
           line2={<span className="p-kn">{members.length ? members.map((d) => d.name).join(', ') : 'No devices in this group yet'}</span>}

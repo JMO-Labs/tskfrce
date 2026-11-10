@@ -1,5 +1,5 @@
 /**
- * @fileoverview Chore editor: header chip pop-over, Options rows, (i) pop-over copy.
+ * @fileoverview Chore editor: header type-tile pop-over, Options rows, (i) pop-over copy.
  * Look copied from the owner-approved mockup declutter-v2 (chore-calm, chore-steps): .setl .setr .sw .lg.
  */
 
@@ -7,7 +7,12 @@
 [data-look='parent'] .ch-page .p-dhead-meta { min-width: 110px; }
 [data-look='parent'] .ch-page .pk-hint-tight { margin-top: 0; }
 
-/* Type chip in the header: opens the notes kids can send */
+/* Type tile in the header: a button that opens the notes kids can send (tskfrce#9 mockup, option A) */
+[data-look='parent'] .ch-tile-btn { position: relative; flex: none; border: 0; padding: 0; font: inherit; cursor: pointer; transition: box-shadow .15s; }
+[data-look='parent'] .ch-tile-btn[aria-expanded='true'] { box-shadow: 0 0 0 2px var(--p-focus); }
+@media (hover: hover) { [data-look='parent'] .ch-tile-btn:hover { box-shadow: 0 0 0 2px var(--p-focus); } }
+[data-look='parent'] .ch-tile-btn:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
+[data-look='parent'] .ch-tile-badge { position: absolute; right: -4px; bottom: -4px; width: 20px; height: 20px; border-radius: 50%; background: var(--p-card); border: 1px solid var(--p-line); display: grid; place-items: center; color: var(--p-sub); }
 
 /* (i) pop-over copy (mockup .pop p, .lg, hr, .mi) */
 .p-pop .ch-pop-p { margin: 4px 8px 8px; color: var(--p-sub); line-height: 1.45; }

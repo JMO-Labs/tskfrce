@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Fixed
 
+- Parent UI matches the declutter mocks (tskfrce#9): the chore header drops the type chip. The type tile, with a small bubble badge, now opens "Notes kids can send" and "Edit <type> type". `Chip`'s `icon` is optional, and the rewards history Declined chip has no ×. Glyph swaps: notification place rows `chat_bubble`, Points rules `stars`, Trust level chip `check`, teen Chat tab `chat`, group Devices row `devices`.
 - Lab browser e2e no longer breaks when Dependabot bumps `@playwright/test`: the Playwright image tag in `lab/docker-compose.lab.yml` now comes from `frontend/package.json` (`bash scripts/lab.sh pw-version`, exported as `PW_VERSION`). The `lab` CI job runs on Node 22 and runs the static lab tests. (tskfrce#11, fixes the #71 `lab` failure)
 
 ## [2.6.0]
