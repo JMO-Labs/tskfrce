@@ -31,7 +31,7 @@ _FRESH = 600  # s: only trust discovery entries this recent for IP -> MAC
 def dhcp_fp_from_packet(pkt) -> tuple[str, str] | None:
     """(client mac, '1,121,3,...') from a DHCP packet, else None. Never raises."""
     try:
-        from scapy.all import BOOTP, DHCP, Ether
+        from blocker.scapy_lite import BOOTP, DHCP, Ether
 
         if not (pkt.haslayer(DHCP) and pkt.haslayer(BOOTP)):
             return None
@@ -61,7 +61,7 @@ def mdns_from_packet(pkt) -> tuple[str, str, str | None] | None:
     """(sender mac, host, model) from an mDNS response whose A record matches the
     packet's IP source, else None. Never raises."""
     try:
-        from scapy.all import DNS, IP, Ether
+        from blocker.scapy_lite import DNS, IP, Ether
 
         if not (pkt.haslayer(Ether) and pkt.haslayer(IP) and pkt.haslayer(DNS)):
             return None
@@ -132,7 +132,7 @@ class Signals:
 
     def run_dhcp(self, stop: threading.Event) -> None:
         try:
-            from scapy.all import sniff
+            from blocker.scapy_lite import sniff
 
             sniff(
                 iface=self.cfg.lan_iface or None,
@@ -157,7 +157,7 @@ class Signals:
     def run_mdns(self, stop: threading.Event) -> None:
         """Sniff mDNS responses; ask the LAN every MDNS_QUERY_EVERY s so quiet devices answer."""
         try:
-            from scapy.all import AsyncSniffer
+            from blocker.scapy_lite import AsyncSniffer
 
             sniffer = AsyncSniffer(
                 iface=self.cfg.lan_iface or None,
@@ -179,7 +179,7 @@ class Signals:
     def _query_mdns(self) -> None:
         """One multicast PTR query; answers are multicast too, so the sniffer sees them."""
         try:
-            from scapy.all import DNS, DNSQR, IP, UDP, send
+            from blocker.scapy_lite import DNS, DNSQR, IP, UDP, send
 
             qd = [DNSQR(qname=t, qtype="PTR") for t in MDNS_TYPES]
             pkt = IP(dst="224.0.0.251", ttl=255) / UDP(sport=5353, dport=5353) / DNS(qd=qd)
