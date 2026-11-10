@@ -28,3 +28,5 @@
 [data-look='parent'] .gl-num { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0; }
 [data-look='parent'] .gl-num .pk-label { margin: 0; text-align: left; }
 [data-look='parent'] .gl-num .pk-input { width: 104px; flex: none; text-align: right; }
+[data-look='parent'] .gl-form .p-segmented-control { flex-wrap: wrap; max-width: 100%; height: auto; }
+[data-look='parent'] .gl-form .p-segmented-button { flex: 1 1 auto; white-space: nowrap; }
