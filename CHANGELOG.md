@@ -4,6 +4,10 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- Lab browser e2e no longer breaks when Dependabot bumps `@playwright/test`: the Playwright image tag in `lab/docker-compose.lab.yml` now comes from `frontend/package.json` (`bash scripts/lab.sh pw-version`, exported as `PW_VERSION`). The `lab` CI job runs on Node 22 and runs the static lab tests. (tskfrce#11, fixes the #71 `lab` failure)
+
 ## [2.6.0]
 
 Covers all work since `v1.0.0`. Versions 1.1.0 through 2.6.0 were bumped in `frontend/package.json` by `chore(release)` commits but never tagged. `v2.6.0` is tagged on `main` at `54b404f` so the tags match what shipped. The docs changes listed here reach `main` with the next `dev` → `main` merge, without a further version bump.

@@ -135,7 +135,7 @@ Rule worth knowing: the "chore day" is computed in the family time zone (`lock/r
 | Lab journeys | `cd blocker && RUN_INTEGRATION=1 python -m pytest tests/lab -v` | Real ARP, nftables and portal in Docker; needs Linux Docker. |
 | Browser e2e | `bash scripts/lab.sh up && bash scripts/lab.sh e2e` | Playwright against the lab; screenshots in `frontend/e2e-artifacts`. |
 
-`scripts/lab.sh` also has helper commands (`block`, `unblock`, `check`, `check6`, `portal`, `resist`, `reset`, `resisting`, `test-block`, `token`, `device-id`). Run it without arguments for the usage line. Lab details: [lab/README.md](../lab/README.md).
+`scripts/lab.sh` also has helper commands (`block`, `unblock`, `check`, `check6`, `portal`, `resist`, `reset`, `resisting`, `test-block`, `token`, `device-id`, `pw-version`). Run it without arguments for the usage line. Lab details: [lab/README.md](../lab/README.md).
 
 CI (`.github/workflows/ci-cd.yml`): `lint` (ruff on backend, blocker and examples, eslint, tsc, registry typecheck and tests), `test` (backend pytest), `installer` (shellcheck, install smoke test), `lab` (journeys + browser e2e, uploads screenshots), `security-scan` (Trivy), and image build and push on `main`. It runs on PRs into `main`, pushes to `main`/`develop` and `v*` tags, not on PRs into `dev`, so run the checks locally first. Branch flow, exact local commands and commit rules: [CONTRIBUTING.md](../CONTRIBUTING.md). `backend/tests/test_contributing_doc.py` fails if CONTRIBUTING.md drifts from `ci-cd.yml`.
 

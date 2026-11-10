@@ -119,10 +119,12 @@ jobs:
       run: |
         echo '{"ipv6": true, "fixed-cidr-v6": "fd00:d0c::/64"}' | sudo tee /etc/docker/daemon.json
         sudo systemctl restart docker
+    - name: Lab static tests
+      run: cd blocker && python -m pytest tests/test_lab_compose.py tests/test_lab_pw_version.py -q
     - name: Lab integration tests
       run: cd blocker && RUN_INTEGRATION=1 python -m pytest tests/lab -v
     - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-      with: { node-version: '18', cache: 'npm', cache-dependency-path: frontend/package-lock.json }
+      with: { node-version: '22', cache: 'npm', cache-dependency-path: frontend/package-lock.json }
     # the e2e container sits on the offline lab network; it uses these node_modules
     - run: cd frontend && npm ci
     - name: Browser e2e
@@ -138,7 +140,7 @@ jobs:
         if-no-files-found: ignore
     - name: Lab logs on failure
       if: failure()
-      run: INTERNAL_TOKEN=labtoken docker compose -f lab/docker-compose.lab.yml --profile e2e logs --no-color  # e2e profile = frontend
+      run: PW_VERSION=$(bash scripts/lab.sh pw-version) INTERNAL_TOKEN=labtoken docker compose -f lab/docker-compose.lab.yml --profile e2e logs --no-color  # e2e profile = frontend
     - name: Lab teardown
       if: always()
       run: bash scripts/lab.sh down
