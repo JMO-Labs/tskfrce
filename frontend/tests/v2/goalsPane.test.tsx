@@ -167,11 +167,20 @@ describe('GoalsPane', () => {
     expect(screen.getByRole('button', { name: 'Get out of jail free' })).toBeTruthy()
   })
 
+  test('screen built-in needs banking and shows its price', async () => {
+    data = { ...empty, settings: { ...settings, screen_on: true, screen_ok: false, jail_on: true } }
+    wrap(<GoalsPane onSettings={() => {}} />)
+    await userEvent.click(await screen.findByText('+ New goal'))
+    expect(screen.queryByRole('button', { name: 'Extra screen time' })).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'Get out of jail free' }))
+    expect(screen.getByText('500 points · change it in Goal settings')).toBeTruthy()
+  })
+
   test('creating a custom family goal posts it', async () => {
     wrap(<GoalsPane onSettings={() => {}} />)
     await userEvent.click(await screen.findByText('+ New goal'))
     await userEvent.type(screen.getByLabelText('Name'), 'Trip')
-    await userEvent.type(screen.getByLabelText('Price'), '900')
+    await userEvent.type(screen.getByLabelText('Price, points'), '900')
     await userEvent.click(screen.getByRole('button', { name: 'Family' }))
     await userEvent.click(screen.getByRole('button', { name: 'Create goal' }))
     await waitFor(() => expect(sent('/goals')).toEqual([{ name: 'Trip', emoji: null, target: 900, kind: 'custom', kid_ids: [], family: true }]))

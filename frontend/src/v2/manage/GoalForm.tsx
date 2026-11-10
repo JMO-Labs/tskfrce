@@ -20,7 +20,7 @@ export function GoalForm({ settings, onDone }: { settings: GoalSettings; onDone:
   const [family, setFamily] = useState(false)
   const custom = kind === 'custom'
   const options: { value: GoalKind; label: string }[] = [{ value: 'custom', label: 'Custom' }]
-  if (settings.screen_on) options.push({ value: 'screen', label: BUILTIN.screen })
+  if (settings.screen_on && settings.screen_ok) options.push({ value: 'screen', label: BUILTIN.screen })
   if (settings.jail_on) options.push({ value: 'jail', label: BUILTIN.jail })
   const pick = (k: GoalKind) => {
     setKind(k)
@@ -50,10 +50,15 @@ export function GoalForm({ settings, onDone }: { settings: GoalSettings; onDone:
             </label>
           </div>
           <label className="pk-field">
-            <span className="pk-label">Price</span>
+            <span className="pk-label">Price, points</span>
             <input className="pk-input" type="number" min={1} inputMode="numeric" value={price} onChange={(e) => setPrice(e.currentTarget.value)} />
           </label>
         </>
+      )}
+      {!custom && (
+        <p className="pk-hint">
+          {kind === 'screen' ? `${settings.screen_minutes} min for ${settings.screen_price.toLocaleString()} points` : `${settings.jail_price.toLocaleString()} points`} · change it in Goal settings
+        </p>
       )}
       <span className="pk-label">Who</span>
       <div className="gl-who">
