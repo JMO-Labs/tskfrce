@@ -25,3 +25,6 @@
 [data-look='parent'] .gl-pane .gl-r .p-ib { width: 28px; height: 28px; margin-right: -6px; color: var(--p-sub); }
 [data-look='parent'] .gl-pane .gl-off { font-size: 13px; color: var(--p-sub); margin: 0 0 12px; }
 [data-look='parent'] .gl-pane .gl-link { background: none; border: 0; padding: 0; font: inherit; color: var(--p-ink); text-decoration: underline; cursor: pointer; }
+[data-look='parent'] .gl-num { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 0; }
+[data-look='parent'] .gl-num .pk-label { margin: 0; text-align: left; }
+[data-look='parent'] .gl-num .pk-input { width: 104px; flex: none; text-align: right; }

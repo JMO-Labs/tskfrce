@@ -41,3 +41,4 @@
 .kg-view[data-mode='little'] .kg-btn, .kg-view[data-mode='little'] .kg-sbtn, .kg-view[data-mode='little'] .kg-chipbtn { font-size: 20px; min-height: 56px; padding: 6px 18px; border-radius: 16px; }
 .kg-view[data-mode='little'] .kg-suggest { font-size: 20px; padding: 18px; }
 [data-mantine-color-scheme='dark'] .kg-view[data-mode='little'] .kg-goal { box-shadow: 5px 5px 0 #000; }
+.kg-btn { white-space: nowrap; }

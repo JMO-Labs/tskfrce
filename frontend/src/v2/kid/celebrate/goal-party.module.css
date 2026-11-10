@@ -7,10 +7,11 @@
   background: radial-gradient(circle at 50% 38%, #ffe27a 0, #ffc93c 30%, #ff8a5c 70%, #d94a8c 100%);
   color: #1d2b53;
   text-align: center;
+  font-family: var(--font-body), Inter, system-ui, sans-serif;
   cursor: pointer;
 }
 .party h2 {
-  font: 700 clamp(30px, 6vw, 52px) / 1.1 'Space Grotesk', system-ui;
+  font: 700 clamp(30px, 6vw, 52px) / 1.1 var(--font-display), 'Space Grotesk', system-ui;
   margin: 12vh 16px 8px;
   white-space: pre-line;
 }
@@ -27,7 +28,7 @@
   box-shadow: 4px 4px 0 #1d2b53;
   border-radius: 12px;
   padding: 8px 14px;
-  font: 700 clamp(18px, 3vw, 24px) 'Space Grotesk', system-ui;
+  font: 700 clamp(18px, 3vw, 24px) var(--font-display), 'Space Grotesk', system-ui;
 }
 .dance {
   position: absolute;
@@ -41,8 +42,8 @@
   padding: 0 6px;
 }
 .dance img {
-  width: clamp(74px, 14vw, 120px);
-  height: clamp(74px, 14vw, 120px);
+  width: clamp(96px, 26vw, 150px);
+  height: clamp(96px, 26vw, 150px);
   animation: bop 0.9s ease-in-out infinite alternate;
   transform-origin: 50% 100%;
 }

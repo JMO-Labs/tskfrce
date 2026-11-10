@@ -57,7 +57,7 @@ export function GoalSettingsPane({ onBack }: { onBack: () => void }) {
       {back}
       {head}
       <PaneCard icon="flag" title="Goals">
-        <Flag id="on" label="Goals" on={s.on} save={save} />
+        <Flag id="on" label="Goals on" on={s.on} save={save} />
         <Flag id="suggest" label="Kids can suggest goals" on={s.suggest} save={save} />
       </PaneCard>
       <PaneCard icon="group" title="Kids">
@@ -66,7 +66,7 @@ export function GoalSettingsPane({ onBack }: { onBack: () => void }) {
       </PaneCard>
       <PaneCard icon="savings" title="Points in">
         <Flag id="auto" label="Share chore points automatically" on={s.auto} save={save} hint="Off means kids add points by hand." />
-        <Num id="auto_pct" label="Share of each chore (%)" value={s.auto_pct} save={save} />
+        <Num id="auto_pct" label="Share of each chore, %" value={s.auto_pct} save={save} />
       </PaneCard>
       <PaneCard icon="tune" title="Limits by age">
         <Num id="max_little" label="Little kids" value={s.max_little} save={save} />
@@ -75,10 +75,10 @@ export function GoalSettingsPane({ onBack }: { onBack: () => void }) {
       </PaneCard>
       <PaneCard icon="redeem" title="Built-ins">
         <Flag id="screen_on" label="Extra screen time" on={s.screen_on} save={save} disabled={!s.screen_ok} hint={s.screen_ok ? undefined : 'Turn on screen time banking first'} />
-        <Num id="screen_price" label="Screen time price" value={s.screen_price} save={save} />
-        <Num id="screen_minutes" label="Screen time minutes" value={s.screen_minutes} save={save} />
+        <Num id="screen_price" label="Price, points" value={s.screen_price} save={save} />
+        <Num id="screen_minutes" label="Minutes" value={s.screen_minutes} save={save} />
         <Flag id="jail_on" label="Get out of jail free" on={s.jail_on} save={save} />
-        <Num id="jail_price" label="Jail card price" value={s.jail_price} save={save} />
+        <Num id="jail_price" label="Price, points" value={s.jail_price} save={save} />
       </PaneCard>
     </div>
   )
