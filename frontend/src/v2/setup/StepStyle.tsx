@@ -26,7 +26,7 @@ export function StepStyle({ kids, style, onStyle, styles: perKid, onStyles }: Pr
     <>
       <StylePicker value={style} onChange={onStyle} />
       {kids.length >= 2 && (
-        <div className={styles.card} style={{ padding: '8px 12px', marginTop: 4 }}>
+        <div className={styles.card} style={{ padding: '8px 12px' }}>
           <div className={styles.kidrow} style={{ padding: 0 }}>
             <div className={styles.t2} id="setup-different">Different for each kid</div>
             <span className="pk-switch ph-sw-row">
