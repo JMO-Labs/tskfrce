@@ -132,15 +132,15 @@ function Body({
         />
       </div>
       {!onDraft && (
-      <button
-        type="button"
-        className="p-pen-give"
-        disabled={give.isPending}
-        aria-busy={give.isPending}
-        onClick={submit}
-      >
-        Give penalty
-      </button>
+        <button
+          type="button"
+          className="p-pen-give"
+          disabled={give.isPending}
+          aria-busy={give.isPending}
+          onClick={submit}
+        >
+          Give penalty
+        </button>
       )}
     </div>
   );

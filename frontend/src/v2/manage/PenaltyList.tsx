@@ -10,7 +10,7 @@ const CHIPS = [['1 hour', 60], ['1 day', 1440]] as const
 
 /** "Half" shorten: half of what is left, whole minutes, at least 15. */
 export const halfLeft = (endsAt: string | null, now = new Date()): number =>
-  Math.max(15, Math.round(dayjs(endsAt).diff(now, 'minute', true) / 2))
+  endsAt ? Math.max(15, Math.round(dayjs(endsAt).diff(now, 'minute', true) / 2)) : 15
 
 function until(p: Penalty): string | null {
   if (p.kind !== 'block' || !p.ends_at) return null
@@ -56,7 +56,7 @@ function Row({ p, name }: { p: Penalty; name: string }) {
           </div>
         </div>
       )}
-      <ConfirmDelete opened={undo} title="Undo this penalty?" body={`Undo this penalty? ${name} gets back what was taken.`} confirmLabel="Undo" onConfirm={() => run('cancel')} onClose={() => setUndo(false)} />
+      <ConfirmDelete opened={undo} title="Undo this penalty?" body={`${name} gets back what was taken.`} confirmLabel="Undo" onConfirm={() => run('cancel')} onClose={() => setUndo(false)} />
     </div>
   )
 }

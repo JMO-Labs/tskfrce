@@ -49,7 +49,7 @@ describe('PenaltyList', () => {
     await userEvent.click(await screen.findByText('−20 points'))
     expect(screen.queryByRole('button', { name: '1 day' })).toBeNull()
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-    expect(await screen.findByText('Undo this penalty? Maya gets back what was taken.')).toBeTruthy()
+    expect(await screen.findByText('Maya gets back what was taken.')).toBeTruthy()
     await userEvent.click(screen.getByRole('button', { name: 'Undo' }))
     expect(apiMock).toHaveBeenCalledWith('/penalties/5/cancel', { method: 'POST', body: undefined })
   })
