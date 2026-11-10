@@ -1,0 +1,43 @@
+.stage{height:330px;width:100%;display:grid;place-items:center;position:relative;overflow:hidden;touch-action:none;user-select:none;font-family:var(--font-display),'Space Grotesk',system-ui,sans-serif;color:var(--k-ink)}
+.kb{min-height:56px;min-width:56px;padding:0 22px;border:2px solid var(--k-ink);border-radius:16px;background:var(--k-card);color:var(--k-ink);box-shadow:var(--k-shadow);font:700 17px var(--font-display),'Space Grotesk',system-ui,sans-serif;cursor:pointer}
+.kb:active{transform:translateY(2px)}
+.sun{background:var(--k-sun);color:#1d2b53}
+.big{font-size:20px;min-height:64px;padding:0 32px}
+/* flip */
+.panWrap{position:relative;width:240px;height:260px;border:0;background:none;cursor:pointer;padding:0}
+.pan{position:absolute;left:20px;bottom:30px;width:200px;height:24px;background:#3a3a3a;border-radius:0 0 40px 40px;transition:box-shadow .1s,background .1s}
+.pan:before{content:'';position:absolute;right:-70px;top:4px;width:80px;height:10px;background:#3a3a3a;border-radius:6px}
+.panWrap[data-hot='1'] .pan{background:#6b3a1e;box-shadow:0 0 28px 10px var(--k-sun)}
+.cake{position:absolute;left:50%;bottom:54px;font-size:84px;line-height:1;transform:translateX(-50%)}
+.flipped{animation:flip .6s ease-in-out forwards}
+@keyframes flip{0%{transform:translate(-50%,0) rotate(0)}50%{transform:translate(-50%,-160px) rotate(200deg)}100%{transform:translate(-50%,0) rotate(360deg)}}
+.hint{position:absolute;bottom:0;left:0;right:0;text-align:center;font-weight:700;color:var(--k-sub)}
+/* plug */
+.plugBox{display:flex;flex-direction:column;align-items:center;gap:32px;width:100%}
+.plug{width:96px;height:96px;border-radius:20px;border:2px solid var(--k-ink);background:var(--k-sun);color:#1d2b53;display:grid;place-items:center;font-size:56px;box-shadow:var(--k-shadow);touch-action:none;cursor:grab}
+.sockets{display:flex;gap:14px;width:100%;justify-content:center}
+.socket{width:96px;height:96px;font-size:48px;border-radius:20px;border:2px dashed var(--k-ink);background:var(--k-soft);color:var(--k-ink);cursor:pointer;display:grid;place-items:center}
+/* zip */
+.pack{position:relative;width:200px;height:240px;border-radius:70px 70px 28px 28px;background:var(--k-coral);border:2px solid var(--k-ink);box-shadow:var(--k-shadow)}
+.zipLine{position:absolute;left:50%;top:20px;bottom:20px;width:6px;margin-left:-3px;background:repeating-linear-gradient(var(--k-ink) 0 6px,transparent 6px 12px);opacity:.7}
+.pull{position:absolute;left:50%;margin-left:-18px;width:36px;height:44px;border-radius:10px;background:var(--k-sun);border:2px solid var(--k-ink);transition:top .25s}
+.ups{position:absolute;top:8px;font-size:28px;font-weight:700;color:var(--k-sub)}
+.arrow{animation:nudge .9s ease-in-out infinite}
+@keyframes nudge{50%{transform:translateY(-10px)}}
+/* squeeze */
+.brush{position:absolute;top:30px;font-size:64px;animation:slide 1.6s ease-in-out infinite alternate}
+@keyframes slide{from{transform:translateX(-90px) rotate(-8deg)}to{transform:translateX(90px) rotate(8deg)}}
+.tube{font-size:96px;line-height:1}
+.bar{width:260px;height:26px;border:2px solid var(--k-ink);border-radius:14px;background:var(--k-soft);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--k-green);transition:width .08s}
+.col{display:flex;flex-direction:column;align-items:center;gap:18px;margin-top:70px}
+/* dodge */
+.road{display:grid;grid-template-columns:repeat(3,1fr);width:100%;height:240px;border:2px solid var(--k-ink);border-radius:16px;background:var(--k-soft);overflow:hidden}
+.lane{position:relative;border-left:2px dashed var(--k-line)}
+.lane:first-child{border-left:0}
+.mascot{position:absolute;top:12px;left:50%;width:72px;margin-left:-36px;animation:snooze 1.4s ease-in-out infinite}
+@keyframes snooze{50%{transform:translateY(4px)}}
+.zz{position:absolute;top:0;left:50%;font-size:20px;margin-left:12px}
+.vac{position:absolute;bottom:14px;left:0;width:33.333%;text-align:center;font-size:56px;line-height:1;transition:transform .15s;pointer-events:none}
+.ctl{display:flex;gap:16px;justify-content:center;margin-top:12px}
+.dodgeBox{width:100%}
