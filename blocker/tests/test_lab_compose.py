@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -114,3 +115,12 @@ def test_subnets(cfg):
 
     assert subnets("lab") == ["10.99.0.0/24", "fd00:99::/64"]
     assert subnets("wan") == ["203.0.113.0/24", "2001:db8:1::/64"]
+
+
+def test_e2e_image_tag_derives_from_package_json(cfg):
+    """Regression for #71: a literal tag drifts from @playwright/test on every bump."""
+    image = cfg["services"]["e2e"]["image"]
+    assert image.startswith("mcr.microsoft.com/playwright:v${PW_VERSION:?")
+    assert image.endswith("}-jammy")
+    assert not re.search(r"v\d", image)
+    assert "keep the image tag equal" not in LAB.read_text()
