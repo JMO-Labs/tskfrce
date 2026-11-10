@@ -26,6 +26,8 @@ def test_file_sqlite_has_wal_and_fk_on(file_engine):
         assert c.execute(text("PRAGMA journal_mode")).scalar() == "wal"
         assert c.execute(text("PRAGMA foreign_keys")).scalar() == 1
         assert c.execute(text("PRAGMA busy_timeout")).scalar() == 5000
+        # WAL + NORMAL: no fsync per commit (SD cards), never corrupts; a power cut may drop the last commit
+        assert c.execute(text("PRAGMA synchronous")).scalar() == 1
 
 
 def test_two_sessions_setup_yields_one_owner(file_engine):
