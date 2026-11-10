@@ -236,3 +236,32 @@ def test_chore_lock_off_skips_chores(db, parent, kid):
     d.groups = [g]
     db.commit()
     assert desired_blocked(db, NOW) == []
+
+
+def test_desired_blocked_queries_do_not_grow_with_devices(db, parent, kid):
+    """Polled by the blocker and every lock tick: a kid's chores are counted once, not per device."""
+    from sqlalchemy import event
+
+    _chore(db, parent, kid, approved=False)
+    get_family(db)
+    db.commit()
+
+    def queries_for(n):
+        for i in range(n):
+            mk_device(
+                db,
+                mac=f"aa:bb:cc:00:00:{len(db.query(Device).all()):02x}",
+                status="assigned",
+                owners=[kid],
+            )
+        db.expire_all()
+        seen = []
+        listener = lambda *a: seen.append(1)  # noqa: E731
+        event.listen(db.get_bind(), "before_cursor_execute", listener)
+        try:
+            desired_blocked(db, NOW)
+        finally:
+            event.remove(db.get_bind(), "before_cursor_execute", listener)
+        return len(seen)
+
+    assert queries_for(2) == queries_for(8)
