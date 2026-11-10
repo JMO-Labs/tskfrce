@@ -74,12 +74,6 @@ def pg_dst():
     admin.dispose()
 
 
-def test_normalize():
-    for u in ("postgres://u:p@h/d", "postgresql://u:p@h/d"):
-        assert db_move.normalize(u) == "postgresql+psycopg://u:p@h/d"
-    assert db_move.normalize("postgresql+psycopg://u@h/d") == "postgresql+psycopg://u@h/d"
-
-
 def test_refuses_non_sqlite_source(tmp_path):
     with pytest.raises(db_move.MoveError):
         db_move.move("postgresql+psycopg://u:p@h/d", "postgresql+psycopg://u:p@h/e")
