@@ -123,6 +123,7 @@ bash scripts/lab.sh down    # tear it down
 ### Conventions
 
 Semantic versioning and semantic commits. CI (`.github/workflows/ci-cd.yml`) runs lint, backend tests, the lab and a security scan; keep them green before pushing.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch flow and the exact local checks.
 
 ## License
 
