@@ -63,5 +63,25 @@ migrate command, CI gates) can start now on `feat/declutter`. Phase 2 (optimizat
 rebasing onto the newest feature branch (Minigames → Presets → Goals → Penalties) so the profile includes
 those features.
 
+## Builder's calls (2026-11-10)
+- **Tiers** (*builder's call*): `pi4-2g` (gate tier), `laptop-4g`, `pi3-1g`, `zero2w-512`. CPU caps approximate each
+  board on x86 (Pi 4 ≈ 1.5 CPUs, old laptop ≈ 1.2, Pi 3 ≈ 0.8, Zero 2 W ≈ 0.6). QEMU arm64 runs the real arm64
+  images with memory caps only: emulation is 5-20x slower, so its latency says nothing about a real board. Latency
+  gates use native caps; arm64 proves boot, function and RSS.
+- **Paint proxy** (*builder's call*): the box's share of first paint is HTML + JS/CSS delivered under the cap;
+  rendering happens on the family's phone, so the harness times document + assets, not a headless browser.
+- **Block latency** (*builder's call*): timed from the approval/parent tap API call to `/internal/state` changing.
+  The push to the blocker is already covered by the lab e2e.
+- **Postgres schema** (*builder's call*): the historic migration chain is SQLite-shaped (batch mode, string
+  enums). An empty server DB gets the model schema plus a head stamp; later migrations run normally on both.
+- **Driver** (*builder's call*): `psycopg[binary]` (wheels exist for amd64/arm64 and Python 3.15).
+- **Backup** (*builder's call*): SQLite backups use SQLite's online backup API (WAL-safe; a plain file copy can miss
+  the WAL). Server DBs get a gzip JSON dump of every table before an upgrade.
+- **Migrate CLI** (*builder's call*): `scripts/db-migrate.sh <postgres-url>` on the box: stops the backend, runs
+  `python -m app.cli migrate-to <url>` in a one-off container (SQLite opened read-only, one target transaction,
+  per-table row counts verified before commit), then points `.env` at Postgres and restarts. Any failure restarts
+  on the untouched SQLite.
+- **Soak** (*builder's call*): CI runs a 10-minute mixed-load soak; fail if steady RSS grows >10% + 10MB.
+
 ## Left to the builder
 Exact targets for lower tiers, which optimizations, the binary approach, the CLI shape, and tests.
