@@ -18,6 +18,8 @@ ROUTES = frozenset(
         "/kid",
         "/kids",
         "/more",
+        "/notifications",
+        "/recap",
         "/settings",
         "/setup",
         "/login",
@@ -28,6 +30,7 @@ ROUTES = frozenset(
     }
 )
 FORMS = ("chore", "kid", "window", "feedback")
+WIZARD_STEPS = 8  # frontend/src/v2/setup/WizardFrame.tsx STEPS
 _ERR = re.compile(r"^(http_[1-5]\d\d|network|other)$")
 
 
@@ -42,7 +45,7 @@ def clean(name: str, props: dict) -> dict | None:
             isinstance(s, int) or (isinstance(s, str) and s.isascii() and s.isdigit())
         ):
             return None
-        if not 1 <= int(s) <= 7 or state not in ("started", "done"):
+        if not 1 <= int(s) <= WIZARD_STEPS or state not in ("started", "done"):
             return None
         return {"step": int(s), "state": state}
     if name == "wizard_done":

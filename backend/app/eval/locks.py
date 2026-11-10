@@ -5,8 +5,8 @@ from datetime import UTC, datetime
 from sqlalchemy.orm import Session
 
 from app.eval import listeners, store
-from app.lock.rules import DeviceFacts
-from app.lock.schedule import in_window, local_now
+from app.lock.rules import DeviceFacts, block_reason
+from app.lock.schedule import local_now
 from app.lock.state import Prefetch, device_facts
 from app.models.family import get_family
 from app.models.lock import Device
@@ -14,25 +14,14 @@ from app.models.lock import Device
 _last: dict[int, str | None] | None = None
 
 
+# the app's block reasons, in the names the eval counters use
+_NAMES = {"manual": "override", "schedule": "hours"}
+
+
 def reason(f: DeviceFacts, now_local: datetime) -> str | None:
-    """Why a device is offline; mirrors rules.is_online branch by branch (None = online)."""
-    if f.override == "lock":
-        return "override"
-    if f.status == "guest":
-        return None
-    if f.status == "unassigned":
-        return None if f.override == "unlock" or not f.new_devices_blocked else "new_device"
-    if not all(any(in_window(w, now_local) for w in s) for s in f.allowed_sets):
-        return "hours"
-    chores_ok = all(o.total == 0 or o.approved == o.total for o in f.owners)
-    if (
-        chores_ok
-        or any(in_window(w, now_local) for w in f.free)
-        or f.override == "unlock"
-        or (f.bonus_active and f.points_unlock_early)
-    ):
-        return None
-    return "chores"
+    """Why a device is offline (None = online); the lock rules' own answer, renamed."""
+    r = block_reason(f, now_local)
+    return _NAMES.get(r, r)
 
 
 def track(db: Session, now_utc: datetime) -> None:

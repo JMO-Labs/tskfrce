@@ -16,6 +16,7 @@ def test_clean_wizard():
         "step": 3,
         "state": "done",
     }
+    assert events.clean("wizard_step", {"step": 8, "state": "done"}) == {"step": 8, "state": "done"}
     assert events.clean("wizard_step", {"step": 9, "state": "done"}) is None
     assert events.clean("wizard_step", {"step": 2, "state": "x"}) is None
     assert events.clean("wizard_done", {"a": 1}) == {}
