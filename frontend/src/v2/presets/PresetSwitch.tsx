@@ -23,7 +23,7 @@ export function PresetSwitch({ kidId }: { kidId?: number }) {
   const cat = usePresets().data
   const [pick, setPick] = useState<Style | null>(null)
   const apply = useApplyPreset()
-  const saved: Style = (kidId != null ? cat?.kids.find((k) => k.id === kidId)?.style : null) ?? cat?.style ?? 'balanced'
+  const saved: Style = (kidId != null ? cat?.kids?.find((k) => k.id === kidId)?.style : null) ?? cat?.style ?? 'balanced'
   const shown = pick ?? saved
   const body: PresetBody = kidId != null ? { kids: { [String(kidId)]: shown } } : { style: shown }
   const changing = pick !== null && pick !== saved
