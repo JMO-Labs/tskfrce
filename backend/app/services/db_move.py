@@ -8,7 +8,7 @@ from alembic.script import ScriptDirectory
 from sqlalchemy import Integer, create_engine, func, inspect, select, text
 from sqlalchemy.engine import make_url
 
-from app.core.config import settings
+from app.core.config import normalize_db_url, settings
 from app.core.database import Base, _import_all_models
 from app.utils.backup_db import backup_sqlite
 
@@ -17,13 +17,6 @@ BATCH = 500
 
 class MoveError(Exception):
     pass
-
-
-def normalize(url: str) -> str:
-    for prefix in ("postgres://", "postgresql://"):
-        if url.startswith(prefix):
-            return "postgresql+psycopg://" + url.removeprefix(prefix)
-    return url
 
 
 def _head() -> str:
@@ -54,7 +47,7 @@ def _fix_sequences(conn, tables) -> None:
 
 
 def move(src_url: str, dst_url: str) -> dict[str, int]:
-    dst_url = normalize(dst_url)
+    dst_url = normalize_db_url(dst_url)
     if not src_url.startswith("sqlite"):
         raise MoveError("The current database is not SQLite; nothing to move.")
     if dst_url.startswith("sqlite"):
