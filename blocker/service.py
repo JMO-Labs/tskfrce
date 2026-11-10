@@ -51,7 +51,7 @@ ADDR_TTL = 600.0  # seconds a device's addresses stay redirect-worthy
 
 def _detect_box_ip(cfg: Config) -> str:
     try:
-        from scapy.all import get_if_addr
+        from blocker.scapy_lite import get_if_addr
 
         return get_if_addr(cfg.lan_iface or "eth0")
     except Exception:  # noqa: BLE001 - best effort, the daemon keeps running

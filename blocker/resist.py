@@ -163,7 +163,7 @@ class ResistanceCounter:
 
 
 def _real_sniffer(*, iface: str | None, filter: str, prn: Callable) -> Any:
-    from scapy.all import AsyncSniffer
+    from blocker.scapy_lite import AsyncSniffer
 
     sniffer = AsyncSniffer(iface=iface or None, filter=filter, prn=prn, store=False)
     sniffer.start()
@@ -229,9 +229,7 @@ class ResistanceWatch:
             self._sniffer = None
 
     def _on_packet(self, pkt: Any) -> None:
-        from scapy.layers.inet import IP
-        from scapy.layers.inet6 import IPv6
-        from scapy.layers.l2 import Ether
+        from blocker.scapy_lite import IP, Ether, IPv6
 
         if not pkt.haslayer(Ether):
             return

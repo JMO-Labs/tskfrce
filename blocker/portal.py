@@ -16,7 +16,7 @@ def dns_response(query_wire: bytes, answer_ip: str) -> bytes | None:
 
     Returns None (drop) for responses, non-zero opcodes, qdcount != 1 or unparsable input.
     """
-    from scapy.layers.dns import DNS, DNSRR
+    from blocker.scapy_lite import DNS, DNSRR
 
     try:
         q = DNS(query_wire)
@@ -38,7 +38,7 @@ def dns_response(query_wire: bytes, answer_ip: str) -> bytes | None:
 
 def qname_of(wire: bytes) -> str | None:
     """First question name of a DNS packet (e.g. "example.com."), or None if unparsable."""
-    from scapy.layers.dns import DNS
+    from blocker.scapy_lite import DNS
 
     try:
         q = DNS(wire)
