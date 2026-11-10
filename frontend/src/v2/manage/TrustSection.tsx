@@ -27,7 +27,7 @@ export function TrustLine({ kid }: { kid: Kid }) {
       />
       {kid.trust_mode ? (
         <>
-          <Chip tone="acc" icon="verified">
+          <Chip tone="acc" icon="check">
             {LEVELS[level]}
           </Chip>
           {goal != null && (
