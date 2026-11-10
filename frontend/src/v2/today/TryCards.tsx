@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { useEffect, useState, type ReactNode } from 'react'
+import { useRouter } from 'next/router'
 import { useFamily, usePatchFamily } from '@/v2/hooks/useFamily'
 import { useGoals } from '@/v2/hooks/useGoals'
 import { useHappyHours } from '@/v2/hooks/useHappyHour'
@@ -15,7 +16,7 @@ import { bedtimeAt, bedtimePossible } from '@/v2/trustTypes'
 import { TipLine } from './TipLine'
 import styles from '../components/QuickTip.module.css'
 
-const TEXT: Record<Exclude<(typeof TRY_ORDER)[number], 'try.trust' | 'try.bedtime' | 'try.goals'>, { icon: string; text: string }> = {
+const TEXT: Record<Exclude<(typeof TRY_ORDER)[number], 'try.trust' | 'try.bedtime' | 'try.goals' | 'try.games'>, { icon: string; text: string }> = {
   'try.celebrate': { icon: 'auto_awesome', text: 'Kids now get a comic-book cheer when they finish a chore.' },
   'try.happyhour': { icon: 'bolt', text: 'Double points for an hour gets chores moving.' },
   'try.autoboost': { icon: 'auto_awesome', text: 'If a kid goes quiet for 2 days, we start a Happy Hour for them and let you know.' },
@@ -49,6 +50,7 @@ function useTryPick() {
   const seen = new Set(tips?.dismissed)
   const on: Record<string, boolean> = {
     'try.celebrate': !!kids?.some((k) => k.celebrate !== 'off'),
+    'try.games': !!fam?.games_on && fam.games_rounds === 0,
     'try.happyhour': !hh?.active.length,
     'try.autoboost': !!fam?.hh_auto_boost,
     'try.streakfreeze': !!fam?.streak_freeze,
@@ -68,6 +70,7 @@ export const useTryCardKey = (): string | null => useTryPick().key
 /** `compact`: the one-line tip (Today's slot) with the actions under More; otherwise the full card. */
 export function TryCards({ compact = false }: { compact?: boolean } = {}) {
   const { key, fam, kids, today, quietKid, trustKid } = useTryPick()
+  const router = useRouter()
   const dismiss = useDismissTip()
   const patchFam = usePatchFamily()
   const patchKid = usePatchKid()
@@ -92,6 +95,15 @@ export function TryCards({ compact = false }: { compact?: boolean } = {}) {
       <>
         <CelebratePreview mode={kids?.[0]?.age_group ?? 'kid'} level="full" label="Preview" />
         <Btn onClick={off(() => kids?.forEach((k) => patchKid.mutate({ id: k.id, body: { celebrate: 'off' } }, { onError: toastFail })))}>Turn off for all kids</Btn>
+        {gotIt}
+      </>
+    )
+  } else if (key === 'try.games') {
+    icon = 'sports_esports'
+    text = 'Each approved chore earns a short game that pays a few points.'
+    actions = (
+      <>
+        <Btn onClick={() => router.push('/settings?section=family&open=games')}>See settings</Btn>
         {gotIt}
       </>
     )

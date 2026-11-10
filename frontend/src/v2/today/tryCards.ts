@@ -1,6 +1,6 @@
 /** Which "Try this" card shows: pure choice + the device-local one-new-card-a-day record. */
 
-export const TRY_ORDER = ['try.celebrate', 'try.happyhour', 'try.autoboost', 'try.streakfreeze', 'try.trust', 'try.bedtime', 'try.goals'] as const
+export const TRY_ORDER = ['try.celebrate', 'try.games', 'try.happyhour', 'try.autoboost', 'try.streakfreeze', 'try.trust', 'try.bedtime', 'try.goals'] as const
 export const nudgeKey = (kidId: number) => `nudge.${kidId}`
 
 const SHOWN = 'tskfrce.try'

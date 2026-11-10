@@ -61,6 +61,10 @@ interface OptionsProps {
   onPhoto: (v: boolean) => void
   check: boolean
   onCheck: (v: boolean) => void
+  /** Family games are 'custom': show the Earns a game switch. */
+  gamesCustom?: boolean
+  gives?: boolean
+  onGives?: (v: boolean) => void
 }
 
 const Switch = ({ label, on, onChange }: { label: string; on: boolean; onChange: (v: boolean) => void }) => (
@@ -68,7 +72,7 @@ const Switch = ({ label, on, onChange }: { label: string; on: boolean; onChange:
 )
 
 /** Body of the Options row: Due by, Needs a photo, Always check. */
-export function OptionsBody({ isNew, due, differs, onDue, photo, onPhoto, check, onCheck }: OptionsProps) {
+export function OptionsBody({ isNew, due, differs, onDue, photo, onPhoto, check, onCheck, gamesCustom, gives = false, onGives }: OptionsProps) {
   const hint = isNew ? 'Set after you choose who does it.' : differs ? 'Kids have different times. Set Due by to give them all one time.' : ''
   return (
     <div className="ch-setl">
@@ -82,6 +86,11 @@ export function OptionsBody({ isNew, due, differs, onDue, photo, onPhoto, check,
       <Setr icon="visibility" label="Always check" info={<InfoPop label="About always check" width={260}><p className="ch-pop-p">Always waits for your OK, even when the kid is Trusted.</p></InfoPop>}>
         <Switch label="Always check" on={check} onChange={onCheck} />
       </Setr>
+      {gamesCustom && onGives && (
+        <Setr icon="sports_esports" label="Earns a game" info={<InfoPop label="About earns a game" width={260}><p className="ch-pop-p">Approving this chore gives the kid a quick game.</p></InfoPop>}>
+          <Switch label="Earns a game" on={gives} onChange={onGives} />
+        </Setr>
+      )}
     </div>
   )
 }

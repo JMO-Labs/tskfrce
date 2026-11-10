@@ -69,6 +69,7 @@ export function RecapKids({ kids, line }: { kids: RecapKid[]; line: string | nul
                     {plural(k.done, 'chore')}
                     {k.enough_history && <Cmp now={k.done} avg={avgDone(k)} />}
                   </small>
+                  {!!k.games && <small>{`Played ${plural(k.games, 'game')} · ${plural(k.game_badges ?? 0, 'badge')}`}</small>}
                 </span>
                 {k.enough_history && (
                   <span className="v2-sp">
