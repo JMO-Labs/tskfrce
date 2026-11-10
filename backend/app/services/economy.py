@@ -137,6 +137,8 @@ def award_chore(db: Session, run: ChoreRun, fam: FamilySettings) -> int:
     Points are the chore's at this moment; the ledger row keeps them. Team chores
     split points and bonus evenly (remainder dropped).
     """
+    if run.penalty_id:
+        return 0
     kids = _recipients(run)
     if not kids:
         return 0
