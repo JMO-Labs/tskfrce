@@ -85,6 +85,28 @@ test('make-up list adds and removes, and stops at 12', async () => {
   expect(screen.queryByLabelText('New make-up chore')).toBeNull()
 })
 
+test('block size shows a duration, not raw minutes', async () => {
+  fam.penalties_enabled = true
+  fam.penalty_sizes = { ...sizes, medium: { kind: 'block', amount: 1440, earn_back: 'none' } }
+  body()
+  expect(screen.getAllByText('No devices, 1 day').length).toBeGreaterThan(1)
+  await userEvent.click(screen.getAllByRole('button', { name: 'change' })[2])
+  expect(screen.getByText('1 day')).toBeInTheDocument()
+})
+
+test('add re-checks duplicates and the cap against the latest list; text kept on failure', async () => {
+  fam.penalties_enabled = true
+  const save = jest.fn(async () => false)
+  body(save)
+  await userEvent.type(screen.getByLabelText('New make-up chore'), ' dishes ')
+  await userEvent.click(screen.getByRole('button', { name: 'Add' }))
+  const fn = (save.mock.calls[0] as unknown[])[0] as (f: unknown) => { makeup_chores: string[] }
+  expect(fn({ makeup_chores: ['Dishes'] }).makeup_chores).toEqual(['Dishes'])
+  const full = Array.from({ length: 12 }, (_, i) => `c${i}`)
+  expect(fn({ makeup_chores: full }).makeup_chores).toEqual(full)
+  expect(screen.getByLabelText('New make-up chore')).toHaveValue(' dishes ')
+})
+
 test('Try card is last, and Turn on enables penalties', async () => {
   expect(TRY_ORDER.at(-1)).toBe('try.penalties')
   render(
@@ -92,7 +114,7 @@ test('Try card is last, and Turn on enables penalties', async () => {
       <TryCards />
     </QueryClientProvider>,
   )
-  expect(await screen.findByText('Penalties: take points, saved time or a device away, with a way to earn it back.')).toBeInTheDocument()
+  expect(await screen.findByText('Penalties: take something away, say why, and let them earn part back.')).toBeInTheDocument()
   await userEvent.click(screen.getByRole('button', { name: 'Turn on' }))
   await waitFor(() => expect(patches()).toContainEqual({ penalties_enabled: true }))
 })

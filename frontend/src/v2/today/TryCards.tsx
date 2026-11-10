@@ -126,7 +126,7 @@ export function TryCards({ compact = false }: { compact?: boolean } = {}) {
     )
   } else if (key === 'try.penalties') {
     icon = 'gavel'
-    text = 'Penalties: take points, saved time or a device away, with a way to earn it back.'
+    text = 'Penalties: take something away, say why, and let them earn part back.'
     actions = (
       <>
         <Btn busy={patchFam.isPending} onClick={() => setFam({ penalties_enabled: true }, done)}>Turn on</Btn>

@@ -7,7 +7,7 @@ import { Setr, Sw, type SaveFamily } from './FamilyRows'
 export const MAX_MAKEUP_LIST = 12
 const SIZES: [SizeKey, string][] = [['small', 'Small'], ['medium', 'Medium'], ['big', 'Big']]
 
-export const penaltiesLine = (f: Family) => (f.penalties_enabled ? 'On · 3 sizes' : 'Off')
+export const penaltiesLine = (f: Family) => (f.penalties_enabled ? 'On' : 'Off')
 
 const toDraft = (s: PenaltySize): PenaltyDraft => ({ ...s, reason: '', makeup: [] })
 
@@ -33,16 +33,18 @@ export function PenaltiesBody({ fam, save }: { fam: Family; save: SaveFamily }) 
   const list = fam.makeup_chores ?? []
   const add = () => {
     const v = text.trim()
-    if (!v || list.includes(v) || list.length >= MAX_MAKEUP_LIST) return
-    setText('')
-    void save((f) => ({ makeup_chores: [...(f.makeup_chores ?? []), v] }))
+    if (!v) return
+    void save((f) => {
+      const cur = f.makeup_chores ?? []
+      const dup = cur.some((c) => c.trim().toLowerCase() === v.toLowerCase())
+      return dup || cur.length >= MAX_MAKEUP_LIST ? { makeup_chores: cur } : { makeup_chores: [...cur, v] }
+    }).then((ok) => ok && setText(''))
   }
   return (
     <div className="ch-setl">
       <Setr label="Penalties">
         <Sw label="Penalties" checked={fam.penalties_enabled} onChange={(v) => void save({ penalties_enabled: v })} />
       </Setr>
-      {!fam.penalties_enabled && <span className="pk-hint ch-hint">Take something away, say why, and let them earn part back.</span>}
       {fam.penalties_enabled && (
         <>
           {SIZES.map(([k, name]) => (
