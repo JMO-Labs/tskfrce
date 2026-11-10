@@ -25,7 +25,7 @@
 .seg :global(.mantine-SegmentedControl-control) { border: 0; }
 /* kid heading: small lavender avatar + name (mockup presets-v2 .kid / .av) */
 .kid { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; margin: 10px 0 6px; }
-.kid small { color: var(--p-sub); font-weight: 400; font-size: 12px; }
+.kid small { white-space: nowrap; color: var(--p-sub); font-weight: 400; font-size: 12px; }
 .av { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--p-lav); color: var(--p-lav-ink); display: grid; place-items: center; font-size: 12px; font-weight: 600; }
 .prev b { display: block; }
 .style:last-child { margin-bottom: 0; }
