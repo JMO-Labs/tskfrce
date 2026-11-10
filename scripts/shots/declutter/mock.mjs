@@ -86,7 +86,7 @@ const runDetail = (id) => ({ id, title: 'Homework', points: 30, state: 'needs_yo
 // Goals mock. G toggles: party (kid goal party), age (kid age mode), kid (kid id served by /kid/*).
 export const G = { party: process.env.PARTY === '1', age: 'kid', kid: 4 }
 const gl = (id, name, emoji, o = {}) => ({ id, name, emoji, kind: 'custom', family: false, kid_id: null, kid_name: null, target: 1000, saved: 0, minutes: null, status: 'active', waiting_on: null, mine: 0, siblings: null, created_at: iso(3000), fulfilled_at: null, ...o })
-const gSettings = { on: true, suggest: true, withdraw: true, siblings: true, auto: true, auto_pct: 25, max_little: 1, max_kid: 2, max_teen: 3, screen_on: true, screen_price: 200, screen_minutes: 60, jail_on: false, jail_price: 500, screen_ok: true }
+const gSettings = { on: true, suggest: true, withdraw: true, siblings: true, auto: true, auto_pct: 25, max_little: 1, max_kid: 2, max_teen: 3, screen_on: true, screen_price: 200, screen_minutes: 60, jail_on: true, jail_price: 500, screen_ok: true }
 const parentGoals = () => ({ settings: gSettings,
   waiting: [gl(2, 'Pizza + movie night', '🍕', { kid_id: 5, kid_name: 'Ava', target: 300, saved: 300, status: 'full', waiting_on: 'Dad' }), gl(7, 'Skateboard', '🛹', { kid_id: 4, kid_name: 'Leo', target: null, status: 'suggested' })],
   family: [gl(3, 'Disney trip', '🏰', { family: true, target: 20000, saved: 6800, siblings: [{ name: 'Maya', amount: 1900 }, { name: 'Leo', amount: 1200 }, { name: 'Ava', amount: 700 }] })],
