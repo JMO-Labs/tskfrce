@@ -86,7 +86,7 @@ Default earn-back share for Custom: half.
   (owner). The app auto-picks enough chores to cover the share. *Builder's call:* one make-up chore =
   one equal slice of the earn-back amount; default 2 chores; seed list with 4 sensible chores.
 - Make-up chores are created as one-off chore runs (`ChoreAssignment.repeat='once'`) linked to the penalty,
-  go through the normal approval flow (trust mode applies), and on approval return their slice:
+  go through the normal approval flow (never trust auto-approved: a parent always checks them), and on approval return their slice:
   points refunded / minutes re-banked / block `expires_at` pulled earlier.
 - **Make-up chores pay nothing else (owner):** no points, no minigame tickets, no streak or badge credit. Their only effect is reducing the penalty.
 - When the penalty ends (expires, forgiven, cancelled), unfinished make-up chores are cancelled.
