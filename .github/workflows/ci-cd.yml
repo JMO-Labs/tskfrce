@@ -2,10 +2,10 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, dev ]
     tags: [ 'v*' ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, dev, 'feat/**' ]
 
 # One run per PR/branch: a new push to a PR cancels its stale run. main/tags never cancel.
 concurrency:
@@ -107,6 +107,8 @@ jobs:
   lab:
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
     needs: [lint, test]
+    # Heavy: only PRs into main, pushes to main, and tags. Skipped on dev/feat PRs and dev pushes.
+    if: github.base_ref == 'main' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
     timeout-minutes: 40
     # One lab at a time repo-wide (heavy, ~17 min); others wait in order without holding a runner.
     concurrency:
