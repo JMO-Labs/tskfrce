@@ -1,6 +1,7 @@
 """Kid API: rewards shop, redeeming and award pop-ups."""
 
 from datetime import UTC, datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
@@ -10,19 +11,22 @@ from app.api.deps import get_db
 from app.api.kid import request_device, require_kid, view_kid
 from app.api.rewards import redemption_name
 from app.core.client_ip import client_ip
+from app.integrations import store
 from app.models.family import get_family
 from app.models.reward import Redemption, Reward
 from app.models.user import User
-from app.services import economy, screen_time
+from app.services import economy, screen_bank, screen_time
 
 router = APIRouter(prefix="/api/v1/kid", tags=["kid"])
 
 
-class RedeemIn(BaseModel):
+class RedeemIn(BaseModel):  # scope None: 'group' when group_id is set, else 'all' (old clients)
     kind: str
     reward_id: int | None = None
     minutes: int | None = None
     device_id: int | None = None
+    group_id: int | None = None
+    scope: Literal["all", "other", "group"] | None = None
 
 
 @router.get("/rewards")
@@ -34,23 +38,27 @@ def rewards(db: Session = Depends(get_db), kid: User = Depends(view_kid)):
     now = datetime.now(UTC)
     cap, min_points = screen_time.limit_for(db, fam, kid.id)
     got = screen_time.bought_today(db, fam, [kid.id], now)[kid.id]
+    opts = screen_time.options(db, fam, kid)
+    saved = screen_bank.saved(db, fam, kid.id, cap)
     screen = {
         "enabled": bool(fam.points_unlock_early),
-        "price": fam.screen_time_price,
+        "price": opts[0]["price"],  # the All price, for old clients
         "auto": bool(fam.screen_auto_approve),
         "only_in_hours": bool(fam.screen_only_allowed_hours),
-        "max_today": cap,
+        "max_today": None if cap is None else cap + saved,
+        "saved": saved,
         "bought_today": got,
-        "left_today": None if cap is None else max(cap - got, 0),
+        "left_today": None if cap is None else max(cap + saved - got, 0),
         "min_points": min_points,
         "in_hours": screen_time.in_allowed_hours(db, kid, now),
         # bought minutes never open an off window (bedtime), even when allowed outside hours
         "off_now": screen_time.all_in_off_window(db, kid, now),
+        "options": opts,
     }
     return {
         "balance": economy.balance(db, kid.id),
         "screen": screen,
-        "screen_time_price": fam.screen_time_price,
+        "screen_time_price": opts[0]["price"],
         "screen_time_enabled": bool(fam.points_unlock_early),
         "rewards": [
             {
@@ -61,6 +69,7 @@ def rewards(db: Session = Depends(get_db), kid: User = Depends(view_kid)):
                 "needs_approval": r.needs_approval,
             }
             for r in db.query(Reward).filter(Reward.active, Reward.visible).order_by(Reward.id)
+            if store.reward_visible_to(db, r, kid.id)
         ],
         "pending": [
             {
@@ -91,9 +100,15 @@ def redeem(
     kid: User = Depends(require_kid),
 ):
     device_id = body.device_id
+    if body.kind == "reward" and body.reward_id:
+        rw = db.get(Reward, body.reward_id)
+        if rw is not None and not store.reward_visible_to(db, rw, kid.id):
+            raise HTTPException(400, "That reward isn't available. Pick another.")
     if device_id is None and body.kind == "screen_time":
         device_id = _guess_device(db, kid, client_ip(request))
-    r = economy.request(db, kid, body.kind, body.reward_id, body.minutes, device_id)
+    r = economy.request(
+        db, kid, body.kind, body.reward_id, body.minutes, device_id, body.group_id, body.scope
+    )
     return {
         "id": r.id,
         "kind": r.kind,

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useBonus, useDeduct } from '@/v2/hooks/useKids'
 import { Icon } from '@/v2/parent/Icon'
 import type { Kid } from '@/v2/types'
@@ -15,6 +15,8 @@ export function PointsForm({ kid, kind, onClose }: { kid: Kid; kind: 'bonus' | '
   const deductOnce = useSingle(deduct)
   const [amount, setAmount] = useState('')
   const input = useRef<HTMLInputElement>(null)
+  const presets = useRef<HTMLDivElement>(null)
+  useEffect(() => presets.current?.querySelector('button')?.focus(), []) // Deduct opens on its first amount
   const [customMode, setCustomMode] = useState(false)
   const custom = customMode || (amount !== '' && !DEDUCT_PRESETS.map(String).includes(amount))
   const [note, setNote] = useState('')
@@ -36,7 +38,7 @@ export function PointsForm({ kid, kind, onClose }: { kid: Kid; kind: 'bonus' | '
     if (give)
       bonusOnce(vars, {
         onSuccess: () => {
-          toastOk(`Sent! ${name} got +${n}`)
+          toastOk(`${name} got +${n}`)
           done()
         },
       })
@@ -56,7 +58,7 @@ export function PointsForm({ kid, kind, onClose }: { kid: Kid; kind: 'bonus' | '
         {give ? 'Give bonus points' : 'Deduct points'}
       </h3>
       {!give && (
-        <div className="pk-presets" role="group" aria-label="Amount">
+        <div className="pk-presets" role="group" aria-label="Amount" ref={presets}>
           {DEDUCT_PRESETS.map((a) => (
             <button type="button" key={a} className="pt-amt" data-on={!customMode && amount === String(a)} aria-pressed={!customMode && amount === String(a)} onClick={() => (setAmount(String(a)), setCustomMode(false))}>
               −{a}

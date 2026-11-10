@@ -9,8 +9,9 @@ import { fridgeTheme } from '@/v2/theme'
 import { api } from '@/v2/api'
 import { DeviceDetail } from '@/v2/manage/DeviceDetail'
 import type { Device, Kid } from '@/v2/types'
+import { fakeRouter } from './helpers/fakeRouter'
 
-jest.mock('next/router', () => ({ useRouter: () => ({ query: {}, push: jest.fn(), replace: jest.fn() }) }))
+jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 
@@ -19,7 +20,7 @@ const kids: Kid[] = [{ id: 7, full_name: 'Maya', username: 'kid-maya', avatar: n
 const dev = (over: Partial<Device> = {}): Device => ({
   id: 1, name: 'Tablet', mac: 'aa:bb:cc:dd:ee:01', vendor: null, status: 'assigned', owner_ids: [7],
   group_ids: [], online: false, override: null, last_seen: null, resisting: false,
-  exempt: false, reason: 'chores', chores_done: 3, chores_total: 5, locks_at: '2026-10-26T00:00:00Z', alerts: 1, address_changes: 1,
+  exempt: false, reason: 'chores', chores_done: 3, chores_total: 5, locks_at: '2026-10-26T20:00:00Z', alerts: 1, address_changes: 1,
   ...over,
 })
 const day = (date: string) => ({ date, slots: 'o'.repeat(20) + 'l'.repeat(20) + '.'.repeat(104), online_minutes: 200 })
@@ -31,7 +32,10 @@ const wrap = (ui: ReactNode) => (
     <MantineProvider theme={fridgeTheme}>{ui}</MantineProvider>
   </QueryClientProvider>
 )
-const show = (d: Device) => render(wrap(<DeviceDetail device={d} kids={kids} onRequestOverride={() => {}} />))
+const show = (d: Device, open?: string) => {
+  fakeRouter.reset('/devices', open ? { item: String(d.id), open } : { item: String(d.id) })
+  return render(wrap(<DeviceDetail device={d} kids={kids} onRequestOverride={() => {}} />))
+}
 
 beforeAll(() => {
   window.matchMedia ??= ((q: string) => ({ matches: false, media: q, addEventListener() {}, removeEventListener() {} })) as never
@@ -51,11 +55,11 @@ beforeEach(() => {
   })
 })
 
-describe('device Overview', () => {
+describe('device rows', () => {
   test('Right now explains a blocked device and when it locks', () => {
-    show(dev())
+    show(dev(), 'now')
     const right = screen.getByRole('region', { name: 'Right now' })
-    expect(within(right).getByText('Locked')).toBeTruthy()
+    expect(within(right).queryByText('Locked')).toBeNull() // the header chip says it, once
     expect(within(right).getByText('Chores 3/5 done')).toBeTruthy()
     expect(within(right).getByText('Locks at')).toBeTruthy()
     expect(within(right).getByText(/8:00\s?PM/)).toBeTruthy()
@@ -63,49 +67,55 @@ describe('device Overview', () => {
   })
 
   test('an exempt device is Open, always allowed, with no lock time', () => {
-    show(dev({ exempt: true, online: true, reason: 'exempt', locks_at: null }))
+    show(dev({ exempt: true, online: true, reason: 'exempt', locks_at: null }), 'now')
     const right = screen.getByRole('region', { name: 'Right now' })
-    expect(within(right).getByText('Open')).toBeTruthy()
+    expect(within(right).queryByText('Open')).toBeNull()
     expect(within(right).getByText('Always allowed')).toBeTruthy()
     expect(within(right).queryByText('Locks at')).toBeNull()
   })
 
-  test('Online this week has 7 rows, Today first', async () => {
+  test('Online by hour has 7 rows, Today first', async () => {
     show(dev())
+    await userEvent.click(await screen.findByRole('button', { name: 'Online by hour' }))
     const week = await screen.findByRole('region', { name: 'Online this week' })
-    await waitFor(() => expect(within(week).getAllByRole('listitem')).toHaveLength(7))
-    expect(within(week).getAllByRole('listitem')[0].textContent).toMatch(/^Today/)
+    await waitFor(() => expect(week.querySelectorAll('li')).toHaveLength(7))
+    expect(week.querySelectorAll('li')[0].textContent).toMatch(/^Today/)
     expect(within(week).getByText('Sat')).toBeTruthy()
   })
 
-  test('guest devices have no Online this week', () => {
+  test('guest devices have no online-by-hour line', () => {
     show(dev({ status: 'guest' }))
-    expect(screen.queryByRole('region', { name: 'Online this week' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Online by hour' })).toBeNull()
+  })
+
+  test('Right now says when the device was last seen', () => {
+    show(dev({ seen_now: false, last_seen: null }), 'now')
+    const right = screen.getByRole('region', { name: 'Right now' })
+    expect(within(right).getByText('Last seen')).toBeTruthy()
+    expect(within(right).getByText('never')).toBeTruthy()
   })
 
   test('Always allowed switch saves exempt', async () => {
-    show(dev())
+    show(dev(), 'details')
     await userEvent.click(screen.getByRole('switch', { name: 'Always allowed (never lock)' }))
     expect(apiMock).toHaveBeenCalledWith('/devices/1', { method: 'PATCH', body: { exempt: true } })
   })
 
-  test('Activity tab carries the alert count', () => {
+  test('Activity row carries the alert count', () => {
     show(dev())
-    const tab = screen.getByRole('tab', { name: /Activity/ })
-    expect(tab.textContent).toContain('1')
+    expect(screen.getByRole('button', { name: /^Activity/ }).textContent).toContain('1 alert this week')
   })
 })
 
 describe('device Network history rows', () => {
   const net = async (d: Device) => {
-    show(d)
-    await userEvent.click(screen.getByRole('tab', { name: 'Network' }))
+    show(d, 'network')
     return screen.getByRole('region', { name: 'Connection' })
   }
 
   test('shows address changes and a healthy hold', async () => {
     const c = await net(dev())
-    expect(within(c).getByText('Address changes (7 days)')).toBeTruthy()
+    expect(within(c).getByText('Address changes · 7 days')).toBeTruthy()
     expect(within(c).getByText('Resisting blocker')).toBeTruthy()
     expect(await within(c).findByText('Healthy')).toBeTruthy()
   })
@@ -120,5 +130,16 @@ describe('device Network history rows', () => {
     blocker = { online: false }
     const c = await net(dev())
     expect(await within(c).findByText('Box offline')).toBeTruthy()
+  })
+})
+
+describe('technical labels get plain words and an (i)', () => {
+  test('a private MAC reads as a random Wi-Fi address; the (i) names the term and the fix', async () => {
+    show(dev({ mac: 'ae:bb:cc:dd:ee:01' }), 'network')
+    expect(screen.getByText('Random Wi-Fi address')).toBeTruthy()
+    expect(screen.queryByText('Private MAC')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'About random Wi-Fi addresses' }))
+    const tip = await screen.findByText(/private MAC: a made-up Wi-Fi address/)
+    expect(tip.textContent).toMatch(/Private Wi-Fi Address/)
   })
 })

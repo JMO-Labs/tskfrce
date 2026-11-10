@@ -1,13 +1,14 @@
 import { Chip } from '@/v2/parent/Chip'
 import { useBlocker } from '@/v2/hooks/useDevices'
 import { Icon } from '@/v2/parent/Icon'
+import { InfoPop } from '@/v2/parent/InfoPop'
 import type { Device } from '@/v2/types'
 import { inFamilyZone } from './deviceMeta'
 import { isPrivateMac } from './privateMac'
 
 const maskMac = (mac: string) => (mac.length < 17 ? mac : mac.substring(0, 6) + '••:••' + mac.substring(11))
 
-/** Network tab: addresses and connection history. */
+/** Network row: addresses and connection history. */
 export function DeviceNetwork({ device, timeZone }: { device: Device; timeZone?: string }) {
   const boxUp = useBlocker().data?.online
   const hold = boxUp === false ? (['grey', 'wifi_off', 'Box offline'] as const) : device.resisting ? (['amb', 'warning', 'Slipping'] as const) : boxUp ? (['acc', 'shield', 'Healthy'] as const) : null
@@ -40,7 +41,15 @@ export function DeviceNetwork({ device, timeZone }: { device: Device; timeZone?:
         </div>
         {isPrivateMac(device.mac) && (
           <div className="pk-kv">
-            <span>Private MAC</span>
+            <span className="dv-lbl">
+              Random Wi-Fi address
+              <InfoPop label="About random Wi-Fi addresses">
+                <p className="ch-pop-p">
+                  This device uses a private MAC: a made-up Wi-Fi address that can change, so it may look like a new device. Turn off &ldquo;Private Wi-Fi
+                  Address&rdquo; for your home network on it so the lock keeps working.
+                </p>
+              </InfoPop>
+            </span>
             <Chip tone="amb" icon="wifi">
               Yes, random
             </Chip>
@@ -90,23 +99,11 @@ export function DeviceNetwork({ device, timeZone }: { device: Device; timeZone?:
         </div>
         {device.address_changes !== undefined && (
           <div className="pk-kv">
-            <span>Address changes (7 days)</span>
+            <span>Address changes · 7 days</span>
             <b>{device.address_changes}</b>
           </div>
         )}
       </section>
-      {isPrivateMac(device.mac) && (
-        <section className="pk-panel pk-span" data-tone="amber" aria-label="Private MAC tip">
-          <h3>
-            <Icon name="shield" size={18} />
-            Private MAC is on
-          </h3>
-          <p className="pk-hint">
-            This device can switch to a new random address, which would look like a new device. Turn off &ldquo;Private Wi-Fi Address&rdquo; for your
-            home network on it so the lock keeps working.
-          </p>
-        </section>
-      )}
     </div>
   )
 }

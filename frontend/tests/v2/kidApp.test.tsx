@@ -151,7 +151,7 @@ describe('KidApp', () => {
   })
 
   test('Rewards tab says Prizes in Little', async () => {
-    routes['GET /kid/rewards'] = { balance: 4, rewards: [], pending: [], screen_time_enabled: false, screen_time_price: 1, screen: { enabled: false, price: 1, auto: false, only_in_hours: false, max_today: null, bought_today: 0, left_today: null, min_points: null, in_hours: true } }
+    routes['GET /kid/rewards'] = { balance: 4, rewards: [], pending: [], screen_time_enabled: false, screen_time_price: 1, screen: { enabled: false, price: 1, options: [{ group_id: null, scope: 'all', name: 'All my devices', icon: 'devices', price: 1 }], auto: false, only_in_hours: false, max_today: null, saved: 0, bought_today: 0, left_today: null, min_points: null, in_hours: true } }
     renderApp(today('little'))
     await userEvent.click(screen.getByRole('button', { name: 'Prizes' }))
     expect(await screen.findByRole('heading', { name: /^Prizes · 4 points/ })).toBeInTheDocument()
@@ -193,5 +193,64 @@ describe('preview', () => {
     expect(screen.getByText("Alerts and chat show on Leo's own screen.")).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Chat' }))
     expect(screen.getByText("Alerts and chat show on Leo's own screen.")).toBeInTheDocument()
+  })
+})
+
+describe('KidApp celebrations', () => {
+  const renderWith = (preview: boolean) => {
+    localStorage.clear()
+    const done = { mutate: jest.fn((_id: number, o?: { onSuccess?: () => void }) => o?.onSuccess?.()), isPending: false, variables: undefined }
+    render(
+      <QueryClientProvider client={client()}>
+        <MantineProvider theme={fridgeTheme}>
+          <KidApp d={today('kid')} name="Leo" avatar="🦁" kidId={3} preview={preview} onExit={() => {}} onLocker={() => {}} canSwitch={false} done={done} />
+        </MantineProvider>
+      </QueryClientProvider>,
+    )
+    return done
+  }
+
+  test("the kid's own done tap celebrates once it goes through", async () => {
+    const done = renderWith(false)
+    expect(document.querySelector('[data-celebrate]')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: /^Open Dishes/ }))
+    await userEvent.click(screen.getByRole('button', { name: /I'm done!/ }))
+    expect(done.mutate).toHaveBeenCalledTimes(1)
+    // this file's matchMedia stub matches every query, so reduced motion is on: the static badge
+    expect(document.querySelector('[data-celebrate="static"]')).not.toBeNull()
+    expect(screen.getByText('+5 ✓')).toBeInTheDocument()
+  })
+
+  test('parent preview never celebrates', async () => {
+    renderWith(true)
+    await userEvent.click(screen.getByRole('button', { name: /^Open Dishes/ }))
+    await userEvent.click(screen.getByRole('button', { name: /I'm done!/ }))
+    expect(document.querySelector('[data-celebrate]')).toBeNull()
+  })
+
+  test('a double tap sends one request; the duplicate never errors away the first celebration', async () => {
+    localStorage.clear()
+    let calls = 0
+    const done = {
+      mutate: jest.fn((_id: number, o?: { onSuccess?: () => void; onError?: () => void }) => {
+        calls++
+        if (calls === 1) setTimeout(() => o?.onSuccess?.(), 20)
+        else o?.onError?.() // a 409 for the duplicate
+      }),
+      isPending: false,
+      variables: undefined,
+    }
+    render(
+      <QueryClientProvider client={client()}>
+        <MantineProvider theme={fridgeTheme}>
+          <KidApp d={today('kid')} name="Leo" avatar="🦁" kidId={3} preview={false} onExit={() => {}} onLocker={() => {}} canSwitch={false} done={done} />
+        </MantineProvider>
+      </QueryClientProvider>,
+    )
+    await userEvent.click(screen.getByRole('button', { name: /^Open Dishes/ }))
+    const btn = screen.getByRole('button', { name: /I'm done!/ })
+    await userEvent.dblClick(btn)
+    expect(done.mutate).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(document.querySelector('[data-celebrate]')).not.toBeNull())
   })
 })

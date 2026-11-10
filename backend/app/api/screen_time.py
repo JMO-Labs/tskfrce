@@ -12,7 +12,7 @@ from app.models.chores import Chore
 from app.models.family import get_family
 from app.models.screen_time import ScreenTimeLimit
 from app.models.user import User, UserRole
-from app.services import economy, screen_time
+from app.services import economy, screen_bank, screen_time
 
 router = APIRouter(
     prefix="/api/v1/screen-time", tags=["screen-time"], dependencies=[Depends(require_parent)]
@@ -31,8 +31,11 @@ class SettingsPatch(BaseModel):
     max_minutes_per_day: int | None = Field(default=None, ge=15, le=480)
     auto_approve: bool | None = None
     only_in_allowed_hours: bool | None = None
+    group_pricing: bool | None = None
+    rollover: bool | None = None
+    bank_cap: int | None = Field(default=None, ge=15, le=480)
 
-    _step = field_validator("max_minutes_per_day")(_quarter_hours)
+    _step = field_validator("max_minutes_per_day", "bank_cap")(_quarter_hours)
 
 
 class LimitIn(BaseModel):
@@ -55,6 +58,9 @@ def _payload(db: Session) -> dict:
         "max_minutes_per_day": fam.screen_max_minutes,
         "auto_approve": bool(fam.screen_auto_approve),
         "only_in_allowed_hours": bool(fam.screen_only_allowed_hours),
+        "group_pricing": bool(fam.group_pricing),
+        "rollover": bool(fam.screen_rollover),
+        "bank_cap": fam.screen_bank_cap,
         "reset_time": fam.reset_time,
         "avg_chore_points": round(avg) if avg else 0,
         "kids": [
@@ -64,6 +70,7 @@ def _payload(db: Session) -> dict:
                 "balance": economy.balance(db, k.id),
                 "bought_today": bought[k.id],
                 "max_minutes": screen_time.limit_for(db, fam, k.id)[0],
+                "saved": screen_bank.saved(db, fam, k.id),
                 "limit": (
                     {"max_minutes": rows[k.id].max_minutes, "min_points": rows[k.id].min_points}
                     if k.id in rows
@@ -89,9 +96,14 @@ def patch_settings(body: SettingsPatch, db: Session = Depends(get_db)):
         "max_minutes_per_day": "screen_max_minutes",
         "auto_approve": "screen_auto_approve",
         "only_in_allowed_hours": "screen_only_allowed_hours",
+        "group_pricing": "group_pricing",
+        "rollover": "screen_rollover",
+        "bank_cap": "screen_bank_cap",
     }
+    if body.rollover is False and fam.screen_rollover:
+        screen_bank.clear_all(db)
     for k, v in body.model_dump(exclude_unset=True).items():
-        if v is not None or k == "max_minutes_per_day":  # only the daily max can be cleared
+        if v is not None or k in ("max_minutes_per_day", "bank_cap"):  # these can be cleared
             setattr(fam, cols[k], v)
     db.commit()
     from app.lock.loop import trigger

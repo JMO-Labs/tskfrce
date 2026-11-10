@@ -22,10 +22,21 @@ KINDS = (
     "address_change",
     "locked",
     "unlocked",
+    "identity_change",
+    "workaround_try",
 )
-ALERT_KINDS = KINDS[:6]
+ALERT_KINDS = (
+    "bypass",
+    "new_address",
+    "outside_hours",
+    "locked_try",
+    "left_wifi",
+    "sign_in",
+    "identity_change",
+    "workaround_try",
+)
 FILTERS = {
-    "bypass": ("bypass", "new_address"),
+    "bypass": ("bypass", "new_address", "identity_change", "workaround_try"),
     "locked": ("locked_try", "outside_hours", "left_wifi"),
     "sign_in": ("sign_in",),
 }

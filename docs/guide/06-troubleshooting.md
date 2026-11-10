@@ -6,6 +6,18 @@ Commands on this page are typed in the Terminal on the home box (see [Install](0
 
 If a command says "permission denied" for Docker, put `sudo` in front of it. If it says "no configuration file provided" or "no such file", you are not in the `task4ce` folder.
 
+## I can't find a setting
+
+Screens now show less at first, and open a row for more. Where things moved:
+
+- **Points history** for a kid: tap the points chip at the top of the kid's page.
+- **Block new devices** and the **Home box** status: **Devices**, the **Home network** row at the top of the list (no longer in Settings → Family).
+- **Bedtime auto-approve** and **Weekly recap**: **Settings → Family → Bedtime & recap** (the old Extras card).
+- **Start Happy Hour**: the **…** at the top right of **Today**.
+- **Send back**, **Decline** and **Dismiss**: the **…** on a row in Needs you or the bell.
+- **Export CSV** of rewards: the button in the header of **Kids & chores → Rewards → History**.
+- Quiet hours, and the rest of how pings arrive: **Settings → Notifications → When and how**.
+
 ## The app says "Home box offline"
 
 A red message at the top says **Home box offline** and "It went quiet at ...". It means the app has not heard from the box for a minute or two.
@@ -28,7 +40,7 @@ The most common cause is a wrong network name in the `.env` file. Type `ip route
 
 Work through these in order:
 
-1. Is the device **assigned** to a kid? Guests are never paused. New devices are paused only if **Block new devices until I assign them** is on in **Settings → Family**.
+1. Is the device **assigned** to a kid? Guests are never paused. New devices are paused only if **Block new devices until I assign them** is on (**Devices → Home network**).
 2. Are all that kid's chores approved for today? If yes, the internet is on. If the kid has no chores today, it is also on.
 3. Is **Lock until today's chores are done** off in **Settings → Hours**? Then only the hours count. Is it inside a **Free time** window?
 4. Open the device. Is **Always allowed (never lock)** on? Do you see **Back to schedule**? That means someone unlocked it by hand: tap **Back to schedule**.
@@ -53,7 +65,46 @@ What kids try, and what happens (details in [the home box notes](../blocker.md))
 - Using another device that isn't set up: **not covered**. Put every device on the Devices page.
 - Unplugging the box: the internet comes back on, and you get an alert.
 
+## "May be a different device" alert
+
+A device's reported type changed, for example an iPad that now looks like a MacBook. Someone may have copied its address. This alert ignores quiet hours, and you get it at most once a day per device.
+
+1. Open the device. Its **Activity** tab shows the old and new type.
+2. Check the device is the one you expect. A software update alone does not cause this alert.
+3. If it is the right device, nothing more to do. If not, change the owner or remove it, and talk with your kid.
+
+![The bell with a security alert](img/bell-alerts.jpg)
+
+## "Tried a VPN" alert
+
+The box saw a paused device look up a VPN, private-DNS ("DNS" is the internet's phone book), proxy site or Tor name. It was already blocked. Nothing is broken.
+
+1. Open the device to see which one it tried.
+2. Talk with your kid. You get one alert per kind per pause, so it won't repeat while the device stays paused.
+3. To stop these, turn off **Tried a workaround** in **Settings → Notifications**.
+
+The box can't notice a VPN app that goes straight to a number address, a device that isn't paused, or a sibling's spare device.
+
+## "Someone is guessing my password"
+
+Someone typed a wrong password for your account 5 times in 15 minutes. You get this at most once an hour. Kid accounts don't trigger it.
+
+1. If it was you, ignore it.
+2. If not, tap **Change password** on the alert. It opens **Settings → Parents → Your password**.
+3. Pick a new, long password. Ask your kids if they were trying.
+
+![Your password card in Settings](img/settings-password.jpg)
+
 The real fix is a talk. If you see the alert, ask. Keep the box out of reach.
+
+## Why can't I price YouTube differently from homework on the same tablet?
+
+The box sees devices, not apps. It can't tell YouTube from a homework app on one tablet, so the tablet has one price.
+
+1. To price them apart, put the apps on separate devices, like a cheap tablet for homework.
+2. Put each device in its own group, then set a **Screen time price** on each group. See [Everyday use](04-everyday-use.md).
+
+You should see: kids pick the group in "What for?" when they ask for time.
 
 ## I forgot my password
 
@@ -85,6 +136,37 @@ If the link says it has expired, make a new one. Each new link cancels the old o
 
 1. Make sure the device is assigned to that kid on the **Devices** page. Kids can only sign in from their own devices.
 2. After too many wrong PINs the app says "Too many tries. Wait a minute and try again." Wait a minute.
+
+## The box code doesn't work
+
+1. Look at the sticker on the box again. Dashes and capital letters don't matter, but a 0 and an O look alike.
+2. Check you are scanning the sticker for this box.
+3. Still no luck? Ask the person who set the box up for the code.
+
+You should see: the page moves on to making your parent account.
+
+## Too many tries
+
+After too many wrong codes the app says to wait. Wait a few minutes, then try again with the code from the sticker.
+
+## The kid's code expired or was already used
+
+A kid's code works once and only for 24 hours. The phone says "Ask a parent for a new code."
+
+1. Sign in as a parent. Open the kid's page and find **Phones and tablets**, or use the **Kids' phones** step of setup.
+2. Tap **Show code** or **New code**, and scan it again on the kid's phone.
+
+## I can't add it to my home screen
+
+Adding to the home screen needs the box's secure address (starts with `https`). A box opened by its number address (an IP address such as `http://192.168.1.50:3000`) can't do it. Open it with the **Open my box** code on the sticker instead. See [Install](02-install.md).
+
+## The iPhone icon asks me to sign in
+
+An iPhone or iPad keeps the home-screen icon apart from Safari, so the icon starts empty. Open the icon, tap **I have a code**, and type the short code (like `AB3D-7KMN`) the welcome page showed after you scanned. The code works once and runs out after 15 minutes. If it ran out, a parent makes a new QR code (see above) and you scan it again.
+
+## A lost phone
+
+Open the kid's page, find **Phones and tablets**, and tap **Remove** next to the phone. It signs out right away. The phone shows "This phone was removed. Ask a parent for a new code." To add a phone back, scan a new code.
 
 ## Homework sites won't load
 

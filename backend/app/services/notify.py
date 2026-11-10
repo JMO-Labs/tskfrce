@@ -34,25 +34,32 @@ EVENTS = {
     "kid_note": "Kid note",
     "reward_request": "Reward request",
     "new_device": "New device",
-    "resisting": "Device resisting",
+    "resisting": "Security alerts",
     "badge": "Badge / level up",
     "summary": "Daily summary",
     "box_offline": "Box offline",
     "lock_change": "Locked / unlocked",
     "overdue": "Overdue",
+    "workaround": "Tried a workaround",
+    "boost": "Auto Happy Hour started",
+    "recap": "Weekly recap",
 }
 SECURITY = {"resisting", "box_offline"}
-HELD = {"chore_ok", "kid_note", "reward_request", "new_device"}
+HELD = {"chore_ok", "kid_note", "reward_request", "new_device", "workaround", "recap"}
 DEFAULT_EVENTS = (
     "chore_ok",
     "kid_note",
     "reward_request",
-    "new_device",
     "resisting",
     "box_offline",
+    "workaround",
+    "summary",
+    "boost",
+    "recap",
 )
 KIND_EVENT = {
     "chore_submitted": "chore_ok",
+    "integration_done": "chore_ok",
     "chore_note": "kid_note",
     "redemption_request": "reward_request",
     "redemption_decided": "reward_request",
@@ -60,9 +67,13 @@ KIND_EVENT = {
     "new_device": "new_device",
     "device_resisting": "resisting",
     "device_bypass": "resisting",
+    "password_guess": "resisting",
+    "workaround_try": "workaround",
     "badge_earned": "badge",
     "level_up": "badge",
     "box_offline": "box_offline",
+    "boost": "boost",
+    "recap": "recap",
 }
 
 _pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="apprise")

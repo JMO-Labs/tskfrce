@@ -20,10 +20,16 @@ services:
       CORS_ORIGINS: ${BOX_URL:-http://localhost:3000}
       # Only the frontend proxy may set X-Real-IP
       TRUSTED_PROXY_IPS: 127.0.0.1,::1,${TASK4CE_FRONTEND_IP:-172.29.50.10}
+      # Local push keys: LAN ranges, minus loopback, link-local and Docker bridges
+      LOCAL_PUSH_CIDRS: ${LOCAL_PUSH_CIDRS:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fd00::/8}
+      LOCAL_PUSH_EXCLUDE_CIDRS: ${LOCAL_PUSH_EXCLUDE_CIDRS:-127.0.0.0/8,::1/128,169.254.0.0/16,fe80::/10,172.17.0.0/16,${TASK4CE_SUBNET:-172.29.50.0/24}}
       NTFY_URL: http://ntfy:80
       NTFY_PUBLIC_URL: ${NTFY_PUBLIC_URL:-http://task4ce.local:2586}
       NTFY_PORT: ${NTFY_PORT:-0.0.0.0:2586}
       NTFY_CONF_FILE: /ntfy-conf/server.yml
+      CLAIM_CODE: ${CLAIM_CODE:-}
+      NTFY_UPSTREAM_URL: ${NTFY_UPSTREAM_URL-https://ntfy.sh}
+      NTFY_UPSTREAM_TOKEN: ${NTFY_UPSTREAM_TOKEN:-}
     volumes:
       - task4ce_data:/app/data
       - ntfy_conf:/ntfy-conf
@@ -47,6 +53,8 @@ services:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: /api/proxy
       BACKEND_INTERNAL_URL: http://backend:8000
+      EDGE_TOKEN: ${EDGE_TOKEN:-}
+      FRONTEND_UPSTREAM: ${FRONTEND_UPSTREAM:-127.0.0.1:3000}
     depends_on:
       backend:
         condition: service_healthy
@@ -115,8 +123,26 @@ services:
       PORTAL_REDIRECT_URL: ${BOX_URL:-http://task4ce.local:3000}/kid
     restart: unless-stopped
 
+  # HTTPS front on <id>.taskfrce.jmolabs.dev (scripts/enable-hostname.sh). Opt-in via COMPOSE_PROFILES=edge.
+  # Empty-default env on purpose: `:?` is interpolated even with the profile off; edge.sh checks them.
+  edge:
+    image: ghcr.io/jmo-labs/tskfrce/edge:${TASK4CE_TAG:-latest}
+    build:
+      context: ./edge
+    profiles: ["edge"]
+    network_mode: host
+    environment:
+      BOX_ID: ${BOX_ID:-}
+      BOX_SECRET: ${BOX_SECRET:-}
+      EDGE_TOKEN: ${EDGE_TOKEN:-}
+      FRONTEND_UPSTREAM: ${FRONTEND_UPSTREAM:-127.0.0.1:3000}
+    volumes:
+      - edge_data:/data
+    restart: unless-stopped
+
 volumes:
   task4ce_data:
+  edge_data:
   ntfy_cache:
   ntfy_conf:
 

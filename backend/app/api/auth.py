@@ -4,6 +4,7 @@ Authentication API router for t@sk4ce.
 This module contains API endpoints for authentication and authorization.
 """
 
+import logging
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -26,7 +27,9 @@ from app.schemas.auth import (
     RefreshTokenResponse,
 )
 from app.schemas.user import RegisterIn
+from app.services import guess_watch
 
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
 
 
@@ -50,6 +53,11 @@ async def login(login_data: LoginRequest, request: Request, db: Session = Depend
     user = auth_service.authenticate_user(login_data.username, login_data.password)
 
     if not user:
+        try:
+            guess_watch.record_failure(db, login_data.username)
+        except Exception:
+            db.rollback()
+            log.exception("password-guess watch failed")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="That username and password don't match.",

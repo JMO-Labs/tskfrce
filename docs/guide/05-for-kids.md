@@ -20,6 +20,21 @@ On a shared device, tap **Me**, then **Not me** when you are finished, so the ne
 
 ![The kid screen: internet is paused, and the chores to do](img/kid-today.jpg)
 
+## Get it on your phone
+
+If you have your own phone, your parent shows you a square code. Do this:
+
+1. Scan the code with your phone's camera.
+2. You see "You're in" and your name. Follow the steps to tap **Add to Home Screen**, so t@sk4ce gets an icon like an app.
+3. Get the free **ntfy** app, then tap **Add my alerts**. Now you get alerts even when t@sk4ce is closed.
+4. Tap **Start**.
+
+![The welcome page on a kid's phone](img/kid-welcome.jpg)
+
+**On an iPhone or iPad**, the icon on your home screen starts empty, so it needs a short code. After you scan, the welcome page shows a code like `AB3D-7KMN`. Add t@sk4ce to your home screen, open it from there, tap **I have a code**, type the code and tap **Go**. The code works once and runs out after 15 minutes. If it ran out, ask a parent for a new QR code and scan it again.
+
+The QR code works once and runs out after a day. If it says it expired, ask a parent for a new code.
+
 ## Your screen
 
 Your parent picks the look that fits your age. All three work the same way.
@@ -54,15 +69,30 @@ Tap **Me**, then **Customize**, to dress up your name card. Pick what to change,
 
 ## Spending points
 
-Tap **Rewards** (**Prizes** in Little). Ask for screen time (you pick the minutes), or save up for a reward and tap **Request** when the bar is full. Some rewards say **Get it**: those don't need a yes. Otherwise a parent has to say yes. If they say no, you keep your points.
+Tap **Rewards** (**Prizes** in Little). Ask for screen time (you pick the minutes, and sometimes what it's for, like Tablets or Consoles; some cost more), or save up for a reward and tap **Request** when the bar is full. Some rewards say **Get it**: those don't need a yes. Otherwise a parent has to say yes. If they say no, you keep your points. If you don't use all your screen time today, you may be able to save it for a bigger day later.
+
+![Asking for screen time: What for? and how many minutes](img/kid-screen-for.jpg)
 
 ## Chat and alerts
 
 In **Chat** you can talk to your parents (just you and them), to the whole family, or about a chore. Be kind. Parents can read the chats you are in.
 
-**Alerts** tells you when a chore is due soon, when a parent approved or sent something back, and when the internet is about to go off. Your parent can also set up your phone to get these alerts, by scanning a code in the free ntfy app.
+**Alerts** tells you when a chore is due soon, when a parent approved or sent something back, and when the internet is about to go off. You get them on your phone too, once you tap **Add my alerts**.
 
 Little mode has no chat or alerts tab.
+
+## Happy Hour and fun stuff
+
+- **Happy Hour** means double points (sometimes more) for a little while. A bright banner at the top tells you how long is left. Do chores then!
+- **Celebrations** pop up when you finish a chore. Every one is different, and some are super rare.
+- **Streak freezes** save your streak if you miss a day. You earn one for every 7 days in a row, and you can keep 2.
+- Want it calmer? Tap **Me** to change your celebrations.
+
+## Trust level
+
+If your parent turned on trust mode, **Me** shows a small chip: **New**, **Trusted** or **Proven**. Do your chores for real and your level goes up by itself. At Trusted and Proven, most chores approve right away and your points come in at once. Now and then a parent takes a quick look, and that is normal. If a parent checks a chore and it wasn't done, the points come back off and your level can drop a step. You can earn it back.
+
+![Me: the Proven chip and a friendly line about it](img/kid-trust-chip.jpg)
 
 ## Good to know
 

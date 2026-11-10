@@ -10,6 +10,8 @@ const time = (iso: string, tz?: string) => {
   }
 }
 
+const WORKAROUND: Record<string, string> = { vpn: 'a VPN', private_dns: 'private DNS', proxy: 'a proxy site', tor: 'Tor' }
+
 const LOCKED_WHY: Record<string, string> = { chores: 'chores not done', manual: 'locked by a parent', new_device: 'new device' }
 
 /** Alert row copy for the Activity tab. */
@@ -29,6 +31,20 @@ export function eventText(e: DeviceEvent, deviceName: string, tz?: string): { ic
         sev: 'md',
         title: 'New address right after locking',
         sub: `A “new device” named ${e.other_device_name ?? 'unknown'} joined ${e.minutes ?? 0} min after this device locked. Likely a private MAC switch to dodge the lock.`,
+      }
+    case 'identity_change':
+      return {
+        icon: 'devices_other',
+        sev: 'md',
+        title: `May be a different device (${e.detail})`,
+        sub: `${deviceName} may be a different device using the same address. Worth a look.`,
+      }
+    case 'workaround_try':
+      return {
+        icon: 'vpn_lock',
+        sev: 'hi',
+        title: `Tried ${WORKAROUND[e.reason ?? ''] ?? 'a workaround'} — blocked`,
+        sub: `${deviceName} tried to get around the lock while paused. The box blocked it.`,
       }
     case 'outside_hours':
       return {

@@ -1,4 +1,6 @@
+import type { CelebrateLevel } from './funTypes'
 import type { KidScreen } from './rewardTypes'
+import type { ChoreTrustFields, FamilyExtrasFields, KidTrust, KidTrustFields, RunTrustFields, TodayTryFields } from './trustTypes'
 /** Shapes of the v2 backend responses (backend/app/api/{family,kid,devices,kids,hours,chores,setup}.py). */
 
 export type ChoreState = 'done' | 'needs_you' | 'todo' | 'skipped'
@@ -8,6 +10,7 @@ export type OverrideAction = 'lock' | 'unlock' | 'homework'
 /** GET /setup */
 export interface SetupStatus {
   needed: boolean
+  claim?: boolean
 }
 
 export interface Override {
@@ -85,24 +88,28 @@ export interface Group {
   icon: string
   owner_ids?: number[]
   chore_lock: boolean
+  /** Points per 15 min for this group; null uses the family price. */
+  screen_price: number | null
 }
 
 /** GET /kids item */
 export type AgeGroup = 'little' | 'kid' | 'teen'
 
-export interface Kid {
+export interface Kid extends KidTrustFields {
   id: number
   full_name: string | null
   username: string
   avatar: string | null
   has_pin: boolean
   age_group: AgeGroup
+  /** the kid's own pick; null = mode default */
+  celebrate?: CelebrateLevel | null
 }
 
 /** GET/PATCH /family */
 export type AccentKey = 'neon' | 'sun' | 'tangerine' | 'bubblegum' | 'lilac' | 'sky' | 'aqua' | 'mint' | 'peach' | 'ice'
 
-export interface Family {
+export interface Family extends FamilyExtrasFields {
   name: string
   timezone: string
   reset_time: string
@@ -117,6 +124,11 @@ export interface Family {
   ntfy_upstream_relay: boolean
   chores_lock: boolean
   quick_replies: string[]
+  hh_default_mult_x10: 15 | 20 | 30
+  hh_default_minutes: 30 | 60 | 90
+  hh_weekly_surprise: boolean
+  hh_auto_boost: boolean
+  streak_freeze: boolean
 }
 
 /** GET /chore-types item */
@@ -149,7 +161,7 @@ export interface RunStep {
 }
 
 /** Chore entry inside /today and /kid/today */
-export interface TodayChore {
+export interface TodayChore extends RunTrustFields {
   id: number
   title: string
   points: number
@@ -209,6 +221,8 @@ export interface TodayKid {
   name: string | null
   avatar: string | null
   online_all: boolean
+  /** assigned on its last 2 run days and submitted none (same as the auto boost) */
+  quiet?: boolean
   done?: number
   total?: number
   needs_you_count?: number
@@ -227,8 +241,8 @@ export interface TodayKid {
 }
 
 /** Item in GET /today needs_you. */
-export interface NeedsItem {
-  type: 'chore' | 'redo' | 'screen_time' | 'reward' | 'note' | 'homework'
+export interface NeedsItem extends RunTrustFields {
+  type: 'chore' | 'redo' | 'screen_time' | 'reward' | 'note' | 'integration' | 'homework'
   id: number
   kid_id: number | null
   kid_name: string | null
@@ -246,10 +260,12 @@ export interface NeedsItem {
   mode?: string
   /** type 'note': the kid's note label */
   note?: string
+  /** type 'integration': the service that checked the chore off */
+  integration?: { id: number; name: string; icon: string }
 }
 
 /** GET /today */
-export interface Today {
+export interface Today extends TodayTryFields {
   day: string
   pending_approvals: number
   new_devices: Device[]
@@ -282,7 +298,7 @@ export interface Assignment {
 }
 
 /** GET /chores: a chore in the library with its assignments */
-export interface LibChore {
+export interface LibChore extends ChoreTrustFields {
   id: number
   title: string
   points: number
@@ -320,6 +336,8 @@ export interface KidChore extends TodayChore {
   taken_by?: string | null
   notes?: ChoreNote[]
   deductions?: { amount: number; note: string | null; by_name: string | null; at: string }[]
+  /** points with the live (todo) or locked-in (submitted) Happy Hour multiplier */
+  points_now?: number
 }
 
 export interface KidToday {
@@ -334,6 +352,12 @@ export interface KidToday {
   age_group: AgeGroup
   /** UTC ISO when the kid next locks; null = not today */
   locks_at: string | null
+  /** celebration level; missing = mode default (teen small, else full) */
+  celebrate?: CelebrateLevel
+  /** active Happy Hour, if any */
+  happy_hour?: { ends_at: string; multiplier: number } | null
+  /** null = trust mode off */
+  trust?: KidTrust | null
   /** homework mode until timestamp; null = not in homework mode */
   homework?: { until: string } | null
   /** true if kid has a pending homework request */
@@ -343,6 +367,7 @@ export interface KidToday {
 /** GET /kids/{id}/push */
 export interface KidPush {
   enabled: boolean
+  upstream: boolean // generic kid alerts go through a public relay
   server: string
   topic: string
   link: string
@@ -357,21 +382,6 @@ export interface KidRewards {
   screen: KidScreen
   rewards: { id: number; name: string; price: number; icon: string | null; needs_approval: boolean }[]
   pending: { id: number; kind: 'reward' | 'screen_time'; reward_id: number | null; minutes: number | null; cost: number }[]
-}
-
-/** GET /kid/celebrations item. key: "r:<id>" | "b:<id>" | "l:<level>". */
-export interface KidCelebration {
-  key: string
-  kind: 'reward' | 'screen_time' | 'badge' | 'level' | 'bonus'
-  title: string
-  /** badge: tier name; bonus: the parent's note */
-  detail: string
-  /** custom badge: the parent's note */
-  note?: string | null
-  size: 'big' | 'small'
-  glyph?: string | null
-  /** level celebrations: flair newly unlocked */
-  unlocked?: { id: string; label: string; emblem: string | null }[]
 }
 
 /** GET /custom-badges item. */
@@ -419,6 +429,9 @@ export interface Progress {
   floor: number
   next: number
   streak: number
+  freezes_held?: number | null // null: family has streak freezes off
+  /** ISO dates a freeze covered in the current run */
+  frozen?: string[]
   flair?: Flair
 }
 
@@ -483,5 +496,6 @@ export interface FlairCatalog {
   equipped: Flair
 }
 
+export * from './funTypes'
 export * from './hoursTypes'
 export * from './rewardTypes'

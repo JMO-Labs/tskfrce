@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 
 from fastapi import HTTPException
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.flair.catalog import CATALOG as FLAIR
@@ -16,7 +17,9 @@ from app.models.points import Points
 from app.models.reward import Redemption
 from app.models.user import User
 from app.services import chores as chore_svc
-from app.services import economy, inbox, progression
+from app.services import economy, inbox, progression, trust
+
+TRUSTED = trust.SELF_APPROVED  # approved_via values that count without a parent id
 
 TIERS = ("copper", "silver", "gold", "platinum", "mega-diamond")
 
@@ -87,7 +90,7 @@ def _task_metrics(db: Session, kid: User, fam: FamilySettings) -> dict[str, int]
         .filter(
             chore_svc.kid_runs_filter(kid.id),
             ChoreRun.status == "done",
-            ChoreRun.approved_by_id.isnot(None),
+            or_(ChoreRun.approved_by_id.isnot(None), ChoreRun.approved_via.in_(TRUSTED)),
         )
         .order_by(ChoreRun.day, ChoreRun.id)
         .all()
@@ -124,7 +127,7 @@ def _task_metrics(db: Session, kid: User, fam: FamilySettings) -> dict[str, int]
 def metrics(db: Session, kid: User, fam: FamilySettings) -> dict[str, int]:
     today = current_chore_day(fam, datetime.now(UTC))
     days = progression.chore_days(db, kid.id, today)
-    st = progression.streak(db, kid.id, today)
+    st = progression.streak_for(days, today, fam.streak_freeze)  # the streak the UI shows
     all_runs = [*st.runs, st.current] if st.current else st.runs
     reds = db.query(Redemption).filter(Redemption.kid_id == kid.id, Redemption.status == "approved")
     reds = reds.all()

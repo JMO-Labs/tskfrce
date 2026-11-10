@@ -41,6 +41,9 @@ const nextConfig = {
   // Security headers
   async headers() {
     return [
+      // the worker script must always be revalidated so a new cache version rolls out
+      { source: '/sw.js', headers: [{ key: 'Cache-Control', value: 'no-cache' }] },
+      { source: '/:file*.webmanifest', headers: [{ key: 'Content-Type', value: 'application/manifest+json' }] },
       {
         source: '/(.*)',
         headers: [

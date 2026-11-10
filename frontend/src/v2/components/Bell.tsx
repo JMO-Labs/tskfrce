@@ -12,8 +12,10 @@ import { useDecideRedemption } from '../hooks/useRewards'
 import { Icon } from '../parent/Icon'
 import { toastFail, toastOk } from '../notify'
 import { api } from '../api'
-import { isAlert, isNeedsYou, isToday, severity, when } from './bellRules'
-import { BellActions } from './BellActions'
+import { isAlert, isNeedsYou, isToday } from './bellRules'
+import { InboxRow } from './InboxRow'
+import { useEscClose, useInboxLock } from './useInboxLock'
+import { MenuPortalContext } from '../parent/MoreMenu'
 
 type FilterKind = 'all' | 'needs-you' | 'alerts'
 const TABS: { key: FilterKind; label: string }[] = [
@@ -36,6 +38,7 @@ export function List({ onGo, sheet, page }: { onGo: () => void; sheet?: boolean;
   const approve = useApproveChore()
   const sendBack = useSendBack()
   const decideRedemption = useDecideRedemption()
+  const lock = useInboxLock()
   // the server sends the newest page; "Show older" appends further pages (the 30 s poll only refreshes the first)
   const [older, setOlder] = useState<{ items: InboxItem[]; more: boolean } | null>(null)
   const [loadingOlder, setLoadingOlder] = useState(false)
@@ -115,52 +118,51 @@ export function List({ onGo, sheet, page }: { onGo: () => void; sheet?: boolean;
     onGo()
     return to ? router.push(to) : Promise.resolve()
   }
-  const row = (n: InboxItem, today: boolean) => {
-    const sev = severity(n)
-    const sub = [n.body, when(n.created_at)].filter(Boolean).join(' · ')
-    return (
-      <div key={n.id} className={`p-bell-item ${!n.read ? 'unread' : ''}`}>
-        <div className={`p-bell-icon ${sev.tone}`}>
-          <Icon name={sev.name} />
+  const row = (n: InboxItem, today: boolean) => (
+    <InboxRow
+      key={n.id}
+      n={n}
+      live={today || n.pending}
+      busy={busy === n.id}
+      sending={sending === n.id}
+      note={note}
+      onNote={setNote}
+      onApprove={() => handleApprove(n)}
+      onSendBack={() => void handleSendBack(n)}
+      onDecide={(yes) => handleDecide(n, yes)}
+      onDismiss={() => dismiss.mutate(n.id)}
+      onLock={() => lock(n)}
+      onOpen={() => (dest(n) ? goTo(n, dest(n)) : markRead(n))}
+      go={(to) => goTo(n, to)}
+    />
+  )
+  const unread = (inbox.data?.unread ?? 0) > 0
+  const group = (label: string, rows: InboxItem[], today: boolean, first: boolean) =>
+    rows.length > 0 && (
+      <>
+        <div className="p-bell-group">
+          <span>{label}</span>
+          {first && unread && (
+            <button type="button" className="p-bell-mark-read" onClick={() => readAll.mutate(undefined)}>
+              Mark all read
+            </button>
+          )}
         </div>
-        <button type="button" className="p-bell-text" onClick={() => (dest(n) ? goTo(n, dest(n)) : markRead(n))}>
-          <span className="p-bell-title">{n.title}</span>
-          {sub && <span className="p-bell-sub">{sub}</span>}
-        </button>
-        <button type="button" className="p-bell-x" aria-label={`Dismiss ${n.title}`} onClick={() => dismiss.mutate(n.id)}>
-          <Icon name="close" size={16} />
-        </button>
-        {(today || n.pending) && (
-          <BellActions
-            n={n}
-            busy={busy === n.id}
-            sending={sending === n.id}
-            note={note}
-            onNote={setNote}
-            onApprove={() => handleApprove(n)}
-            onSendBack={() => void handleSendBack(n)}
-            onDecide={(yes) => handleDecide(n, yes)}
-            go={(to) => goTo(n, to)}
-          />
-        )}
-      </div>
+        <div className="p-bell-card">{rows.map((n) => row(n, today))}</div>
+      </>
     )
-  }
   const empty = items.length === 0
 
   return (
     <div className="p-bell-list" data-sheet={sheet || undefined} data-page={page || undefined}>
-      <div className="p-bell-head">
-        {sheet || page ? <span /> : <strong>Notifications</strong>}
-        {(inbox.data?.unread ?? 0) > 0 && (
-          <button type="button" className="p-bell-mark-read" onClick={() => readAll.mutate(undefined)}>
-            Mark all read
-          </button>
-        )}
-      </div>
+      {!sheet && !page && (
+        <div className="p-bell-head">
+          <strong>Notifications</strong>
+        </div>
+      )}
       <div className="p-bell-tabs">
         {TABS.map((t) => (
-          <button key={t.key} type="button" className={`p-bell-tab ${filter === t.key ? 'on' : ''}`} data-autofocus={filter === t.key || undefined} onClick={() => setFilter(t.key)}>
+          <button key={t.key} type="button" className={`p-bell-tab ${filter === t.key ? 'on' : ''}`} aria-pressed={filter === t.key} data-autofocus={filter === t.key || undefined} onClick={() => setFilter(t.key)}>
             {tabLabel(t.label, inbox.data && counts[t.key], hasMore)}
           </button>
         ))}
@@ -173,7 +175,7 @@ export function List({ onGo, sheet, page }: { onGo: () => void; sheet?: boolean;
         ) : (
           <EmptyState
             icon="notifications_off"
-            title={filter === 'alerts' ? 'No alerts' : 'No notifications'}
+            title={filter === 'alerts' ? 'No alerts' : filter === 'needs-you' ? 'All caught up' : 'No notifications'}
             body={
               filter === 'alerts'
                 ? "We'll tell you if a device resists or the box goes offline."
@@ -184,16 +186,20 @@ export function List({ onGo, sheet, page }: { onGo: () => void; sheet?: boolean;
         )
       ) : (
         <div className="p-bell-scroll" tabIndex={0} role="region" aria-label="Notification list">
-          {byGroup.today.length > 0 && <div className="p-bell-group">Today</div>}
-          {byGroup.today.map((n) => row(n, true))}
-          {byGroup.earlier.length > 0 && <div className="p-bell-group">Earlier</div>}
-          {byGroup.earlier.map((n) => row(n, false))}
+          {group('Today', byGroup.today, true, true)}
+          {group('Earlier', byGroup.earlier, false, byGroup.today.length === 0)}
         </div>
       )}
       {hasMore && (
         <button type="button" className="p-btn p-bell-older" disabled={loadingOlder} data-loading={loadingOlder} onClick={showOlder}>
           Show older
         </button>
+      )}
+      {page && (
+        <Link href={SETTINGS} className="p-bell-setl">
+          <Icon name="tune" size={16} />
+          <span>Notification settings</span>
+        </Link>
       )}
       {!page && !empty && (
         <div className="p-bell-foot">
@@ -214,6 +220,7 @@ export function List({ onGo, sheet, page }: { onGo: () => void; sheet?: boolean;
 /** Parent notification bell: popover on desktop, full sheet under 768 px. */
 export function Bell({ placement = 'header' }: { placement?: 'rail' | 'header' }) {
   const [opened, setOpened] = useState(false)
+  const [dropdown, setDropdown] = useState<HTMLElement | null>(null)
   const small = useMediaQuery('(max-width: 767px)')
   const inbox = useInbox(false)
   const unread = inbox.data?.unread ?? 0
@@ -225,13 +232,8 @@ export function Bell({ placement = 'header' }: { placement?: 'rail' | 'header' }
   useOsNotify(inbox.data?.items, fromOs)
   useEffect(askOnFirstClick, [])
 
-  // Escape closes the desktop popover wherever focus is (focus stays on the bell)
-  useEffect(() => {
-    if (!opened) return
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpened(false) }
-    window.addEventListener('keydown', esc, true)
-    return () => window.removeEventListener('keydown', esc, true)
-  }, [opened])
+  const close = useCallback(() => setOpened(false), [])
+  useEscClose(opened, close)
 
   // On mobile, don't render bell for rail placement (header only)
   if (placement === 'rail' && small) {
@@ -249,7 +251,6 @@ export function Bell({ placement = 'header' }: { placement?: 'rail' | 'header' }
       {unread > 0 && <span className="p-bell-count">{unread > 9 ? '9+' : unread}</span>}
     </button>
   )
-  const close = () => setOpened(false)
   if (small)
     return (
       <>
@@ -274,6 +275,7 @@ export function Bell({ placement = 'header' }: { placement?: 'rail' | 'header' }
       position={placement === 'rail' ? 'right-start' : 'bottom-end'}
       width={400}
       trapFocus
+      closeOnEscape={false} // useEscClose handles Esc so a row menu can take it first
       returnFocus
       // §2.2 pointer and sticker shadow (CSS)
       withArrow
@@ -285,8 +287,10 @@ export function Bell({ placement = 'header' }: { placement?: 'rail' | 'header' }
       <Tooltip label="Notifications" openDelay={400} disabled={opened}>
         <Popover.Target>{btn}</Popover.Target>
       </Tooltip>
-      <Popover.Dropdown aria-label="Notifications" className="p-pop p-bell-pop">
-        <List onGo={close} />
+      <Popover.Dropdown ref={setDropdown} aria-label="Notifications" className="p-pop p-bell-pop">
+        <MenuPortalContext.Provider value={dropdown}>
+          <List onGo={close} />
+        </MenuPortalContext.Provider>
       </Popover.Dropdown>
     </Popover>
   )

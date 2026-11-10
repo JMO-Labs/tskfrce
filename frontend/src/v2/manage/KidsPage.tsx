@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { ParentShell } from '@/v2/parent/ParentShell'
+import { useFocusAliases } from '@/v2/parent/focusAliases'
 import { useMediaQuery } from '@mantine/hooks'
 import { EmptyState, ErrorPanel, Skeleton } from '@/v2/parent/states'
 import { RequireParent } from '@/v2/components/RequireParent'
@@ -13,7 +14,7 @@ import { BadgesNav } from './BadgesNav'
 import { BadgesRecent } from './BadgesRecent'
 import { ChoreDetail } from './ChoreDetail'
 import { ChoresList } from './ChoresList'
-import { KidDetail } from './KidDetail'
+import { KidDetail, type LeaveGuard } from './KidDetail'
 import { KidEditor } from './KidEditor'
 import { KidsList } from './KidsList'
 import { KidsTabs, SECTIONS, type Section } from './KidsTabs'
@@ -21,9 +22,12 @@ import { RewardsCatalogue } from './RewardsCatalogue'
 import { RewardsHistory } from './RewardsHistory'
 import { RewardsNav } from './RewardsNav'
 import { RewardsRequests } from './RewardsRequests'
+import { HappyHourPane } from './HappyHourPane'
 import { ScreenTimePane } from './ScreenTimePane'
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
+/** phone back-link label per pane (the mockups name the pane, not the page) */
+const BACK: Record<Section, string> = { chores: 'Chores', kids: 'Kids & chores', rewards: 'Rewards', badges: 'Badges' }
 const FIXED: Partial<Record<Section, string>> = { rewards: 'requests', badges: 'all' }
 
 function KidsBody() {
@@ -40,9 +44,13 @@ function KidsBody() {
   // desktop opens the section's first item rather than an empty pane; phone stays on the list
   const firstId = { chores: chores.data, kids: kids.data, rewards: undefined, badges: undefined }[section]?.[0]?.id
   const item = first(query.item) ?? (small || query.kid ? undefined : (fixed ?? (firstId == null ? undefined : String(firstId))))
-  const pick = (id: number | string | null) => {
-    const { item: _drop, pick: _pick, ...rest } = query
-    router.push({ pathname: '/kids', query: id === null ? { section } : { ...rest, section, item: id } }, undefined, { shallow: true })
+  const leave = useRef<LeaveGuard | null>(null)
+  const setGuard = useCallback((g: LeaveGuard | null) => { leave.current = g }, [])
+  const pick = (id: number | string | null, now = false) => {
+    const { item: _drop, pick: _pick, open: _o, edit: _e, pin: _p, ...rest } = query
+    const go = () => router.push({ pathname: '/kids', query: id === null ? { section } : { ...rest, section, item: id } }, undefined, { shallow: true })
+    if (leave.current && !now) leave.current(go) // the kid page asks about unsaved edits first
+    else go()
   }
   // a fixed pane's own selection (?pick=) inside `pane`
   const pickIn = (pane: string) => (id: number | 'new' | null) =>
@@ -56,14 +64,8 @@ function KidsBody() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded.isSuccess, item, known])
 
-  // Deep link /kids?section=kids&kid=7&pin=1 selects that kid (phones need ?item to show the detail);
-  // /kids?section=chores&kid=7 opens a new chore.
-  const kidParam = first(query.kid)
-  useEffect(() => {
-    if (!kidParam || query.item) return
-    router.replace({ pathname: '/kids', query: want === 'chores' ? { section: 'chores', item: 'new' } : { section: 'kids', item: kidParam, pin: first(query.pin) } })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kidParam, query.item])
+  // old links (/kids?kid=7&pin=1, #trust) become item/open/edit URLs
+  useFocusAliases()
 
   const lists = {
     chores: <ChoresList chores={chores.data ?? []} kids={kidList} selected={item} onSelect={pick} />,
@@ -77,12 +79,12 @@ function KidsBody() {
   const kid = kidList.find((k) => k.id === id)
   const select = (n: number | null) => pick(n)
   const details = {
-    chores: item === 'new' ? <ChoreDetail key="new" kids={kidList} onSelect={select} /> : chore && <ChoreDetail key={chore.id} kids={kidList} chore={chore} onSelect={select} />,
+    chores: item === 'new' ? <ChoreDetail key="new" kids={kidList} onSelect={select} onGuard={setGuard} /> : chore && <ChoreDetail key={chore.id} kids={kidList} chore={chore} onSelect={select} onGuard={setGuard} />,
     kids:
       item === 'new' ? (
         <div className="pk-detail"><div className="pk-grid"><KidEditor onCreated={pick} /></div></div>
       ) : (
-        kid && <KidDetail key={kid.id} kid={kid} focusPin={first(query.pin) === '1'} onDeleted={() => pick(null)} />
+        kid && <KidDetail key={kid.id} kid={kid} guardRef={leave} onDeleted={() => pick(null, true)} />
       ),
     rewards:
       item === 'requests' ? (
@@ -91,6 +93,8 @@ function KidsBody() {
         <RewardsCatalogue pick={first(query.pick)} onPick={pickIn('catalogue')} />
       ) : item === 'screen' ? (
         <ScreenTimePane />
+      ) : item === 'happy' ? (
+        <HappyHourPane />
       ) : item === 'history' ? (
         <RewardsHistory />
       ) : null,
@@ -98,7 +102,7 @@ function KidsBody() {
       item === 'all' ? (
         <BadgesAll />
       ) : item === 'custom' ? (
-        <BadgesCustom pick={first(query.pick)} onPick={pickIn('custom')} />
+        <BadgesCustom />
       ) : item === 'recent' ? (
         <BadgesRecent />
       ) : null,
@@ -114,6 +118,7 @@ function KidsBody() {
     </Head>
     <ParentShell
       title="Kids & chores"
+      back={BACK[section]}
       list={
         <>
           <KidsTabs

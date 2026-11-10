@@ -19,6 +19,8 @@ describe('bellRules', () => {
     expect(isAlert(n({ kind: 'new_device' }))).toBe(false)
     expect(isAlert(n({ kind: 'device_bypass' }))).toBe(true)
     expect(isAlert(n({ kind: 'box_offline' }))).toBe(true)
+    expect(isAlert(n({ kind: 'password_guess' }))).toBe(true)
+    expect(isAlert(n({ kind: 'workaround_try' }))).toBe(true)
   })
 
   test('severity uses the chore glyph', () => {
@@ -37,5 +39,11 @@ describe('bellRules', () => {
   test('when says Yesterday for 24 h ago', () => {
     const now = new Date(2026, 9, 26, 12, 0)
     expect(when(new Date(2026, 9, 25, 12, 0).toISOString(), now)).toBe('Yesterday')
+  })
+  it('integration kinds', () => {
+    expect(isNeedsYou(n({ kind: 'integration_done', pending: true }))).toBe(true)
+    expect(severity(n({ kind: 'integration_paused' }))).toEqual({ name: 'extension_off', tone: 'md' })
+    expect(severity(n({ kind: 'integration_msg' }))).toEqual({ name: 'extension', tone: 'ok' })
+    expect(severity(n({ kind: 'integration_done' }))).toEqual({ name: 'extension', tone: 'lv' })
   })
 })

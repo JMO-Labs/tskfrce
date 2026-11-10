@@ -86,7 +86,7 @@
   position: relative; display: grid; place-items: center; width: 44px; height: 44px; flex: none;
   background: none; border: 1.5px solid var(--f-edge); border-radius: 4px; color: var(--f-ink); cursor: pointer;
 }
-.f-iconbtn:hover { background: var(--f-mute); }
+@media (hover: hover) { .f-iconbtn:hover { background: var(--f-mute); } }
 .f-iconbtn-dot {
   position: absolute; top: 6px; right: 6px; width: 10px; height: 10px; border-radius: 50%;
   background: var(--f-red); border: 2px solid var(--f-card);

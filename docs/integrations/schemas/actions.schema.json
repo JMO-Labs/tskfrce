@@ -1,0 +1,240 @@
+{
+  "$defs": {
+    "ChoreComplete": {
+      "additionalProperties": false,
+      "properties": {
+        "chore_id": {
+          "title": "Chore Id",
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "pattern": "^[A-Za-z0-9._:-]{1,80}$",
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "kid_id": {
+          "title": "Kid Id",
+          "type": "integer"
+        },
+        "type": {
+          "const": "chore.complete",
+          "default": "chore.complete",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "chore_id",
+        "idempotency_key",
+        "kid_id",
+        "type"
+      ],
+      "title": "ChoreComplete",
+      "type": "object"
+    },
+    "MessageParents": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Body"
+        },
+        "idempotency_key": {
+          "pattern": "^[A-Za-z0-9._:-]{1,80}$",
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 100,
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "const": "message.parents",
+          "default": "message.parents",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "idempotency_key",
+        "title",
+        "type"
+      ],
+      "title": "MessageParents",
+      "type": "object"
+    },
+    "RequestDecide": {
+      "additionalProperties": false,
+      "properties": {
+        "approve": {
+          "title": "Approve",
+          "type": "boolean"
+        },
+        "id": {
+          "title": "Id",
+          "type": "integer"
+        },
+        "idempotency_key": {
+          "pattern": "^[A-Za-z0-9._:-]{1,80}$",
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "target": {
+          "enum": [
+            "reward",
+            "chore"
+          ],
+          "title": "Target",
+          "type": "string"
+        },
+        "type": {
+          "const": "request.decide",
+          "default": "request.decide",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "approve",
+        "id",
+        "idempotency_key",
+        "target",
+        "type"
+      ],
+      "title": "RequestDecide",
+      "type": "object"
+    },
+    "RewardRemove": {
+      "additionalProperties": false,
+      "properties": {
+        "idempotency_key": {
+          "pattern": "^[A-Za-z0-9._:-]{1,80}$",
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "ref": {
+          "maxLength": 64,
+          "title": "Ref",
+          "type": "string"
+        },
+        "type": {
+          "const": "reward.remove",
+          "default": "reward.remove",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "idempotency_key",
+        "ref",
+        "type"
+      ],
+      "title": "RewardRemove",
+      "type": "object"
+    },
+    "RewardUpsert": {
+      "additionalProperties": false,
+      "properties": {
+        "icon": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9_]{1,40}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Icon"
+        },
+        "idempotency_key": {
+          "pattern": "^[A-Za-z0-9._:-]{1,80}$",
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 100,
+          "title": "Name",
+          "type": "string"
+        },
+        "price": {
+          "maximum": 100000,
+          "minimum": 1,
+          "title": "Price",
+          "type": "integer"
+        },
+        "ref": {
+          "maxLength": 64,
+          "title": "Ref",
+          "type": "string"
+        },
+        "type": {
+          "const": "reward.upsert",
+          "default": "reward.upsert",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "idempotency_key",
+        "name",
+        "price",
+        "ref",
+        "type"
+      ],
+      "title": "RewardUpsert",
+      "type": "object"
+    }
+  },
+  "discriminator": {
+    "mapping": {
+      "chore.complete": "#/$defs/ChoreComplete",
+      "message.parents": "#/$defs/MessageParents",
+      "request.decide": "#/$defs/RequestDecide",
+      "reward.remove": "#/$defs/RewardRemove",
+      "reward.upsert": "#/$defs/RewardUpsert"
+    },
+    "propertyName": "type"
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/ChoreComplete"
+    },
+    {
+      "$ref": "#/$defs/RewardUpsert"
+    },
+    {
+      "$ref": "#/$defs/RewardRemove"
+    },
+    {
+      "$ref": "#/$defs/MessageParents"
+    },
+    {
+      "$ref": "#/$defs/RequestDecide"
+    }
+  ]
+}

@@ -6,12 +6,13 @@ from zoneinfo import ZoneInfo
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
+from app.models.chores import ChoreRun
 from app.models.family import get_family
 from app.models.lock import Device
 from app.models.notify import NotifyHeld, NotifyPlace
 from app.models.user import User, UserRole
+from app.services import bedtime, boost, inbox, notify, recap
 from app.services import chores as svc
-from app.services import inbox, notify
 
 log = get_logger(__name__)
 SUMMARY_AT = "19:00"
@@ -37,6 +38,9 @@ def tick(db: Session, now_utc: datetime, blocked: list[str] | None = None) -> No
     overdue(db, now_utc)
     box_offline(db, now_utc)
     daily_summary(db, now_utc)
+    bedtime.run(db, now_utc)
+    recap.send(db, now_utc)
+    boost.run(db, now_utc)
     lock_changes(db, blocked)
     db.commit()
 
@@ -126,8 +130,9 @@ def daily_summary(db: Session, now_utc: datetime) -> None:
     if local - local.replace(hour=h, minute=m, second=0, microsecond=0) > SUMMARY_CUTOFF:
         return  # backend was down at summary time: too stale to send
     stats: dict[int, list[int]] = {}  # kid id -> [done, total]
-    needs = 0
-    for r in svc.day_runs(db, svc.today(db, now_utc)):
+    day = svc.today(db, now_utc)
+    needs = db.query(ChoreRun).filter(ChoreRun.day < day, ChoreRun.status == "submitted").count()
+    for r in svc.day_runs(db, day):
         st = svc.state(r)
         needs += st == "needs_you"
         for kid_id in svc.run_kid_ids(r):

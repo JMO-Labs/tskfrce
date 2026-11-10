@@ -14,6 +14,7 @@ const GLYPH: Record<string, string> = {
   redemption_decided: 'redeem',
   badge_earned: 'military_tech',
   level_up: 'trending_up',
+  happy_hour: 'bolt',
 }
 
 const ago = (iso: string) => {

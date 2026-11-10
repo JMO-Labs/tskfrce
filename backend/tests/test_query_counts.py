@@ -11,6 +11,7 @@ from app.models.chore_extra import ChorePhoto
 from app.models.chores import ChoreRun
 from app.models.family import get_family
 from app.models.lock import Device
+from app.models.points import Points, PointsType
 from app.models.user import UserRole
 from sqlalchemy import event
 from sqlalchemy.orm import sessionmaker
@@ -20,8 +21,8 @@ from tests.factories import DAY, api_chore
 
 LIMIT = 16  # +1 batched deductions
 LIMITS = {
-    "/api/v1/today": 23,  # per-device lock facts and per-kid progress are batched; +1 reward prices, +1 deductions, +3 photo/message counts and earned, +1 homework requests
-    "/api/v1/kid/today": 21,  # +1 seen set, +1 own allowed windows (locks_at), +1 held points, +2 homework timer and request
+    "/api/v1/today": 27,  # +1 paid points per self-approved chore (trust/bedtime; skipped when none; per run+kid, so it cannot fold into the per-kid earned sum); +1 approved-chore counts for kids with trust off (try card, skipped when none); +1 quiet kids (try-this nudge); +1 integration-pending runs, per-device lock facts and per-kid progress are batched; +1 reward prices, +1 deductions, +3 photo/message counts and earned, +1 homework requests
+    "/api/v1/kid/today": 22,  # +1 seen set, +1 locks_at, +1 held points, +1 Happy Hour, +2 homework timer and request
 }
 
 
@@ -62,6 +63,17 @@ def family(client, db, parent_headers):
         for c in r[:2]:
             client.post(f"/api/v1/kid/chores/{c['id']}/done", headers=_headers(db, k))
     now = datetime.now(UTC).replace(tzinfo=None)
+    own = db.query(ChoreRun).filter_by(status="submitted").first()  # one self-approved chore today
+    own.status, own.approved_via = "done", "bedtime"
+    db.add(
+        Points(
+            user_id=kids[0].id,
+            run_id=own.id,
+            amount=3,
+            reason="chore",
+            points_type=PointsType.TASK_COMPLETION,
+        )
+    )
     for run in db.query(ChoreRun).limit(8):
         db.add(
             ChorePhoto(

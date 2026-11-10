@@ -20,6 +20,18 @@ def _trusted() -> set[str]:
     return {n for p in settings.TRUSTED_PROXY_IPS.split(",") if (n := norm_ip(p))}
 
 
+def from_trusted_proxy(request: Request) -> bool:
+    """True when the socket peer is one of TRUSTED_PROXY_IPS (our frontend proxy)."""
+    return norm_ip(request.client.host if request.client else None) in _trusted()
+
+
+def from_frontend(request: Request) -> bool:
+    """Trusted proxy peer that isn't loopback: the frontend container's fixed IP. A host-side
+    relay (ssh -R, socat) to 127.0.0.1:8000 is loopback, so it can't vouch for anyone."""
+    peer = norm_ip(request.client.host if request.client else None)
+    return from_trusted_proxy(request) and not ipaddress.ip_address(peer).is_loopback
+
+
 def client_ip(request: Request) -> str:
     """Normalized socket peer; X-Real-IP is trusted only from TRUSTED_PROXY_IPS (our proxy)."""
     raw = request.client.host if request.client else "unknown"

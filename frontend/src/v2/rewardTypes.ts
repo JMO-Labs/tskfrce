@@ -31,6 +31,8 @@ export interface ScreenKid {
   /** effective daily max (family and kid combined); null = no limit */
   max_minutes: number | null
   limit: { max_minutes: number | null; min_points: number | null } | null
+  /** banked minutes carried over from earlier days */
+  saved: number
 }
 
 /** GET/PATCH /screen-time */
@@ -40,18 +42,36 @@ export interface ScreenTime {
   max_minutes_per_day: number | null
   auto_approve: boolean
   only_in_allowed_hours: boolean
+  /** opt-in: device groups may have their own price */
+  group_pricing: boolean
+  /** unused daily minutes carry over */
+  rollover: boolean
+  /** most minutes that can be saved; null = same as the daily max */
+  bank_cap: number | null
   reset_time: string
   avg_chore_points: number
   kids: ScreenKid[]
 }
 
+/** One thing screen time can be bought for: all devices, ungrouped ("other") devices, or one group */
+export interface ScreenOption {
+  group_id: number | null
+  scope: 'all' | 'other' | 'group'
+  name: string
+  icon: string
+  price: number
+}
+
 /** `screen` block of GET /kid/rewards */
 export interface KidScreen {
+  options: ScreenOption[]
   enabled: boolean
   price: number
   auto: boolean
   only_in_hours: boolean
   max_today: number | null
+  /** banked minutes carried in (already included in max_today and left_today) */
+  saved: number
   bought_today: number
   left_today: number | null
   min_points: number | null

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/v2/api'
 import type { History, PendingRedemption, Reward } from '@/v2/types'
 
@@ -12,10 +12,11 @@ export interface RewardBody {
 
 export const useRewards = () => useQuery({ queryKey: ['rewards'], queryFn: () => api<Reward[]>('/rewards') })
 
-function useInvalidating<V>(fn: (v: V) => Promise<unknown>, keys: string[]) {
+export function useInvalidating<V, R = unknown>(fn: (v: V) => Promise<R>, keys: string[], gcTime?: number) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: fn,
+    gcTime,
     onSettled: () => Promise.all(keys.map((k) => qc.invalidateQueries({ queryKey: [k] }))),
   })
 }
@@ -53,6 +54,7 @@ export interface HistoryQuery {
 
 export const useRewardHistory = (q: HistoryQuery) =>
   useQuery({
+    placeholderData: keepPreviousData,
     queryKey: ['reward-history', q.days, q.kid_id ?? null, q.kind ?? null],
     queryFn: () => {
       const p = new URLSearchParams({ days: String(q.days) })

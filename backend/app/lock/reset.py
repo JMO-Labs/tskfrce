@@ -18,10 +18,13 @@ def chore_day(fam: FamilySettings) -> date | None:
     return fam.last_reset_date
 
 
-def current_chore_day(fam: FamilySettings, now_utc: datetime) -> date:
-    """last_reset_date, or on a fresh install the day the last reset time fell on."""
-    if fam.last_reset_date:
-        return fam.last_reset_date
+def clock_chore_day(fam: FamilySettings, now_utc: datetime) -> date:
+    """The day the last reset time fell on, by the clock (ignores last_reset_date)."""
     now = local_now(fam.timezone, now_utc)
     before_reset = now.time() < time.fromisoformat(fam.reset_time)
     return now.date() - timedelta(days=before_reset)
+
+
+def current_chore_day(fam: FamilySettings, now_utc: datetime) -> date:
+    """last_reset_date, or on a fresh install the day the last reset time fell on."""
+    return fam.last_reset_date or clock_chore_day(fam, now_utc)

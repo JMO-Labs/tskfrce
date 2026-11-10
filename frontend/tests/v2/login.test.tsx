@@ -129,7 +129,7 @@ test('forgot pane moves focus to its heading and back to the trigger', async () 
 
 describe('footer', () => {
   test('shows version and box address', () => {
-    expect(footerText('chores.local', '2.0.0')).toBe('t@sk4ce v2.0.0 · chores.local')
+    expect(footerText('chores.local', '2.1.0')).toBe('t@sk4ce v2.1.0 · chores.local')
     expect(footerText('', undefined)).toBe('t@sk4ce')
   })
 })

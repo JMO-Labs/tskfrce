@@ -8,18 +8,19 @@ from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_db, require_parent
-from app.models.chores import ChoreRun, RunStepTick
+from app.models.chores import ChoreRun
 from app.models.family import get_family
 from app.models.points import Points
 from app.models.user import User
 from app.schemas.lock import utc_z
-from app.services import badges, chat, economy, kid_events
+from app.services import chat, economy
+from app.services import chore_actions as actions
 from app.services import chores as svc
-from app.services.economy import award_chore
 
 router = APIRouter(prefix="/api/v1/chores", tags=["chores"])
 
 NOT_WAITING = "This chore isn't waiting for approval."
+HANDLED = "That chore was already handled."
 
 
 def _waiting(db: Session, run_id: int) -> ChoreRun:
@@ -84,17 +85,11 @@ def run_detail(run_id: int, db: Session = Depends(get_db), _: User = Depends(req
 @router.post("/{run_id}/approve")
 def approve(run_id: int, db: Session = Depends(get_db), parent: User = Depends(require_parent)):
     r = _waiting(db, run_id)
-    r.status = "done"
-    r.approved_at = r.completed_at = datetime.utcnow()
-    r.approved_by_id = parent.id
-    svc.clear_note(r)
-    fam = get_family(db)
-    pts = award_chore(db, r, fam)
-    chat.system(db, r, f"Approved · +{pts}")
-    badges.check_for_run(db, r, fam)
-    kid_events.chore_decided(db, r, True)
+    if not actions.claim(db, r, "submitted", "done"):  # bedtime may have just approved it
+        raise HTTPException(409, HANDLED)
+    actions.approve(db, r, parent.id)
     db.commit()
-    return svc.chore_out(r, fam)
+    return svc.chore_out(r, get_family(db))
 
 
 @router.post("/{run_id}/done")
@@ -107,13 +102,14 @@ def mark_done(run_id: int, db: Session = Depends(get_db), parent: User = Depends
         raise HTTPException(409, "This chore is already done or waiting for your OK.")
     if r.kid_id is None and r.assignment.mode == "race":
         raise HTTPException(409, "Race chores go to the kid who finishes first.")
+    if not actions.claim(db, r):  # the kid's /done may have landed since the check above
+        raise HTTPException(409, "That chore was already handled.")
     now = datetime.utcnow()
-    have = {t.step_id for t in r.ticks}
-    for s in svc.chore_of(r).steps:
-        if s.id not in have:
-            r.ticks.append(RunStepTick(step_id=s.id, done_by_id=parent.id, done_at=now))
-    r.status, r.submitted_at = "submitted", now
-    return approve(run_id, db, parent)
+    actions.tick_all(r, parent.id, now)
+    actions.submit(r, None, now)
+    actions.approve(db, r, parent.id)
+    db.commit()
+    return svc.chore_out(r, get_family(db))
 
 
 @router.post("/{run_id}/undo")
@@ -134,8 +130,9 @@ def mark_not_done(run_id: int, db: Session = Depends(get_db), _: User = Depends(
     db.query(Points).filter(Points.run_id == r.id, Points.amount > 0).delete()
     r.ticks.clear()
     r.status = "todo"
-    r.approved_at = r.completed_at = r.approved_by_id = None
-    r.submitted_at = r.submitted_by_id = None
+    r.approved_at = r.completed_at = r.approved_by_id = r.approved_via = None
+    r.spot_check = False
+    r.submitted_at = r.submitted_by_id = r.hh_mult_x10 = None
     chat.system(db, r, "Marked not done")
     db.commit()
     return svc.chore_out(r, get_family(db))
@@ -209,15 +206,11 @@ def send_back(
     run_id: int,
     body: SendBack,
     db: Session = Depends(get_db),
-    _: User = Depends(require_parent),
+    parent: User = Depends(require_parent),
 ):
     r = _waiting(db, run_id)
-    r.status = "todo"
-    r.attempt = (r.attempt or 1) + 1
-    r.last_note = body.note
-    submitter = r.submitted_by_id
-    r.submitted_at = r.submitted_by_id = None
-    chat.system(db, r, f"Sent back: {body.note}")
-    kid_events.chore_decided(db, r, False, body.note, submitter)
+    if not actions.claim(db, r, "submitted", "todo"):
+        raise HTTPException(409, HANDLED)
+    actions.send_back(db, r, body.note, parent.id)
     db.commit()
     return svc.chore_out(r, get_family(db))

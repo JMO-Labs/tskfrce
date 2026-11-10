@@ -53,3 +53,34 @@ def test_ntfy_base_url_matches_backend_public_url():
 
 def test_ntfy_starts_after_backend():
     assert "backend" in yaml.safe_load(PROD.read_text())["services"]["ntfy"]["depends_on"]
+
+
+def test_prod_edge_is_opt_in_host_net():
+    edge = yaml.safe_load(PROD.read_text())["services"]["edge"]
+    assert edge["profiles"] == ["edge"]
+    assert edge["network_mode"] == "host"
+    assert "edge_data:/data" in edge["volumes"]
+    assert "cap_add" not in edge
+    assert not edge.get("privileged", False)
+    # `:?` would break every box without BOX_ID, even with the profile off
+    for v in edge["environment"].values():
+        assert ":?" not in str(v)
+
+
+def test_prod_frontend_and_edge_receive_edge_token_only():
+    svcs = yaml.safe_load(PROD.read_text())["services"]
+    for name in ("frontend", "edge"):
+        env = svcs[name]["environment"]
+        assert "EDGE_TOKEN" in env
+        assert "INTERNAL_TOKEN" not in env
+
+
+def test_prod_backend_passes_claim_code():
+    env = yaml.safe_load(PROD.read_text())["services"]["backend"]["environment"]
+    assert "CLAIM_CODE" in env and "NTFY_UPSTREAM_TOKEN" in env
+    assert env["NTFY_UPSTREAM_URL"] == "${NTFY_UPSTREAM_URL-https://ntfy.sh}"
+
+
+def test_no_service_has_ntfy_upstream():
+    for name, svc in yaml.safe_load(PROD.read_text())["services"].items():
+        assert "NTFY_UPSTREAM" not in (svc.get("environment") or {}), name

@@ -43,6 +43,20 @@
 }
 @keyframes p-sk { to { opacity: 0.45; } }
 
+/* summary-row placeholders: the same head as a real row, so the rows arriving never move the page */
+[data-look='parent'] .p-srow-sk { display: inline-block; width: 56px; height: 9px; border-radius: 6px; background: var(--p-track); vertical-align: middle; }
+[data-look='parent'] .p-srow-sk-ic { width: 18px; height: 18px; border-radius: 50%; flex: none; }
+[data-look='parent'] .p-srow-sk-t { width: 88px; }
+[data-look='parent'] .p-srows-sk .p-srow-l1 > .p-srow-sk:last-child { margin-left: auto; }
+[data-look='parent'] .p-srows-sk .p-srow-head { cursor: default; pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) {
+  [data-look='parent'] .p-srow-sk { animation: p-sk 1.2s ease-in-out infinite alternate; }
+}
+
+/* a failed load inside a pane or row body (LoadFail) */
+[data-look='parent'] .p-loadfail { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; border-radius: 12px; background: var(--p-redbg); color: var(--p-red); font-size: 13px; }
+[data-look='parent'] .p-loadfail > span { flex: 1; min-width: 160px; }
+
 /* 404 page */
 [data-look='parent'] .p-404 {
   min-height: 100vh;

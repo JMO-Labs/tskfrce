@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.api.deps import get_db, require_parent
 from app.models.chore_type import ChoreType
 from app.models.chores import Chore, ChoreAssignment, ChoreRun, ChoreStep
+from app.models.family import get_family
 from app.models.points import Points
 from app.models.user import User, UserRole
 from app.schemas.chore import (
@@ -49,6 +50,7 @@ def chore_out(c: Chore) -> dict:
         title=c.title,
         points=c.points,
         needs_photo=c.needs_photo,
+        always_check=c.always_check,
         type_id=c.type_id,
         steps=[
             {
@@ -148,6 +150,7 @@ def create_chore(
         title=body.title,
         points=body.points,
         needs_photo=body.needs_photo,
+        always_check=body.always_check,
         created_by_id=parent.id,
         type_id=_type_id(db, body.type_id),
     )
@@ -163,7 +166,7 @@ def create_chore(
 def patch_chore(chore_id: int, body: ChorePatch, db: Session = Depends(get_db)):
     c = _chore(db, chore_id)
     ch = body.model_dump(exclude_unset=True)
-    for k in ("title", "points", "needs_photo"):
+    for k in ("title", "points", "needs_photo", "always_check"):
         if ch.get(k) is not None:
             setattr(c, k, ch[k])
     if ch.get("type_id") is not None:
@@ -185,6 +188,7 @@ def copy_chore(
         title=f"{c.title} (copy)"[:100],
         points=c.points,
         needs_photo=c.needs_photo,
+        always_check=c.always_check,
         created_by_id=parent.id,
         type_id=c.type_id,
     )
@@ -252,8 +256,9 @@ def add_assignment(chore_id: int, body: AssignmentIn, db: Session = Depends(get_
         raise HTTPException(422, "Pick today or a later date.")
     db.add(a)
     db.flush()
-    svc.make_runs(db, a, day)
-    kid_events.chore_new(db, a)
+    if get_family(db).setup_step is None:  # wizard chores start at the next reset, quietly
+        svc.make_runs(db, a, day)
+        kid_events.chore_new(db, a)
     db.commit()
     return assignment_out(a)
 
@@ -271,7 +276,8 @@ def patch_assignment(assignment_id: int, body: AssignmentPatch, db: Session = De
             raise HTTPException(422, "Pick today or a later date.")
         a.active = a.on_date >= day  # a reused one-time assignment wakes up again
     db.flush()
-    svc.make_runs(db, a, day)
+    if get_family(db).setup_step is None:
+        svc.make_runs(db, a, day)
     db.commit()
     return assignment_out(a)
 

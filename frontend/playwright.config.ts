@@ -4,7 +4,7 @@ const size = { desktop: { width: 1280, height: 800 }, phone: { width: 390, heigh
 const projects = (['desktop', 'phone'] as const).flatMap((s) =>
   (['light', 'dark'] as const).map((colorScheme) => ({
     name: `${s}-${colorScheme}`,
-    testMatch: 'screens.spec.ts',
+    testMatch: ['screens.spec.ts', 'onboarding-shots.spec.ts'],
     use: { viewport: size[s], colorScheme, isMobile: s === 'phone' },
   })),
 )
@@ -23,7 +23,7 @@ export default defineConfig({
     ...projects,
     {
       name: 'journeys',
-      testMatch: ['parent.spec.ts', 'chore-model.spec.ts', 'kid-app.spec.ts', 'devices-hours.spec.ts', 'notifications.spec.ts', 'rewards.spec.ts'],
+      testMatch: ['parent.spec.ts', 'declutter-nav.spec.ts', 'chore-model.spec.ts', 'kid-app.spec.ts', 'devices-hours.spec.ts', 'notifications.spec.ts', 'inbox-bell.spec.ts', 'rewards.spec.ts'],
       dependencies: projects.map((p) => p.name),
       use: { viewport: size.desktop, colorScheme: 'light' },
     },

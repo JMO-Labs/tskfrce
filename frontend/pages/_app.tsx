@@ -25,12 +25,14 @@ import '../src/v2/parent/typography.css';
 import '../src/v2/parent/responsive.css';
 import '../src/v2/parent/parent-layout.css';
 import '../src/v2/parent/parent-today.css';
+import '../src/v2/parent/parent-trust.css';
 import '../src/v2/parent/states.css';
 import '../src/v2/parent/controls.css';
 import '../src/v2/parent/parent-kids.css';
 import '../src/v2/parent/parent-manage.css';
 import '../src/v2/parent/parent-devices.css';
 import '../src/v2/parent/parent-hours.css';
+import '../src/v2/recap/recap.css';
 import '../src/v2/parent/parent-chat.css';
 import '../src/v2/today/onboarding.css';
 import '../src/v2/login/auth.css';
@@ -42,6 +44,9 @@ import '../src/v2/flair/rings.css';
 import '../src/v2/flair/names.css';
 import '../src/v2/flair/titles.css';
 import '../src/v2/manage/manage.css';
+import '../src/v2/integrations/integrations.css';
+import '../src/v2/integrations/widgets.css';
+import '../src/v2/kid/kid-widgets.css';
 import '../src/v2/components/progression.css';
 import '../src/v2/kid/award.css';
 import '../src/v2/kid/kid-intro.css';
@@ -51,8 +56,15 @@ import '../src/v2/kid/kid-shell.css';
 import '../src/v2/kid/kid-rewards.css';
 import '../src/v2/kid/kid-locker.css';
 import '../src/v2/kid/kid-gate.css';
+import '../src/v2/kid/happy-hour.css';
 import '../src/v2/components/bell.css';
 import '../src/v2/interactions.css';
+import '../src/v2/parent/declutter.css';
+import '../src/v2/parent/today-focus.css';
+import '../src/v2/parent/kid-focus.css';
+import '../src/v2/parent/chore-focus.css';
+import '../src/v2/parent/family-focus.css';
+import '../src/v2/parent/touch.css';
 
 // Suppress WebSocket connection errors in console since HTTP notifications work as fallback
 if (typeof window !== 'undefined') {
@@ -122,6 +134,8 @@ import { makeQueryClient } from '../src/v2/queryClient';
 import { UnifiedAuthProvider } from '../src/contexts/UnifiedAuthContext'
 import { ThemeProvider } from '../src/contexts/ThemeContext'
 import { initBitwardenThemeFix, setBitwardenThemePreference } from '../src/utils/bitwarden-theme-fix'
+import { captureClaim } from '../src/v2/setup/claim'
+import { registerSw, listenInstallPrompt } from '../src/v2/pwa'
 import { FaviconManager } from '../src/components/ui/FaviconManager'
 // Suppress HMR ISR manifest warnings in development
 if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
@@ -149,12 +163,15 @@ if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
  */
 function AppContent({ Component, pageProps }: { Component: any; pageProps: any }) {
   const [queryClient] = React.useState(makeQueryClient);
+  React.useState(captureClaim); // lazy initializer: first client render, before any effect or request
   const { asPath } = useRouter();
 
   // Initialize Bitwarden theme fix
   React.useEffect(() => {
     setBitwardenThemePreference();
     initBitwardenThemeFix();
+    registerSw();
+    listenInstallPrompt();
   }, []);
 
   return (
@@ -172,7 +189,10 @@ function AppContent({ Component, pageProps }: { Component: any; pageProps: any }
         defaultColorScheme="auto"
         colorSchemeManager={colorSchemeManager}
       >
-        <Head><title>t@sk4ce</title></Head>
+        <Head>
+          <title>t@sk4ce</title>
+          <link rel="manifest" href="/manifest.webmanifest" key="manifest" />
+        </Head>
         <FaviconManager />
         <Notifications position="bottom-center" pauseResetOnHover="notification" />
         <UnifiedAuthProvider>

@@ -34,6 +34,17 @@ KINDS = (
     "lock_warning",
     "device_bypass",
     "box_offline",
+    "integration_done",
+    "integration_msg",
+    "integration_paused",
+    "password_guess",
+    "workaround_try",
+    "happy_hour",
+    "boost",
+    "trust_up",
+    "trust_down",
+    "bedtime_done",
+    "recap",
     "homework_request",
 )
 

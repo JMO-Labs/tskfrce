@@ -1,0 +1,14 @@
+{
+  "id": "hello-example",
+  "name": "Hello example",
+  "developer": "t@sk4ce",
+  "description": "Developer kit example. Marks every linked chore done and shows a demo card. Never listed in the catalog.",
+  "icon": "waving_hand",
+  "version": "1.0.0",
+  "protocol": "v1",
+  "base_url": "http://127.0.0.1:8787",
+  "poll_seconds": 60,
+  "settings": [],
+  "permissions": ["chores.complete", "widgets.parent"],
+  "widgets": [{"id": "hello", "surface": "parent", "title": "Hello"}]
+}

@@ -104,6 +104,7 @@ class DeviceGroup(Base):
     name = Column(String(100), nullable=False, unique=True)
     icon = Column(String(40), nullable=False, default="devices", server_default="devices")
     chore_lock = Column(Boolean, nullable=False, default=True, server_default="1")
+    screen_price = Column(Integer, nullable=True)  # null = family screen_time_price
 
 
 class Override(Base):

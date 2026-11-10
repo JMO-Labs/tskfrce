@@ -34,22 +34,30 @@ from app.api.device_activity import router as device_activity_router
 from app.api.devices import router as devices_router
 from app.api.family import router as family_router
 from app.api.flair import router as flair_router
+from app.api.happy_hour import router as happy_hour_router
 from app.api.homework import router as homework_router
 from app.api.hours import router as hours_router
 from app.api.inbox import router as notifications_router
+from app.api.integration_local import router as integration_local_router
+from app.api.integration_widgets import router as integration_widgets_router
+from app.api.integrations import router as integrations_router
 from app.api.internal import router as internal_router
 from app.api.kid import router as kid_router
+from app.api.kid_enroll import kid_router as kid_enroll_kid_router
+from app.api.kid_enroll import parent_router as kid_enroll_parent_router
 from app.api.kid_push import router as kid_push_router
 from app.api.kid_rewards import router as kid_rewards_router
 from app.api.kids import router as kids_router
 from app.api.network import router as network_router
 from app.api.notify import router as notify_router
 from app.api.password_reset import router as password_reset_router
+from app.api.recap import router as recap_router
 from app.api.rewards import redemptions_router
 from app.api.rewards import router as rewards_router
 from app.api.screen_time import router as screen_time_router
 from app.api.setup import router as setup_router
 from app.api.tips import router as tips_router
+from app.api.trust import router as trust_router
 from app.core.logging import configure_logging, get_logger
 from app.core.monitoring import (
     MetricsMiddleware,
@@ -128,8 +136,10 @@ async def log_requests(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
-    response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'"
+    # setdefault: a route may set a stricter policy (the widget image proxy uses 'none')
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'",
     )
 
     return response
@@ -154,7 +164,11 @@ fastapi_app.include_router(devices_router)
 fastapi_app.include_router(device_activity_router)
 fastapi_app.include_router(hours_router)
 fastapi_app.include_router(kids_router)
+fastapi_app.include_router(trust_router)
+fastapi_app.include_router(recap_router)
 fastapi_app.include_router(kid_push_router)
+fastapi_app.include_router(kid_enroll_parent_router)
+fastapi_app.include_router(kid_enroll_kid_router)
 fastapi_app.include_router(kid_router)
 fastapi_app.include_router(kid_rewards_router)
 fastapi_app.include_router(family_router)
@@ -162,12 +176,16 @@ fastapi_app.include_router(network_router)
 fastapi_app.include_router(notify_router)
 fastapi_app.include_router(rewards_router)
 fastapi_app.include_router(screen_time_router)
+fastapi_app.include_router(happy_hour_router)
 fastapi_app.include_router(badges_router)
 fastapi_app.include_router(badges_overview_router)
 fastapi_app.include_router(community_router)
 fastapi_app.include_router(flair_router)
 fastapi_app.include_router(redemptions_router)
 fastapi_app.include_router(tips_router)
+fastapi_app.include_router(integrations_router)
+fastapi_app.include_router(integration_widgets_router)
+fastapi_app.include_router(integration_local_router)
 fastapi_app.include_router(homework_router)
 
 # Create the final app with ASGI middleware
@@ -300,6 +318,13 @@ async def startup_event():
 
         fastapi_app.state.lock_task = asyncio.create_task(run_forever())
 
+    if settings.INTEGRATIONS_LOOP_ENABLED:
+        import asyncio
+
+        from app.integrations import loop as integrations_loop
+
+        fastapi_app.state.integrations_task = asyncio.create_task(integrations_loop.run_forever())
+
     logger.info("t@sk4ce API startup complete")
 
 
@@ -309,9 +334,10 @@ async def shutdown_event():
     """Application shutdown event."""
     logger.info("t@sk4ce API shutting down")
 
-    task = getattr(fastapi_app.state, "lock_task", None)
-    if task:
-        task.cancel()
+    for name in ("lock_task", "integrations_task"):
+        task = getattr(fastapi_app.state, name, None)
+        if task:
+            task.cancel()
     # await cleanup_database()
 
     logger.info("t@sk4ce API shutdown complete")

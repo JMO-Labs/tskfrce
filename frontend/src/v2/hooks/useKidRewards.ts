@@ -4,6 +4,7 @@ import { api, AuthError } from '../api'
 import { blocked, kidInit, useAsKid } from './usePreview'
 import { toastFail, toastOk } from '../notify'
 import type { KidCelebration, KidRewards } from '../types'
+import type { ScreenOption } from '../rewardTypes'
 
 /** Expired kid token (401) calls onExpired, like useKidToday. */
 function useExpiry(error: unknown, onExpired: () => void) {
@@ -24,7 +25,7 @@ export function useKidRewards(onExpired: () => void) {
   return q
 }
 
-export type RedeemBody = { kind: 'reward'; reward_id: number } | { kind: 'screen_time'; minutes: number }
+export type RedeemBody = { kind: 'reward'; reward_id: number } | { kind: 'screen_time'; minutes: number; group_id?: number | null; scope?: ScreenOption['scope'] }
 
 export function useRedeem(onExpired: () => void) {
   const qc = useQueryClient()

@@ -1,19 +1,19 @@
 import { useEffect } from 'react'
-import Link from 'next/link'
+import { BackLink } from '@/v2/parent/ListDetail'
 import { useMediaQuery } from '@mantine/hooks'
 import { useRouter } from 'next/router'
 import { ParentShell } from '@/v2/parent/ParentShell'
-import { ErrorPanel, Skeleton } from '@/v2/parent/states'
+import { ErrorPanel, RowsSkeleton, Skeleton } from '@/v2/parent/states'
 import { RequireParent } from '@/v2/components/RequireParent'
 import { useFamily, usePatchFamily } from '@/v2/hooks/useFamily'
 import { FamilyCard, GifsCard } from './FamilyCards'
+import { IntegrationsPane } from '@/v2/integrations/IntegrationsPane'
 import { HoursSection } from './HoursSection'
 import { ParentsPane } from './ParentsPane'
 import { PaneHead } from './PaneParts'
 import { useSettingsLines } from './useSettingsLines'
 import { SettingsList } from './SettingsList'
 import { SETTINGS_SECTIONS, type S } from './settingsSections'
-import { KidPushPane } from './KidPushPane'
 import { AppearancePane } from './AppearancePane'
 import { HomeworkPane } from './HomeworkPane'
 import { NotificationsPane } from './NotificationsPane'
@@ -42,7 +42,7 @@ function SettingsBody() {
     <ParentShell
       title="Settings"
       list={<SettingsList sections={sections} section={small && !valid ? undefined : section} bare={small} />}
-      phone={valid ? <Link href="/settings" className="p-back-link">← Settings</Link> : undefined}
+      phone={valid ? <BackLink href="/settings">Settings</BackLink> : undefined}
     >
       <div className="ps-detail">
         {family.isError && ['family', 'look', 'gifs'].includes(section) && (
@@ -51,7 +51,8 @@ function SettingsBody() {
             <ErrorPanel kind="unreachable" error={family.error} onRetry={() => family.refetch()} />
           </>
         )}
-        {family.isPending && ['family', 'look', 'gifs'].includes(section) && <Skeleton />}
+        {family.isPending && section === 'family' && <div className="fam-rows"><RowsSkeleton rows={3} /></div>}
+        {family.isPending && ['look', 'gifs'].includes(section) && <Skeleton />}
         {section === 'family' && family.data && <FamilyCard fam={family.data} />}
         {section === 'look' && family.data && (
           <AppearancePane
@@ -69,14 +70,10 @@ function SettingsBody() {
         )}
         {section === 'gifs' && family.data && <GifsCard fam={family.data} />}
         {section === 'hours' && <HoursSection />}
-        {section === 'notifications' && (
-          <>
-            <NotificationsPane />
-            <KidPushPane />
-          </>
-        )}
+        {section === 'notifications' && <NotificationsPane />}
         {section === 'homework' && <HomeworkPane />}
         {section === 'parents' && <ParentsPane />}
+        {section === 'integrations' && <IntegrationsPane />}
       </div>
     </ParentShell>
   )

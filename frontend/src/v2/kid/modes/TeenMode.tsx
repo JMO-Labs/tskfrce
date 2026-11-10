@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
+import { FreezeMark } from '@/v2/components/ProgressHeader'
 import { useMediaQuery } from '@mantine/hooks'
 import { Icon } from '@/v2/parent/Icon'
 import type { KidChore, KidToday } from '../../types'
+import { boosted } from '../happyHour'
 import { clock, kidSort, tally } from '../kidChips'
 import { TeenDetail } from './TeenDetail'
 import { TeenRow } from './TeenRow'
@@ -23,14 +25,16 @@ function weekday(now: number, tz?: string) {
   }
 }
 
-function Stat({ icon, tone, fill, title, sub }: { icon: string; tone: string; fill?: boolean; title: string; sub: string }) {
+function Stat({ icon, tone, fill, title, sub, extra }: { icon: string; tone: string; fill?: boolean; title: string; sub: string; extra?: ReactNode }) {
   return (
     <div className="t-sc">
       <span className="t-ic" data-tone={tone}>
         <Icon name={icon} fill={fill} />
       </span>
       <div>
-        <b>{title}</b>
+        <b>
+          {title} {extra}
+        </b>
         <small>{sub}</small>
       </div>
     </div>
@@ -52,7 +56,7 @@ function Stats({ d }: { d: KidToday }) {
       )}
       <Stat icon="task_alt" tone="green" title={`${t.approved} / ${t.total}`} sub="done today" />
       <Stat icon="star" tone="sun" fill title={String(Math.max(0, d.points_balance - (d.points_held ?? 0)))} sub="points" />
-      <Stat icon="local_fire_department" tone="fire" fill title={`${streak} ${streak === 1 ? 'day' : 'days'}`} sub="streak" />
+      <Stat icon="local_fire_department" tone="fire" fill title={`${streak} ${streak === 1 ? 'day' : 'days'}`} sub="streak" extra={<FreezeMark frozen={d.progress?.frozen} />} />
     </div>
   )
 }
@@ -96,7 +100,7 @@ export function TeenMode({ d, name, now, onDone, busyId, onSeen, onChat, focusId
         {list.length ? (
           <div className="t-list">
             {list.map((c) => (
-              <TeenRow key={c.id} c={c} now={now} tz={d.timezone} selected={c.id === sel?.id} onSelect={() => pick(c.id)} />
+              <TeenRow key={c.id} c={c} now={now} tz={d.timezone} selected={c.id === sel?.id} x2={boosted(c, d.happy_hour, now)} onSelect={() => pick(c.id)} />
             ))}
           </div>
         ) : (

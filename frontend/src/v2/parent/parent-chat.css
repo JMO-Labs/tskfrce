@@ -52,7 +52,7 @@
   text-align: left;
   cursor: pointer;
 }
-[data-look='parent'] .pc-row:hover { border-color: var(--p-line); }
+@media (hover: hover) { [data-look='parent'] .pc-row:hover { border-color: var(--p-line); } }
 [data-look='parent'] .pc-row[data-selected='true'] { background: var(--p-card); border-color: var(--p-ink); }
 @media (prefers-reduced-motion: no-preference) {
   [data-look='parent'] .pc-row { transition: background 0.2s, border-color 0.2s; }
@@ -149,7 +149,8 @@
 }
 [data-look='parent'] .pc-reply textarea { flex: 1; min-width: 0; align-self: center; resize: none; border: 0; background: transparent; color: var(--p-ink); font: inherit; font-size: 13px; outline: 0; padding: 6px 0; }
 [data-look='parent'] .pc-ib { width: 32px; height: 32px; flex: none; border: 0; border-radius: 50%; background: transparent; color: var(--p-sub); display: grid; place-items: center; cursor: pointer; }
-[data-look='parent'] .pc-ib:hover, [data-look='parent'] .pc-ib[data-on='true'] { color: var(--p-ink); background: var(--p-line); }
+[data-look='parent'] .pc-ib[data-on='true'] { color: var(--p-ink); background: var(--p-line); }
+@media (hover: hover) { [data-look='parent'] .pc-ib:hover { color: var(--p-ink); background: var(--p-line); } }
 [data-look='parent'] .pc-send { width: 32px; height: 32px; flex: none; border: 0; border-radius: 50%; background: var(--p-tbg); color: var(--p-tfg); display: grid; place-items: center; cursor: pointer; }
 [data-look='parent'] .pc-send:disabled { opacity: 0.4; cursor: default; }
 
@@ -169,12 +170,12 @@
 [data-look='parent'] .pc-row:focus-visible,
 [data-look='parent'] .pc-photo:focus-visible,
 [data-look='parent'] .pc-ib:focus-visible,
-[data-look='parent'] .pc-send:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
+[data-look='parent'] .pc-send:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 [data-look='parent'] .pc-ib, [data-look='parent'] .pc-send { transition: background-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out), opacity var(--dur-1) var(--ease-out); }
 [data-look='parent'] .pc-ib:active,
 [data-look='parent'] .pc-send:active:not(:disabled) { transform: scale(0.92); }
 [data-look='parent'] .pc-ib:disabled { opacity: 0.5; cursor: default; }
-[data-look='parent'] .pc-send:hover:not(:disabled) { opacity: 0.85; }
+@media (hover: hover) { [data-look='parent'] .pc-send:hover:not(:disabled) { opacity: 0.85; } }
 [data-look='parent'] .pc-send[aria-busy='true'] { opacity: 1; cursor: progress; }
 [data-look='parent'] .pc-spin { animation: pc-spin 0.9s linear infinite; }
 @keyframes pc-spin { to { transform: rotate(360deg); } }
@@ -213,8 +214,8 @@
   display: flex; align-items: center; gap: 2px; padding: 4px 6px; border-radius: 10px;
   border: 1px solid var(--p-line); background: var(--p-card); color: var(--p-sub); font: inherit; font-size: 12px; cursor: pointer;
 }
-[data-look='parent'] .pc-caret:hover { color: var(--p-ink); }
-[data-look='parent'] .pc-caret:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
+@media (hover: hover) { [data-look='parent'] .pc-caret:hover { color: var(--p-ink); } }
+[data-look='parent'] .pc-caret:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 [data-look='parent'] .pc-caret .ms { transition: transform 0.15s; }
 [data-look='parent'] .pc-group[data-open='true'] .pc-caret .ms { transform: rotate(180deg); }
 [data-look='parent'] .pc-caret-dot { position: absolute; top: -3px; right: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--p-acc); }
@@ -246,7 +247,7 @@
 [data-look='parent'] .pc-reply .pc-q { flex-basis: 100%; max-width: none; }
 [data-look='parent'] .pc-q > span { overflow: hidden; text-overflow: ellipsis; }
 [data-look='parent'] .pc-q button { border: 0; background: none; color: inherit; cursor: pointer; display: grid; padding: 0; border-radius: 50%; }
-[data-look='parent'] .pc-q button:hover { color: var(--p-ink); }
+@media (hover: hover) { [data-look='parent'] .pc-q button:hover { color: var(--p-ink); } }
 [data-look='parent'] .pc-kv .pc-chips { justify-content: flex-end; gap: 4px; } /* side panel values sit right; header chips stay by the title */
 [data-look='parent'] .pc-type { display: inline-flex; align-items: center; gap: 6px; color: var(--p-ink); }
 [data-look='parent'] .pc-note[data-tone='amb'] { display: flex; align-items: center; gap: 6px; background: var(--p-amb); color: var(--p-ambink); font-weight: 600; }

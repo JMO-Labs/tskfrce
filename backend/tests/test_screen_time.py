@@ -201,3 +201,47 @@ def test_min_points_counts_only_free_points(client, db, kid, kid_headers, parent
     assert _ask(client, kid_headers).status_code == 200  # 130 free
     assert _ask(client, kid_headers).status_code == 200  # 110 free
     assert _ask(client, kid_headers).status_code == 409  # 90 free, under the 100 minimum
+
+
+def test_rollover_settings_roundtrip(client, db, kid, parent_headers):
+    r = client.get(S, headers=parent_headers).json()
+    assert r["rollover"] is True and r["bank_cap"] is None and r["kids"][0]["saved"] == 0
+    r = client.patch(S, json={"bank_cap": 120}, headers=parent_headers).json()
+    assert r["bank_cap"] == 120
+    r = client.patch(S, json={"rollover": False, "bank_cap": None}, headers=parent_headers).json()
+    assert r["rollover"] is False and r["bank_cap"] is None
+
+
+def test_bank_cap_validation(client, parent_headers):
+    for bad in (10, 20, 495, 0):
+        assert client.patch(S, json={"bank_cap": bad}, headers=parent_headers).status_code == 422
+
+
+def test_rollover_off_clears_banks(client, db, kid, parent_headers):
+    from app.models.screen_bank import ScreenBank
+
+    _setup(db, kid, screen_max_minutes=60)
+    db.add(ScreenBank(kid_id=kid.id, minutes=45))
+    db.commit()
+    assert client.get(S, headers=parent_headers).json()["kids"][0]["saved"] == 45
+    r = client.patch(S, json={"rollover": False}, headers=parent_headers).json()
+    assert r["kids"][0]["saved"] == 0
+    db.expire_all()
+    assert db.get(ScreenBank, kid.id).minutes == 0
+    client.patch(S, json={"rollover": True}, headers=parent_headers)
+    assert client.get(S, headers=parent_headers).json()["kids"][0]["saved"] == 0
+
+
+def test_kid_rewards_shows_saved(client, db, kid, kid_headers):
+    from app.models.screen_bank import ScreenBank
+
+    _setup(db, kid, screen_max_minutes=60)
+    db.add(ScreenBank(kid_id=kid.id, minutes=45))
+    db.commit()
+    s = client.get("/api/v1/kid/rewards", headers=kid_headers).json()["screen"]
+    assert (s["saved"], s["max_today"], s["left_today"]) == (45, 105, 105)
+    fam = get_family(db)
+    fam.screen_max_minutes = None
+    db.commit()
+    s = client.get("/api/v1/kid/rewards", headers=kid_headers).json()["screen"]
+    assert (s["saved"], s["max_today"], s["left_today"]) == (0, None, None)

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { Icon } from './Icon'
 import { errorText } from '../errorText'
+import { LAST } from '../setup/setupStep'
 
 export interface StateAction {
   label: string
@@ -69,6 +70,40 @@ export function Skeleton({ rows = 3 }: { rows?: number }) {
           </span>
         </div>
       ))}
+    </div>
+  )
+}
+
+/** Loading placeholder shaped like grouped summary rows: same head height, so nothing jumps when the rows arrive. */
+export function RowsSkeleton({ rows = 3 }: { rows?: number }) {
+  return (
+    <div className="p-srows p-srows-sk" data-grp="" role="status" aria-label="Loading">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="p-srow">
+          <div className="p-srow-head" aria-hidden="true">
+            <span className="p-srow-l1">
+              <i className="p-srow-sk p-srow-sk-ic" />
+              <b>
+                <i className="p-srow-sk p-srow-sk-t" />
+              </b>
+              <i className="p-srow-sk" />
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** A failed load inside a pane or an open row: one calm line and a way to try again. */
+export function LoadFail({ error, onRetry }: { error: unknown; onRetry: () => void }) {
+  return (
+    <div className="p-loadfail" role="alert">
+      <span>{errorText(error)}</span>
+      <button type="button" className="p-btn" onClick={onRetry}>
+        <Icon name="refresh" size={16} />
+        Try again
+      </button>
     </div>
   )
 }
@@ -212,7 +247,7 @@ export const BoxStarting = () => (
 
 /** "Let's finish setting up": an unfinished wizard sends the parent back to its step. */
 export const SetupResuming = ({ step }: { step: number }) => (
-  <WaitingState icon="auto_fix_high" title="Let's finish setting up" body={`Taking you to setup, step ${step} of 7…`} bar />
+  <WaitingState icon="auto_fix_high" title="Let's finish setting up" body={`Taking you to setup, step ${Math.min(step, LAST)} of ${LAST}…`} bar />
 )
 
 /** "Opening Homework · Mia": a link from a notification, while its page loads. */

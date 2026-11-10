@@ -23,7 +23,7 @@ const rewards = (over: object = {}) => ({
   balance: 120,
   screen_time_price: 20,
   screen_time_enabled: true,
-  screen: { enabled: true, price: 20, auto: false, only_in_hours: false, max_today: null, bought_today: 0, left_today: null, min_points: null, in_hours: true },
+  screen: { enabled: true, price: 20, options: [{ group_id: null, scope: 'all', name: 'All my devices', icon: 'devices', price: 20 }], auto: false, only_in_hours: false, max_today: null, saved: 0, bought_today: 0, left_today: null, min_points: null, in_hours: true },
   rewards: [],
   pending: [],
   ...over,
@@ -122,6 +122,41 @@ describe('RewardsSection', () => {
     expect(calls('/kid/redeem')[0][1]).toMatchObject({ body: { kind: 'screen_time', minutes: 30 } })
   })
 
+  test('what-for chips price the purchase and send scope + group_id', async () => {
+    const options = [
+      { group_id: null, scope: 'all', name: 'All my devices', icon: 'devices', price: 40 },
+      { group_id: null, scope: 'other', name: 'Other devices', icon: 'devices', price: 20 },
+      { group_id: 7, scope: 'group', name: 'Tablets', icon: 'tablet_mac', price: 20 },
+      { group_id: 9, scope: 'group', name: 'Consoles', icon: 'sports_esports', price: 40 },
+    ]
+    route({ 'GET /kid/rewards': rewards({ screen: { ...rewards().screen, options } }), 'POST /kid/redeem': {} })
+    wrap(<RewardsSection onExpired={() => {}} />)
+    expect(await screen.findByRole('radiogroup', { name: 'What for?' })).toBeInTheDocument()
+    const all = screen.getByRole('radio', { name: /All my devices/ })
+    expect(all).toHaveAttribute('aria-checked', 'true')
+    expect(all.querySelector('[data-icon="check_circle"]')).not.toBeNull() // not colour alone
+    await userEvent.click(screen.getByRole('radio', { name: /Other devices/ }))
+    expect(screen.getByRole('radio', { name: /Other devices/ })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('radio', { name: /All my devices/ })).toHaveAttribute('aria-checked', 'false')
+    expect(all.querySelector('[data-icon="check_circle"]')).toBeNull()
+    await userEvent.click(screen.getByRole('radio', { name: /Tablets/ }))
+    expect(screen.getByText('40')).toBeInTheDocument() // 30 min at 20 pts / 15 min
+    await userEvent.keyboard('{ArrowRight}')
+    expect(screen.getByRole('radio', { name: /Consoles/ })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByText('80')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Request screen time' }))
+    expect(calls('/kid/redeem')[0][1]).toMatchObject({ body: { kind: 'screen_time', minutes: 30, group_id: 9, scope: 'group' } })
+  })
+
+  test('one option shows no chips and sends group_id null', async () => {
+    route({ 'GET /kid/rewards': rewards(), 'POST /kid/redeem': {} })
+    wrap(<RewardsSection onExpired={() => {}} />)
+    await screen.findByText('Screen time')
+    expect(screen.queryByRole('radiogroup')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'Request screen time' }))
+    expect(calls('/kid/redeem')[0][1]).toMatchObject({ body: { minutes: 30, group_id: null, scope: 'all' } })
+  })
+
   test('screen time hidden when disabled', async () => {
     route({ 'GET /kid/rewards': rewards({ screen_time_enabled: false }) })
     wrap(<RewardsSection onExpired={() => {}} />)
@@ -130,7 +165,7 @@ describe('RewardsSection', () => {
   })
 })
 
-const scr = (o: object) => ({ enabled: true, price: 20, auto: false, only_in_hours: false, max_today: null, bought_today: 0, left_today: null, min_points: null, in_hours: true, ...o })
+const scr = (o: object) => ({ enabled: true, price: 20, options: [{ group_id: null, scope: 'all', name: 'All my devices', icon: 'devices', price: 20 }], auto: false, only_in_hours: false, max_today: null, saved: 0, bought_today: 0, left_today: null, min_points: null, in_hours: true, ...o })
 const rw = (o: object = {}) => ({ id: 3, name: 'Movie night', price: 50, icon: 'movie', needs_approval: true, ...o })
 
 describe('Plan E rewards', () => {
@@ -157,6 +192,28 @@ describe('Plan E rewards', () => {
     wrap(<RewardsSection onExpired={() => {}} />)
     await screen.findByText('45 of 60 min today')
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['15 minutes'])
+  })
+
+  test('saved minutes show the banked line; steps stay under left_today', async () => {
+    route({ 'GET /kid/rewards': rewards({ screen: scr({ saved: 40, max_today: 100, left_today: 80, bought_today: 20 }) }) })
+    wrap(<RewardsSection onExpired={() => {}} />)
+    expect(await screen.findByText('You saved 40 min — today you can buy up to 100 min.')).toBeInTheDocument()
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['15 minutes', '30 minutes', '45 minutes', '60 minutes', '75 minutes'])
+  })
+
+  test('no saved line when saved is 0', async () => {
+    route({ 'GET /kid/rewards': rewards({ screen: scr({ saved: 0, max_today: 60, left_today: 60 }) }) })
+    wrap(<RewardsSection onExpired={() => {}} />)
+    await screen.findByText('0 of 60 min today')
+    expect(screen.queryByText(/You saved/)).toBeNull()
+  })
+
+  test('no saved line when max_today is null', async () => {
+    route({ 'GET /kid/rewards': rewards({ screen: scr({ saved: 40, max_today: null }) }) })
+    const { container } = wrap(<RewardsSection onExpired={() => {}} />)
+    await screen.findByRole('button', { name: 'Request screen time' })
+    expect(screen.queryByText(/You saved/)).toBeNull()
+    expect(container.textContent).not.toContain('null')
   })
 
   test('left_today 0 disables with server wording', async () => {

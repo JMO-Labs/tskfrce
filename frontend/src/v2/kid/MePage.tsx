@@ -1,7 +1,12 @@
 import { Icon } from '../parent/Icon'
 import { ProgressHeader } from '../components/ProgressHeader'
-import type { Progress } from '../types'
+import type { CelebrateLevel, Progress } from '../types'
+import type { KidTrust } from '../trustTypes'
+import { FunSettings } from './FunSettings'
+import type { KidAge } from './modes/types'
+import { IntegrationWidgets } from '../integrations/WidgetFrame'
 import { FamilySection } from './FamilySection'
+import { TrustChip } from './TrustChip'
 
 /** Kid "Me" tab: name card with XP, Customize (not in preview), family, and "Not me" on shared devices. */
 export function MePage({
@@ -14,6 +19,10 @@ export function MePage({
   onExit,
   kidId,
   little = false,
+  mode = 'kid',
+  celebrate = 'full',
+  freezes,
+  trust,
 }: {
   name: string
   avatar: string | null
@@ -24,6 +33,10 @@ export function MePage({
   onExit: () => void
   kidId?: number | null
   little?: boolean
+  mode?: KidAge
+  celebrate?: CelebrateLevel
+  freezes?: number | null
+  trust?: KidTrust | null
 }) {
   return (
     <section className="me-view">
@@ -31,6 +44,7 @@ export function MePage({
       {progress && (
         <div className="me-card">
           <ProgressHeader name={name} avatar={avatar} kid progress={progress} />
+          <TrustChip trust={trust} mode={mode} />
           {!preview && (
             <button type="button" className="r-btn" data-customize onClick={onLocker}>
               <Icon name="palette" />
@@ -39,7 +53,9 @@ export function MePage({
           )}
         </div>
       )}
+      {!preview && <FunSettings level={celebrate} mode={mode} freezes={freezes} />}
       <FamilySection meId={kidId} little={little} />
+      {!preview && <IntegrationWidgets surface="kid" />}
       {canSwitch && (
         <button type="button" className="r-btn me-out" data-tone="plain" onClick={onExit}>
           <Icon name="swap_horiz" />

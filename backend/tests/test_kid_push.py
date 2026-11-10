@@ -13,15 +13,27 @@ def cfg(monkeypatch):
 
 def test_push_disabled_shape(client, kid, parent_headers, monkeypatch):
     monkeypatch.setattr(settings, "NTFY_URL", None)
+    monkeypatch.setattr(settings, "NTFY_UPSTREAM_URL", "")
     r = client.get(f"{URL}/{kid.id}/push", headers=parent_headers)
     assert r.status_code == 200
     assert r.json() == {
         "enabled": False,
+        "upstream": False,
         "server": None,
         "topic": None,
         "link": None,
         "qr_svg": None,
     }
+
+
+@pytest.mark.parametrize("lan", [False, True])
+@pytest.mark.parametrize("up", ["", "https://ntfy.sh"])
+def test_push_reports_upstream(client, kid, parent_headers, cfg, monkeypatch, lan, up):
+    """The pane discloses the public relay whenever it is on, LAN ntfy or not."""
+    monkeypatch.setattr(settings, "NTFY_URL", "http://ntfy:80" if lan else None)
+    monkeypatch.setattr(settings, "NTFY_UPSTREAM_URL", up)
+    r = client.get(f"{URL}/{kid.id}/push", headers=parent_headers).json()
+    assert (r["enabled"], r["upstream"]) == (lan, bool(up))
 
 
 def test_push_creates_topic_once(client, kid, parent_headers, cfg):

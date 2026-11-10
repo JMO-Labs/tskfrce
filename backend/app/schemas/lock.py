@@ -47,6 +47,7 @@ class GroupIn(BaseModel):
     device_ids: list[int] = []
     icon: str | None = Field(default=None, min_length=1, max_length=40)
     chore_lock: bool | None = None
+    screen_price: int | None = Field(None, ge=1, le=1000)
 
 
 class KidCreate(BaseModel):
@@ -64,6 +65,9 @@ class KidPatch(BaseModel):
     pin: str | None = None
     clear_pin: bool = False
     age_group: Literal["little", "kid", "teen"] | None = None
+    celebrate: Literal["full", "small", "off"] | None = None
+    trust_mode: bool | None = None
+    trust_level: int | None = Field(default=None, ge=0, le=2)
 
     _pin = field_validator("pin")(_pin)
 
@@ -86,6 +90,14 @@ class FamilyPatch(BaseModel):
         | None
     ) = Field(default=None, max_length=8)
     giphy_api_key: str | None = Field(default=None, max_length=100)  # "" clears
+    hh_default_mult_x10: Literal[15, 20, 30] | None = None
+    hh_default_minutes: Literal[30, 60, 90] | None = None
+    hh_weekly_surprise: bool | None = None
+    hh_auto_boost: bool | None = None
+    streak_freeze: bool | None = None
+    bedtime_auto: bool | None = None
+    bedtime_auto_at: str | None = None
+    recap_weekly: bool | None = None
     accent: (
         Literal[
             "neon", "sun", "tangerine", "bubblegum", "lilac", "sky", "aqua", "mint", "peach", "ice"
@@ -98,4 +110,4 @@ class FamilyPatch(BaseModel):
     def _dedupe_replies(cls, v: list[str] | None) -> list[str] | None:
         return None if v is None else list(dict.fromkeys(v))  # keep order, drop repeats
 
-    _rt = field_validator("reset_time")(_hhmm)
+    _rt = field_validator("reset_time", "bedtime_auto_at")(_hhmm)

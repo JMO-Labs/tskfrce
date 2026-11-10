@@ -36,6 +36,8 @@ jest.mock('next/router', () => ({
     query: mockRoute.query,
     push: mockRoute.push,
     replace: mockRoute.replace,
+    beforePopState: jest.fn(),
+    events: { on: jest.fn(), off: jest.fn(), emit: jest.fn() },
     pathname: '/kids',
   }),
 }))
@@ -61,6 +63,13 @@ jest.mock('@/v2/components/RequireParent', () => ({
 }))
 
 const { push, replace } = mockRoute
+/** Bonus and Deduct live in the kid header's More menu. */
+const pick = async (name: string) => {
+  const more = await within(detail()).findByRole('button', { name: 'More' })
+  await userEvent.click(more)
+  const items = await screen.findAllByRole('menuitem')
+  await userEvent.click(items.find((e) => e.textContent?.endsWith(name))!)
+}
 setupLibrary()
 
 describe('kids', () => {
@@ -78,29 +87,24 @@ describe('kids', () => {
     expect(document.body.textContent).not.toContain('🦊')
   })
 
-  test('detail has View as kid, Bonus, Deduct, Edit, plus chores and devices', async () => {
-    mockRoute.query = { section: 'kids', item: '8' }
+  test('detail has Edit and a More menu with Bonus, Deduct, View as kid and Remove; devices and chores sit in rows', async () => {
+    mockRoute.query = { section: 'kids', item: '8', open: 'devices' }
     render(wrap(<KidsPage />))
     expect(
-      await within(detail()).findByRole('link', { name: 'View as kid' }),
-    ).toHaveAttribute('href', '/kid?as=8')
-    for (const name of ['Bonus', 'Deduct', 'Edit'])
-      expect(
-        within(detail()).getByRole('button', { name }),
-      ).toBeInTheDocument()
+      await within(detail()).findByRole('button', { name: 'Edit' }),
+    ).toBeInTheDocument()
+    await userEvent.click(within(detail()).getByRole('button', { name: 'More' }))
+    const items = await screen.findAllByRole('menuitem')
+    expect(items.map((e) => e.textContent)).toEqual(['add_circleBonus', 'remove_circleDeduct', 'visibilityView as kid', 'closeRemove Leo'])
+    expect(items[2]).toHaveAttribute('href', '/kid?as=8')
     expect(await within(detail()).findByText('Leo iPad')).toBeInTheDocument()
-    expect(
-      within(detail()).getByRole('region', { name: 'Chores assigned' }),
-    ).toHaveTextContent('Trash')
+    expect(within(detail()).getByText('1 device · all open')).toBeInTheDocument()
     expect(document.body.textContent).not.toContain('🦊')
   })
 
-  test('Edit opens KidEditor; Remove PIN PATCHes', async () => {
-    mockRoute.query = { section: 'kids', item: '8' }
+  test('Edit profile: Remove PIN PATCHes', async () => {
+    mockRoute.query = { section: 'kids', item: '8', open: 'settings', edit: '1' }
     render(wrap(<KidsPage />))
-    await userEvent.click(
-      await within(detail()).findByRole('button', { name: 'Edit' }),
-    )
     await userEvent.click(
       await within(detail()).findByRole('button', { name: 'Remove PIN' }),
     )
@@ -113,12 +117,9 @@ describe('kids', () => {
   })
 
   test('PIN: letters are refused with a message, 3 digits are refused, nothing is sent', async () => {
-    mockRoute.query = { section: 'kids', item: '8' }
+    mockRoute.query = { section: 'kids', item: '8', open: 'settings', edit: '1' }
     render(wrap(<KidsPage />))
-    await userEvent.click(
-      await within(detail()).findByRole('button', { name: 'Edit' }),
-    )
-    const pin = within(detail()).getByLabelText(/PIN \(4 digits\)/)
+    const pin = await within(detail()).findByLabelText(/PIN \(4 digits\)/)
     await userEvent.type(pin, 'ab')
     expect(
       within(detail()).getByText('A PIN is digits only, exactly 4.'),
@@ -133,7 +134,7 @@ describe('kids', () => {
       within(detail()).getByText('Use exactly 4 digits.'),
     ).toBeInTheDocument()
     expect(
-      within(detail()).getByRole('button', { name: 'Save kid' }),
+      within(detail()).getByRole('button', { name: 'Save' }),
     ).toBeDisabled()
     expect(calls('PATCH')).toHaveLength(0)
   })
@@ -142,9 +143,7 @@ describe('kids', () => {
     serve({ '/kids/8/points': { balance: 50 } })
     mockRoute.query = { section: 'kids', item: '8' }
     render(wrap(<KidsPage />))
-    await userEvent.click(
-      await within(detail()).findByRole('button', { name: 'Bonus' }),
-    )
+    await pick('Bonus')
     await userEvent.type(within(detail()).getByLabelText(/^Points \(/), '8')
     await userEvent.type(within(detail()).getByLabelText('Why?'), 'Helped out')
     const send = within(detail()).getByRole('button', { name: 'Send points' })
@@ -153,16 +152,12 @@ describe('kids', () => {
     await waitFor(() => expect(calls('POST')).toHaveLength(1))
   })
 
-  test('Bonus POSTs /points and Deduct POSTs /deduct with amount and note', async () => {
-    serve({
-      '/kids/8/points': { balance: 50 },
-      '/kids/8/deduct': { balance: 10, deducted: 5 },
-    })
+  test('Bonus POSTs /points with amount and note', async () => {
+    serve({ '/kids/8/points': { balance: 50 } })
     mockRoute.query = { section: 'kids', item: '8' }
     render(wrap(<KidsPage />))
-    await userEvent.click(
-      await within(detail()).findByRole('button', { name: 'Bonus' }),
-    )
+    await pick('Bonus')
+    await waitFor(() => expect(within(detail()).getByLabelText(/^Points \(/)).toHaveFocus())
     expect(
       within(detail()).getByRole('button', { name: 'Send points' }),
     ).toBeDisabled()
@@ -178,9 +173,14 @@ describe('kids', () => {
       ]),
     )
 
-    await userEvent.click(
-      within(detail()).getByRole('button', { name: 'Deduct' }),
-    )
+  })
+
+  test('Deduct POSTs /deduct with amount and note', async () => {
+    serve({ '/kids/8/deduct': { balance: 10, deducted: 5 } })
+    mockRoute.query = { section: 'kids', item: '8' }
+    render(wrap(<KidsPage />))
+    await pick('Deduct')
+    await waitFor(() => expect(within(detail()).getByRole('button', { name: '−5' })).toHaveFocus())
     await userEvent.type(within(detail()).getByLabelText(/^Points \(/), '5')
     await userEvent.type(
       within(detail()).getByLabelText('Why?'),
@@ -190,7 +190,7 @@ describe('kids', () => {
       within(detail()).getByRole('button', { name: 'Take points' }),
     )
     await waitFor(() =>
-      expect(calls('POST')[1]).toEqual([
+      expect(calls('POST')[0]).toEqual([
         '/kids/8/deduct',
         { method: 'POST', body: { amount: 5, note: 'Broke a rule' } },
       ]),
@@ -244,26 +244,23 @@ describe('kids: create, delete, points', () => {
         }),
       ],
     })
-    mockRoute.query = { section: 'kids', item: '7' }
+    mockRoute.query = { section: 'kids', item: '7', open: 'chores' }
     render(wrap(<KidsPage />))
-    const card = await within(detail()).findByRole('region', {
-      name: 'Chores assigned',
-    })
-    await waitFor(() => expect(card).toHaveTextContent('Trash · daily'))
-    expect(card).not.toHaveTextContent('once')
+    const link = await within(detail()).findByRole('link', { name: /Trash/ })
+    await waitFor(() => expect(link).toHaveTextContent('Daily'))
+    expect(link).not.toHaveTextContent(/once/i)
   })
 
   test('Bonus refreshes the balance by refetching /today', async () => {
     serve({ '/kids/8/points': { balance: 50 } })
     mockRoute.query = { section: 'kids', item: '8' }
     render(wrap(<KidsPage />))
-    await userEvent.click(
-      await within(detail()).findByRole('button', { name: 'Bonus' }),
-    )
+    await pick('Bonus')
     await userEvent.type(within(detail()).getByLabelText(/^Points \(/), '8')
     await userEvent.type(within(detail()).getByLabelText('Why?'), 'Nice')
     const todayCalls = () =>
       apiMock.mock.calls.filter(([p]) => p === '/today').length
+    await waitFor(() => expect(todayCalls()).toBeGreaterThan(0))
     const before = todayCalls()
     await userEvent.click(
       within(detail()).getByRole('button', { name: 'Send points' }),
@@ -327,15 +324,18 @@ describe('rewards and badges', () => {
     render(wrap(<KidsPage />))
     expect(
       await within(detail()).findByRole('button', { name: /^Helper/ }),
-    ).toHaveTextContent('Helped out')
+    ).toHaveTextContent('Not awarded yet')
     expect(
       within(list()).getByRole('button', { name: /Custom badges/ }),
     ).toHaveTextContent('1 made by you')
     await userEvent.click(
+      within(detail()).getByRole('button', { name: 'Award' }),
+    )
+    await userEvent.click(
       within(detail()).getByRole('button', { name: 'Leo' }),
     )
     await userEvent.click(
-      within(detail()).getByRole('button', { name: 'Award to Leo' }),
+      within(detail()).getByRole('button', { name: 'Award Helper' }),
     )
     await waitFor(() =>
       expect(calls('POST')[0]).toEqual([
@@ -350,7 +350,8 @@ describe('rewards and badges', () => {
     mockRoute.query = { section: 'badges', item: 'custom', pick: 'new' }
     render(wrap(<KidsPage />))
     await userEvent.type(await screen.findByLabelText('Badge name'), 'Kind')
-    await userEvent.click(screen.getByTitle('star'))
+    await userEvent.click(screen.getByRole('button', { name: 'Change icon' }))
+    await userEvent.click(await screen.findByTitle('star'))
     await userEvent.type(screen.getByLabelText('Description'), 'Was kind')
     await userEvent.click(screen.getByRole('button', { name: 'Add badge' }))
     await waitFor(() =>
@@ -411,7 +412,10 @@ describe('rewards and badges: icon and delete confirmation', () => {
     mockRoute.query = { section: 'badges', item: 'custom', pick: '3' }
     render(wrap(<KidsPage />))
     await userEvent.click(
-      await within(detail()).findByRole('button', { name: 'Delete badge' }),
+      await within(detail()).findByRole('button', { name: 'More for Helper' }),
+    )
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: 'Delete badge' }),
     )
     expect(calls('DELETE')).toHaveLength(0)
     await userEvent.click(

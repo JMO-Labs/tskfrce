@@ -14,7 +14,7 @@ BODY = {
 
 
 def test_setup_needed_on_empty_db(client):
-    assert client.get("/api/v1/setup").json() == {"needed": True}
+    assert client.get("/api/v1/setup").json() == {"needed": True, "claim": False}
 
 
 def test_setup_creates_owner_parent_and_family(client, db):
@@ -28,7 +28,7 @@ def test_setup_creates_owner_parent_and_family(client, db):
     assert u.role == UserRole.PARENT
     fam = get_family(db)
     assert (fam.name, fam.timezone, fam.owner_id) == ("Sotos", "America/New_York", u.id)
-    assert client.get("/api/v1/setup").json() == {"needed": False}
+    assert client.get("/api/v1/setup").json() == {"needed": False, "claim": False}
 
 
 def test_setup_twice_returns_409(client):
@@ -48,7 +48,7 @@ def test_require_parent_rejects_kid(kid, parent):
 def test_setup_works_when_family_row_pre_exists(client, db):
     get_family(db)
     db.commit()
-    assert client.get("/api/v1/setup").json() == {"needed": True}
+    assert client.get("/api/v1/setup").json() == {"needed": True, "claim": False}
     assert client.post("/api/v1/setup", json=BODY).status_code == 201
     assert get_family(db).name == "Sotos"
 
@@ -59,7 +59,7 @@ def test_setup_409_when_owner_already_set(client, db):
     db.flush()
     get_family(db).owner_id = owner.id
     db.commit()
-    assert client.get("/api/v1/setup").json() == {"needed": False}
+    assert client.get("/api/v1/setup").json() == {"needed": False, "claim": False}
     assert client.post("/api/v1/setup", json=BODY).status_code == 409
     assert db.query(User).count() == 1
 
@@ -105,3 +105,25 @@ def test_setup_step_validates_and_is_parent_only(client, db):
     assert client.put("/api/v1/setup/step", json={"step": 9}, headers=h).status_code == 422
     assert client.get("/api/v1/setup/step").status_code == 401
     assert client.put("/api/v1/setup/step", json={"step": 4}, headers=kid).status_code == 403
+
+
+def test_extras_step_8_is_saved_and_resumed(client, db):
+    h = _tok(client)
+    assert client.put("/api/v1/setup/step", json={"step": 8}, headers=h).status_code == 200
+    assert client.get("/api/v1/setup/step", headers=h).json() == {"step": 8}
+
+
+def test_stored_step_above_last_reads_as_finished(client, db):
+    h = _tok(client)
+    get_family(db).setup_step = 9
+    db.commit()
+    assert client.get("/api/v1/setup/step", headers=h).json() == {"step": None}
+
+
+def test_finished_setup_step_is_locked(client, db):
+    h = _tok(client)
+    assert client.put("/api/v1/setup/step", json={"step": None}, headers=h).status_code == 200
+    r = client.put("/api/v1/setup/step", json={"step": 5}, headers=h)
+    assert r.status_code == 409 and r.json()["detail"] == "Setup is already finished."
+    assert get_family(db).setup_step is None
+    assert client.put("/api/v1/setup/step", json={"step": None}, headers=h).status_code == 200

@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, test } from '@jest/globals'
 import type { Mock } from 'jest-mock'
 import type { ReactNode } from 'react'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MantineProvider } from '@mantine/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -10,14 +10,14 @@ import { fridgeTheme } from '@/v2/theme'
 import { api } from '@/v2/api'
 import { DeviceDetail } from '@/v2/manage/DeviceDetail'
 import { GroupDetail } from '@/v2/manage/GroupDetail'
-import { KidEditor } from '@/v2/manage/KidEditor'
+import { KidProfileForm } from '@/v2/manage/KidEditor'
 import { DevicesPage } from '@/v2/manage/DevicesPage'
 import { SettingsPage } from '@/v2/manage/SettingsPage'
 import type { Device, Family, Kid } from '@/v2/types'
+import { fakeRouter } from './helpers/fakeRouter'
 
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
-const mockRouter: { query: Record<string, string> } = { query: {} }
-jest.mock('next/router', () => ({ useRouter: () => mockRouter }))
+jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 jest.mock('@/v2/parent/ParentShell', () => ({
   ParentShell: ({ children }: { children: ReactNode }) => <>{children}</>,
@@ -88,7 +88,12 @@ const wrap = (ui: ReactNode) => (
     <MantineProvider theme={fridgeTheme}>{ui}</MantineProvider>
   </QueryClientProvider>
 )
-const TB = 'Test block on Maya laptop'
+const menu = async (name: RegExp) => {
+  await userEvent.click(screen.getByRole('button', { name: 'More' }))
+  return userEvent.click(await screen.findByRole('menuitem', { name }))
+}
+const openRow = (open: string) => fakeRouter.reset('/devices', { item: '1', open })
+const openGroupRow = (open: string) => fakeRouter.reset('/devices', { tab: 'groups', item: '3', open })
 const calls = (method: string) => apiMock.mock.calls.filter(([, i]) => i?.method === method)
 
 beforeAll(() => {
@@ -102,7 +107,7 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
-  mockRouter.query = {}
+  fakeRouter.reset('/devices')
   jest.mocked(notifications.show).mockClear()
   apiMock.mockReset().mockImplementation(async (path) => {
     if (path === '/family') return family
@@ -132,7 +137,7 @@ describe('devices', () => {
 
   test('delete asks first, then toasts Deleted', async () => {
     render(wrap(<DeviceDetail device={device} kids={kids} onRequestOverride={() => {}} />))
-    await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    await menu(/Delete$/)
     expect(calls('DELETE')).toHaveLength(0)
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
@@ -140,20 +145,20 @@ describe('devices', () => {
     await waitFor(() => expect(notifications.show).toHaveBeenCalledWith(expect.objectContaining({ message: 'Deleted' })))
   })
 
-  test('shows resisting pill when device.resisting', () => {
+  test('shows the got-around chip when device.resisting', () => {
     render(wrap(<DeviceDetail device={{ ...device, resisting: true }} kids={kids} onRequestOverride={() => {}} />))
-    expect(screen.getByText('got around the lock')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Got around the lock/ })).toBeInTheDocument()
   })
 
-  test('hides pill otherwise', () => {
+  test('hides the chip otherwise', () => {
     render(wrap(<DeviceDetail device={device} kids={kids} onRequestOverride={() => {}} />))
-    expect(screen.queryByText('got around the lock')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Got around the lock/ })).toBeNull()
   })
 
   test('Test block button posts and toasts message', async () => {
     apiMock.mockImplementation(async () => ({ reason: 'ok', message: 'Blocked fine', offline: false, router_resisted: false }))
     render(wrap(<DeviceDetail device={device} kids={kids} onRequestOverride={() => {}} />))
-    await userEvent.click(screen.getByRole('button', { name: TB }))
+    await menu(/Test block$/)
     await waitFor(() => expect(calls('POST')[0]).toEqual(['/devices/1/test-block', { method: 'POST' }]))
     await waitFor(() =>
       expect(notifications.show).toHaveBeenCalledWith(expect.objectContaining({ message: 'Blocked fine', color: 'fridgeGreen' })),
@@ -163,7 +168,7 @@ describe('devices', () => {
   test('Test block non-ok reason toasts red', async () => {
     apiMock.mockImplementation(async () => ({ reason: 'router', message: 'x' }))
     render(wrap(<DeviceDetail device={device} kids={kids} onRequestOverride={() => {}} />))
-    await userEvent.click(screen.getByRole('button', { name: TB }))
+    await menu(/Test block$/)
     await waitFor(() =>
       expect(notifications.show).toHaveBeenCalledWith(expect.objectContaining({ message: 'x', color: 'fridgeRed' })),
     )
@@ -174,7 +179,7 @@ describe('devices', () => {
       throw new Error("The home box didn't answer. Is it plugged in?")
     })
     render(wrap(<DeviceDetail device={device} kids={kids} onRequestOverride={() => {}} />))
-    await userEvent.click(screen.getByRole('button', { name: TB }))
+    await menu(/Test block$/)
     await waitFor(() =>
       expect(notifications.show).toHaveBeenCalledWith(
         expect.objectContaining({ title: "That didn't work", color: 'fridgeRed' }),
@@ -182,19 +187,22 @@ describe('devices', () => {
     )
   })
 
-  test('Test block is busy (aria-disabled, keeps focus) and says Testing… while pending', async () => {
+  test('Test block ignores a second run while the first is pending', async () => {
     apiMock.mockImplementation(() => new Promise(() => {}))
     render(wrap(<DeviceDetail device={device} kids={kids} onRequestOverride={() => {}} />))
-    await userEvent.click(screen.getByRole('button', { name: TB }))
-    const btn = await screen.findByRole('button', { name: TB })
-    await waitFor(() => expect(btn).toHaveAttribute('aria-busy', 'true'))
-    expect(btn).toHaveAttribute('aria-disabled', 'true')
-    expect(btn).toHaveTextContent('Testing…')
+    await userEvent.click(screen.getByRole('button', { name: 'More' }))
+    await userEvent.dblClick(await screen.findByRole('menuitem', { name: /Test block$/ }))
+    expect(calls('POST')).toHaveLength(1)
   })
 
-  test('Lock now shows busy and Unlock is disabled while an override is running', () => {
+  test('Lock now shows busy while an override is running', () => {
     render(wrap(<DeviceDetail device={device} kids={kids} pendingAction="lock" onRequestOverride={() => {}} />))
     expect(screen.getByRole('button', { name: /Lock now/ })).toHaveAttribute('aria-busy', 'true')
+    expect(screen.queryByRole('button', { name: /Unlock 30 min/ })).toBeNull()
+  })
+
+  test('Unlock is disabled while another override is running', () => {
+    render(wrap(<DeviceDetail device={{ ...device, status: 'assigned', owner_ids: [7] }} kids={kids} pendingAction="clear" onRequestOverride={() => {}} />))
     expect(screen.getByRole('button', { name: /Unlock 30 min/ })).toBeDisabled()
   })
 
@@ -211,9 +219,10 @@ describe('devices', () => {
     expect(calls('PATCH')).toHaveLength(1)
   })
 
-  test('an unknown device leads with Who\'s this?; copy follows the block-new-devices setting', async () => {
+  test('an unknown device opens Details; the chip copy follows the block-new-devices setting', async () => {
     render(wrap(<DeviceDetail device={device} kids={kids} onRequestOverride={() => {}} />))
-    expect(screen.getByRole('heading', { name: "Who's this?" })).toBeInTheDocument()
+    expect(await screen.findByRole('group', { name: 'Owners' })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Open' }))
     expect(await screen.findByText(/new and blocked until you say/)).toBeInTheDocument() // family fixture blocks
     await userEvent.click(screen.getByRole('button', { name: 'Maya' }))
     await waitFor(() => expect(calls('PATCH')[0]).toEqual([`/devices/${device.id}`, { method: 'PATCH', body: { owner_ids: [kids[0].id] } }]))
@@ -222,10 +231,13 @@ describe('devices', () => {
   test('learning mode says the new device stays online', async () => {
     apiMock.mockImplementation(async (path) => (path === '/family' ? { ...family, new_devices_blocked: false } : []))
     render(wrap(<DeviceDetail device={device} kids={kids} onRequestOverride={() => {}} />))
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/family'))
+    await userEvent.click(screen.getByRole('button', { name: 'Open' }))
     expect(await screen.findByText(/stays online until you say/)).toBeInTheDocument()
   })
 
   test('guest disables the owner pills', () => {
+    openRow('details')
     render(wrap(<DeviceDetail device={{ ...device, status: 'guest' }} kids={kids} onRequestOverride={() => {}} />))
     expect(screen.getByRole('button', { name: 'Maya' })).toBeDisabled()
   })
@@ -250,10 +262,80 @@ describe('devices', () => {
     )
   })
 
+  describe('group screen price', () => {
+    const g = { id: 3, name: 'Tablets', device_ids: [1], owner_ids: [], icon: 'tv', chore_lock: true, screen_price: null as number | null }
+    const mount = (grp = g, group_pricing = true) => {
+      openGroupRow('gset')
+      apiMock.mockImplementation(async (path) => (path === '/screen-time' ? { enabled: true, price: 20, group_pricing } : {}))
+      render(wrap(<GroupDetail group={grp} devices={[device]} kids={kids} onSelect={() => {}} onRequestOverride={() => {}} />))
+    }
+    test('hidden while group pricing is off', async () => {
+      mount(g, false)
+      await waitFor(() => expect(apiMock.mock.calls.some(([p]) => p === '/screen-time')).toBe(true))
+      await act(() => new Promise((r) => setTimeout(r, 0))) // let the query settle
+      expect(screen.queryByLabelText('Screen time price')).toBeNull()
+    })
+    test('hidden while screen time is off, even with group pricing on', async () => {
+      openGroupRow('gset')
+      apiMock.mockImplementation(async (path) => (path === '/screen-time' ? { enabled: false, price: 20, group_pricing: true } : {}))
+      render(wrap(<GroupDetail group={g} devices={[device]} kids={kids} onSelect={() => {}} onRequestOverride={() => {}} />))
+      await waitFor(() => expect(apiMock.mock.calls.some(([p]) => p === '/screen-time')).toBe(true))
+      await act(() => new Promise((r) => setTimeout(r, 0)))
+      expect(screen.queryByLabelText('Screen time price')).toBeNull()
+    })
+    test('hidden on a free group (chore lock off)', async () => {
+      mount({ ...g, chore_lock: false })
+      await waitFor(() => expect(apiMock.mock.calls.some(([p]) => p === '/screen-time')).toBe(true))
+      await act(() => new Promise((r) => setTimeout(r, 0))) // let the query settle
+      expect(screen.queryByLabelText('Screen time price')).toBeNull()
+      expect(screen.queryByText(/Leave empty to use the family price/)).toBeNull()
+    })
+    test('a price blur during another save is retried after it', async () => {
+      let release = () => {}
+      let patches = 0
+      apiMock.mockImplementation(async (path, opts) => {
+        if (path === '/screen-time') return { enabled: true, price: 20, group_pricing: true }
+        if ((opts as { method?: string } | undefined)?.method === 'PATCH' && patches++ === 0) await new Promise<void>((r) => (release = r))
+        return {}
+      })
+      openGroupRow('gset')
+      render(wrap(<GroupDetail group={g} devices={[device]} kids={kids} onSelect={() => {}} onRequestOverride={() => {}} />))
+      const input = await screen.findByLabelText('Screen time price')
+      await userEvent.click(screen.getByRole('switch', { name: /Lock with the kids/ })) // another save, held open
+      await userEvent.type(input, '40')
+      await userEvent.tab() // dropped: a save is in flight
+      expect(calls('PATCH')).toHaveLength(1)
+      release()
+      await waitFor(() => expect(calls('PATCH')[1]).toEqual(['/groups/3', { method: 'PATCH', body: { name: 'Tablets', device_ids: [1], screen_price: 40 } }]))
+    })
+    test('placeholder shows the family price; typing 40 saves screen_price 40', async () => {
+      mount()
+      const input = await screen.findByPlaceholderText('Family price (20)')
+      await userEvent.type(input, '40')
+      await userEvent.tab()
+      await waitFor(() => expect(calls('PATCH')[0]).toEqual(['/groups/3', { method: 'PATCH', body: { name: 'Tablets', device_ids: [1], screen_price: 40 } }]))
+    })
+    test('clearing sends screen_price null', async () => {
+      mount({ ...g, screen_price: 40 })
+      const input = await screen.findByLabelText('Screen time price')
+      await userEvent.clear(input)
+      await userEvent.tab()
+      await waitFor(() => expect(calls('PATCH')[0][1].body).toEqual({ name: 'Tablets', device_ids: [1], screen_price: null }))
+    })
+    test('out of range shows an error and does not save', async () => {
+      mount()
+      await userEvent.type(await screen.findByLabelText('Screen time price'), '5000')
+      await userEvent.tab()
+      expect(screen.getByText('Must be 1000 or less.')).toBeInTheDocument()
+      expect(calls('PATCH')).toHaveLength(0)
+    })
+  })
+
   test('group delete asks first, then DELETEs', async () => {
     const g = { id: 3, name: 'Tablets', device_ids: [1], owner_ids: [] }
     render(wrap(<GroupDetail group={g} devices={[device]} kids={kids} onSelect={() => {}} onRequestOverride={() => {}} />))
-    await userEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    await userEvent.click(screen.getByRole('button', { name: 'More' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Delete group/ }))
     expect(calls('DELETE')).toHaveLength(0)
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
@@ -261,6 +343,7 @@ describe('devices', () => {
   })
 
   test('group rename saves on blur', async () => {
+    openGroupRow('gset')
     const g = { id: 3, name: 'Tablets', device_ids: [1], owner_ids: [] }
     render(wrap(<GroupDetail group={g} devices={[device]} kids={kids} onSelect={() => {}} onRequestOverride={() => {}} />))
     const input = screen.getByLabelText('Group name')
@@ -277,7 +360,7 @@ describe('devices page', () => {
   const serve = (devices: Device[]) =>
     apiMock.mockImplementation(async (path) => (path === '/devices' ? devices : path === '/kids' ? kids : path === '/groups' ? [] : {}))
 
-  test('opens the first device and its lock buttons call the box', async () => {
+  test('opens the first device and Lock now calls the box', async () => {
     serve([device])
     render(wrap(<DevicesPage />))
     await userEvent.click(await screen.findByRole('button', { name: /lock now/i }))
@@ -287,7 +370,13 @@ describe('devices page', () => {
         body: { action: 'lock', minutes: null },
       }),
     )
-    await userEvent.click(screen.getByRole('button', { name: /unlock 30 min/i }))
+  })
+
+  test('a locked device offers Unlock 30 min instead', async () => {
+    serve([{ ...device, status: 'assigned', owner_ids: [7] }])
+    render(wrap(<DevicesPage />))
+    expect(screen.queryByRole('button', { name: /lock now/i })).toBeNull()
+    await userEvent.click(await screen.findByRole('button', { name: /unlock 30 min/i }))
     await waitFor(() =>
       expect(apiMock).toHaveBeenCalledWith(`/devices/${device.id}/override`, {
         method: 'POST',
@@ -305,21 +394,21 @@ describe('groups deep link', () => {
       if (path === '/groups') return [{ id: 1, name: 'Tablets', device_ids: [1] }]
       return []
     })
-    mockRouter.query = { item: '1', tab: 'groups' }
+    fakeRouter.reset('/devices', { item: '1', tab: 'groups' })
     render(wrap(<DevicesPage />))
-    expect(await screen.findByLabelText('Group name')).toHaveValue('Tablets')
+    expect(await screen.findByRole('heading', { name: 'Tablets' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Devices.*1 of 1 device/ })).toBeTruthy()
     expect(screen.queryByLabelText('Device name')).toBeNull()
-    expect(screen.getByText('Maya')).toBeTruthy()
   })
 })
 
 describe('PIN', () => {
   test('Remove PIN sends clear_pin, and only shows when a PIN is set', async () => {
     apiMock.mockResolvedValue({})
-    const { unmount } = render(wrap(<KidEditor kid={kids[0]} />))
+    const { unmount } = render(wrap(<KidProfileForm kid={kids[0]} onSaved={() => {}} />))
     expect(screen.queryByRole('button', { name: 'Remove PIN' })).toBeNull()
     unmount()
-    render(wrap(<KidEditor kid={kids[1]} />))
+    render(wrap(<KidProfileForm kid={kids[1]} onSaved={() => {}} />))
     await userEvent.click(screen.getByRole('button', { name: 'Remove PIN' }))
     await waitFor(() =>
       expect(calls('PATCH')[0]).toEqual(['/kids/8', { method: 'PATCH', body: { clear_pin: true } }]),
@@ -328,20 +417,20 @@ describe('PIN', () => {
 })
 
 describe('settings', () => {
-  test('Save is disabled until something changes', async () => {
+  test('the Household row opens to the name, and nothing needs a Save button', async () => {
+    fakeRouter.reset('/settings', { section: 'family', open: 'hh' })
     render(wrap(<SettingsPage />))
-    const save = await screen.findByRole('button', { name: 'Save settings' })
-    expect(save).toBeDisabled()
-    await userEvent.type(screen.getByLabelText('Family name'), 'x')
-    expect(save).toBeEnabled()
+    expect(await screen.findByLabelText('Family name')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Save settings' })).toBeNull()
   })
 
-  test('an empty family name asks for one and cannot be saved', async () => {
+  test('an empty family name asks for one and is not sent', async () => {
+    fakeRouter.reset('/settings', { section: 'family', open: 'hh' })
     render(wrap(<SettingsPage />))
-    const save = await screen.findByRole('button', { name: 'Save settings' })
-    await userEvent.clear(screen.getByLabelText('Family name'))
+    await userEvent.clear(await screen.findByLabelText('Family name'))
     expect(screen.getByText('Give your family a name.')).toBeInTheDocument()
-    expect(save).toBeDisabled()
+    await userEvent.tab()
+    expect(apiMock.mock.calls.some((c) => (c as unknown[])[1] && (c[1] as { method?: string }).method === 'PATCH')).toBe(false)
   })
 })
 
@@ -355,7 +444,7 @@ describe('props passing', () => {
       if (path === '/hours') return { today: null, rules: [] }
       return {}
     })
-    mockRouter.query = { item: '1' }
+    fakeRouter.reset('/devices', { item: '1' })
     render(wrap(<DevicesPage />))
     await waitFor(() => {
       expect(apiMock).toHaveBeenCalledWith('/devices')

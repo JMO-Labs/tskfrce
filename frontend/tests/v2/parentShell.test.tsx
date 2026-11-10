@@ -309,6 +309,13 @@ describe('TabBar', () => {
     expect(screen.getByRole('link', { name: 'Devices' })).toHaveAttribute('aria-current', 'page')
   })
 
+  test('the notifications page lights Today (its back row says "Today"), not More', () => {
+    ;(useRouter as jest.Mock).mockReturnValue({ pathname: '/notifications', push: jest.fn(), replace: jest.fn(), query: {} })
+    render(<TabBar />)
+    expect(screen.getByRole('link', { name: 'Today' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'More' })).not.toHaveAttribute('aria-current')
+  })
+
 })
 
 describe('MorePage', () => {

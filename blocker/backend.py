@@ -104,6 +104,15 @@ def report_vlans(cfg: Config, vlans: list[dict]) -> bool:
         return False
 
 
+def report_workarounds(cfg: Config, found: dict[str, list[str]]) -> bool:
+    try:
+        _request(cfg, "/devices/workarounds", {"found": found})
+        return True
+    except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
+        log.warning("report_workarounds failed: %s", e)
+        return False
+
+
 def report_hits(cfg: Config, hits: dict[str, int]) -> bool:
     try:
         _request(cfg, "/devices/hits", {"hits": hits})

@@ -3,6 +3,7 @@ import { Icon } from '@/v2/parent/Icon'
 import type { KidChore, KidToday } from '../../types'
 import { DeductionCards, NoteSent, PhotoButton, SentBackCard, isReady, whyNot } from '../ChoreParts'
 import { KidChip, PointsChip } from '../KidChip'
+import { boosted } from '../happyHour'
 import { kidChips, kidSort, starsFilled, tally } from '../kidChips'
 import { KidSteps } from '../KidSteps'
 import { TellParentSheet } from '../TellParent'
@@ -47,7 +48,7 @@ function Now({ c, d, now, onDone, busyId }: { c: KidChore; d: KidToday; now: num
       <h2 className="k-disp">{c.title}</h2>
       <div className="l-row">
         {chip && <KidChip chip={chip} size="lg" />}
-        <PointsChip points={c.points} size="lg" />
+        <PointsChip points={c.points} size="lg" now={boosted(c, d.happy_hour, now)} />
       </div>
       {!!(c.note || c.last_note || c.deductions?.length) && (
         <div className="k-cards l-cards">
@@ -83,7 +84,7 @@ function Row({ c, now, tz }: { c: KidChore; now: number; tz?: string }) {
   const chip = kidChips(c, now, tz, true)[0]
   const tone = chip?.tone === 'late' || chip?.tone === 'done' ? chip.tone : undefined
   return (
-    <div className="l-q" data-tone={tone}>
+    <div className="l-q" data-tone={tone} data-celebrate-id={c.id}>
       <span className="l-qi">
         <Icon name={tone === 'done' ? 'check' : glyph(c)} />
       </span>
@@ -117,7 +118,7 @@ export function LittleMode({ d, name, avatar, now, onDone, busyId, onSeen }: Mod
     <section className="l-view">
       <Top d={d} name={name} avatar={avatar} />
       <div className="l-stage">
-        <div className="l-now">
+        <div className="l-now" data-celebrate-id={cur?.id}>
           {cur ? (
             <>
               <div className="l-label">Do this now</div>

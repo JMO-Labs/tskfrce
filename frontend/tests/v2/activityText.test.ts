@@ -25,6 +25,16 @@ describe('eventText', () => {
     expect(eventText(ev({ kind: 'outside_hours', count: 1 }), 'x').sub).toMatch(/^1 try at .+\. It hit the lock page\.$/)
     expect(eventText(ev({ kind: 'outside_hours', count: 4, last_at: '2026-10-26T20:30:00Z' }), 'x').sub).toMatch(/^4 tries between .+ and .+\. Each try hit the lock page\.$/)
   })
+  test('identity_change', () => {
+    expect(eventText(ev({ kind: 'identity_change', detail: 'iPhone → Pixel' }), 'x').title).toBe('May be a different device (iPhone → Pixel)')
+  })
+  test('workaround_try', () => {
+    const t = (reason: string) => eventText(ev({ kind: 'workaround_try', reason }), 'x').title
+    expect(t('vpn')).toBe('Tried a VPN — blocked')
+    expect(t('private_dns')).toBe('Tried private DNS — blocked')
+    expect(t('proxy')).toBe('Tried a proxy site — blocked')
+    expect(t('tor')).toBe('Tried Tor — blocked')
+  })
   test('left_wifi', () => {
     const t = eventText(ev({ kind: 'left_wifi', minutes: 5 }), 'x')
     expect(t.title).toBe('Left Wi-Fi while locked')

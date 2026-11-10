@@ -5,13 +5,23 @@ This module contains all configuration settings for the t@sk4ce application,
 including database, authentication, and external service configurations.
 """
 
+import ipaddress
+import re
 from pathlib import Path
 from typing import Any
 
-from pydantic import ConfigDict, model_validator, validator
+from pydantic import ConfigDict, field_validator, model_validator, validator
 from pydantic_settings import BaseSettings
 
 from app.core.secrets import load_or_create_secrets
+
+CLAIM_CODE_RE = re.compile(r"^[0-9A-HJKMNP-TV-Z]{10}$")  # Crockford base32, 50 bits
+_LOOKALIKES = str.maketrans({"O": "0", "I": "1", "L": "1", "-": None})
+
+
+def normalize_claim_code(raw: str) -> str:
+    """Forgive typing: case, spaces, dashes and O/I/L lookalikes."""
+    return "".join(raw.split()).upper().translate(_LOOKALIKES)
 
 
 class Settings(BaseSettings):
@@ -30,15 +40,28 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str | None = None
     INTERNAL_TOKEN: str | None = None
     BOX_URL: str | None = None  # e.g. http://192.168.1.20:3000, used in reset links
+    CLAIM_CODE: str | None = None  # sticker code; claims the box until the owner exists
     NTFY_URL: str | None = None  # internal backend -> ntfy, e.g. http://ntfy:80
     NTFY_PUBLIC_URL: str | None = None  # what phones use
     NTFY_PORT: str = "2586"  # host port mapping ("2586" or "0.0.0.0:2586"); builds the phone URL
+    NTFY_UPSTREAM_URL: str = "https://ntfy.sh"  # generic kid alerts go here; "" = off
+    NTFY_UPSTREAM_TOKEN: str | None = None  # optional Bearer token for that server
     NTFY_CONF_FILE: str | None = None  # shared server.yml the ntfy container reads
     BLOCKER_URL: str = "http://127.0.0.1:7777"
     LOCK_INTERVAL_SECONDS: int = 30
     LOCK_LOOP_ENABLED: bool = True
+    INTEGRATIONS_LOOP_ENABLED: bool = True
+    REGISTRY_URL: str = "https://taskfrce.jmolabs.dev"
     # Peers allowed to set X-Real-IP (our frontend proxy); comma list
     TRUSTED_PROXY_IPS: str = "127.0.0.1,::1,::ffff:127.0.0.1"
+    # Local push keys (integration-local): client IPs allowed, minus the exclude list.
+    # Exclude wins; it covers loopback, link-local and our Docker bridges (host tunnels via
+    # docker-proxy arrive from the bridge gateway, so they must not count as the LAN).
+    LOCAL_PUSH_CIDRS: str = "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fd00::/8"
+    LOCAL_PUSH_EXCLUDE_CIDRS: str = (
+        "127.0.0.0/8,::1/128,169.254.0.0/16,fe80::/10,"
+        "172.17.0.0/16,172.29.40.0/24,172.29.50.0/24,fd00:4ce::/64"
+    )
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -69,6 +92,22 @@ class Settings(BaseSettings):
                 setattr(self, name, value)
         return self
 
+    @field_validator("NTFY_UPSTREAM_URL")
+    @classmethod
+    def strip_upstream_slash(cls, v: str) -> str:
+        return v.strip().rstrip("/")
+
+    @field_validator("CLAIM_CODE")
+    @classmethod
+    def check_claim_code(cls, v: str | None) -> str | None:
+        if not v:
+            return None  # compose passes CLAIM_CODE= on IP-mode boxes
+        # Whitespace-only is not empty: it normalizes to "" and fails at boot on purpose.
+        v = normalize_claim_code(v)
+        if not CLAIM_CODE_RE.match(v):
+            raise ValueError("CLAIM_CODE must be 10 Crockford base32 chars")
+        return v
+
     @validator("BACKEND_CORS_ORIGINS", pre=True)
     def assemble_cors_origins(cls, v: str | list[str]) -> list[str] | str:
         if isinstance(v, str) and not v.startswith("["):
@@ -76,6 +115,20 @@ class Settings(BaseSettings):
         elif isinstance(v, (list, str)):
             return v
         raise ValueError(v)
+
+    @field_validator("LOCAL_PUSH_CIDRS", "LOCAL_PUSH_EXCLUDE_CIDRS")
+    @classmethod
+    def _cidrs(cls, v: str, info) -> str:
+        """Fail at startup on a bad range rather than 500 on every push."""
+        parts = [p.strip() for p in v.split(",")]
+        if info.field_name == "LOCAL_PUSH_CIDRS" and not any(parts):
+            raise ValueError("LOCAL_PUSH_CIDRS must list at least one range")
+        for p in parts:
+            try:
+                ipaddress.ip_network(p, strict=False)
+            except ValueError as e:
+                raise ValueError(f"{info.field_name}: {p!r} is not a CIDR range ({e})") from e
+        return ",".join(parts)
 
     # Email settings
 

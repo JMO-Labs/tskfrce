@@ -26,7 +26,7 @@ export function StepChores({ selected, made = [], hasKids, onChange }: Props) {
               </span>
               <span className={styles.starterT}>
                 {c.title}
-                <small>{added ? 'Added' : `${c.type} · ${c.points} pts · daily`}</small>
+                <small>{added ? 'Added' : `${c.type} · ${c.points} pts · ${c.days ? 'school days' : 'daily'}`}</small>
               </span>
               <span className={styles.starterCb} aria-hidden="true">
                 {on && <Icon name="check" size={15} />}

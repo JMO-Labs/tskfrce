@@ -22,13 +22,19 @@ export function ParentShell({
   children,
   actions,
   phone,
+  back,
+  above,
 }: {
   title: string
+  /** phone back-link label above a detail when it is not the title (e.g. "Rewards") */
+  back?: string
   /** phone only: shown instead of the list (e.g. Today's avatar strip above the day) */
   phone?: ReactNode
   list?: ReactNode
   children: ReactNode
   actions?: ReactNode
+  /** full-width row between the header and the page (a "‹ Today" back row) */
+  above?: ReactNode
 }) {
   const { logout, user } = useUnifiedAuth()
   const router = useRouter()
@@ -73,13 +79,13 @@ export function ParentShell({
         <div className="p-content">
           {small && (
             <header className="p-header">
-              <h1>{title}</h1>
+              <h1 tabIndex={-1}>{title}</h1>
               {phoneTools}
             </header>
           )}
           <BlockerBanner />
           <Freshness />
-          <ListDetail list={list} detail={children} listTitle={title} phone={phone} />
+          <ListDetail list={list} detail={children} listTitle={title} back={back} phone={phone} />
         </div>
         {small && <TabBar />}
         {dock}
@@ -93,12 +99,13 @@ export function ParentShell({
       {!small && <Rail onLogout={logOut} />}
       <div className="p-content">
         <header className="p-header">
-          <h1>{title}</h1>
+          <h1 tabIndex={-1}>{title}</h1>
           {actions}
           {small && phoneTools}
         </header>
         <BlockerBanner />
         <Freshness />
+        {above}
         <main className="p-main">{children}</main>
       </div>
       {small && <TabBar />}

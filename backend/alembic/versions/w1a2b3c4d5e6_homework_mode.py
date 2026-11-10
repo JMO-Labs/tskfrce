@@ -1,7 +1,7 @@
 """homework mode: sites, requests, activity, override and notification kinds
 
 Revision ID: w1a2b3c4d5e6
-Revises: b0c1d2e3f4a5
+Revises: f1a2b3c4d5e7
 Create Date: 2026-11-04 11:00:00.000000
 """
 
@@ -12,9 +12,44 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "w1a2b3c4d5e6"
-down_revision: str | Sequence[str] | None = "b0c1d2e3f4a5"
+down_revision: str | Sequence[str] | None = "f1a2b3c4d5e7"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
+
+
+# frozen copy of app.models.inbox.KINDS at f1a2b3c4d5e7 (less parent work)
+BEFORE_INBOX = (
+    "chore_submitted",
+    "redemption_request",
+    "redemption_decided",
+    "device_resisting",
+    "new_device",
+    "device_hint",
+    "badge_earned",
+    "level_up",
+    "chat_message",
+    "chore_note",
+    "chore_new",
+    "due_soon",
+    "missed_deadline",
+    "chore_approved",
+    "chore_sent_back",
+    "points_taken",
+    "lock_warning",
+    "device_bypass",
+    "box_offline",
+    "integration_done",
+    "integration_msg",
+    "integration_paused",
+    "password_guess",
+    "workaround_try",
+    "happy_hour",
+    "boost",
+    "trust_up",
+    "trust_down",
+    "bedtime_done",
+    "recap",
+)
 
 
 def upgrade() -> None:
@@ -76,28 +111,7 @@ def upgrade() -> None:
         )
 
     # Update notification kind constraint
-    notification_kinds = (
-        "chore_submitted",
-        "redemption_request",
-        "redemption_decided",
-        "device_resisting",
-        "new_device",
-        "device_hint",
-        "badge_earned",
-        "level_up",
-        "chat_message",
-        "chore_note",
-        "chore_new",
-        "due_soon",
-        "missed_deadline",
-        "chore_approved",
-        "chore_sent_back",
-        "points_taken",
-        "lock_warning",
-        "device_bypass",
-        "box_offline",
-        "homework_request",
-    )
+    notification_kinds = (*BEFORE_INBOX, "homework_request")
     with op.batch_alter_table("notifications", schema=None) as batch_op:
         batch_op.drop_constraint("ck_notification_kind", type_="check")
         batch_op.create_check_constraint(
@@ -108,27 +122,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     # Restore notification kind constraint
-    notification_kinds = (
-        "chore_submitted",
-        "redemption_request",
-        "redemption_decided",
-        "device_resisting",
-        "new_device",
-        "device_hint",
-        "badge_earned",
-        "level_up",
-        "chat_message",
-        "chore_note",
-        "chore_new",
-        "due_soon",
-        "missed_deadline",
-        "chore_approved",
-        "chore_sent_back",
-        "points_taken",
-        "lock_warning",
-        "device_bypass",
-        "box_offline",
-    )
+    notification_kinds = BEFORE_INBOX
     with op.batch_alter_table("notifications", schema=None) as batch_op:
         batch_op.drop_constraint("ck_notification_kind", type_="check")
         batch_op.create_check_constraint(

@@ -25,6 +25,9 @@ KID_KINDS = frozenset(
         "redemption_decided",
         "badge_earned",
         "level_up",
+        "happy_hour",
+        "trust_up",
+        "trust_down",
     }
 )
 
@@ -76,6 +79,8 @@ def notify(
 
 
 def path_for(kind: str, *, run_id=None, redemption_id=None, device_id=None) -> str:
+    if kind == "password_guess":
+        return "/settings?section=parents#password"
     if device_id is not None:
         return f"/devices?item={device_id}"
     if run_id is not None:
@@ -84,6 +89,8 @@ def path_for(kind: str, *, run_id=None, redemption_id=None, device_id=None) -> s
         return "/?tab=needs"
     if kind == "redemption_decided":
         return "/kids?section=rewards&item=history"
+    if kind == "recap":
+        return "/recap"
     return "/devices" if kind == "box_offline" else "/"
 
 

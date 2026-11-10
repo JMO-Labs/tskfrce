@@ -7,6 +7,7 @@ import tempfile
 os.environ.setdefault("DATA_DIR", tempfile.mkdtemp(prefix="task4ce-test-"))
 
 os.environ.setdefault("LOCK_LOOP_ENABLED", "false")
+os.environ.setdefault("INTEGRATIONS_LOOP_ENABLED", "false")
 
 import pytest  # noqa: E402
 from app.api.deps import get_db  # noqa: E402
@@ -21,9 +22,14 @@ from sqlalchemy.pool import StaticPool  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def _reset_rate_limits():
+    from app.core import lockout
     from app.core.ratelimit import reset
 
     reset()
+    lockout.reset()
+    from app.services import kid_handoff
+
+    kid_handoff._store.clear()
 
 
 @pytest.fixture

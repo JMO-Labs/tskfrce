@@ -4,6 +4,7 @@
  */
 
 import { NextApiRequest, NextApiResponse } from 'next'
+import { clientIp, proxied } from '../../../clientIp'
 
 // x-view-as: parent previewing a kid; backend only honours it for a parent token on kid GETs
 // no 'cookie': backend auth is Bearer-only, browser cookies (settings/login UX) stay on the edge
@@ -31,12 +32,28 @@ async function rawBody(req: NextApiRequest): Promise<Buffer> {
   return Buffer.concat(chunks)
 }
 
+function isLocalPush(rest: string): boolean {
+  let path = rest.split('?')[0]
+  try {
+    path = decodeURIComponent(path)
+  } catch {
+    return true // undecodable: refuse rather than guess
+  }
+  return path.replace(/^\/+/, '').toLowerCase().startsWith('integration-local')
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const backendUrl = process.env.BACKEND_INTERNAL_URL || 'http://backend:8000'
   // keep the query string (?before=, ?kid=…); strip the /api/proxy prefix
   const rest = (req.url || '').replace(/^\/api\/proxy\/?/, '')
   if (rest.split('?')[0].split('/').some((seg) => seg === '..' || seg === '.' || /%2e/i.test(seg))) {
     res.status(400).json({ detail: 'Bad request.' })
+    return
+  }
+  // Local push keys are LAN only: refuse anything any proxy or tunnel relayed.
+  // Match on the decoded path: the backend decodes %2D etc. before routing.
+  if (proxied(req.headers) && isLocalPush(rest)) {
+    res.status(404).json({ detail: 'Not found.' })
     return
   }
   const targetUrl = `${backendUrl}/api/v1/${rest}`
@@ -46,10 +63,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const v = req.headers[h]
     if (typeof v === 'string') headers[h] = v
   }
-  // Real client IP for the backend (kid device lookup, rate limits). Built from the
-  // socket only; client-sent x-real-ip / x-forwarded-for / forwarded are never copied.
-  const peer = (req.socket.remoteAddress || '').replace(/^::ffff:/, '')
-  if (peer) headers['X-Real-IP'] = peer
+  // Real client IP for the backend (kid device lookup, rate limits): the socket peer, or
+  // x-real-ip when the edge proxy proves itself with x-edge-token. x-edge-token is never
+  // forwarded; x-forwarded-for / forwarded are never copied.
+  const ip = clientIp(req.headers, req.socket.remoteAddress)
+  if (ip) headers['X-Real-IP'] = ip
 
   try {
     const body = req.method === 'GET' || req.method === 'HEAD' ? undefined : await rawBody(req)

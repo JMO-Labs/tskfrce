@@ -1,6 +1,9 @@
 import { tokenManager } from '@/services/tokenManager'
 
-export const KID_TOKEN_KEY = 'task4ce-kid-token'
+import { KID_TOKEN_KEY } from './kid/tokenStore'
+import { refreshKid } from './kid/kidDevice'
+
+export { KID_TOKEN_KEY }
 
 export { CANT_REACH, errorText } from './errorText'
 
@@ -71,6 +74,8 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
   if (res.status === 401 && !init.kid && tokenManager.getRefreshToken()) {
     const r = await tokenManager.refreshTokens()
     if (r.success) res = await send(path, init)
+  } else if (res.status === 401 && init.kid && (await refreshKid())) {
+    res = await send(path, init)
   }
   const text = await res.text()
   let data: unknown = undefined

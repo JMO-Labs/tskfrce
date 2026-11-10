@@ -142,7 +142,15 @@ def test_today_shape(client, db, parent, kid, parent_headers):
     mkchore(db, parent, kid, "done", approved=False, title="c")  # not approved
     mkchore(db, parent, kid, "todo", title="d")
     j = client.get("/api/v1/today", headers=parent_headers).json()
-    assert set(j) == {"day", "pending_approvals", "new_devices", "needs_you", "kids"}
+    assert set(j) == {
+        "day",
+        "pending_approvals",
+        "new_devices",
+        "needs_you",
+        "kids",
+        "try_trust_kid",
+        "waiting_at_reset_days",
+    }
     assert j["day"] == "2026-10-20" and j["pending_approvals"] == 1
     assert len(j["new_devices"]) == 1
     k = j["kids"][0]
@@ -155,6 +163,7 @@ def test_today_shape(client, db, parent, kid, parent_headers):
         "locks_at",
         "avatar",
         "online_all",
+        "quiet",
         "done",
         "total",
         "needs_you_count",
@@ -221,7 +230,14 @@ def test_delete_device_removes_overrides_and_memberships(client, db, parent_head
     assert db.query(Override).count() == 0 and db.query(Device).count() == 0
     got = client.get("/api/v1/groups", headers=parent_headers).json()
     assert got == [
-        {"id": g["id"], "name": "G", "device_ids": [], "icon": "devices", "chore_lock": True}
+        {
+            "id": g["id"],
+            "name": "G",
+            "device_ids": [],
+            "icon": "devices",
+            "chore_lock": True,
+            "screen_price": None,
+        }
     ]
 
 
@@ -355,3 +371,24 @@ def test_clear_pin(client, db, parent_headers):
 
 
 # Task 2: Family accent + run detail
+
+
+def test_group_screen_price_roundtrip(client, parent_headers):
+    g = client.post("/api/v1/groups", json={"name": "C"}, headers=parent_headers).json()
+    assert g["screen_price"] is None
+    url = f"/api/v1/groups/{g['id']}"
+
+    def patch(**kw):
+        return client.patch(url, json={"name": "C", **kw}, headers=parent_headers).json()
+
+    assert patch(screen_price=40)["screen_price"] == 40
+    assert patch()["screen_price"] == 40
+    assert patch(screen_price=None)["screen_price"] is None
+
+
+def test_group_screen_price_bounds(client, parent_headers):
+    for v in (0, 1001):
+        r = client.post(
+            "/api/v1/groups", json={"name": "C", "screen_price": v}, headers=parent_headers
+        )
+        assert r.status_code == 422

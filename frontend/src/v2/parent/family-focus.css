@@ -1,0 +1,14 @@
+/**
+ * @fileoverview Settings > Family rows and the Devices "Home network" row.
+ * Look from the owner-approved mockup declutter-v3 (family-calm, family-points): muted small summary line, setr rows.
+ */
+
+[data-look='parent'] .fam-rows .p-srow-l2 { font-size: 12.5px; color: var(--p-sub); min-width: 0; }
+/* the (i) comes after the control in the DOM, so opening a row focuses the field, not the (i); it still sits beside the label */
+[data-look='parent'] .fam-setr > .ch-lb { flex: 0 1 auto; order: 0; }
+[data-look='parent'] .fam-setr > .p-info-btn { order: 1; margin: -4px 0 -4px -6px; }
+[data-look='parent'] .fam-setr > :not(.ch-lb):not(.p-info-btn) { order: 2; margin-left: auto; }
+[data-look='parent'] .fam-setr > .ch-w { width: 104px; }
+@media (max-width: 767px) {
+  [data-look='parent'] .fam-rows .pk-input { min-height: 44px; }
+}

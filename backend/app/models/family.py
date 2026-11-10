@@ -46,6 +46,7 @@ class FamilySettings(Base):
     screen_max_minutes = Column(Integer, nullable=True)  # NULL = no daily max
     screen_auto_approve = Column(Boolean, nullable=False, default=False, server_default="0")
     screen_only_allowed_hours = Column(Boolean, nullable=False, default=True, server_default="1")
+    group_pricing = Column(Boolean, nullable=False, default=False, server_default="0")  # opt-in
     quick_replies = Column(Text, nullable=True)  # JSON list; NULL = defaults
     blocker_last_seen = Column(DateTime, nullable=True)  # naive UTC; home box heartbeat
     quiet_start = Column(String(5), nullable=True)
@@ -56,6 +57,22 @@ class FamilySettings(Base):
     notify_scan_at = Column(DateTime, nullable=True)  # naive UTC
     blocker_alerted = Column(Boolean, nullable=False, default=False, server_default="0")
     setup_step = Column(Integer, nullable=True)  # wizard step to resume; NULL = done/not started
+    screen_rollover = Column(Boolean, nullable=False, default=True, server_default="1")
+    screen_bank_cap = Column(Integer, nullable=True)  # NULL = one day's max
+    hh_default_mult_x10 = Column(Integer, nullable=False, default=20, server_default="20")
+    hh_default_minutes = Column(Integer, nullable=False, default=60, server_default="60")
+    hh_weekly_surprise = Column(Boolean, nullable=False, default=False, server_default="0")
+    hh_auto_boost = Column(Boolean, nullable=False, default=True, server_default="1")
+    hh_auto_date = Column(Date, nullable=True)  # local day the auto boost job last ran
+    hh_surprise_date = Column(Date, nullable=True)  # local day this week's surprise was planned
+    hh_surprise_at = Column(DateTime, nullable=True)  # naive UTC start of the planned surprise
+    streak_freeze = Column(Boolean, nullable=False, default=True, server_default="1")
+    bedtime_auto = Column(Boolean, nullable=False, default=False, server_default="0")
+    bedtime_auto_at = Column(String(5), nullable=False, default="21:00", server_default="21:00")
+    bedtime_date = Column(Date, nullable=True)  # local day bedtime auto-approve last ran
+    recap_weekly = Column(Boolean, nullable=False, default=True, server_default="1")
+    recap_date = Column(Date, nullable=True)  # local day the weekly recap last went out
+    waiting_reset_days = Column(Integer, nullable=False, default=0, server_default="0")
 
 
 def get_family(db: Session) -> FamilySettings:
@@ -68,3 +85,9 @@ def get_family(db: Session) -> FamilySettings:
 
     db.info["family"] = fam  # strong ref: the identity map is weak, so repeat calls re-query
     return fam
+
+
+def owner_set(db: Session) -> bool:
+    """True once the first parent owns the box (the one owner check for setup and claim)."""
+    fam = db.get(FamilySettings, 1)
+    return fam is not None and fam.owner_id is not None

@@ -10,8 +10,9 @@ No. It's free and open source. You supply the small computer.
 
 ## Where does my family's information go?
 
-It stays in your home, on the home box. There are no accounts with us, no ads and no tracking. Something only leaves your home if you turn it on:
+It stays in your home, on the home box. There are no accounts with us, no ads and no tracking. A few things do leave your home, and all but the first only if you turn them on:
 
+- **Alerts on kids' phones** (phones signed in with a code): short generic lines like "You have a new chore" go through a public relay (ntfy.sh by default), which also sees when they were sent and your home's internet address. Names, chores and messages stay home. See [Kid alerts away from home](04-everyday-use.md#kid-alerts-away-from-home).
 - **GIFs in chat**: GIF searches go to GIPHY through the box. See [Everyday use](04-everyday-use.md#gifs-off-by-default).
 - **Notifications to your chat apps**: pings go to the service you chose. See [Everyday use](04-everyday-use.md#notifications).
 - **Instant alerts on iPhones**: a content-free wake-up goes to ntfy.sh. The alert text stays home.
@@ -23,7 +24,8 @@ It stays in your home, on the home box. There are no accounts with us, no ads an
 A determined kid can. t@sk4ce is built to stop normal use and to tell you when someone is dodging it. It is not a lock.
 
 - Mobile data and phone hotspots aren't covered. It only works on your home Wi-Fi.
-- A new, unregistered device can be used instead, unless you turn on "Block new devices" in Settings (it is off at first).
+- A new, unregistered device can be used instead, unless you turn on "Block new devices" in **Devices → Home network** (it is off at first).
+- A kid who tries a VPN, a proxy site or Tor on a paused device is still blocked, and you get a "Tried a workaround" alert. A VPN app that goes straight to a number address is blocked but not noticed.
 - A kid who changes their device's network settings is usually still stopped, and you get an alert when something gets through.
 
 Talk with your kids. The app helps with that. It can't replace it.
@@ -71,6 +73,13 @@ Copper, silver, gold, platinum and mega-diamond. Doing more moves a badge up a l
 ## Can I check in when I'm away from home?
 
 Yes, with a free service called Tailscale. See [Remote access](../remote-access.md) for the steps.
+
+## Home network keys: keeping them safe
+
+Home network keys let Home Assistant or a script at home tick off chores. They only work from devices on your home Wi-Fi or network, and t@sk4ce refuses them from anywhere else.
+
+- **Don't port-forward the box's port 3000 on your router.** It's not needed, and it would put the box on the open internet.
+- **If you put the box behind your own tunnel or proxy** (for example Cloudflare Tunnel, nginx or Tailscale Funnel), home network keys will stop working through it. That's on purpose. Point Home Assistant at the box's home address instead, like `http://192.168.1.50:3000`.
 
 ## How do I update?
 

@@ -1,6 +1,7 @@
 import type { Assignment, ChoreType, Kid, LibChore } from '@/v2/types'
 import { wallClock } from '@/v2/clockText'
 import { DAYS } from '@/v2/days'
+import type { Step } from './ChoreSteps'
 
 export const nameOf = (k: Kid) => k.full_name ?? k.username
 export const initial = (name: string) => (name.trim()[0] ?? '?').toUpperCase()
@@ -60,3 +61,21 @@ export const UNIVERSAL_NOTES = [
 /** The default "Other" type, found like the backend's other_id: the builtin with the highest id (its name is renamable). */
 export const otherType = (types: ChoreType[]) =>
   types.filter((t) => t.builtin).reduce<ChoreType | undefined>((a, t) => (!a || t.id > a.id ? t : a), undefined)
+
+/** "3 steps, in order" for the Steps row. */
+export function stepsSummary(steps: Step[]): string {
+  const n = steps.length
+  if (n < 2) return n ? '1 step' : 'No steps'
+  const chained = steps.slice(1).filter((s) => s.after_previous).length
+  return `${n} steps, ${chained === n - 1 ? 'in order' : chained === 0 ? 'any order' : 'some in order'}`
+}
+
+/** How many of Due by, Needs a photo and Always check are set (the Options row). */
+export const optionsOn = (o: { due: string; photo: boolean; check: boolean }) => [o.due !== '', o.photo, o.check].filter(Boolean).length
+
+/** "School · 30 pts · daily · Maya, Leo" */
+export const choreHeadLine = (typeName: string | undefined, points: number, when: string, doers: string) =>
+  [typeName, `${points} pts`, when, doers].filter(Boolean).join(' · ')
+
+/** 45 → "45 min", 60 → "1h", 645 → "10h 45m" */
+export const fmtMin = (m: number) => (m < 60 ? `${m} min` : `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ''}`)

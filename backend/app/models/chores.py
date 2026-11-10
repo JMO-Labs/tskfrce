@@ -48,6 +48,7 @@ class Chore(Base):
     title = Column(String(100), nullable=False)
     points = Column(Integer, nullable=False, default=10)
     needs_photo = Column(Boolean, nullable=False, default=False)
+    always_check = Column(Boolean, nullable=False, default=False, server_default="0")
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -106,8 +107,11 @@ class ChoreRun(Base):
     __tablename__ = "chore_runs"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('todo','submitted','done','cancelled','skipped')",
+            "status IN ('todo','submitted','done','cancelled','skipped','missed')",
             name="ck_run_status",
+        ),
+        CheckConstraint(
+            "approved_via IN ('parent','trust','bedtime','integration')", name="ck_run_via"
         ),
         Index(
             "uq_run_kid_day",
@@ -137,8 +141,11 @@ class ChoreRun(Base):
     note_at = Column(DateTime, nullable=True)
     submitted_at = Column(DateTime, nullable=True)
     submitted_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    hh_mult_x10 = Column(Integer, nullable=True)  # Happy Hour fixed at submit; NULL = x1
     approved_at = Column(DateTime, nullable=True)
     approved_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    spot_check = Column(Boolean, nullable=False, default=False, server_default="0")
+    approved_via = Column(String(11), nullable=True)  # parent|trust|bedtime|integration
     completed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 

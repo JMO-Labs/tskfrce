@@ -60,6 +60,15 @@ beforeEach(() => {
 })
 
 describe('device Activity', () => {
+  test('a failed load says so and Try again loads it (never a placeholder forever)', async () => {
+    apiMock.mockImplementation(async () => { throw new Error("Couldn't load this right now.") })
+    show()
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load this right now.")
+    apiMock.mockImplementation(async (path) => (path.endsWith('/activity') ? data : {}))
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByText('Bypass attempts · 7d')).toBeInTheDocument()
+  })
+
   test('KPI strip shows the 7-day counts, bypass in red when > 0', async () => {
     show()
     const kpi = await screen.findByText('Bypass attempts · 7d')
@@ -77,6 +86,18 @@ describe('device Activity', () => {
     expect(rows[0].textContent).toContain('wrong PIN')
   })
 
+  test('Bypass filter includes identity and workaround rows; detail stays plain text', async () => {
+    data.events.push(ev({ id: 14, kind: 'identity_change', detail: '<b>x</b>' }), ev({ id: 15, kind: 'workaround_try', reason: 'tor' }))
+    show()
+    const f = await feed()
+    await waitFor(() => expect(within(f).getAllByRole('listitem')).toHaveLength(5))
+    await userEvent.click(within(f).getByRole('button', { name: 'Bypass' }))
+    expect(within(f).getAllByRole('listitem')).toHaveLength(3)
+    expect(within(f).getByText('May be a different device (<b>x</b>)')).toBeTruthy()
+    expect(within(f).getByText('Tried Tor — blocked')).toBeTruthy()
+    expect(f.querySelector('b')).toBeNull()
+  })
+
   test('Same device, merge posts the merge endpoint', async () => {
     show()
     await userEvent.click(await screen.findByRole('button', { name: /Same device, merge/ }))
@@ -92,27 +113,50 @@ describe('device Activity', () => {
     expect(within(f).queryByRole('button', { name: 'Different device' })).toBeNull()
   })
 
-  test('Mark OK hides its button once reviewed', async () => {
+  test('each alert has one plain main button; the other actions are menu items', async () => {
     show()
     const f = await feed()
-    await waitFor(() => expect(within(f).getAllByRole('button', { name: 'Mark OK' })).toHaveLength(2))
-    data = { ...data, events: data.events.map((e) => (e.id === 12 ? { ...e, reviewed: true } : e)) }
-    await userEvent.click(within(f).getAllByRole('button', { name: 'Mark OK' })[0])
-    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/devices/1/events/12/ok', { method: 'POST' }))
-    await waitFor(() => expect(within(f).getAllByRole('button', { name: 'Mark OK' })).toHaveLength(1))
+    await waitFor(() => expect(within(f).getAllByRole('listitem')).toHaveLength(3))
+    const [merge, tried] = within(f).getAllByRole('listitem')
+    expect(within(merge).getByRole('button', { name: /Same device, merge/ })).toBeTruthy()
+    expect(within(merge).queryByRole('button', { name: 'Different device' })).toBeNull()
+    const ok = within(tried).getByRole('button', { name: 'Mark OK' })
+    expect(ok.getAttribute('data-variant')).toBeNull()
+    expect(within(tried).queryByRole('button', { name: 'Ask Maya' })).toBeNull()
+    await userEvent.click(within(tried).getByRole('button', { name: 'More' }))
+    const items = (await screen.findAllByRole('menuitem')).map((m) => m.textContent)
+    expect(items).toHaveLength(2)
+    expect(items[0]).toMatch(/Ask Maya$/)
+    expect(items[1]).toMatch(/Lock all Maya's devices$/)
   })
 
-  test("Lock all posts the kid's override", async () => {
+  test('Mark OK posts, then the row has no actions once reviewed', async () => {
     show()
-    await userEvent.click((await screen.findAllByRole('button', { name: "Lock all Maya's devices" }))[0])
+    const f = await feed()
+    await waitFor(() => expect(within(f).getAllByRole('listitem')).toHaveLength(3))
+    data = { ...data, events: data.events.map((e) => (e.id === 12 ? { ...e, reviewed: true } : e)) }
+    await userEvent.click(within(within(f).getAllByRole('listitem')[1]).getByRole('button', { name: 'Mark OK' }))
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/devices/1/events/12/ok', { method: 'POST' }))
+    await waitFor(() => expect(within(within(f).getAllByRole('listitem')[1]).queryByRole('button', { name: 'Mark OK' })).toBeNull())
+  })
+
+  const lockAll = async () => {
+    show()
+    const f = await feed()
+    await waitFor(() => expect(within(f).getAllByRole('listitem')).toHaveLength(3))
+    await userEvent.click(within(within(f).getAllByRole('listitem')[1]).getByRole('button', { name: 'More' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Lock all Maya's devices/ }))
+  }
+
+  test("Lock all posts the kid's override", async () => {
+    await lockAll()
     await waitFor(() =>
       expect(apiMock).toHaveBeenCalledWith('/kids/7/override', expect.objectContaining({ method: 'POST', body: expect.objectContaining({ action: 'lock' }) })),
     )
   })
 
   test('the Locked toast offers Undo, which puts the kid back on schedule', async () => {
-    show()
-    await userEvent.click((await screen.findAllByRole('button', { name: "Lock all Maya's devices" }))[0])
+    await lockAll()
     await waitFor(() => expect(notifications.show).toHaveBeenCalled())
     const toast = render(<>{(notifications.show as Mock).mock.calls.at(-1)![0].message}</>)
     await userEvent.click(toast.getByRole('button', { name: 'Undo' }))
@@ -132,15 +176,5 @@ describe('device Activity', () => {
     show()
     const h = await screen.findByRole('region', { name: 'Lock history' })
     expect(await within(h).findByText('Unlocked 30 min by Dad')).toBeTruthy()
-  })
-
-  test('time online has 7 bars, oldest first, Today last', async () => {
-    show()
-    const t = await screen.findByRole('region', { name: 'Time online per day' })
-    await waitFor(() => expect(t.querySelectorAll('.da-bar')).toHaveLength(7))
-    const bars = [...t.querySelectorAll('.da-bar')]
-    expect(bars[0].getAttribute('title')).toBe('1 h')
-    expect(bars[6].getAttribute('title')).toBe('0 min')
-    expect(within(t).getAllByText(/./).at(-1)?.textContent).toBe('Today')
   })
 })

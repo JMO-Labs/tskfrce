@@ -7,6 +7,7 @@ on:
       - 'site/**'
       - 'docs/guide/**'
       - 'docs/remote-access.md'
+      - 'docs/integrations/protocol-v1.md'
       - 'scripts/build_site.py'
       - 'scripts/site_templates.py'
       - '.github/workflows/pages.yml'

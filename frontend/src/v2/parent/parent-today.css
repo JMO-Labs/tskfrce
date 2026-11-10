@@ -3,18 +3,7 @@
  * Ported from mockup 01-parent-today.html (classes .mh .prog .box .chore .row .ck .ty .t .pts).
  */
 
-[data-look='parent'] .pt-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-[data-look='parent'] .pt-head h2 { margin: 0; min-width: 0; font-size: 30px; font-weight: 700; color: var(--p-ink); overflow-wrap: anywhere; }
-[data-look='parent'] .pt-head-acts { display: flex; flex-wrap: wrap; gap: 8px; }
-
 /* progress line: ink on track in light, accent on track in dark (spec 2.4) */
-[data-look='parent'] .pt-prog { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; }
 [data-look='parent'] .pt-bar { flex: 1; height: 8px; border-radius: 8px; background: var(--p-track); overflow: hidden; }
 [data-look='parent'] .pt-bar i { display: block; height: 100%; background: var(--p-meter); transition: width var(--dur-2) var(--ease-out); }
 
@@ -35,9 +24,9 @@
   cursor: pointer;
   transition: background var(--dur-1) var(--ease-out);
 }
-[data-look='parent'] .pt-row:hover,
-[data-look='parent'] .pt-chore[data-open='true'] > .pt-row { background: var(--p-soft); }
-[data-look='parent'] .pt-row:focus-visible { outline: 2px solid var(--p-ink); outline-offset: -2px; }
+[data-look='parent'] .pt-chore[data-open='true'] > .pt-rowline { background: var(--p-soft); }
+@media (hover: hover) { [data-look='parent'] .pt-row:hover { background: var(--p-soft); } }
+[data-look='parent'] .pt-row:focus-visible { outline: 2px solid var(--p-focus); outline-offset: -2px; }
 
 [data-look='parent'] .pt-car { width: 20px; display: grid; color: var(--p-sub); transition: transform var(--dur-1) var(--ease-out); }
 [data-look='parent'] .pt-chore[data-open='true'] .pt-car { transform: rotate(90deg); }
@@ -70,8 +59,8 @@
 [data-look='parent'] .pt-row > :is(.p-chip, .pt-pts, .pt-chips) { flex: none; }
 [data-look='parent'] .pt-chips { display: flex; gap: 6px; }
 [data-look='parent'] .pt-t small { display: block; margin-top: 1px; color: var(--p-sub); font-weight: 400; font-size: 12px; }
-[data-look='parent'] .pt-chore[data-state='done'] > .pt-row .pt-title,
-[data-look='parent'] .pt-chore[data-state='needs_you'] > .pt-row .pt-title,
+[data-look='parent'] .pt-chore[data-state='done'] > .pt-rowline > .pt-row .pt-title,
+[data-look='parent'] .pt-chore[data-state='needs_you'] > .pt-rowline > .pt-row .pt-title,
 [data-look='parent'] .pt-step[data-done='true'] .pt-title {
   text-decoration: line-through;
   text-decoration-thickness: 1.5px;
@@ -115,8 +104,8 @@
 
 /* kid note flag (mockup 03): amber wash over the row and its actions */
 [data-look='parent'] .pt-chore[data-flag='true'] { background: color-mix(in srgb, var(--p-amb) 55%, transparent); }
-[data-look='parent'] .pt-chore[data-flag='true'] > .pt-row:hover,
-[data-look='parent'] .pt-chore[data-flag='true'][data-open='true'] > .pt-row { background: color-mix(in srgb, var(--p-amb) 80%, transparent); }
+[data-look='parent'] .pt-chore[data-flag='true'][data-open='true'] > .pt-rowline { background: color-mix(in srgb, var(--p-amb) 80%, transparent); }
+@media (hover: hover) { [data-look='parent'] .pt-chore[data-flag='true'] > .pt-rowline > .pt-row:hover { background: color-mix(in srgb, var(--p-amb) 80%, transparent); } }
 [data-look='parent'] .pt-note { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12.5px; font-weight: 600; color: var(--p-ambink); }
 [data-look='parent'] .pt-note .ms { flex: none; }
 [data-look='parent'] .pt-note-acts { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 14px 124px; }
@@ -192,7 +181,6 @@
 [data-look='parent'] .pt-chat > :last-child { flex: 1; padding: 0 12px 12px; }
 
 @media (max-width: 767px) {
-  [data-look='parent'] .pt-head h2 { font-size: 24px; }
   [data-look='parent'] .pt-row { padding: 12px; gap: 10px; }
   [data-look='parent'] .pt-pts,
   [data-look='parent'] .pt-car { display: none; }
@@ -202,64 +190,6 @@
   [data-look='parent'] .pt-chips { flex-direction: column; align-items: flex-end; gap: 4px; }
 }
 
-/* phone: avatar strip and the kid's facts (desktop has them on the kid card) */
-[data-look='parent'] .pt-phone-facts { display: none; }
-[data-look='parent'] .pt-phone-tabs { padding: 12px 16px 0; }
-[data-look='parent'] .pt-phone-tabs .p-segmented-control { width: 100%; }
-[data-look='parent'] .pt-phone-tabs .p-segmented-button { flex: 1; }
-[data-look='parent'] .pt-strip { display: flex; gap: 14px; padding: 12px 16px 4px; overflow-x: auto; }
-[data-look='parent'] .pt-strip-kid {
-  flex: none;
-  max-width: 72px;
-  display: grid;
-  justify-items: center;
-  gap: 4px;
-  border: 0;
-  background: none;
-  color: var(--p-ink);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  text-decoration: none;
-  cursor: pointer;
-}
-[data-look='parent'] .pt-strip-av {
-  position: relative;
-  width: 48px;
-  height: 48px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--p-soft);
-  font-size: 18px;
-  font-weight: 700;
-}
-[data-look='parent'] .pt-strip-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-[data-look='parent'] .pt-strip-kid[aria-pressed='true'] .pt-strip-av { background: var(--p-acc); color: #292928; box-shadow: 0 0 0 2px var(--p-bg), 0 0 0 4px var(--p-acc); }
-[data-look='parent'] .pt-strip-av[data-add] { border: 1.5px dashed var(--p-line); background: none; color: var(--p-sub); }
-[data-look='parent'] .pt-strip-av i {
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  min-width: 18px;
-  height: 18px;
-  display: grid;
-  place-items: center;
-  border-radius: 9px;
-  border: 2px solid var(--p-bg);
-  font: inherit;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-  font-style: normal;
-}
-[data-look='parent'] .pt-strip-av i[data-tone='lav'] { background: var(--p-lav); color: var(--p-lav-ink); }
-[data-look='parent'] .pt-strip-av i[data-tone='acc'] { background: var(--p-acc); color: #292928; }
-
-@media (max-width: 767px) {
-  [data-look='parent'] .pt-phone-facts { display: block; }
-  [data-look='parent'] .p-today-detail { padding: 12px 16px 24px; }
-}
 [data-look='parent'] .pt-photo-ph { width: 80px; height: 60px; border-radius: 10px; background: var(--p-soft); }
 [data-look='parent'] .pt-ded[data-tone='ink'] { background: var(--p-soft); border: 1px solid var(--p-line); }
 [data-look='parent'] .pt-ded[data-tone='ink'] b { color: var(--p-ink); }
@@ -271,14 +201,14 @@
 .pt-sheet-body > .pc-grid { flex: 1; }
 
 /* focus rings on every small control in Today */
-[data-look='parent'] :is(.pt-rp, .pt-amt, .pt-chat-head button, .pt-strip-kid, .p-kid-card, .p-needs-thumb, .p-onboard-dismiss, .p-onboard-item a, .p-bell, .p-bell-tab, .p-bell-mark-read):focus-visible {
-  outline: 2px solid var(--p-ink);
+[data-look='parent'] :is(.pt-rp, .pt-amt, .pt-chat-head button, .pt-strip-kid, .pt-kav, .pt-krow, .pt-needs-head, .p-pill, .p-needs-thumb, .p-onboard-dismiss, .p-onboard-item a, .p-bell, .p-bell-tab, .p-bell-mark-read):focus-visible {
+  outline: 2px solid var(--p-focus);
   outline-offset: 2px;
 }
 [data-look='parent'] .pt-strip-kid:focus-visible { border-radius: 8px; }
-[data-look='parent'] :is(.pt-rp, .pt-amt:not([data-on='true'])):hover { background: var(--p-soft); }
+@media (hover: hover) { [data-look='parent'] :is(.pt-rp, .pt-amt:not([data-on='true'])):hover { background: var(--p-soft); } }
 [data-look='parent'] .pt-chat-head button { border-radius: 6px; }
-[data-look='parent'] .pt-chat-head button:hover { color: var(--p-ink); }
+@media (hover: hover) { [data-look='parent'] .pt-chat-head button:hover { color: var(--p-ink); } }
 [data-look='parent'] .pt-amt:active { transform: scale(0.96); }
 
 /* open chore eases in; chat column too (the global reduced-motion rule zeroes these) */
@@ -294,3 +224,7 @@
 [data-look='parent'] .pt-open-err { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 0; font-size: 13px; color: var(--p-red); }
 
 /* stale-data banner: the poll failed but the last good Today is still on screen */
+
+/* Happy Hour sheet */
+[data-look='parent'] .pt-hh-sheet { display: grid; gap: 10px; }
+[data-look='parent'] .pt-hh-sheet .p-btn[aria-pressed='true'] { border-color: var(--p-ink); background: var(--p-soft); color: var(--p-ink); }

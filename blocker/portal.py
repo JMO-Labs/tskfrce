@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import socket
 import threading
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -36,12 +37,53 @@ def dns_response(query_wire: bytes, answer_ip: str) -> bytes | None:
     return bytes(resp)
 
 
+def qname_of(wire: bytes) -> str | None:
+    """First question name of a DNS packet (e.g. "example.com."), or None if unparsable."""
+    from scapy.layers.dns import DNS
+
+    try:
+        q = DNS(wire)
+        qd = q.qd
+        first = qd[0] if isinstance(qd, list) else qd
+        name = first.qname
+        return name.decode() if isinstance(name, bytes) else str(name)
+    except Exception:  # noqa: BLE001 - any parse failure just means "no name"
+        return None
+
+
+def handle_query(
+    data: bytes,
+    addr: tuple[str, int],
+    box_ip: str,
+    on_query: Callable[[str, str], None] | None = None,
+) -> bytes | None:
+    """Per-packet work: report the qname to on_query (errors swallowed), return the reply."""
+    if addr[1] == 53:
+        return None
+    out = dns_response(data, box_ip)
+    if out is not None and on_query is not None:
+        try:
+            name = qname_of(data)
+            if name:
+                on_query(addr[0], name)
+        except Exception:
+            log.debug("on_query failed", exc_info=True)
+    return out
+
+
 HW_WORKERS = 8  # homework lookups waiting on upstream at once
 HW_PER_CLIENT = 4  # in-flight homework lookups per client before we drop
 
 
 def run_dns(
-    cfg, box_ip: str, stop, handle=None, claims=None, bind=("0.0.0.0", 53), client_key=None
+    cfg,
+    box_ip: str,
+    stop,
+    handle=None,
+    claims=None,
+    bind=("0.0.0.0", 53),
+    client_key=None,
+    on_query: Callable[[str, str], None] | None = None,
 ) -> None:
     """Serve dns_response over UDP :53 until stop (threading.Event) is set.
 
@@ -51,6 +93,7 @@ def run_dns(
     never waits on upstream. Without claims, handle runs inline (legacy/tests).
     client_key(client_ip) -> MAC | None keys the per-client cap (falls back to the IP), so a
     device can't multiply its budget by changing source IPs.
+    on_query(client_ip, qname) sees every name that gets the portal answer (bypass alerts).
     """
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(bind)
@@ -63,7 +106,7 @@ def run_dns(
         try:
             out = handle(addr[0], data) if handle else None
             if out is None:
-                out = dns_response(data, box_ip)
+                out = handle_query(data, addr, box_ip, on_query)
             if out is not None:
                 sock.sendto(out, addr)
         except Exception:
@@ -91,8 +134,6 @@ def run_dns(
                 data, addr = sock.recvfrom(512)
             except TimeoutError:
                 continue
-            if addr[1] == 53:
-                continue
             try:
                 slow = handle is not None and claims is not None and claims(addr[0])
             except Exception:
@@ -100,7 +141,7 @@ def run_dns(
                 continue
             if not slow:
                 if claims is not None:  # pool mode: unclaimed clients never touch upstream
-                    out = dns_response(data, box_ip)
+                    out = handle_query(data, addr, box_ip, on_query)
                     if out is not None:
                         sock.sendto(out, addr)
                 else:

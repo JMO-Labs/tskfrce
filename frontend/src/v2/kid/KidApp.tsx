@@ -7,10 +7,16 @@ import { useInbox } from '../hooks/useInbox'
 import { useMarkSeen } from '../hooks/useKid'
 import { askOnFirstClick, useOsNotify } from '../osNotify'
 import type { KidToday } from '../types'
+import { AlertsMoved } from './AlertsMoved'
+import { CelebrationLayer } from './celebrate/CelebrationLayer'
+import { useCelebrationTriggers } from './celebrate/triggers'
+import { useCelebrate } from './celebrate/useCelebrate'
+import { useFreezeNotice } from './freezeNotice'
 import { KidAlerts } from './KidAlerts'
 import { Locker } from './Locker'
-import { tally } from './kidChips'
+import { kidSort, tally } from './kidChips'
 import { KidNav, type KidTab } from './KidNav'
+import { HappyHourBanner } from './HappyHourBanner'
 import { MePage } from './MePage'
 import { KidMode } from './modes/KidMode'
 import { LittleMode } from './modes/LittleMode'
@@ -32,13 +38,15 @@ export interface KidAppProps {
   lockerOpen?: boolean
   onLockerClose?: () => void
   canSwitch: boolean
-  done: { mutate: (id: number) => void; isPending: boolean; variables?: number }
+  done: { mutate: (id: number, opts?: { onSuccess?: () => void; onError?: () => void }) => void; isPending: boolean; variables?: number }
+  /** an award card is up: celebrations wait for it */
+  holdCelebrations?: boolean
   /** shown above the chores (first-visit intro) */
   children?: ReactNode
 }
 
 /** The kid app: full-width shell, age-mode nav, and the Chores / Rewards / Alerts / Me tabs. */
-export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lockerOpen = false, onLockerClose, canSwitch, done, children }: KidAppProps) {
+export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lockerOpen = false, onLockerClose, canSwitch, done, holdCelebrations = false, children }: KidAppProps) {
   const [chosen, setTab] = useState<KidTab>('chores')
   const showLocker = lockerOpen && !!d.progress
   const tab = showLocker ? 'me' : chosen
@@ -63,7 +71,21 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
       window.removeEventListener(OPEN_CHAT_LIST_EVENT, show)
     }
   }, [chat])
+  const cel = useCelebrate({ level: d.celebrate ?? (mode === 'teen' ? 'small' : 'full'), mode, kidLevel: d.progress?.level ?? 1, hold: holdCelebrations })
+  const submit = useCelebrationTriggers(d, kidId, cel.fire, !preview)
+  useFreezeNotice(d.progress?.frozen, kidId, !preview)
+  const onDone = (id: number) => {
+    const c = d.chores.find((x) => x.id === id)
+    // marked before the request goes out (polls racing an auto-approve); a double tap sends nothing
+    if (c && !submit.tap(c)) return
+    done.mutate(id, { onSuccess: () => c && submit.sent(c), onError: () => c && submit.failed(c) })
+  }
   const Mode = MODES[mode]
+  const goChore = () => {
+    const first = kidSort(d.chores, now).find((c) => c.state === 'todo')
+    const el = first && document.querySelector<HTMLElement>(`[data-celebrate-id="${first.id}"]`)
+    el?.scrollIntoView({ behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' })
+  }
   const badges = {
     chores: tally(d.chores).todo,
     chat: threads.data?.total ?? 0,
@@ -89,7 +111,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
     )
   else if (tab === 'me')
     body = (
-      <MePage name={name} avatar={avatar} progress={d.progress} preview={preview} onLocker={onLocker} canSwitch={canSwitch} onExit={onExit} kidId={kidId} little={mode === 'little'} />
+      <MePage name={name} avatar={avatar} progress={d.progress} preview={preview} onLocker={onLocker} canSwitch={canSwitch} onExit={onExit} kidId={kidId} little={mode === 'little'} mode={mode} celebrate={d.celebrate ?? (mode === 'teen' ? 'small' : 'full')} freezes={d.progress?.freezes_held} trust={d.trust} />
     )
   else if (tab === 'chat') body = chat ? null : elsewhere
   else if (tab === 'alerts') body = preview ? elsewhere : <KidAlerts
@@ -102,13 +124,14 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
     body = (
       <>
         {children}
+        <HappyHourBanner hh={d.happy_hour} onGo={goChore} />
         <Mode
           d={d}
           focusId={focusId}
           name={name}
           avatar={avatar}
           now={now}
-          onDone={done.mutate}
+          onDone={onDone}
           busyId={done.isPending ? done.variables ?? null : null}
           onSeen={seen.mutate}
           onChat={preview || mode === 'little' ? undefined : (id) => openChat('chore', String(id))}
@@ -120,6 +143,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
     <div className="k-app" data-mode={mode}>
       <KidNav mode={mode} tab={tab} onTab={onTab} badges={badges} avatar={avatar} />
       <main className="k-main">
+        {!preview && <AlertsMoved />}
         <div className="k-inner" hidden={tab === 'chat' && chat}>
           {body}
         </div>
@@ -130,6 +154,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
           </div>
         )}
       </main>
+      <CelebrationLayer cel={cel} balance={d.points_balance} />
     </div>
   )
 }

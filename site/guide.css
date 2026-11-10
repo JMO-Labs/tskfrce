@@ -185,3 +185,6 @@
   .guide-nav-card { max-width: none; }
   .guide-nav-next { text-align: left; }
 }
+
+/* long inline code (URLs, patterns) wraps instead of poking out on phones */
+.guide-body :not(pre) > code { overflow-wrap: anywhere; }
