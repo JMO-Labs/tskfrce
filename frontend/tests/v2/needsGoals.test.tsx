@@ -16,7 +16,7 @@ jest.mock('@/v2/chat/dock', () => ({ openChatAfterNav: jest.fn() }))
 const apiMock = api as unknown as Mock<(p: string, init?: object) => Promise<unknown>>
 
 const full: NeedsItem = { type: 'goal_full', id: 5, kid_id: 1, kid_name: 'Mia', title: 'Bike', cost: 300, submitted_at: '2026-11-10T10:00:00Z' }
-const idea: NeedsItem = { type: 'goal_suggested', id: 6, kid_id: 1, kid_name: 'Mia', title: 'Lego set', cost: 0, submitted_at: '2026-11-10T11:00:00Z' }
+const idea: NeedsItem = { type: 'goal_suggested', id: 6, kid_id: 1, kid_name: 'Mia', title: 'Lego set', cost: null as unknown as number, submitted_at: '2026-11-10T11:00:00Z' }
 const reward: NeedsItem = { type: 'reward', id: 11, kid_id: 1, kid_name: 'Mia', title: 'Ice cream', cost: 40, kid_balance: 60 }
 
 beforeEach(() => {
@@ -63,4 +63,10 @@ test('Approve all skips goal items', async () => {
 test('only goal items: no Approve all', () => {
   show([full, idea])
   expect(screen.queryByRole('button', { name: /Approve all/ })).toBeNull()
+})
+
+test('a goal idea reads Needs a price, not a points number', () => {
+  show([idea])
+  expect(screen.getByText('Needs a price')).toBeInTheDocument()
+  expect(screen.queryByText(/null pts/)).toBeNull()
 })

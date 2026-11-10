@@ -51,7 +51,7 @@ export function NeedsYouList({ items, today }: { items: NeedsItem[]; today?: str
   const approvable = items.filter((i) => i.type !== 'note' && !isGoal(i))
   const sub = (i: NeedsItem) => {
     if (i.type === 'note') return i.note ?? ''
-    if (isGoal(i)) return `${i.cost} pts`
+    if (isGoal(i)) return i.type === 'goal_suggested' ? 'Needs a price' : `${(i.cost ?? 0).toLocaleString()} pts`
     const via = i.integration ? `via ${i.integration.name}` : ''
     const parts = isChore(i)
       ? [i.attempt && i.attempt > 1 ? `${ordinal(i.attempt)} try` : '', i.subtasks_total ? `${i.subtasks_done}/${i.subtasks_total} steps` : '', i.submitted_at ? `Done ${clock(i.submitted_at)}` : '']
