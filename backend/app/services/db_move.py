@@ -52,9 +52,12 @@ def move(src_url: str, dst_url: str) -> dict[str, int]:
         raise MoveError("The current database is not SQLite; nothing to move.")
     if dst_url.startswith("sqlite"):
         raise MoveError("The target must be a Postgres URL, not SQLite.")
-    path = make_url(src_url).database
+    path = Path(make_url(src_url).database)
     _import_all_models()
-    src_eng = create_engine(f"sqlite:///file:{path}?mode=ro&uri=true")
+    # Copy from a fresh WAL-safe backup, opened read-only: the live file is never opened for the move.
+    snap = settings.DATA_DIR / "backups" / f"pre-migrate-{datetime.now(UTC):%Y%m%d%H%M%S}.db"
+    backup_sqlite(path, snap)
+    src_eng = create_engine(f"sqlite:///file:{snap}?mode=ro&uri=true")
     dst_eng = create_engine(dst_url)
     try:
         with src_eng.connect() as src:
@@ -63,8 +66,6 @@ def move(src_url: str, dst_url: str) -> dict[str, int]:
             with dst_eng.connect() as probe:
                 if inspect(probe).get_table_names():
                     raise MoveError("The target database is not empty.")
-            stamp = f"{datetime.now(UTC):%Y%m%d%H%M%S}"
-            backup_sqlite(Path(path), settings.DATA_DIR / "backups" / f"pre-migrate-{stamp}.db")
             tables = Base.metadata.sorted_tables
             counts: dict[str, int] = {}
             with dst_eng.begin() as dst:
@@ -72,7 +73,11 @@ def move(src_url: str, dst_url: str) -> dict[str, int]:
                 dst.execute(text("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)"))
                 dst.execute(text("INSERT INTO alembic_version VALUES (:v)"), {"v": _head()})
                 for t in tables:
-                    for rows in src.execute(select(t)).mappings().partitions(BATCH):
+                    for rows in (
+                        src.execute(select(t).order_by(*t.primary_key.columns))
+                        .mappings()
+                        .partitions(BATCH)
+                    ):
                         dst.execute(t.insert(), [dict(r) for r in rows])
                 _fix_sequences(dst, tables)
                 for t in tables:
