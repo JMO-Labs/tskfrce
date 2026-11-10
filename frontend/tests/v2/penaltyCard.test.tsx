@@ -39,7 +39,7 @@ describe('PenaltyCards', () => {
   })
   test('tapping a todo chore marks it done', async () => {
     const done = wrap([pen()])
-    await userEvent.click(screen.getByRole('button', { name: '○ Sweep kitchen' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Mark Sweep kitchen done' }))
     expect(done.mutate).toHaveBeenCalledWith(2)
   })
   test('no earn-back: no meter, marked seen once', async () => {

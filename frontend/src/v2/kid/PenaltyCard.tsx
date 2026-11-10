@@ -24,7 +24,7 @@ function Card({ p, done }: { p: KidPenalty; done: Done }) {
   const n = p.makeup.length
   const pct = none ? 0 : Math.min(100, Math.round((p.amount_returned / p.back_total) * 100))
   return (
-    <div className="k-pen" data-testid="penalty-card">
+    <section className="k-pen" data-testid="penalty-card" aria-label="Penalty">
       <h3>{kidTitle(p, new Date())}</h3>
       <div className="k-pen-by">{p.reason ? `“${p.reason}”, ${p.by_name}` : p.by_name}</div>
       {!none && (
@@ -41,7 +41,7 @@ function Card({ p, done }: { p: KidPenalty; done: Done }) {
               ) : m.status === 'submitted' ? (
                 <span key={m.run_id}>… {m.title}</span>
               ) : (
-                <button key={m.run_id} type="button" className="k-pen-todo" disabled={done.isPending} onClick={() => done.mutate(m.run_id)}>
+                <button key={m.run_id} type="button" className="k-pen-todo" aria-label={`Mark ${m.title} done`} disabled={done.isPending} onClick={() => done.mutate(m.run_id)}>
                   ○ {m.title}
                 </button>
               ),
@@ -50,7 +50,7 @@ function Card({ p, done }: { p: KidPenalty; done: Done }) {
           {!none && <span className="k-pen-back">{backText(p)}</span>}
         </div>
       )}
-    </div>
+    </section>
   )
 }
 

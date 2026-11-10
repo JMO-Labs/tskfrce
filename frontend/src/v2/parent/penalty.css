@@ -43,3 +43,13 @@
 [data-look='parent'] .p-pen-head small { display: block; font-size: 12px; font-weight: 400; color: var(--p-sub); }
 [data-look='parent'] .p-pen-av { flex: none; width: 36px; height: 36px; border-radius: 50%; background: var(--p-lav); color: var(--p-lav-ink); display: grid; place-items: center; font-weight: 700; font-size: 15px; }
 [data-look='parent'] .p-pen-vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* Phone: 44px touch targets */
+@media (max-width: 640px) {
+  [data-look='parent'] .p-pen-seg button { min-height: 44px; }
+  [data-look='parent'] .p-pen-chip { min-height: 44px; padding: 8px 14px; }
+  [data-look='parent'] .p-pen-step button { width: 44px; height: 44px; }
+  [data-look='parent'] .p-pen-link, [data-look='parent'] .p-pen-plain { min-height: 44px; padding: 8px 4px; }
+  [data-look='parent'] .p-pen-sum { min-height: 44px; }
+  [data-look='parent'] .p-pen-input { min-height: 44px; }
+}
+[data-look='parent'] .p-pen-sheet button:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
