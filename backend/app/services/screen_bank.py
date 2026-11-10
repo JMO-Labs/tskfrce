@@ -72,9 +72,10 @@ def clear_all(db: Session) -> None:
 
 def take(db: Session, fam: FamilySettings, kid_id: int, minutes: int) -> int:
     """Dock up to `minutes` from the saved bank (never below 0). Returns minutes taken. Flushes."""
-    got = min(minutes, saved(db, fam, kid_id))
+    have = saved(db, fam, kid_id)
+    got = min(minutes, have)
     if got:
-        db.get(ScreenBank, kid_id).minutes = saved(db, fam, kid_id) - got
+        db.get(ScreenBank, kid_id).minutes = have - got
         db.flush()
     return got
 

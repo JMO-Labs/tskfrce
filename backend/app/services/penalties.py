@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.models.chores import Chore, ChoreAssignment, ChoreRun
 from app.models.family import FamilySettings, get_family
@@ -66,6 +66,8 @@ def target_devices(db: Session, kid: User, g: Give) -> tuple[list[Device], str]:
         d = db.get(Device, g.device_id)
         if d is None:
             raise HTTPException(404, "Device not found.")
+        if kid not in d.owners:
+            raise HTTPException(404, "That device isn't this kid's.")
         return [d], d.name
     if g.group_id is not None:
         grp = db.get(DeviceGroup, g.group_id)
@@ -103,21 +105,22 @@ def _duration(minutes: int) -> str:
 
 def summary(p: Penalty) -> str:
     if p.kind == "points":
-        return f"{p.amount} points"
+        return f"{p.amount_taken} points"
     if p.kind == "screen":
-        return f"{p.amount} min of saved screen time"
+        return f"{p.amount_taken} min of saved screen time"
     return f"No {p.label or 'devices'}, {_duration(p.amount)}"
 
 
 def _makeup_runs(db: Session, kid: User, p: Penalty, titles: list[str], by: User, now) -> None:
     day = chores.today(db, now)
+    type_id = chore_types.other_id(db)
     for title in titles:
         chore = Chore(
             title=title,
             points=0,
             makeup=True,
             created_by_id=by.id,
-            type_id=chore_types.other_id(db),
+            type_id=type_id,
         )
         a = ChoreAssignment(chore=chore, mode="each", repeat="once", on_date=day)
         a.kids = [kid]
@@ -146,7 +149,15 @@ def _give_one(db: Session, kid: User, g: Give, by: User, now: datetime, group: s
     if g.kind == "points":
         note = f"Penalty: {g.reason}" if g.reason else "Penalty"
         p.amount_taken = economy.deduct(
-            db, kid.id, g.amount, note, by.id, reason="penalty", penalty_id=p.id, notify=False
+            db,
+            kid.id,
+            g.amount,
+            note,
+            by.id,
+            reason="penalty",
+            penalty_id=p.id,
+            notify=False,
+            commit=False,
         )
     elif g.kind == "screen":
         p.amount_taken = screen_bank.take(db, fam, kid.id, g.amount)
@@ -169,18 +180,16 @@ def _give_one(db: Session, kid: User, g: Give, by: User, now: datetime, group: s
                         penalty_id=p.id,
                     )
                 )
-    if g.kind != "block":
-        num, den = SHARES[g.earn_back]
-        p.back_total = p.amount_taken * num // den
-        titles = (
-            (g.makeup if g.makeup is not None else makeup_list(fam)[:2]) if p.back_total else []
-        )
-        p.makeup_count = len(titles)
-        if titles:
+    num, den = SHARES[g.earn_back]
+    p.back_total = p.amount_taken * num // den  # points, minutes, or block minutes
+    titles = (g.makeup if g.makeup is not None else makeup_list(fam)[:2]) if p.back_total else []
+    p.makeup_count = len(titles)
+    if titles:
+        if g.kind != "block":
             p.ends_at = created + timedelta(days=MAKEUP_DAYS)
-            _makeup_runs(db, kid, p, titles, by, _aware(now))
-        else:
-            p.status, p.ended_at = "ended", created
+        _makeup_runs(db, kid, p, titles, by, _aware(now))
+    elif g.kind != "block":
+        p.status, p.ended_at = "ended", created
     body = summary(p) + (f" · {g.reason}" if g.reason else "")
     inbox.notify(db, [kid.id], "points_taken", f"{by.full_name} gave you a penalty", body)
     return p
@@ -191,15 +200,25 @@ def give(db: Session, kid_ids: list[int], g: Give, by: User, now: datetime) -> l
     group = uuid4().hex if len(kid_ids) > 1 else None
     with economy.SPEND_LOCK:
         db.commit()  # fresh snapshot for the balance and bank reads
-        kids = [db.get(User, k) for k in kid_ids]
-        out_rows = [_give_one(db, k, g, by, now, group) for k in kids]
-        db.commit()
+        try:
+            kids = [db.get(User, k) for k in kid_ids]
+            out_rows = [_give_one(db, k, g, by, now, group) for k in kids]
+            db.commit()  # one commit: all kids' penalties, ledger rows and bank changes land together
+        except BaseException:
+            db.rollback()
+            raise
     return out_rows
 
 
 def out(db: Session, p: Penalty) -> dict:
     by = db.get(User, p.given_by_id) if p.given_by_id else None
-    runs = db.query(ChoreRun).filter(ChoreRun.penalty_id == p.id).order_by(ChoreRun.id).all()
+    runs = (
+        db.query(ChoreRun)
+        .options(joinedload(ChoreRun.assignment).joinedload(ChoreAssignment.chore))
+        .filter(ChoreRun.penalty_id == p.id)
+        .order_by(ChoreRun.id)
+        .all()
+    )
     return {
         "id": p.id,
         "kid_id": p.kid_id,

@@ -12,6 +12,7 @@ from app.models.screen_bank import ScreenBank
 from app.models.user import UserRole
 from app.services import economy, penalties
 from app.services.penalties import Give
+from fastapi import HTTPException
 
 from tests.conftest import _make_user
 
@@ -133,6 +134,7 @@ def test_recent_count_skips_cancelled(db, parent, kid):
 
 def test_notification_to_kid_only(db, parent, kid):
     sib = _make_user(db, "sis", UserRole.KID)
+    _pts(db, kid, 50)
     penalties.give(db, [kid.id], Give("points", 5, "none", reason="Hit"), parent, NOW)
     n = db.query(Notification).filter_by(user_id=kid.id).one()
     assert (n.kind, n.title) == ("points_taken", "Mom gave you a penalty")
@@ -152,7 +154,8 @@ def test_notification_to_kid_only(db, parent, kid):
     ],
 )
 def test_summary_texts(kind, amount, label, text):
-    assert penalties.summary(Penalty(kind=kind, amount=amount, label=label)) == text
+    p = Penalty(kind=kind, amount=amount, amount_taken=amount, label=label)
+    assert penalties.summary(p) == text
 
 
 def test_out_shape(db, parent, kid):
@@ -162,3 +165,45 @@ def test_out_shape(db, parent, kid):
     assert o["given_by"] == "Mom" and o["summary"] == "20 points"
     assert [m["status"] for m in o["makeup"]] == ["todo", "todo"]
     assert o["created_at"].endswith("Z")
+
+
+def test_block_half_earnback_makes_runs(db, parent, kid):
+    _dev(db, 1, kid)
+    [p] = penalties.give(db, [kid.id], _block(), parent, NOW)
+    assert p.back_total == 720 and p.makeup_count == 2 and p.status == "active"
+    assert p.ends_at == NOW.replace(tzinfo=None) + timedelta(minutes=1440)
+    assert db.query(ChoreRun).filter_by(penalty_id=p.id).count() == 2
+
+
+def test_deviceless_block_no_runs(db, parent, kid):
+    [p] = penalties.give(db, [kid.id], _block(), parent, NOW)
+    assert p.amount_taken == 0 and p.back_total == 0 and p.status == "active"
+    assert db.query(ChoreRun).filter_by(penalty_id=p.id).count() == 0
+
+
+def test_give_is_atomic(db, parent, kid, monkeypatch):
+    _pts(db, kid, 50)
+
+    def boom(*a, **k):
+        raise RuntimeError("x")
+
+    monkeypatch.setattr(penalties, "_makeup_runs", boom)
+    with pytest.raises(RuntimeError):
+        penalties.give(db, [kid.id], Give("points", 20, "all"), parent, NOW)
+    assert db.query(Penalty).count() == 0
+    assert db.query(Points).filter_by(reason="penalty").count() == 0
+    assert economy.balance(db, kid.id) == 50
+
+
+def test_summary_uses_taken(db, parent, kid):
+    _pts(db, kid, 5)
+    [p] = penalties.give(db, [kid.id], Give("points", 20, "none"), parent, NOW)
+    assert penalties.summary(p) == "5 points"
+    assert db.query(Notification).filter_by(user_id=kid.id).one().body == "5 points"
+
+
+def test_device_not_owned_rejected(db, parent, kid):
+    sib = _make_user(db, "sis", UserRole.KID)
+    d = _dev(db, 1, sib)
+    with pytest.raises(HTTPException):
+        penalties.give(db, [kid.id], _block(device_id=d.id), parent, NOW)

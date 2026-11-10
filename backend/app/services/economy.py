@@ -39,10 +39,13 @@ def deduct(
     reason: str = "deduction",
     penalty_id: int | None = None,
     notify: bool = True,
+    commit: bool = True,
 ) -> int:
-    """Take points off with a reason the kid sees; never below zero. Commits."""
+    """Take points off with a reason the kid sees; never below zero. Commits
+    (commit=False: the caller holds SPEND_LOCK and commits)."""
     with SPEND_LOCK:
-        db.commit()  # fresh snapshot: see other threads' debits
+        if commit:
+            db.commit()  # fresh snapshot: see other threads' debits
         take = min(amount, max(balance(db, kid_id), 0))
         if take:
             db.add(
@@ -62,7 +65,8 @@ def deduct(
                 from app.services import kid_events  # late: kid_events -> chores -> economy
 
                 kid_events.points_taken(db, kid_id, take, note, by_id)
-        db.commit()
+        if commit:
+            db.commit()
         return take
 
 
