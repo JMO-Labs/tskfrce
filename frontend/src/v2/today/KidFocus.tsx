@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useState } from 'react'
+import { useFamily } from '../hooks/useFamily'
 import { useKids } from '../hooks/useKids'
 import { viewAs } from '../kid/viewAs'
 import { PointsForm } from '../manage/PointsForm'
@@ -10,6 +11,7 @@ import { MoreMenu } from '../parent/MoreMenu'
 import { EmptyState } from '../parent/states'
 import type { Focus } from '../parent/useFocusParam'
 import type { NeedsItem, TodayKid } from '../types'
+import { PenaltySheet } from './PenaltySheet'
 import { ChoreRow } from './ChoreRow'
 import { isChore, isGoal, useNeedsActions } from './needsActions'
 import { useClock } from './useClock'
@@ -27,6 +29,8 @@ export function KidFocus({ kid, requests, chore }: { kid: TodayKid; requests: Ne
   const clock = useClock()
   const full = useKids().data?.find((k) => k.id === kid.id)
   const [points, setPoints] = useState<'bonus' | 'deduct' | null>(null)
+  const [pen, setPen] = useState(false)
+  const penalties = !!useFamily().data?.penalties_enabled
   const name = kid.name ?? 'Kid'
   const waitingFor = (id: number, state: string) => (state === 'needs_you' ? requests.find((r) => isChore(r) && r.id === id) : undefined)
   const asks = requests.filter((r) => !isChore(r) && !isGoal(r))
@@ -85,11 +89,13 @@ export function KidFocus({ kid, requests, chore }: { kid: TodayKid; requests: Ne
             items={[
               { label: 'Bonus', icon: 'add_circle', takesFocus: true, disabled: !full, onClick: () => setPoints('bonus') },
               { label: 'Deduct', icon: 'remove_circle', takesFocus: true, disabled: !full, onClick: () => setPoints('deduct') },
+              { label: 'Give penalty', icon: 'gavel', takesFocus: true, hidden: !penalties, onClick: () => setPen(true) },
               { label: 'View as kid', icon: 'visibility', href: viewAs(kid.id, router.asPath) },
               { label: 'Open page', icon: 'open_in_new', href: `/kids?section=kids&item=${kid.id}` },
             ]}
           />
         </div>
+        {pen && <PenaltySheet kidIds={[kid.id]} onClose={() => setPen(false)} />}
         {points && full && <PointsForm key={points} kid={full} kind={points} onClose={() => setPoints(null)} />}
       </div>
     </div>

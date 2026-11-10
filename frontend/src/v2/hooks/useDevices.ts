@@ -14,7 +14,7 @@ export interface DevicePatch {
 
 // polled so a second tab, an expired override or a new device shows up without a reload
 const poll = { refetchInterval: 15_000, refetchIntervalInBackground: false }
-export const useDevices = () => useQuery({ queryKey: ['devices'], queryFn: () => api<Device[]>('/devices'), ...poll })
+export const useDevices = (enabled = true) => useQuery({ queryKey: ['devices'], queryFn: () => api<Device[]>('/devices'), enabled, ...poll })
 export const useBlocker = () =>
   useQuery({ queryKey: ['blocker'], queryFn: () => api<BlockerStatus>('/blocker'), refetchInterval: 30_000, refetchIntervalInBackground: false })
 export const useGroups = () => useQuery({ queryKey: ['groups'], queryFn: () => api<Group[]>('/groups'), ...poll })

@@ -8,10 +8,12 @@ import { useFocusParam } from '../parent/useFocusParam'
 import { EmptyState, ErrorPanel, OpeningLink, Skeleton } from '../parent/states'
 import { useToday } from '../hooks/useToday'
 import { useRunDetail } from '../hooks/useChores'
+import { useFamily } from '../hooks/useFamily'
 import { useKids } from '../hooks/useKids'
 import { openingLabel } from './openingLabel'
 import { HappyHourSheet } from './HappyHourButton'
 import { HappyHourChip } from './HappyHourChip'
+import { PenaltySheet } from './PenaltySheet'
 import { KidCard } from './KidCard'
 import { KidFocus } from './KidFocus'
 import { KidStrip } from './KidStrip'
@@ -49,6 +51,8 @@ export function TodayPage() {
   const runId = Number(router.query.chore) || null
   const run = useRunDetail(runId)
   const kidList = useKids(!!runId)
+  const [penAll, setPenAll] = useState(false)
+  const penalties = !!useFamily().data?.penalties_enabled
   if (runId && !data && !isError)
     return (
       <main className="p-guard-state">
@@ -60,7 +64,8 @@ export function TodayPage() {
   const calm = !kidFocus.open && !areaFocus.open
   const needsOpen = areaFocus.isOpen('needs')
   return (
-    <ParentShell title="Today" actions={<MoreMenu label="More for Today" items={[{ label: 'Start Happy Hour', icon: 'bolt', onClick: () => setHhOpen(true) }]} />}>
+    <ParentShell title="Today" actions={<MoreMenu label="More for Today" items={[{ label: 'Start Happy Hour', icon: 'bolt', onClick: () => setHhOpen(true) }, { label: 'Penalty for everyone', icon: 'groups', takesFocus: true, hidden: !penalties, onClick: () => setPenAll(true) }]} />}>
+      {penAll && data && <PenaltySheet kidIds={data.kids.map((k) => k.id)} onClose={() => setPenAll(false)} />}
       <HappyHourSheet opened={hhOpen} onClose={() => setHhOpen(false)} allKids />
       {isError && !data && <ErrorPanel kind="unreachable" error={error} onRetry={() => refetch()} />}
       {!data && !isError && <Skeleton rows={4} />}

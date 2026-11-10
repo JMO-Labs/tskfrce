@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Checkbox, Modal } from '@mantine/core'
 import { Icon } from '../parent/Icon'
+import { useFamily } from '../hooks/useFamily'
 import { useTakeBack } from '../hooks/useTrust'
+import { PenaltySheet } from './PenaltySheet'
 import { dayName, LEVELS, type TakeBackRun } from '../trustTypes'
 
 interface Props {
@@ -9,6 +11,7 @@ interface Props {
   /** today's run day, YYYY-MM-DD: an older chore won't come back; empty until known (confirm waits) */
   today: string
   kidName: string
+  kidId?: number
   /** the kid's trust level now */
   level?: number
   /** trust mode is on: only then is there a level to lower */
@@ -17,9 +20,11 @@ interface Props {
 }
 
 /** Wasn't done: confirm taking a self-approved chore back; lowering trust is ticked by default. */
-export function WasntDoneSheet({ run, today, kidName, level, trustOn = true, onClose }: Props) {
+export function WasntDoneSheet({ run, today, kidName, kidId, level, trustOn = true, onClose }: Props) {
   const take = useTakeBack()
   const [lower, setLower] = useState(true)
+  const [pen, setPen] = useState(false)
+  const penalties = !!useFamily().data?.penalties_enabled && !!kidId
   const older = !!today && run.day < today
   const pts = run.points == null ? 'the points' : `the ${run.points} points`
   const kidMsg = older ? `A parent checked ${run.title} and took its points back.` : `A parent checked ${run.title} and it needs another go.`
@@ -45,6 +50,13 @@ export function WasntDoneSheet({ run, today, kidName, level, trustOn = true, onC
             label="Also lower trust level"
             description={`${kidName} goes from ${LEVELS[level]} to ${LEVELS[level - 1]}.`}
           />
+        )}
+        {penalties && (
+          <Checkbox checked={pen} onChange={(e) => setPen(e.currentTarget.checked)} label="Give penalty" />
+        )}
+        {penalties && pen && kidId && (
+          // the sheet has its own Give button; "Wasn't done" itself stays a separate action
+          <PenaltySheet inline kidIds={[kidId]} from={{ chore_run_id: run.id }} reason={`Said ${run.title} was done`} onClose={() => setPen(false)} />
         )}
         <span className="pk-hint">{`${kidName} sees: "${kidMsg}"`}</span>
         <div className="pk-actions v2-end">
