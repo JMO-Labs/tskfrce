@@ -11,6 +11,7 @@ from app.api.kid import require_kid, view_kid
 from app.models.family import get_family
 from app.models.game import GamePlay
 from app.models.user import User
+from app.services import economy
 from app.services import minigames_play as play
 
 router = APIRouter(prefix="/api/v1/kid/games", tags=["kid-games"])
@@ -41,7 +42,11 @@ def start(db: Session = Depends(get_db), kid: User = Depends(require_kid)):
 @router.post("/finish")
 def finish(body: FinishIn, db: Session = Depends(get_db), kid: User = Depends(require_kid)):
     parts = [p.model_dump() for p in body.parts] if body.parts is not None else None
-    return play.finish(db, get_family(db), kid, body.token, body.score, parts, datetime.now(UTC))
+    with economy.SPEND_LOCK:  # cap read + payout must not interleave with another finish
+        db.commit()  # fresh snapshot: see a racing finish's payout
+        return play.finish(
+            db, get_family(db), kid, body.token, body.score, parts, datetime.now(UTC)
+        )
 
 
 @router.post("/seen", status_code=204)
