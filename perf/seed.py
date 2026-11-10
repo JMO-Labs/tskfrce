@@ -4,7 +4,7 @@ Prints one JSON line: tokens, submitted run ids, a kid-owned device MAC."""
 
 import json
 import random
-from datetime import UTC, date, datetime, timedelta
+from datetime import datetime, timedelta
 
 from app.core.auth import AuthService
 from app.core.database import SessionLocal, _import_all_models
@@ -94,7 +94,12 @@ for d in devs:
 db.commit()
 
 exp = timedelta(hours=12)
-mk = lambda u: auth.create_access_token(data={"sub": str(u.id)}, expires_delta=exp)
+
+
+def mk(u):
+    return auth.create_access_token(data={"sub": str(u.id)}, expires_delta=exp)
+
+
 sub = [
     r.id for r in db.query(ChoreRun).filter(ChoreRun.status == "submitted", ChoreRun.day == today)
 ]
