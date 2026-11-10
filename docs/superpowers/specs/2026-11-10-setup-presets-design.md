@@ -80,3 +80,33 @@ families mid-setup must not break (*builder's call* on migrating the saved step 
 
 ## Left to the builder
 Age offsets, data model for edit tracking, API shapes, copy polish within the mockup, and tests.
+
+## Builder's calls (2026-11-10)
+- **Data file**: `backend/app/services/presets.py` holds the table, age offsets and per-age chore picks.
+  The frontend reads it through `GET /api/v1/presets`. Starter metadata stays in `starterChores.ts`
+  (glyphs) and is mirrored in `presets.py` (type, points, days). A backend test fails if they drift.
+- **Age offsets**: Little: chores −1, screen −30m, bedtime −1h. Kid: as the table. Teen: chores ±0,
+  screen +30m, bedtime +1h. Weekend bedtime is school-night bedtime +1h30.
+- **Chore picks by age** (first N): Little: Make bed, Feed the pet, Tidy room, Water plants. Kid: Make bed,
+  Feed the pet, Tidy room, Homework. Teen: Unload dishwasher, Take out trash, Homework, Tidy room,
+  Practice instrument.
+- **Per-kid internet lock**: new `users.chores_lock` (default on). The family switch stays the master
+  switch; a device only waits for the chores of owners whose lock is on.
+- **Photo proof** (Strict): the kid's starter chores need a photo. A starter shared by several kids needs
+  one if any of them is Strict.
+- **Per-kid bedtime**: hour rules. A fresh family where everyone shares a bedtime gets Everyone rules.
+  Otherwise each kid gets their own "School nights · Name" / "Weekends · Name" rules. Moving a kid off a
+  shared rule turns an Everyone rule into a list of the other kids.
+- **Edit tracking**: `family_settings.preset_base` (JSON) stores the last applied value per key. A key is
+  an edit when it differs from that value. A key with no stored value counts as an edit unless it still
+  has the app default (no screen limit, trust off, no photo, lock on, no starter chores, no bedtime
+  rule, banked on). This keeps families that set things up before presets safe.
+- **Styles**: `family_settings.preset_style`, `users.preset_style` (NULL = follows the family). On a kid
+  page, picking the family's own style sets the kid back to following the family.
+- **Tweak**: Your plan → Chores → Hours → Extras, pre-filled from the plan, then the preset applies with
+  chores, bedtime and trust skipped (the parent's tweaks win). The three steps run as sub-steps of step 5.
+- **Saved step**: a data migration moves saved steps 4–8 to 4 (How strict). Anything already made counts
+  as an edit and is kept. `LAST_STEP` becomes 7.
+- **API**: `GET /api/v1/presets` (catalog), `POST /api/v1/presets/preview` and `POST /api/v1/presets/apply`
+  with `{style?, kids?: {id: style|null}, skip?: [keys]}`. Parents only. With `style`, family keys and all
+  kids are in scope. Without it, only the listed kids are.
