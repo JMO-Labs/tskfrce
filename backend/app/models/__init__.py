@@ -13,6 +13,7 @@ from .device_activity import DeviceEvent, DevicePresence
 from .family import FamilySettings, get_family
 from .flair import KidFlair
 from .goal import Goal, GoalAuto, GoalContribution, GoalParty
+from .game import GamePlay, GameProgress
 from .happy_hour import HappyHour
 from .hours import HourRule, HourRuleTarget, HourRuleTime
 from .inbox import Notification
@@ -42,6 +43,8 @@ __all__ = [
     "GoalAuto",
     "GoalContribution",
     "GoalParty",
+    "GamePlay",
+    "GameProgress",
     "HappyHour",
     "CustomBadge",
     "ChatPhoto",
