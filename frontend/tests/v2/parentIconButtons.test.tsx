@@ -20,9 +20,9 @@ jest.mock('@/v2/hooks/useChat', () => ({
 }))
 
 jest.mock('@/v2/components/Bell', () => ({
-  Bell: ({ placement }: { placement: string }) => (
+  Bell: () => (
     <button aria-label="Notifications" type="button">
-      Bell {placement}
+      Bell
     </button>
   ),
 }))

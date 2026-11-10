@@ -3,7 +3,7 @@
 ## Finding your way
 
 - **On a phone**, a bar at the bottom has **Today**, **Devices**, **Kids**, **Chat** and **More**. The bell and your initial are at the top right. **More** holds **Settings**, the notifications page and **Help & guide**.
-- **On a computer**, a bar on the left has the bell, **Today**, **Devices**, **Kids & chores** and **Chat**. **Settings** and **Log out** are at the bottom of the bar.
+- **On a computer**, a bar on the left has **Today**, **Devices**, **Kids & chores** and **Chat**. **Settings** and **Log out** are at the bottom of the bar. The bell and your initial are at the top right, as on a phone. Your initial opens **More**.
 
 A dot on **Chat** means there are unread messages.
 

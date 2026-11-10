@@ -175,3 +175,13 @@
 [data-look='parent'] .p-ring svg { width: 30px; height: 30px; transform: rotate(-90deg); }
 [data-look='parent'] .p-ring-t { stroke: var(--p-track); }
 [data-look='parent'] .p-ring-f { stroke: var(--p-meter); }
+
+/* header tools (bell, account initial, Today "…"): one 44 px bordered rounded box on every breakpoint */
+[data-look='parent'] .p-htool {
+  position: relative; display: inline-grid; place-items: center; flex: none;
+  width: 44px; height: 44px; min-height: 44px; padding: 0;
+  border: 1px solid var(--p-line); border-radius: 8px; background: var(--p-card); color: var(--p-ink);
+  cursor: pointer;
+}
+@media (hover: hover) { [data-look='parent'] .p-htool:hover { background: var(--p-soft); } }
+[data-look='parent'] .p-htool:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }

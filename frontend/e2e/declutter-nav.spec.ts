@@ -227,3 +227,15 @@ test.describe('unsaved-changes guard', () => {
     }
   })
 })
+
+test.describe('desktop header tools', () => {
+  test.use({ viewport: { width: 1280, height: 900 } })
+  test('the bell sits in the header, not the rail', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.locator('.p-header').getByRole('button', { name: /^Notifications/ })).toBeVisible()
+    await expect(page.locator('.p-header').getByRole('link', { name: 'Account and settings' })).toHaveAttribute('href', '/more')
+    await expect(page.locator('nav[aria-label="Main"]').getByRole('button', { name: /^Notifications/ })).toHaveCount(0)
+    await page.goto('/devices')
+    await expect(page.locator('.p-header').getByRole('button', { name: /^Notifications/ })).toBeVisible()
+  })
+})

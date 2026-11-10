@@ -1,17 +1,5 @@
 /* Parent look bell */
-.p-bell {
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border: 1px solid var(--p-line);
-  border-radius: 8px;
-  background: var(--p-card);
-  color: var(--p-ink);
-  cursor: pointer;
-}
-@media (hover: hover) { .p-bell:hover { background: var(--p-soft); } }
+/* the box is .p-htool (declutter.css) */
 .p-bell-count {
   position: absolute;
   top: -6px;

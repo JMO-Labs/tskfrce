@@ -70,13 +70,6 @@
   color: #292928;
 }
 
-[data-look='parent'] .p-rail-bell {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-}
-
 [data-look='parent'] .p-rail-dot {
   position: absolute;
   right: 4px;
