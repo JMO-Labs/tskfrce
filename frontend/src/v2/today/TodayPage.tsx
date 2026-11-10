@@ -1,194 +1,110 @@
-import Link from "next/link";
-import { useOnChange } from "@/v2/hooks/useOnChange";
-import { viewAs } from '@/v2/kid/viewAs'
-import { useEffect, useState } from "react";
-import { useRouter } from "next/router";
-import { useMediaQuery } from "@mantine/hooks";
-import { ParentShell } from "../parent/ParentShell";
-import { EmptyState, ErrorPanel, OpeningLink, Skeleton } from "../parent/states";
-import { TipsContainer } from "../components/TipsContainer";
-import { useToday } from "../hooks/useToday";
-import { useRunDetail } from "../hooks/useChores";
-import { useKids } from "../hooks/useKids";
-import { openingLabel } from "./openingLabel";
-import { GetStartingChecklistCard } from "./GetStartingChecklistCard";
-import { KidList } from "./KidList";
-import { KidStrip } from "./KidStrip";
-import { NeedsYouList } from "./NeedsYouList";
-import { IntegrationWidgets } from "../integrations/WidgetFrame";
-import { SegmentedControl } from "../parent/SegmentedControl";
-import { HappyHourButton } from "./HappyHourButton";
-import { TryCards } from "./TryCards";
-import { KidFacts } from "./KidFacts";
-import { ChoreRow } from "./ChoreRow";
-import { useClock } from "./useClock";
-import { Icon } from "../parent/Icon";
-import { getTipsToShow, PARENT_TIPS } from "../tips";
-import type { TodayKid, TodayChore } from "../types";
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/router'
+import { ParentShell } from '../parent/ParentShell'
+import { MoreMenu } from '../parent/MoreMenu'
+import { FocusArea } from '../parent/SummaryRow'
+import { useFocusAliases } from '../parent/focusAliases'
+import { useFocusParam } from '../parent/useFocusParam'
+import { EmptyState, ErrorPanel, OpeningLink, Skeleton } from '../parent/states'
+import { useToday } from '../hooks/useToday'
+import { useRunDetail } from '../hooks/useChores'
+import { useKids } from '../hooks/useKids'
+import { openingLabel } from './openingLabel'
+import { HappyHourSheet } from './HappyHourButton'
+import { HappyHourChip } from './HappyHourChip'
+import { KidCard } from './KidCard'
+import { KidFocus } from './KidFocus'
+import { KidStrip } from './KidStrip'
+import { isChore } from './needsActions'
+import { NeedsStrip } from './NeedsStrip'
+import { TipSlot } from './TipSlot'
+import { AddonsRow, DevicesRow } from './TodayRows'
 
 export function TodayPage() {
-  const { data, isError, error, refetch } = useToday();
-  const router = useRouter();
-  const clock = useClock();
-  // keep the id, not the object: the kid is looked up in every poll so the page never shows stale numbers
-  const [selectedId, setSelectedId] = useState<number | undefined>();
-  const setSelectedKid = (k: TodayKid) => {
-    setSelectedId(k.id);
-    router.push(`/?item=${k.id}`, undefined, { shallow: true }); // deep link + back button follow the choice
-  };
-  // phone: "Needs you" replaces the day (desktop has the same list as a tab in the kids sidebar)
-  const small = useMediaQuery("(max-width: 767px)");
-  const [phoneTab, setPhoneTab] = useState<"today" | "needs">("today");
-  const wantNeeds = router.query.tab === "needs";
-  useOnChange(wantNeeds, (w) => w && setPhoneTab("needs"));
-  const needs = data?.needs_you ?? [];
-  const showNeeds = !!small && phoneTab === "needs" && !!data;
-  const [openChoreId, setOpenChoreId] = useState<number | null>(null);
-  // ?chore=<run id> (from a notification) opens that chore on its kid's day
-  const runId = Number(router.query.chore) || null;
-  useOnChange(runId, (id) => id && setOpenChoreId(id));
+  const { data, isError, error, refetch } = useToday()
+  const router = useRouter()
+  const [hhOpen, setHhOpen] = useState(false)
+  const kidFocus = useFocusParam('kid', { group: ['focus'], clears: ['chore'], valid: data ? (id) => data.kids.some((k) => String(k.id) === id) : undefined })
+  const areaFocus = useFocusParam('focus', { group: ['kid'], clears: ['chore'], valid: (id) => ['needs', 'devices', 'addons'].includes(id) })
+  // Closing Needs: useFocusParam hands focus back to the opener. If that is gone (last item cleared, strip removed), land on a calm anchor, never <body>.
+  const needsWas = useRef(false)
+  const needsNow = areaFocus.isOpen('needs')
+  useEffect(() => {
+    const was = needsWas.current
+    needsWas.current = needsNow
+    if (!was || needsNow) return
+    const t = setTimeout(() => {
+      if (document.activeElement && document.activeElement !== document.body) return
+      const q = (sel: string) => document.querySelector<HTMLElement>(sel)
+      ;(q('[data-focus-head="needs"]') ?? q('.pt-kcard [data-focus-head]') ?? q('.p-header h1, main h1'))?.focus({ preventScroll: true })
+    }, 80)
+    return () => clearTimeout(t)
+  }, [needsNow])
+  const focusedKid = data?.kids.find((k) => String(k.id) === kidFocus.open)
+  const chore = useFocusParam('chore', { valid: focusedKid ? (id) => focusedKid.chores.some((c) => String(c.id) === id) : undefined })
+  const kidOfRun = useCallback((runId: number) => data?.kids.find((k) => k.chores.some((c) => c.id === runId))?.id, [data])
+  useFocusAliases(data ? kidOfRun : undefined)
 
   // link from a notification: say what is opening while the day loads
-  const run = useRunDetail(runId);
-  const kids = useKids(!!runId);
-  const kidById = (id?: number) => data?.kids.find((k) => k.id === id);
-  const kid = kidById(Number(router.query.item)) || data?.kids.find((k) => k.chores.some((c) => c.id === runId)) || kidById(selectedId) || data?.kids[0];
-
+  const runId = Number(router.query.chore) || null
+  const run = useRunDetail(runId)
+  const kidList = useKids(!!runId)
   if (runId && !data && !isError)
     return (
       <main className="p-guard-state">
-        <OpeningLink label={run.data ? openingLabel(run.data.title, run.data.kid_ids, kids.data) : undefined} />
+        <OpeningLink label={run.data ? openingLabel(run.data.title, run.data.kid_ids, kidList.data) : undefined} />
       </main>
-    );
+    )
 
+  const needs = data?.needs_you ?? []
+  const calm = !kidFocus.open && !areaFocus.open
+  const needsOpen = areaFocus.isOpen('needs')
   return (
-    <ParentShell
-      title="Today"
-      list={
-        data ? (
-          <KidList onSelectKid={setSelectedKid} selectedKid={kid} />
-        ) : null
-      }
-      phone={
-        data?.kids.length ? (
-          <>
-            <div className="pt-phone-tabs">
-              <SegmentedControl
-                label="Today view"
-                value={phoneTab}
-                onChange={setPhoneTab}
-                options={[
-                  { value: "today", label: "Today" },
-                  { value: "needs", label: `Needs you · ${needs.length}` },
-                ]}
-              />
-            </div>
-            {!showNeeds && <KidStrip kids={data.kids} selected={kid?.id} onSelect={setSelectedKid} />}
-          </>
-        ) : data ? (
-          <></> // no kids: phone shows the detail's "Add your first kid" state, not an empty list
-        ) : undefined
-      }
-    >
+    <ParentShell title="Today" actions={<MoreMenu label="More for Today" className="p-htool" items={[{ label: 'Start Happy Hour', icon: 'bolt', onClick: () => setHhOpen(true) }]} />}>
+      <HappyHourSheet opened={hhOpen} onClose={() => setHhOpen(false)} allKids />
       {isError && !data && <ErrorPanel kind="unreachable" error={error} onRetry={() => refetch()} />}
       {!data && !isError && <Skeleton rows={4} />}
-      {showNeeds && (
+      {data && (
         <div className="p-today-detail">
-          <NeedsYouList items={needs} />
-          <IntegrationWidgets surface="parent" />
-        </div>
-      )}
-      {data && data.kids.length === 0 && (
-        <EmptyState
-          icon="person_add"
-          title="Add your first kid"
-          body="Then give them chores and devices. Takes about a minute."
-          actions={[
-            { label: 'Add a kid', icon: 'person_add', href: '/kids?section=kids', primary: true },
-            { label: 'Run setup', icon: 'auto_fix_high', href: '/setup' },
-          ]}
-        />
-      )}
-      {data && kid && !showNeeds && (
-        <div className="p-today-detail">
-          {small && <TryCards />}
-          <GetStartingChecklistCard kids={data.kids} />
-          <div className="pt-head">
-            <h2>{kid.name}&apos;s day</h2>
-            <div className="pt-head-acts">
-              <HappyHourButton kidId={kid.id} allKids />
-              <Link href={viewAs(kid.id, router.asPath)} className="p-btn">
-                <Icon name="visibility" size={17} />
-                View as kid
-              </Link>
-              <Link href="/kids?section=chores&item=new" className="p-btn" data-variant="accent">
-                <Icon name="add" size={17} />
-                Add chore
-              </Link>
-            </div>
-          </div>
-
-          <div className="pt-prog">
-            <div className="pt-bar">
-              <i style={{ width: `${kid.total ? ((kid.done ?? 0) / kid.total) * 100 : 0}%` }} />
-            </div>
-            {kid.done ?? 0} of {kid.total ?? 0} done
-          </div>
-          {/* desktop shows these on the selected kid card */}
-          <div className="pt-phone-facts">
-            <KidFacts kid={kid} />
-          </div>
-
-          {!small && <TryCards />}
-          <TipsContainer tips={PARENT_TIPS} maxTips={1} />
-
-          {kid.chores.length === 0 && (
-            <EmptyState
-              icon="event_available"
-              title={`Nothing for ${kid.name ?? 'them'} today`}
-              body="No chores are due today. Their devices follow the schedule only."
-              actions={[{ label: 'Add a chore', icon: 'add', href: '/kids?section=chores&item=new', primary: true }]}
+          {calm && <HappyHourChip />}
+          {(focusedKid || (needsOpen && data.kids.length > 0)) && (
+            <KidStrip
+              kids={data.kids}
+              selected={focusedKid?.id}
+              onSelect={(id) => kidFocus.openTo(String(id))}
+              onAll={() => (focusedKid ? kidFocus.close() : areaFocus.close())}
+              waiting={needs.length}
+              onNeeds={needsOpen ? undefined : () => areaFocus.openTo('needs')}
             />
           )}
-          {kid.chores.length > 0 && (
-            <div className="pt-box">
-              {kid.chores.map((chore) => (
-                <ChoreRow
-                  key={chore.id}
-                  chore={chore}
-                  kid={kid}
-                  isOpen={openChoreId === chore.id}
-                  onToggle={() => setOpenChoreId(openChoreId === chore.id ? null : chore.id)}
-                />
-              ))}
-            </div>
+          {!kidFocus.open && <NeedsStrip items={needs} day={data.day} focus={areaFocus} />}
+          {data.kids.length === 0 && (
+            <EmptyState
+              icon="person_add"
+              title="Add your first kid"
+              body="Then give them chores and devices. Takes about a minute."
+              actions={[
+                { label: 'Add a kid', icon: 'person_add', href: '/kids?section=kids', primary: true },
+                { label: 'Run setup', icon: 'auto_fix_high', href: '/setup' },
+              ]}
+            />
           )}
-
-          {kid.progress && (
-            <div className="p-summary-strip" data-testid="summary-strip">
-              <div className="p-summary-item">
-                <span className="p-summary-label">Status</span>
-                <span className="p-summary-value">{kid.online_all ? "Online" : "Offline"}</span>
-              </div>
-              <div className="p-summary-item">
-                <span className="p-summary-label">Today</span>
-                <span className="p-summary-value">{kid.done ?? 0}/{kid.total ?? 0}</span>
-              </div>
-              <div className="p-summary-item">
-                <span className="p-summary-label">Earned</span>
-                <span className="p-summary-value">{kid.earned ?? 0}</span>
-              </div>
-              {kid.last_active && (
-                <div className="p-summary-item">
-                  <span className="p-summary-label">Last active</span>
-                  <span className="p-summary-value">{clock(kid.last_active)}</span>
-                </div>
-              )}
-            </div>
+          {!needsOpen && <div className="pt-kids">
+            {(focusedKid ? [focusedKid] : data.kids).map((k) => (
+              <KidCard key={k.id} kid={k} focus={kidFocus}>
+                <KidFocus kid={k} requests={needs.filter((n) => n.kid_id === k.id || (isChore(n) && k.chores.some((c) => c.id === n.id)))} chore={chore} />
+              </KidCard>
+            ))}
+          </div>}
+          {calm && data.kids.length > 0 && <TipSlot kids={data.kids} />}
+          {!kidFocus.open && !needsOpen && data.kids.length > 0 && (
+            <FocusArea focus={areaFocus} label="More">
+              <DevicesRow focus={areaFocus} />
+              <AddonsRow focus={areaFocus} />
+            </FocusArea>
           )}
-          <IntegrationWidgets surface="parent" />
         </div>
       )}
     </ParentShell>
-  );
+  )
 }

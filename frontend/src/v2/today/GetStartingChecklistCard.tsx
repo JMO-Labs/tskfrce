@@ -4,13 +4,14 @@ import { Icon } from '../parent/Icon'
 import { useTipState } from '../hooks/useTips'
 import { useHours } from '../hooks/useHours'
 import { useParents } from '../hooks/useFamily'
+import { TipLine } from './TipLine'
 import type { TodayKid } from '../types'
 
 interface Props {
   kids: TodayKid[]
 }
 
-export function GetStartingChecklistCard({ kids }: Props) {
+function useChecklist(kids: TodayKid[]) {
   const { isDismissed, dismiss } = useTipState()
   const hours = (useHours().data?.rules.length ?? 0) > 0
   const parents = useParents().data?.length ?? 0
@@ -55,9 +56,22 @@ export function GetStartingChecklistCard({ kids }: Props) {
 
   const doneCount = items.filter((i) => i.done).length
   const allDone = doneCount === items.length
-  const wasDismissed = isDismissed('onboard.parent')
+  const shown = !(allDone || isDismissed('onboard.parent'))
+  return { items, doneCount, dismiss, shown }
+}
 
-  if (allDone || wasDismissed) return null
+/** Whether the Getting started card is up (so Today can give it the one tip slot). */
+export const useChecklistShown = (kids: TodayKid[]): boolean => useChecklist(kids).shown
+
+export function GetStartingChecklistCard({ kids, compact = false }: Props & { compact?: boolean }) {
+  const { items, doneCount, dismiss, shown } = useChecklist(kids)
+  if (!shown) return null
+  if (compact)
+    return (
+      <TipLine icon="checklist" text={`Getting started · ${doneCount} of ${items.length} done`} label="Getting started" onDismiss={() => dismiss('onboard.parent')}>
+        <ul className="p-onboard-items">{items.map((item) => <ChecklistItem key={item.key} item={item} />)}</ul>
+      </TipLine>
+    )
 
   return (
     <div className="p-onboard-card" data-testid="parent-onboarding">
@@ -81,20 +95,22 @@ export function GetStartingChecklistCard({ kids }: Props) {
       </div>
 
       <ul className="p-onboard-items">
-        {items.map((item) => (
-          <li key={item.key} className="p-onboard-item" data-done={item.done}>
-            <Link href={item.href}>
-              <div className="p-onboard-icon" data-done={item.done}>
-                <Icon name={item.done ? 'check' : item.icon} size={16} />
-              </div>
-              <span className="p-onboard-label">{item.label}</span>
-              {!item.done && (
-                <Icon name="arrow_forward" size={16} className="p-onboard-arrow" />
-              )}
-            </Link>
-          </li>
-        ))}
+        {items.map((item) => <ChecklistItem key={item.key} item={item} />)}
       </ul>
     </div>
+  )
+}
+
+function ChecklistItem({ item }: { item: { key: string; label: string; done: boolean; href: string; icon: string } }) {
+  return (
+    <li className="p-onboard-item" data-done={item.done}>
+      <Link href={item.href}>
+        <div className="p-onboard-icon" data-done={item.done}>
+          <Icon name={item.done ? 'check' : item.icon} size={16} />
+        </div>
+        <span className="p-onboard-label">{item.label}</span>
+        {!item.done && <Icon name="arrow_forward" size={16} className="p-onboard-arrow" />}
+      </Link>
+    </li>
   )
 }

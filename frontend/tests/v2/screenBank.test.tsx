@@ -31,91 +31,76 @@ const st = {
   group_pricing: false, rollover: true, bank_cap: null, reset_time: '04:00', avg_chore_points: 20,
   kids: [kid, { ...kid, kid_id: 8, name: 'Leo', saved: 40 }],
 }
-const open = async (over: Record<string, unknown> = {}) => {
+const open = async (over: Record<string, unknown> = {}, row = 'save') => {
   serve({ '/redemptions': [], '/rewards': [], '/screen-time': { ...st, ...over } })
-  mockRoute.query = { section: 'rewards', item: 'screen' }
+  mockRoute.query = { section: 'rewards', item: 'screen', open: row }
   render(wrap(<KidsPage />))
   await within(detail()).findByText('Screen time')
 }
-const sw = () => within(detail()).queryByRole('switch', { name: 'Save unused time' })
+const sw = () => within(detail()).queryByRole('switch', { name: 'Carry unused minutes over' })
+const cap = () => within(detail()).queryByRole('textbox', { name: 'Save up to' })
 
 describe('time banking: parent settings', () => {
-  test('switch and hint show with a daily max; field shows when on', async () => {
+  test('switch, hint and field show with a daily max', async () => {
     await open()
-    expect(sw()).toHaveAttribute('aria-checked', 'true')
+    await within(detail()).findByRole('switch', { name: 'Carry unused minutes over' })
+    expect(sw()).toBeChecked()
     expect(within(detail()).getByText("Minutes a kid doesn't buy today carry over, so they can save up for a bigger day.")).toBeInTheDocument()
-    expect(within(detail()).getByLabelText('Save up to')).toHaveAttribute('placeholder', 'Same as the daily max (60)')
+    expect(cap()).toHaveAttribute('placeholder', 'Same as the daily max (60)')
   })
-  test('hidden with no daily max', async () => {
-    await open({ max_minutes_per_day: null })
-    expect(sw()).toBeNull()
-    expect(within(detail()).queryByLabelText('Save up to')).toBeNull()
+  test('with no max anywhere the row asks for one', async () => {
+    await open({ max_minutes_per_day: null, kids: [{ ...kid, max_minutes: null }, { ...kid, kid_id: 8, name: 'Leo', max_minutes: null, limit: { max_minutes: null, min_points: 100 } }] })
+    expect(await within(detail()).findByText(/Pick a max per day first/)).toBeInTheDocument()
+    expect(sw()).toBeChecked() // can still be turned off
+    expect(cap()).toBeNull()
   })
   test('hidden when screen time is off', async () => {
     await open({ enabled: false })
     expect(sw()).toBeNull()
+    expect(within(detail()).queryByText('Save unused time')).toBeNull()
   })
   test('field hidden when rollover is off', async () => {
     await open({ rollover: false })
-    expect(sw()).toHaveAttribute('aria-checked', 'false')
-    expect(within(detail()).queryByLabelText('Save up to')).toBeNull()
+    await within(detail()).findByRole('switch', { name: 'Carry unused minutes over' })
+    expect(sw()).not.toBeChecked()
+    expect(cap()).toBeNull()
   })
-  test('clearing the field sends bank_cap: null', async () => {
+  test('clearing the field sends bank_cap: null on blur', async () => {
     await open({ bank_cap: 120 })
-    const f = within(detail()).getByLabelText('Save up to')
+    const f = await within(detail()).findByRole('textbox', { name: 'Save up to' })
     expect(f).toHaveValue('120')
     await userEvent.clear(f)
-    await userEvent.click(within(detail()).getByRole('button', { name: 'Save' }))
+    await userEvent.tab()
     await waitFor(() => expect(calls('PATCH')[0]).toEqual(['/screen-time', { method: 'PATCH', body: { bank_cap: null } }]))
   })
-  test('invalid cap blocks Save', async () => {
+  test('an invalid cap shows its error and sends nothing', async () => {
     await open()
-    await userEvent.type(within(detail()).getByLabelText('Save up to'), '20')
+    await userEvent.type(await within(detail()).findByRole('textbox', { name: 'Save up to' }), '20')
+    await userEvent.tab()
     expect(within(detail()).getByText('Use steps of 15.')).toBeInTheDocument()
-    expect(within(detail()).getByRole('button', { name: 'Save' })).toBeDisabled()
+    expect(calls('PATCH')).toHaveLength(0)
   })
-  test('Saved label and bar measured against max + saved', async () => {
-    await open()
-    const bought = within(detail()).getByRole('region', { name: 'Bought today' })
-    expect(within(bought).getByText('Saved: 40 min')).toBeInTheDocument()
-    expect(within(bought).getAllByText('Saved: 40 min')).toHaveLength(1)
-    expect((within(bought).getByText('Leo').closest('.rw-kv') as HTMLElement).querySelector('.pt-bar i')).toHaveStyle({ width: '30%' })
+  test('the saved minutes and the bar are measured against max + saved', async () => {
+    await open({}, 'kid-8')
+    expect(await within(detail()).findByText('300 pts · up to 3h 45m · saved 40 min')).toBeInTheDocument()
+    expect(within(detail()).getByText('30/100 min today').closest('.p-srow-l2')?.querySelector('.pt-bar i')).toHaveStyle({ width: '30%' })
   })
   test('a valid cap is sent as a number', async () => {
     await open()
-    await userEvent.type(within(detail()).getByLabelText('Save up to'), '120')
-    await userEvent.click(within(detail()).getByRole('button', { name: 'Save' }))
+    await userEvent.type(await within(detail()).findByRole('textbox', { name: 'Save up to' }), '120')
+    await userEvent.tab()
     await waitFor(() => expect(calls('PATCH')[0]).toEqual(['/screen-time', { method: 'PATCH', body: { bank_cap: 120 } }]))
   })
-  test('a hidden invalid cap neither blocks Save nor is sent', async () => {
+  test('turning saving off sends rollover: false', async () => {
     await open()
-    await userEvent.type(within(detail()).getByLabelText('Save up to'), '20')
-    await userEvent.click(sw() as HTMLElement)
-    const save = within(detail()).getByRole('button', { name: 'Save' })
-    expect(save).toBeEnabled()
-    await userEvent.click(save)
+    await userEvent.click(await within(detail()).findByRole('switch', { name: 'Carry unused minutes over' }))
     await waitFor(() => expect(calls('PATCH')[0]).toEqual(['/screen-time', { method: 'PATCH', body: { rollover: false } }]))
   })
   test('family max empty + a per-kid max: switch shows, placeholder per kid', async () => {
     const limited = { ...kid, limit: { max_minutes: 45, min_points: null }, max_minutes: 45 }
     await open({ max_minutes_per_day: null, kids: [limited, { ...kid, kid_id: 8, name: 'Leo', max_minutes: null }] })
-    expect(sw()).toHaveAttribute('aria-checked', 'true')
-    expect(within(detail()).getByLabelText('Save up to')).toHaveAttribute('placeholder', "Same as each kid's daily max")
-  })
-  test('neither family nor kid max: switch hidden', async () => {
-    const free = { ...kid, max_minutes: null }
-    await open({ max_minutes_per_day: null, kids: [free, { ...free, kid_id: 8, name: 'Leo', limit: { max_minutes: null, min_points: 100 } }] })
-    expect(sw()).toBeNull()
-    expect(within(detail()).queryByLabelText('Save up to')).toBeNull()
-  })
-  test('a hidden price error does not block Save', async () => {
-    await open()
-    const price = within(detail()).getByLabelText('Price (points per 15 min)')
-    await userEvent.clear(price)
-    await userEvent.click(within(detail()).getByRole('switch', { name: 'Kids can buy extra minutes' }))
-    const save = within(detail()).getByRole('button', { name: 'Save' })
-    expect(save).toBeEnabled()
-    await userEvent.click(save)
-    await waitFor(() => expect(calls('PATCH')[0]).toEqual(['/screen-time', { method: 'PATCH', body: { enabled: false } }]))
+    await within(detail()).findByRole('switch', { name: 'Carry unused minutes over' })
+    expect(sw()).toBeChecked()
+    expect(cap()).toHaveAttribute('placeholder', "Same as each kid's daily max")
   })
 })

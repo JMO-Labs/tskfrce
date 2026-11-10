@@ -29,6 +29,8 @@ GENERIC = {
     "badge_earned": "You earned a badge",
     "level_up": "You reached a new level",
     "happy_hour": "Happy Hour started!",
+    "trust_up": "You reached a new trust level",
+    "trust_down": "Your trust level changed",
 }
 
 

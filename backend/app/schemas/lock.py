@@ -66,6 +66,8 @@ class KidPatch(BaseModel):
     clear_pin: bool = False
     age_group: Literal["little", "kid", "teen"] | None = None
     celebrate: Literal["full", "small", "off"] | None = None
+    trust_mode: bool | None = None
+    trust_level: int | None = Field(default=None, ge=0, le=2)
 
     _pin = field_validator("pin")(_pin)
 
@@ -93,6 +95,9 @@ class FamilyPatch(BaseModel):
     hh_weekly_surprise: bool | None = None
     hh_auto_boost: bool | None = None
     streak_freeze: bool | None = None
+    bedtime_auto: bool | None = None
+    bedtime_auto_at: str | None = None
+    recap_weekly: bool | None = None
     accent: (
         Literal[
             "neon", "sun", "tangerine", "bubblegum", "lilac", "sky", "aqua", "mint", "peach", "ice"
@@ -105,4 +110,4 @@ class FamilyPatch(BaseModel):
     def _dedupe_replies(cls, v: list[str] | None) -> list[str] | None:
         return None if v is None else list(dict.fromkeys(v))  # keep order, drop repeats
 
-    _rt = field_validator("reset_time")(_hhmm)
+    _rt = field_validator("reset_time", "bedtime_auto_at")(_hhmm)

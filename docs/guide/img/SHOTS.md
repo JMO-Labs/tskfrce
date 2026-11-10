@@ -6,14 +6,14 @@ Taken with Playwright from a demo family (kids Bobby and Susan), read-only: ever
 
 | File | Screen and state |
 |---|---|
-| `today.jpg` | Parent **Today**, desktop, Bobby's day with overdue and to-do chores. |
-| `today-kid.jpg` | Parent **Today** on a kid with nothing done yet (Susan, 0 of 7). |
-| `needs-you.jpg` | Parent **Today**, desktop, **Needs you** tab. The demo had nothing waiting, so four sample requests were injected into the `/today` response. |
+| `today.jpg` | Parent **Today**, desktop, calm view: Needs you bar, a card per kid, Devices line. |
+| `today-kid.jpg` | Parent **Today** with one kid open (Maya): chores and requests. |
+| `needs-you.jpg` | Parent **Today**, desktop, **Needs you** open, grouped by kid (mocked API). |
 | `setup-account.jpg` | Setup wizard step 1 "Make your parent account", with the step list visible. |
 | `setup-family.jpg` | Setup wizard step 2 "Your family" (step 1 filled in locally; nothing is sent before step 2's Next). |
 | `setup-hours.jpg` | Setup wizard step 7 "When can devices be online?" with the new starting schedule (07:00–20:00 Sun–Thu, 08:00–22:00 Fri–Sat). Retaken 2026-11-06 for 2.4.0; 1280×900 capture cropped to 1280×740 from the top. |
-| `setup-devices.jpg` | Setup wizard step 6 "Whose devices are these?", devices assigned to kid chips and Guest. |
-| `devices.jpg` | **Devices** page with one device open (owners, right now, lock and test block buttons). |
+| `setup-devices.jpg` | Setup wizard step 6 "Whose devices are these?": **Need an owner** open with the **Owner** pop-over. |
+| `devices.jpg` | **Devices** page with one device open; the **Home network** row is at the top of the list. |
 | `chat.jpg` | **Chat** on a chore thread with a kid note ("Need help"). |
 | `kid-today.jpg` | Kid page (phone): internet paused, chore cards with points and due chips. |
 | `kid-chore.jpg` | Kid page: one chore opened with chained steps, "I'm done!" held back. |
@@ -25,4 +25,42 @@ Taken with Playwright from a demo family (kids Bobby and Susan), read-only: ever
 | `kid-screen-for.jpg` | Kid **Rewards** (phone): **What for?** picker with Consoles selected. Mocked API. |
 | `celebrate.jpg` | Kid page (phone): a cowboy-dog celebration with coins and "YEEHAW!". Excitement pack 2.6.0. |
 | `happy-hour-kid.jpg` | Kid page (phone): Happy Hour banner with countdown and doubled chore points. |
-| `happy-hour-start.jpg` | Parent **Today** (phone): the **Start Happy Hour** sheet (60 min, ×2, all kids). |
+| `happy-hour-start.jpg` | Parent **Today** (phone): the **Start Happy Hour** sheet, opened from the Today **…** menu (60 min, ×2, all kids). |
+| `trust-kid.jpg` | Kid page (phone): **Trust mode** card, Trusted level, and **Approved on their own** with **Wasn't done**. Less parent work 2.7.0. |
+| `wasnt-done.jpg` | Kid page (phone): the **Wasn't done?** sheet with **Also lower trust level** ticked. |
+| `setup-extras.jpg` | Setup wizard step 8 "Optional extras" (phone): trust mode per kid and bedtime auto-approve, all off. |
+| `extras.jpg` | **Settings → Family** (phone): the **Bedtime & recap** row open. |
+| `recap.jpg` | **Your week** (phone): **Worth a look** list and the **This week** card. |
+| `kid-trust-chip.jpg` | Kid **Me** (phone, Little look): the Proven level chip and its friendly line. |
+
+Retaken 2026-11-07 after the polish passes: `trust-kid.jpg`, `wasnt-done.jpg`, `extras.jpg`, `recap.jpg`. These four came from a mocked API (Playwright `page.route`, parent logged in with a fake token), phone 390x844 at 2x, light, viewport only, resized to 600 px wide, JPEG quality 82. The real-backend shot process was not used.
+
+Retaken 2026-11-08 for 2.8.0 declutter, mocked API (`scripts/shots/declutter`, light, 1280x800 desktop or 390x844 phone at 2x resized to 600 wide, JPEG quality 82):
+- `today.jpg`: Retaken 2026-11-08 for 2.8.0 declutter, mocked API
+- `today-kid.jpg`: Retaken 2026-11-08 for 2.8.0 declutter, mocked API
+- `needs-you.jpg`: Retaken 2026-11-08 for 2.8.0 declutter, mocked API
+- `setup-devices.jpg`: Retaken 2026-11-08 for 2.8.0 declutter, mocked API
+- `devices.jpg`: Retaken 2026-11-08 for 2.8.0 declutter, mocked API
+- `group-price.jpg`: Retaken 2026-11-08 for 2.8.0 declutter, mocked API
+- `trust-kid.jpg`: Retaken 2026-11-08 for 2.8.0 declutter, mocked API
+- `wasnt-done.jpg`: Retaken 2026-11-08 for 2.8.0 declutter, mocked API
+- `extras.jpg`: Retaken 2026-11-08 for 2.8.0 declutter, mocked API
+- `happy-hour-start.jpg`: Retaken 2026-11-08 for 2.8.0 declutter, mocked API
+- `site/img/today-hero.jpg`, `today-parent.jpg`, `needs-you.jpg`: Retaken 2026-11-08 for 2.8.0 declutter, mocked API
+
+Retaken 2026-11-08 after polish pass 5 (rail t@ and lime tile, 44px phone controls, Chat glyph, kid header), mocked API (`scripts/shots/declutter`, light, 1280x800 desktop or 390x844 phone at 2x resized to 600 wide, JPEG quality 82, focus ring cleared):
+- `today.jpg`: Retaken 2026-11-08, polish pass 5
+- `today-kid.jpg`: Retaken 2026-11-08, polish pass 5
+- `needs-you.jpg`: Retaken 2026-11-08, polish pass 5
+- `devices.jpg`: Retaken 2026-11-08, polish pass 5
+- `trust-kid.jpg`: Retaken 2026-11-08, polish pass 5
+- `recap.jpg`: Retaken 2026-11-08, polish pass 5
+- `site/img/today-hero.jpg`, `today-parent.jpg`, `needs-you.jpg`: Retaken 2026-11-08, polish pass 5
+
+Retaken 2026-11-10 from the current UI after the polish passes and the header-tools change (#73, #74: boxed account and … buttons, phone Settings back link **‹ More**), mocked API (`scripts/shots/declutter`, light, focus ring cleared with `BLUR=1`, mouse parked, 1280x700 desktop or 390x844 phone at 2x resized to 600 wide, JPEG quality 82):
+- `group-price.jpg`: `/devices?tab=groups&item=1&open=gset`
+- `extras.jpg`: `/settings?section=family&open=bed`
+- `wasnt-done.jpg`: Maya's **Trust** row, **More for Clean room** → **Wasn't done**
+- `happy-hour-start.jpg`: Today **…** menu → **Start Happy Hour**
+- `setup-devices.jpg`: `/setup?open=need` at step 6, **Owner** pop-over for Dad's laptop
+- `site/img/needs-you.jpg`: `/?focus=needs` scrolled so the **Needs you** card starts at the top (`SCROLLTO=.pt-needs SCROLLBLOCK=start`); the alt text now names the note row

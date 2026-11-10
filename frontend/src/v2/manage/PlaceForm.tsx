@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Modal, TextInput } from '@mantine/core'
 import { useAddPlace, usePatchPlace, type Place } from '@/v2/hooks/useNotify'
 import { Icon } from '@/v2/parent/Icon'
+import { InfoPop } from '@/v2/parent/InfoPop'
 import { toastFail, toastOk } from '@/v2/notify'
 
 interface Props {
@@ -56,8 +57,15 @@ export function PlaceForm({ opened, onClose, place }: Props) {
           <TextInput label="Name" maxLength={60} value={name} onChange={(e) => setName(e.currentTarget.value)} data-autofocus />
         )}
         <TextInput
-          label="Apprise address"
-          description="Like discord://webhook_id/token. See the Apprise wiki for your app."
+          label="Place address"
+          description="Like discord://webhook_id/token."
+          rightSection={
+            <InfoPop label="About place addresses" width={280}>
+              <p className="ch-pop-p">Alerts go out through Apprise, a free tool that works with Signal, Discord, email and many more. Its wiki shows the address to use for each app.</p>
+            </InfoPop>
+          }
+          rightSectionPointerEvents="all"
+          rightSectionWidth={44}
           maxLength={1000}
           autoComplete="off"
           spellCheck={false}

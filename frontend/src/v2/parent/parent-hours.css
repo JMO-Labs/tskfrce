@@ -52,8 +52,8 @@
 [data-look='parent'] .ph-ax { display: flex; justify-content: space-between; margin: -2px 0 0 162px; color: var(--p-sub); font-size: 10px; }
 [data-look='parent'] .ph-tl[data-edit='true'] .ph-ax { margin-right: 40px; }
 [data-look='parent'] .ph-ed { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 1px solid var(--p-line); border-radius: 50%; background: var(--p-card); color: var(--p-sub); cursor: pointer; }
-[data-look='parent'] .ph-ed:hover { border-color: var(--p-ink); color: var(--p-ink); }
-[data-look='parent'] .ph-ed:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
+@media (hover: hover) { [data-look='parent'] .ph-ed:hover { border-color: var(--p-ink); color: var(--p-ink); } }
+[data-look='parent'] .ph-ed:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 
 /* ── legend and precedence ───────────────────────────────────────────────── */
 [data-look='parent'] .ph-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 4px; color: var(--p-ink); font-size: 12px; }
@@ -71,7 +71,8 @@
 [data-look='parent'] .ph-fi { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid var(--p-line); border-radius: 12px; background: var(--p-card); color: var(--p-ink); }
 [data-look='parent'] .ph-fi:focus-within { border-color: var(--p-ink); }
 [data-look='parent'] .ph-fi .ms { color: var(--p-sub); }
-[data-look='parent'] .ph-fi input:focus { box-shadow: none; border-color: transparent; } /* the field shows focus */
+[data-look='parent'] .ph-fi input:focus-visible { outline: none; border-color: transparent; } /* the field shows the ring */
+[data-look='parent'] .ph-fi:focus-within { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 [data-look='parent'] .ph-fi input { flex: 1; min-width: 0; padding: 10px 0; border: 0; outline: 0; background: transparent; color: var(--p-ink); font: 500 14.5px var(--font-parent), system-ui, sans-serif; color-scheme: light dark; }
 [data-look='parent'] .ph-kinds { display: flex; flex-wrap: wrap; gap: 6px; }
 [data-look='parent'] .ph-kinds button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--p-line); border-radius: 999px; background: var(--p-card); color: var(--p-ink); font: 600 13px var(--font-parent), system-ui, sans-serif; cursor: pointer; }

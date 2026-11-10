@@ -6,6 +6,18 @@ Commands on this page are typed in the Terminal on the home box (see [Install](0
 
 If a command says "permission denied" for Docker, put `sudo` in front of it. If it says "no configuration file provided" or "no such file", you are not in the `task4ce` folder.
 
+## I can't find a setting
+
+Screens now show less at first, and open a row for more. Where things moved:
+
+- **Points history** for a kid: tap the points chip at the top of the kid's page.
+- **Block new devices** and the **Home box** status: **Devices**, the **Home network** row at the top of the list (no longer in Settings → Family).
+- **Bedtime auto-approve** and **Weekly recap**: **Settings → Family → Bedtime & recap** (the old Extras card).
+- **Start Happy Hour**: the **…** at the top right of **Today**.
+- **Send back**, **Decline** and **Dismiss**: the **…** on a row in Needs you or the bell.
+- **Export CSV** of rewards: the button in the header of **Kids & chores → Rewards → History**.
+- Quiet hours, and the rest of how pings arrive: **Settings → Notifications → When and how**.
+
 ## The app says "Home box offline"
 
 A red message at the top says **Home box offline** and "It went quiet at ...". It means the app has not heard from the box for a minute or two.
@@ -28,7 +40,7 @@ The most common cause is a wrong network name in the `.env` file. Type `ip route
 
 Work through these in order:
 
-1. Is the device **assigned** to a kid? Guests are never paused. New devices are paused only if **Block new devices until I assign them** is on in **Settings → Family**.
+1. Is the device **assigned** to a kid? Guests are never paused. New devices are paused only if **Block new devices until I assign them** is on (**Devices → Home network**).
 2. Are all that kid's chores approved for today? If yes, the internet is on. If the kid has no chores today, it is also on.
 3. Is **Lock until today's chores are done** off in **Settings → Hours**? Then only the hours count. Is it inside a **Free time** window?
 4. Open the device. Is **Always allowed (never lock)** on? Do you see **Back to schedule**? That means someone unlocked it by hand: tap **Back to schedule**.

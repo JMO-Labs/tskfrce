@@ -3,7 +3,7 @@
 ## Finding your way
 
 - **On a phone**, a bar at the bottom has **Today**, **Devices**, **Kids**, **Chat** and **More**. The bell and your initial are at the top right. **More** holds **Settings**, the notifications page and **Help & guide**.
-- **On a computer**, a bar on the left has the bell, **Today**, **Devices**, **Kids & chores** and **Chat**. **Settings** and **Log out** are at the bottom of the bar.
+- **On a computer**, a bar on the left has **Today**, **Devices**, **Kids & chores** and **Chat**. **Settings** and **Log out** are at the bottom of the bar. The bell and your initial are at the top right, as on a phone. Your initial opens **More**.
 
 A dot on **Chat** means there are unread messages.
 
@@ -11,30 +11,37 @@ A dot on **Chat** means there are unread messages.
 
 This is the page you will use most.
 
-![Today on a computer: kid cards on the left, the chosen kid's day on the right](img/today.jpg)
+![Today on a computer: Needs you, a card for each kid and Devices](img/today.jpg)
 
-Pick a kid to see their day: how many chores are done, their points, streak, next reward and when their devices lock. Each chore has a chip: **To do**, **Overdue**, **Needs OK**, **Redo**, **Approved** or **Skipped**. Tap a chore to open it. There you can approve it, send it back, mark it done yourself, open its chat or take points away (**Deduct points**).
+Today starts calm: a **Needs you** bar when something is waiting, one card for each kid, and a **Devices** line. Only a little else shows: a small chip while a Happy Hour runs, and now and then one tip card. A Happy Hour that is running shows as a small chip at the top. To start one, tap the **…** at the top right of Today and choose **Start Happy Hour** (see [Happy Hour](#happy-hour)).
+
+![One kid's day: chores on the left, requests on the right](img/today-kid.jpg)
+
+Tap a kid to see their day: how many chores are done, their points, streak and their chores. Tap **All** to go back. Each chore has a chip: **To do**, **Overdue**, **Needs OK**, **Redo**, **Approved** or **Skipped**. Tap a chore to open it. There you can approve it, send it back, mark it done yourself, open its chat or take points away (**Deduct points**).
 
 **View as kid** shows you exactly what that kid sees. **Add chore** makes a new chore for them.
 
 ## Needs you
 
-**Needs you** is the list of everything waiting for your decision, from all kids. On a phone it is the second tab at the top of Today. On a computer it is the second tab above the kid cards.
+**Needs you** is the list of everything waiting for your decision, from all kids. Tap the **Needs you** bar at the top of Today to open it. It is grouped by kid, oldest first. Each row has one main button, like **Approve**. The less common answers (**Send back**, **Decline**, **Reply**) are in the row's **…** menu.
 
-![The Needs you list: a chore, a redo, a screen time request and a reward request](img/needs-you.jpg)
+![The Needs you list, grouped by kid: chores, a redo, a screen time request, a reward request and a note](img/needs-you.jpg)
 
 - **Needs OK**: a kid says a chore is done.
 - **Redo**: a chore you sent back, done again ("2nd try").
 - **Screen time**: a kid asks to spend points on extra minutes.
 - **Reward**: a kid asks to cash in points for a reward.
+- **Spot check**: a chore that would have approved itself, held back for a quick look. It only appears for kids in trust mode. See [Less tapping](#less-tapping).
 - **Note**: a kid tapped **Tell Mom or Dad** on a chore, for example "Need help". Tap **Reply** to answer in the chore's chat.
 
 When more than one thing is waiting, **Approve all** approves them in one go.
 
+A chore a kid finished stays here until you answer it, even after the daily reset. If it is from an earlier day, it shows that day. Approving it later pays the kid as normal, with any Happy Hour bonus from when it was finished. (Before 2.7.0 these were dropped at the reset and the kid got nothing.)
+
 ### Approve a chore or send it back
 
 1. Find the chore in **Needs you**. If the kid added a photo, tap it to see it larger.
-2. Tap **Approve**, or tap **Send back**.
+2. Tap **Approve**, or tap the row's **…** and choose **Send back**.
 3. If you send it back, type a short note, like "The sink still has dishes." You can't send it back without a note.
 
 You should see: for Approve, the item disappears and the kid gets their points (and the internet, if that was their last chore). For Send back, the kid sees your note and does the chore again.
@@ -43,13 +50,13 @@ Points come to the kid when you approve, not before. If a kid finishes early, th
 
 ### Answer a screen time or reward request
 
-Tap **Approve** or **Decline**. The points are only taken when you approve. A declined or ignored request costs nothing.
+Tap **Approve**, or tap the row's **…** and choose **Decline**. The points are only taken when you approve. A declined or ignored request costs nothing.
 
 You should see: the item leaves the list. The kid is told what you decided.
 
 ## The bell
 
-The bell shows what happened: chores to approve, kid notes, requests, new devices (not during setup), badges and level-ups, and security alerts such as a device that "got around the lock", "may be a different device", a "tried a VPN" workaround, or someone guessing a parent's password. Use the **All**, **Needs you** and **Alerts** tabs to filter. You can approve or send back right from the bell. Tap an item to go straight to it. **Mark all read** clears the count.
+The bell shows what happened: chores to approve, kid notes, requests, new devices (not during setup), badges and level-ups, and security alerts such as a device that "got around the lock", "may be a different device", a "tried a VPN" workaround, or someone guessing a parent's password. Use the **All**, **Needs you** and **Alerts** tabs to filter. You can approve right from the bell. Each row has one main button, and **Send back**, **Decline** and **Dismiss** are in its **…** menu. Tap an item to go straight to it. **Mark all read** clears the count.
 
 On a phone the bell opens as a sheet from the bottom of the screen.
 
@@ -59,15 +66,17 @@ On a phone the bell opens as a sheet from the bottom of the screen.
 
 ### Make a chore once, use it many times
 
+A chore is a few short rows. Open a row to change it.
+
 1. Tap **Kids & chores**, then **Chores**, then **New chore**.
-2. Type a **Chore name** and the number of **Points**. Pick a type, like Kitchen or Schoolwork.
-3. Add **steps** if you like (for example "Rinse", "Load", "Wipe"). Each step can have its own due time. Tap **Any order** under a step to make it **Must be done after the step above**. The kid can't say a chore is done until every step is ticked.
-4. Turn on **Needs a photo** if the kid must show proof.
+2. In **Basics**, type a **Chore name** and the number of **Points**. Pick a type, like Kitchen or Schoolwork.
+3. In **Steps**, add steps if you like (for example "Rinse", "Load", "Wipe"). Each step can have its own due time. Tap **Any order** under a step to make it **Must be done after the step above**. The kid can't say a chore is done until every step is ticked.
+4. In **Options**, turn on **Needs a photo** if the kid must show proof. Turn on **Always check** if you always want to look at this chore yourself, even for a kid in trust mode. **Due by** is here too.
 5. Tap **Save chore**.
 
 You should see: "Added. Now choose who does it."
 
-Now, under **Who & when**:
+Now, in **Who & when**:
 
 1. Pick who does it (one or more kids).
 2. If you picked several kids, choose how it works:
@@ -75,8 +84,7 @@ Now, under **Who & when**:
    - **First one wins**: one chore for everyone. The first kid to finish it gets the points.
    - **Team effort**: one chore for everyone. Any kid can tick it, and the points are split evenly.
 3. Choose **Repeat**: **Every day**, **Some days** (pick the days) or **One time** (pick the date).
-4. Optionally set **Due by**.
-5. Tap **Save chore**.
+4. Tap **Save chore**.
 
 You should see: the chore in the list with the kids' avatars. It appears on Today at your daily reset time (6:00 am unless you changed it in **Settings → Family**).
 
@@ -84,12 +92,11 @@ If you change a chore's name, points or steps, the change shows up everywhere, i
 
 ### Kids
 
-Open a kid to see their devices, chores and points history. The buttons at the top:
+Open a kid to see a short page: their points, level and a few rows (**Trust**, **Devices**, **Chores**, **Settings**). Open a row to see more. Tap the **points chip** to see their points history. The buttons at the top:
 
-- **View as kid**: see their screen.
-- **Bonus**: give 1 to 500 points with a short note. They get a celebration.
-- **Deduct**: take points away, with a reason the kid can see.
+- **Edit** and **More** (three dots) are at the top. Happy Hour starts from the **…** on Today.
 - **Edit**: change their name, avatar, PIN or **Age group** (Little, Kid or Teen).
+- **More** holds **Bonus** (give 1 to 500 points with a short note; they get a celebration), **Deduct** (take points away, with a reason the kid can see) and **View as kid**.
 
 ## Rewards and screen time
 
@@ -98,7 +105,7 @@ Open **Kids & chores → Rewards**. It has four parts:
 - **Requests**: what kids are asking for.
 - **Catalogue**: tap **New reward** for things kids can save up for, with a price in points and an icon. Turn off **Needs approval** if a kid can just take it (the points come off right away and you get a ping). Turn off **Kids can see it** to hide it for now.
 - **Screen time**: lets kids spend points on extra internet time. It is on for new families (**Kids can buy extra minutes**), and every purchase still needs your OK. The price starts at 20 points for 15 minutes. Turn the switch off and the price, **Max per day**, **Save unused time**, **Save up to**, **Approve automatically** and **Only during allowed hours** settings are hidden until you turn it on again; what you saved is kept. Bought minutes never work during off hours like bedtime.
-- **History**: the last 30 days.
+- **History**: the last 30 days. A chip at the top shows the totals. Pick a kid to filter, and switch between **All**, **Rewards** and **Screen time**. **Export CSV** is the button in the header.
 
 A kid sees a progress bar toward each reward and can ask when they have enough.
 
@@ -138,12 +145,12 @@ When a kid finishes a chore, a comic-book moment pops up on their screen: a rand
 ![A celebration on a kid's phone: a cowboy dog, a coin burst and the word YEEHAW](img/celebrate.jpg)
 
 - **Levels** are **Full**, **Small** and **Off**, or **Mode default** (which means Small for teens, Full for the others).
-- Set the level for each kid on the kid's page, under **Celebrations**. **Preview a celebration** plays one so you can see it.
+- Set the level for each kid on the kid's page, in the **Settings** row, under **Celebrations**. **Preview a celebration** plays one so you can see it.
 - Phones and tablets set to reduce motion get a still badge instead.
 
 ### Happy Hour
 
-A Happy Hour gives bonus points for a little while. Tap **Start Happy Hour** on **Today** or on a kid's page. Pick 30, 60 or 90 minutes and **×1.5**, **×2** or **×3**, for all kids or only the kids you choose.
+A Happy Hour gives bonus points for a little while. Tap the **…** at the top right of **Today** and choose **Start Happy Hour**. Pick 30, 60 or 90 minutes and **×1.5**, **×2** or **×3**, for all kids or only the kids you choose.
 
 ![The Start Happy Hour sheet: length, multiplier and kids](img/happy-hour-start.jpg)
 
@@ -170,13 +177,69 @@ Cards on **Today** introduce each of these features, at most one new card a day.
 
 - **Kids & chores → Rewards → Happy Hour**: lengths, multiplier, auto boost and weekly surprise.
 - **Settings → Family → Points rules → Streak freezes**.
-- **Kids & chores → Kids → a kid's page → Celebrations**.
+- **Kids & chores → Kids → a kid's page → Settings → Celebrations**.
+
+## Less tapping
+
+Two optional ways to approve less by hand, and a weekly summary. Trust mode and bedtime auto-approve are off until you switch them on. You can offer them in setup (step 8) or later. A card on **Today** suggests each one when it fits.
+
+### Trust mode
+
+Trust mode is per kid. Turn it on in the **Trust** row on the kid's page (**Kids & chores → the kid**). Its level then decides what happens when that kid finishes a chore:
+
+| Level | When the kid finishes a chore |
+|---|---|
+| **New** | Waits for you, as usual. |
+| **Trusted** | Approves itself. 1 chore in 5 stays waiting as a spot check. |
+| **Proven** | Approves itself. 1 chore in 20 stays waiting as a spot check. |
+
+![The Trust row open: level, progress and chores that approved on their own](img/trust-kid.jpg)
+
+- Everyone starts at **New** with a count of 0. Each chore approved after that counts, whether you approved it or it approved itself. After 10, a New kid becomes **Trusted**. After 30 more, a Trusted kid becomes **Proven**. You and the kid both get a message.
+- **Change** sets any level by hand, including Proven on day one.
+- Chores with **Always check** always wait for you, at every level.
+- A chore that approves itself sends you no alert and isn't in **Needs you**. On **Today** it has a small **Approved on its own** mark. The kid's points, badges and chat line work as normal.
+- A spot check is in **Needs you**, marked **Spot check**. A kid sees it like any chore waiting for a parent.
+- A team chore approves itself only if every kid on it is in trust mode, and it follows the lowest level.
+
+**Wasn't done.** If a chore approved itself but wasn't really done, tap **Wasn't done** on it (on **Today**, or in **Approved on their own** on the kid's page, which covers the last 7 days). It takes the points back. If the kid already spent them, the balance stops at zero and nothing is owed. By default it also lowers the kid's level one step; untick **Also lower trust level** to keep it. A kid already at New has no level to lower, so the box is hidden, but their count toward Trusted still starts over. The kid gets a gentle message. Badges already earned stay.
+
+![The Wasn't done sheet](img/wasnt-done.jpg)
+
+If it is still that chore's day, the chore goes back on the kid's list. When it is done again it always waits for you. On an older day it is closed. Sending back a spot check counts the same way: the kid drops a level. Kids with trust mode off never lose a level.
+
+Kids see their level as a small chip on their **Me** page. See [For kids](05-for-kids.md#trust-level).
+
+### Bedtime auto-approve
+
+At the time you choose (9:00 PM unless you change it), chores still waiting approve themselves. Spot checks and **Always check** chores stay waiting. The kid gets the points, and each one counts as clean for trust mode and can be taken back with **Wasn't done**. It runs once a day. The next morning you get one line in your inbox, like "Bedtime approved 3 chores." It also clears waiting chores from earlier days.
+
+### Weekly recap
+
+Every Sunday at 7:30 PM you get "Your week at (your family)" in your inbox, plus your push and other notification places that already get the daily summary. It is on by default, and quiet hours hold it like any alert. Open it from the link in that message, or any time from **More → Weekly recap**. Use the arrows to see earlier weeks.
+
+![Your week: Worth a look and a card for each kid](img/recap.jpg)
+
+- **Worth a look**: at most 3 things for the whole family, most serious first, each with one tap to act. **See all** shows the rest. If there is nothing, it says "All good this week."
+- **This week**: one line for each kid. Tap a kid for chores done, on-time rate, points earned and spent, screen time bought and streak, against the 4 weeks before. A new kid shows the week's numbers and "Trends start after 2 weeks."
+- What gets flagged: chores dropping, chores finishing later, 2 or more catches (a **Wasn't done** or a spot check sent back) in a week, and a streak of 7 or more that ended.
+
+### Where the settings live
+
+- **Kids & chores → the kid → Trust**, and **Always check** on each chore.
+- **Settings → Family → Bedtime & recap**: **Bedtime auto-approve** (with its time) and **Weekly recap**.
+
+![Bedtime & recap in Settings → Family](img/extras.jpg)
+
+### "Try this" cards
+
+Two more cards on **Today**: one offers trust mode for a kid after 10 approved chores, and one offers bedtime auto-approve if chores were still waiting at the reset on 3 days.
 
 ## Devices
 
 ![The Devices page with one device open](img/devices.jpg)
 
-**Devices** lists every device the box has seen, grouped by owner: **Who's this?** (new devices), one group for each kid, **Shared**, **Guests** and **No owner**. New devices stay online until you give them an owner. To pause them until you do, turn on **Block new devices until I assign them** in **Settings → Family**.
+**Devices** lists every device the box has seen, grouped by owner: **Who's this?** (new devices), one group for each kid, **Shared**, **Guests** and **No owner**. New devices stay online until you give them an owner. To pause them until you do, open the **Home network** row at the top of the Devices list and turn on **Block new devices until I assign them**. That row also shows the **Home box** status (Healthy or Offline). It used to be under Settings → Family.
 
 Tap a device to open it:
 
@@ -261,7 +324,7 @@ t@sk4ce can send pings to the apps your family already uses, like a Signal group
 
 You should see: a test message in that app.
 
-During **Quiet hours** other pings wait: chores to approve, notes, requests and new devices are sent together when quiet hours end. Security alerts (a device getting around the lock, a different-looking device, password guessing, the box going offline) still send unless you turn off **Security alerts still send**. That switch only shows once quiet hours are on. Pings link back to your box by itself; if the link is wrong, open **Advanced** and set **App address** to the address you open t@sk4ce with.
+During **Quiet hours** other pings wait: chores to approve, notes, requests and new devices are sent together when quiet hours end. Security alerts (a device getting around the lock, a different-looking device, password guessing, the box going offline) still send unless you turn off **Security alerts still send**. That switch only shows once quiet hours are on. Pings link back to your box by itself; if the link is wrong, open **When and how** and set **App address** to the address you open t@sk4ce with.
 
 These pings leave your home: they go to the service you chose.
 

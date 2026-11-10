@@ -2,7 +2,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import { STEP_KEY } from '../components/RequireParent'
 
-export const LAST = 7
+export const LAST = 8
 /** The account exists from step 2 on, so the server only remembers steps from 3. */
 export const FIRST_SAVED = 3
 

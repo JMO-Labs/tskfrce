@@ -11,6 +11,8 @@ export interface KidBody {
   age_group?: AgeGroup
   /** null = back to the mode default */
   celebrate?: CelebrateLevel | null
+  trust_mode?: boolean
+  trust_level?: 0 | 1 | 2
 }
 
 export const useKids = (enabled = true) => useQuery({ queryKey: ['kids'], queryFn: () => api<Kid[]>('/kids'), enabled })

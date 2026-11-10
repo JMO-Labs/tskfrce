@@ -1,0 +1,47 @@
+/**
+ * @fileoverview Chore editor: header chip pop-over, Options rows, (i) pop-over copy.
+ * Look copied from the owner-approved mockup declutter-v2 (chore-calm, chore-steps): .setl .setr .sw .lg.
+ */
+
+[data-look='parent'] .ch-page { gap: 10px; }
+[data-look='parent'] .ch-page .p-dhead-meta { min-width: 110px; }
+[data-look='parent'] .ch-page .pk-hint-tight { margin-top: 0; }
+
+/* Type chip in the header: opens the notes kids can send */
+
+/* (i) pop-over copy (mockup .pop p, .lg, hr, .mi) */
+.p-pop .ch-pop-p { margin: 4px 8px 8px; color: var(--p-sub); line-height: 1.45; }
+.p-pop .ch-pop-l { display: block; }
+.p-pop .ch-ink { color: var(--p-ink); }
+.p-pop .ch-lg { display: flex; justify-content: space-between; gap: 12px; padding: 6px 8px; border-top: 1px solid var(--p-line); font-size: 12.5px; }
+.p-pop .ch-lg:first-child { border-top: 0; }
+.p-pop .ch-lg > span { display: inline-flex; align-items: center; gap: 5px; }
+.p-pop .ch-lg .pk-num { width: 16px; height: 16px; font-size: 9px; }
+.p-pop .ch-notes { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 8px 6px; }
+.p-pop .ch-edit { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: transparent; color: var(--p-ink); cursor: pointer; text-align: left; font: inherit; }
+
+/* Steps body (mockup .step .chain): white step cards, icon-only chain; the ↑/↓ buttons show only when focused themselves, so the name keeps its room */
+[data-look='parent'] .ch-page .pk-step { background: var(--p-card); }
+[data-look='parent'] .ch-page .pk-due[data-none='true'] { border: 1px solid transparent; background: var(--p-soft); color: var(--p-ink); } /* mock: solid soft pill */
+[data-look='parent'] .ch-page .pk-link { margin-left: 28px; }
+[data-look='parent'] .ch-page .pk-link[aria-pressed='true']::before { background: var(--p-line); }
+[data-look='parent'] .ch-page .pk-step:has(:focus-visible):not(:has(.pk-move:focus-visible)) .pk-move { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+
+/* "With more than one kid (i)" label */
+[data-look='parent'] .ch-lbl { display: flex; align-items: center; gap: 2px; }
+
+/* Options (mockup .setl .setr .sw) */
+[data-look='parent'] .ch-setl { display: flex; flex-direction: column; }
+[data-look='parent'] .ch-setr { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--p-line); font-size: 13.5px; min-height: 44px; }
+[data-look='parent'] .ch-setl > .ch-setr:first-child { border-top: 0; }
+[data-look='parent'] .ch-lb { flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--p-sub); }
+[data-look='parent'] .ch-lb .p-info-btn { margin: -4px 0; }
+[data-look='parent'] .ch-w { width: 130px; align-self: flex-start; }
+[data-look='parent'] .ch-setr .ch-w { align-self: auto; text-align: right; }
+[data-look='parent'] .ch-hint { padding: 0 0 6px 22px; }
+
+@media (max-width: 767px) {
+  [data-look='parent'] .p-srow-info > button { margin-left: -12px; } /* ponytail: pulls the 44px target's icon back beside the title */
+  [data-look='parent'] .ch-page .pk-input { min-height: 44px; }
+  .p-pop .ch-edit { min-height: 44px; }
+}

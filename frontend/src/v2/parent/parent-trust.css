@@ -1,0 +1,15 @@
+/* Trust mode card, self-approved rows, Today mark (mockups less-parent-work v2 #s2, v1 #s4) */
+[data-look='parent'] .v2-head { display: flex; align-items: center; gap: 8px; }
+[data-look='parent'] .v2-head h3 { margin: 0; }
+[data-look='parent'] .v2-p { margin: 0; color: var(--p-sub); font-size: 13.5px; }
+[data-look='parent'] .pt-own { white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; vertical-align: bottom; }
+@media (max-width: 767px) {
+  [data-look='parent'] .pt-own-sep { display: none; }
+  [data-look='parent'] .pt-own { display: flex; }
+}
+[data-look='parent'] .v2-body { margin: 0; font-size: 14px; color: var(--p-ink); line-height: 1.5; }
+[data-look='parent'] .v2-end { justify-content: flex-end; }
+[data-look='parent'] .v2-sheet .mantine-Checkbox-label { font-weight: 600; }
+@media (pointer: coarse), (max-width: 767px) {
+  [data-look='parent'] .v2-sheet .p-btn { min-height: 44px; }
+}

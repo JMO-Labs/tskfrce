@@ -88,6 +88,12 @@ Little mode has no chat or alerts tab.
 - **Streak freezes** save your streak if you miss a day. You earn one for every 7 days in a row, and you can keep 2.
 - Want it calmer? Tap **Me** to change your celebrations.
 
+## Trust level
+
+If your parent turned on trust mode, **Me** shows a small chip: **New**, **Trusted** or **Proven**. Do your chores for real and your level goes up by itself. At Trusted and Proven, most chores approve right away and your points come in at once. Now and then a parent takes a quick look, and that is normal. If a parent checks a chore and it wasn't done, the points come back off and your level can drop a step. You can earn it back.
+
+![Me: the Proven chip and a friendly line about it](img/kid-trust-chip.jpg)
+
 ## Good to know
 
 - Your parents can see your devices and when they're online.

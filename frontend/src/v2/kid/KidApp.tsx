@@ -111,7 +111,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
     )
   else if (tab === 'me')
     body = (
-      <MePage name={name} avatar={avatar} progress={d.progress} preview={preview} onLocker={onLocker} canSwitch={canSwitch} onExit={onExit} kidId={kidId} little={mode === 'little'} mode={mode} celebrate={d.celebrate ?? (mode === 'teen' ? 'small' : 'full')} freezes={d.progress?.freezes_held} />
+      <MePage name={name} avatar={avatar} progress={d.progress} preview={preview} onLocker={onLocker} canSwitch={canSwitch} onExit={onExit} kidId={kidId} little={mode === 'little'} mode={mode} celebrate={d.celebrate ?? (mode === 'teen' ? 'small' : 'full')} freezes={d.progress?.freezes_held} trust={d.trust} />
     )
   else if (tab === 'chat') body = chat ? null : elsewhere
   else if (tab === 'alerts') body = preview ? elsewhere : <KidAlerts

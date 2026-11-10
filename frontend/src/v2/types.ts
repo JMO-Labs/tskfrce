@@ -1,5 +1,6 @@
 import type { CelebrateLevel } from './funTypes'
 import type { KidScreen } from './rewardTypes'
+import type { ChoreTrustFields, FamilyExtrasFields, KidTrust, KidTrustFields, RunTrustFields, TodayTryFields } from './trustTypes'
 /** Shapes of the v2 backend responses (backend/app/api/{family,kid,devices,kids,hours,chores,setup}.py). */
 
 export type ChoreState = 'done' | 'needs_you' | 'todo' | 'skipped'
@@ -94,7 +95,7 @@ export interface Group {
 /** GET /kids item */
 export type AgeGroup = 'little' | 'kid' | 'teen'
 
-export interface Kid {
+export interface Kid extends KidTrustFields {
   id: number
   full_name: string | null
   username: string
@@ -108,7 +109,7 @@ export interface Kid {
 /** GET/PATCH /family */
 export type AccentKey = 'neon' | 'sun' | 'tangerine' | 'bubblegum' | 'lilac' | 'sky' | 'aqua' | 'mint' | 'peach' | 'ice'
 
-export interface Family {
+export interface Family extends FamilyExtrasFields {
   name: string
   timezone: string
   reset_time: string
@@ -160,7 +161,7 @@ export interface RunStep {
 }
 
 /** Chore entry inside /today and /kid/today */
-export interface TodayChore {
+export interface TodayChore extends RunTrustFields {
   id: number
   title: string
   points: number
@@ -240,7 +241,7 @@ export interface TodayKid {
 }
 
 /** Item in GET /today needs_you. */
-export interface NeedsItem {
+export interface NeedsItem extends RunTrustFields {
   type: 'chore' | 'redo' | 'screen_time' | 'reward' | 'note' | 'integration'
   id: number
   kid_id: number | null
@@ -264,7 +265,7 @@ export interface NeedsItem {
 }
 
 /** GET /today */
-export interface Today {
+export interface Today extends TodayTryFields {
   day: string
   pending_approvals: number
   new_devices: Device[]
@@ -297,7 +298,7 @@ export interface Assignment {
 }
 
 /** GET /chores: a chore in the library with its assignments */
-export interface LibChore {
+export interface LibChore extends ChoreTrustFields {
   id: number
   title: string
   points: number
@@ -355,6 +356,8 @@ export interface KidToday {
   celebrate?: CelebrateLevel
   /** active Happy Hour, if any */
   happy_hour?: { ends_at: string; multiplier: number } | null
+  /** null = trust mode off */
+  trust?: KidTrust | null
 }
 
 /** GET /kids/{id}/push */

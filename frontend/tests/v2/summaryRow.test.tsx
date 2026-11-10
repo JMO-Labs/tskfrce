@@ -1,0 +1,226 @@
+import type React from 'react'
+import fs from 'fs'
+import path from 'path'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { SummaryRow, FocusArea } from '@/v2/parent/SummaryRow'
+import { useFocusParam } from '@/v2/parent/useFocusParam'
+import { fakeRouter } from './helpers/fakeRouter'
+
+jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
+
+function Page() {
+  const focus = useFocusParam('open')
+  return (
+    <FocusArea focus={focus} label="Sections">
+      <SummaryRow id="trust" icon={<i />} title="Trust" summary="3 ok" line2={<button>trust line 2</button>} aside={<input type="checkbox" role="switch" aria-label="sw" />} focus={focus}>
+        <button>inside trust</button>
+      </SummaryRow>
+      <SummaryRow id="devices" icon={<i />} title="Devices" summary="2" focus={focus}>
+        <p>devices body</p>
+      </SummaryRow>
+    </FocusArea>
+  )
+}
+
+const css = fs.readFileSync(path.join(__dirname, '../../src/v2/parent/declutter.css'), 'utf8')
+const head = (name: RegExp) => screen.getByRole('button', { name })
+const click = (el: HTMLElement) => act(() => { fireEvent.click(el) })
+
+beforeEach(() => {
+  fakeRouter.reset('/x')
+  window.matchMedia = jest.fn().mockReturnValue({ matches: false, addEventListener: jest.fn(), removeEventListener: jest.fn() }) as never
+  Element.prototype.scrollIntoView = jest.fn()
+})
+
+test('head is a button with aria-expanded and opens the body', () => {
+  render(<Page />)
+  expect(head(/^Trust/)).toHaveAttribute('aria-expanded', 'false')
+  click(head(/^Trust/))
+  expect(head(/^Trust/)).toHaveAttribute('aria-expanded', 'true')
+  expect(screen.getByRole('region', { name: /Trust/ })).toBeInTheDocument()
+})
+
+test('only one row is open at a time and others drop their second line', () => {
+  render(<Page />)
+  expect(screen.getByText('trust line 2')).toBeInTheDocument()
+  click(head(/^Trust/))
+  click(head(/^Devices/))
+  expect(screen.queryByRole('region', { name: /Trust/ })).toBeNull()
+  expect(screen.getByRole('region', { name: /Devices/ })).toBeInTheDocument()
+  expect(screen.queryByText('trust line 2')).toBeNull()
+})
+
+test('focus moves into the opened body', () => {
+  render(<Page />)
+  click(head(/^Trust/))
+  const region = screen.getByRole('region', { name: /Trust/ })
+  expect(region).toContainElement(document.activeElement as HTMLElement)
+  expect(document.activeElement).toBe(screen.getByText('inside trust'))
+})
+
+test('body itself takes focus when it has nothing focusable', () => {
+  render(<Page />)
+  click(head(/^Devices/))
+  expect(document.activeElement).toBe(screen.getByRole('region', { name: /Devices/ }))
+})
+
+test('opening scrolls the row into view, smooth unless reduced motion', () => {
+  render(<Page />)
+  click(head(/^Trust/))
+  expect(Element.prototype.scrollIntoView).toHaveBeenLastCalledWith({ block: 'nearest', behavior: 'smooth' })
+  click(head(/^Trust/))
+  ;(window.matchMedia as jest.Mock).mockReturnValue({ matches: true })
+  click(head(/^Devices/))
+  expect(Element.prototype.scrollIntoView).toHaveBeenLastCalledWith({ block: 'nearest', behavior: 'auto' })
+})
+
+test('a page that loads with the row already open stays put while its head is in view', () => {
+  fakeRouter.reset('/x', { open: 'trust' })
+  render(<Page />)
+  expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
+  click(head(/^Trust/))
+  click(head(/^Devices/))
+  expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1)
+})
+
+test('a row taller than the screen lines its head up at the top', () => {
+  Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, get: () => 5000 })
+  render(<Page />)
+  click(head(/^Trust/))
+  expect(Element.prototype.scrollIntoView).toHaveBeenLastCalledWith({ block: 'start', behavior: 'smooth' })
+  delete (HTMLElement.prototype as { offsetHeight?: number }).offsetHeight
+})
+
+test('closing returns focus to the head button', () => {
+  render(<Page />)
+  click(head(/^Trust/))
+  expect(document.activeElement).not.toBe(head(/^Trust/))
+  click(head(/^Trust/))
+  expect(document.activeElement).toBe(head(/^Trust/))
+})
+
+test('switching rows leaves focus in the newly opened body, not on the closed row head', () => {
+  render(<Page />)
+  click(head(/^Devices/))
+  click(head(/^Trust/))
+  const region = screen.getByRole('region', { name: /Trust/ })
+  expect(region).toContainElement(document.activeElement as HTMLElement)
+})
+
+test('tapping the open head closes it', () => {
+  render(<Page />)
+  click(head(/^Trust/))
+  expect(fakeRouter.query.open).toBe('trust')
+  click(head(/^Trust/))
+  expect(fakeRouter.query.open).toBeUndefined()
+})
+
+test('swipe down on the open head closes it', () => {
+  render(<Page />)
+  click(head(/^Trust/))
+  const h = head(/^Trust/)
+  fireEvent.touchStart(h, { touches: [{ clientY: 100 }] })
+  fireEvent.touchEnd(h, { changedTouches: [{ clientY: 180 }] })
+  expect(fakeRouter.query.open).toBeUndefined()
+})
+
+test('short swipe or swipe on a closed head does nothing', () => {
+  render(<Page />)
+  const h = head(/^Trust/)
+  fireEvent.touchStart(h, { touches: [{ clientY: 100 }] })
+  fireEvent.touchEnd(h, { changedTouches: [{ clientY: 200 }] })
+  expect(fakeRouter.push).not.toHaveBeenCalled()
+  click(h)
+  fireEvent.touchStart(h, { touches: [{ clientY: 100 }] })
+  fireEvent.touchEnd(h, { changedTouches: [{ clientY: 140 }] })
+  expect(fakeRouter.query.open).toBe('trust')
+})
+
+test('aside switch does not toggle the row', () => {
+  render(<Page />)
+  click(screen.getByRole('switch', { name: 'sw' }))
+  expect(fakeRouter.push).not.toHaveBeenCalled()
+})
+
+test('line2 sits outside the head button', () => {
+  render(<Page />)
+  expect(head(/^Trust/)).not.toContainElement(screen.getByText('trust line 2'))
+  expect(head(/^Trust/)).not.toContainElement(screen.getByRole('switch', { name: 'sw' }))
+})
+
+test('region is named by the title only', () => {
+  render(<Page />)
+  click(head(/^Trust/))
+  expect(screen.getByRole('region', { name: 'Trust' })).toBeInTheDocument()
+  expect(head(/^Trust/)).toHaveAttribute('aria-controls', 'srow-trust-body')
+})
+
+test('focus area is labelled and flags focus state', () => {
+  const { container } = render(<Page />)
+  const area = container.querySelector('.p-srows')!
+  expect(area).toHaveAttribute('aria-label', 'Sections')
+  expect(area).not.toHaveAttribute('data-focused')
+  click(head(/^Trust/))
+  expect(area).toHaveAttribute('data-focused')
+})
+
+test('summary value ellipsizes and may shrink', () => {
+  expect(css).toMatch(/\.p-srow-val\s*{[^}]*text-overflow:\s*ellipsis/)
+  expect(css).toMatch(/\.p-srow-val\s*{[^}]*min-width:\s*0/)
+})
+
+test('kid names never break mid-word', () => {
+  expect(css).toMatch(/\.p-kn\s*{[^}]*white-space:\s*nowrap/)
+  expect(css).toMatch(/\.p-kn\s*{[^}]*word-break:\s*keep-all/)
+})
+
+test('the area is a named group, so its label is announced', () => {
+  render(<Page />)
+  expect(screen.getByRole('group', { name: 'Sections' })).toBeInTheDocument()
+})
+
+test('row motion is one short beat (120 ms, within the 150 ms limit) and off under reduced motion', () => {
+  expect(css).toContain('--srow-ms: 120ms')
+  expect(css).not.toMatch(/\b1[6-9]\dms|\b[2-9]\d\dms/)
+  const body = css.match(/@media \(prefers-reduced-motion: no-preference\) \{[^}]*p-srow-body[^}]*\}/)
+  expect(body?.[0]).toContain('animation: p-srow-in var(--srow-ms)')
+  const reduce = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'))
+  expect(reduce).toContain('.p-srow-body { animation: none; }')
+})
+
+describe('focus target (tskfrce#8: no ring on URL-opened rows)', () => {
+  const stub = (open: string | null) => ({ param: 'open', open, isOpen: (id: string) => id === open, openTo: jest.fn(), toggle: jest.fn(), close: jest.fn() })
+  const Row = ({ open, children }: { open: string | null; children: React.ReactNode }) => (
+    <><button data-focus-head="x">head</button><SummaryRow id="r" icon={<i />} title="R" summary="s" focus={stub(open)}>{children}</SummaryRow></>
+  )
+
+  test('focuses the body region, not the first control, when mounted open (URL load)', () => {
+    render(<Row open="r"><input aria-label="f" /></Row>)
+    expect(document.activeElement).toHaveClass('p-srow-body')
+  })
+
+  test('focuses the first control when opened after mount (toggle)', () => {
+    const { rerender } = render(<Row open={null}><input aria-label="f" /></Row>)
+    rerender(<Row open="r"><input aria-label="f" /></Row>)
+    expect(document.activeElement).toBe(screen.getByLabelText('f'))
+  })
+
+  test('falls back to the region when the body has no focusable control', () => {
+    const { rerender } = render(<Row open={null}><p>text</p></Row>)
+    rerender(<Row open="r"><p>text</p></Row>)
+    expect(document.activeElement).toHaveClass('p-srow-body')
+  })
+
+  test('returns focus to the head when closed', () => {
+    const { rerender } = render(<Row open={null}><input aria-label="f" /></Row>)
+    rerender(<Row open="r"><input aria-label="f" /></Row>)
+    rerender(<Row open={null}><input aria-label="f" /></Row>)
+    expect(document.activeElement).toBe(document.querySelector('.p-srow-head[data-focus-head="r"]'))
+  })
+
+  test('a disabled input is skipped when opened by toggle', () => {
+    const { rerender } = render(<Row open={null}><input disabled aria-label="d" /><button>go</button></Row>)
+    rerender(<Row open="r"><input disabled aria-label="d" /><button>go</button></Row>)
+    expect(document.activeElement).toBe(screen.getByText('go'))
+  })
+})

@@ -22,13 +22,19 @@ export function ParentShell({
   children,
   actions,
   phone,
+  back,
+  above,
 }: {
   title: string
+  /** phone back-link label above a detail when it is not the title (e.g. "Rewards") */
+  back?: string
   /** phone only: shown instead of the list (e.g. Today's avatar strip above the day) */
   phone?: ReactNode
   list?: ReactNode
   children: ReactNode
   actions?: ReactNode
+  /** full-width row between the header and the page (a "‹ Today" back row) */
+  above?: ReactNode
 }) {
   const { logout, user } = useUnifiedAuth()
   const router = useRouter()
@@ -50,10 +56,11 @@ export function ParentShell({
   // chat panel/sheet for openChat; the desktop Chat page shows threads itself
   const dock = !small && router.pathname === '/chat' ? null : <ChatDock meId={user ? Number(user.id) : null} meName={user?.username} />
   const initial = (user?.username ?? '?').charAt(0).toUpperCase()
-  const phoneTools = (
+  // bell and account initial: top right on every page and breakpoint
+  const tools = (
     <>
-      <Bell placement="header" />
-      <Link href="/more" className="p-head-me" aria-label="Account and settings">
+      <Bell />
+      <Link href="/more" className="p-head-me p-htool" aria-label="Account and settings">
         {initial}
       </Link>
     </>
@@ -71,15 +78,13 @@ export function ParentShell({
         {head}
         {!small && <Rail onLogout={logOut} />}
         <div className="p-content">
-          {small && (
-            <header className="p-header">
-              <h1>{title}</h1>
-              {phoneTools}
-            </header>
-          )}
+          <header className="p-header">
+            <h1 tabIndex={-1}>{title}</h1>
+            {tools}
+          </header>
           <BlockerBanner />
           <Freshness />
-          <ListDetail list={list} detail={children} listTitle={title} phone={phone} />
+          <ListDetail list={list} detail={children} listTitle={title} back={back} phone={phone} />
         </div>
         {small && <TabBar />}
         {dock}
@@ -93,12 +98,13 @@ export function ParentShell({
       {!small && <Rail onLogout={logOut} />}
       <div className="p-content">
         <header className="p-header">
-          <h1>{title}</h1>
+          <h1 tabIndex={-1}>{title}</h1>
           {actions}
-          {small && phoneTools}
+          {tools}
         </header>
         <BlockerBanner />
         <Freshness />
+        {above}
         <main className="p-main">{children}</main>
       </div>
       {small && <TabBar />}

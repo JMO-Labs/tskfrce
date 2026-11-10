@@ -2,17 +2,31 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { ReactNode } from 'react'
 import { useMediaQuery } from '@mantine/hooks'
-import { VisuallyHidden } from '@mantine/core'
+import { Icon } from './Icon'
+import { withoutFocus } from './useFocusParam'
+
+/** Phone "‹ Label" bar above a detail (mockup .back). */
+export function BackLink({ href, children }: { href: React.ComponentProps<typeof Link>['href']; children: ReactNode }) {
+  return (
+    <Link href={href} className="p-back-link">
+      <Icon name="chevron_left" size={16} />
+      {children}
+    </Link>
+  )
+}
 
 export function ListDetail({
   list,
   detail,
   listTitle,
+  back,
   phone,
 }: {
   list: ReactNode
   detail: ReactNode
   listTitle: ReactNode
+  /** phone back-link label when it differs from the list title (the pane the detail belongs to) */
+  back?: ReactNode
   /** phone only: replaces list-then-detail with this strip plus the detail */
   phone?: ReactNode
 }) {
@@ -32,9 +46,7 @@ export function ListDetail({
   if (small && selectedItem) {
     return (
       <main className="p-detail-only">
-        <Link href={{ pathname: router.pathname, query: rest }} className="p-back-link">
-          ← {listTitle}
-        </Link>
+        <BackLink href={{ pathname: router.pathname, query: withoutFocus(rest) }}>{back ?? listTitle}</BackLink>
         <div className="p-detail-panel">{detail}</div>
       </main>
     )
@@ -46,7 +58,6 @@ export function ListDetail({
 
   return (
     <main className="p-list-detail">
-      <VisuallyHidden component="h1">{listTitle}</VisuallyHidden>
       <div className="p-list-column">{list}</div>
       <div className="p-detail-column p-grid">{detail}</div>
     </main>

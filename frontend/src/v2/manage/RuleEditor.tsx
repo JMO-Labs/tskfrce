@@ -7,8 +7,8 @@ import { useGroups } from '@/v2/hooks/useDevices'
 import { Icon } from '@/v2/parent/Icon'
 import { SegmentedControl } from '@/v2/parent/SegmentedControl'
 import type { HourRule, RuleBody, RuleCategory, RuleKind } from '@/v2/types'
+import { KidPicker } from '@/v2/parent/KidPicker'
 import { ConfirmDelete } from './ConfirmDelete'
-import { KidPills } from './KidPills'
 import { CATEGORIES, KINDS, SUN_FIRST, presetDays } from './hoursMeta'
 import { RuleTimes, type Range } from './RuleTimes'
 import { useSingle } from './useSingle'
@@ -156,7 +156,7 @@ function RuleForm({ rule, initial, categories = ALL, showWho = true, onClose, on
           </div>
           {!everyone && (
             <>
-              <KidPills kids={kids} value={kidIds} onChange={setKidIds} label="Kids" />
+              <KidPicker kids={kids} value={kidIds.map(String)} onChange={(v) => setKidIds(v.map(Number))} label="Kids" />
               {groups.length > 0 && (
                 <div className="pk-pills" role="group" aria-label="Groups">
                   {groups.map((g) => (

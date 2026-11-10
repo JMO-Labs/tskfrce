@@ -5,6 +5,7 @@ from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_db, require_parent
@@ -19,10 +20,11 @@ from app.models.chore_extra import ChorePhoto
 from app.models.chores import ChoreRun
 from app.models.family import get_family
 from app.models.lock import Device
+from app.models.points import Points
 from app.models.reward import Redemption, Reward
 from app.models.user import User, UserRole
 from app.schemas.lock import FamilyPatch, utc_z
-from app.services import boost, inbox, progression, push
+from app.services import bedtime, boost, inbox, progression, push, trust
 from app.services import chores as svc
 
 router = APIRouter(prefix="/api/v1", tags=["family"], dependencies=[Depends(require_parent)])
@@ -62,6 +64,9 @@ def _fam_out(fam) -> dict:
         "hh_weekly_surprise": fam.hh_weekly_surprise,
         "hh_auto_boost": fam.hh_auto_boost,
         "streak_freeze": fam.streak_freeze,
+        "bedtime_auto": fam.bedtime_auto,
+        "bedtime_auto_at": fam.bedtime_auto_at,
+        "recap_weekly": fam.recap_weekly,
     }
 
 
@@ -80,6 +85,14 @@ def patch_family(body: FamilyPatch, db: Session = Depends(get_db)):
             ZoneInfo(body.timezone)
         except Exception:
             raise HTTPException(400, "Unknown time zone.") from None
+    keeps_on = bool(body.reset_time) and fam.bedtime_auto and body.bedtime_auto is not False
+    if (
+        body.bedtime_auto_at is not None or body.bedtime_auto or keeps_on
+    ):  # stored time must stay valid
+        at = body.bedtime_auto_at or fam.bedtime_auto_at
+        reset = body.reset_time or fam.reset_time
+        if not bedtime.valid_at(at, reset):
+            raise HTTPException(422, bedtime.invalid_msg(reset))
     # a time zone change takes effect at the next reset; no immediate reset
     for k, v in body.model_dump(exclude_unset=True).items():
         if k == "giphy_api_key" and v is not None:
@@ -142,6 +155,8 @@ def _needs_you(
                 "subtasks_done": sum(s["done"] for s in steps),
                 "subtasks_total": len(steps),
                 "submitted_at": utc_z(r.submitted_at),
+                "day": r.day.isoformat(),
+                "spot_check": bool(r.spot_check),
                 "mode": svc.mode_of(r),
                 **({"integration": via[r.id]} if r.id in via else {}),
             }
@@ -189,6 +204,7 @@ def _chore_out(
     notes: dict,
     tmrw: date,
     deds: list[dict],
+    paid: int | None = None,
     photos: int = 0,
     messages: int = 0,
 ) -> dict:
@@ -200,6 +216,9 @@ def _chore_out(
         "title": c.title,
         "points": c.points or 0,
         "state": st,
+        "day": r.day.isoformat(),
+        "approved_via": r.approved_via,
+        "earned_pts": paid,  # what Wasn't done would take back (self-approved runs only)
         "due_time": r.assignment.due_time,
         "due_at": utc_z(svc.due_at(r, fam)),
         "done_at": utc_z(r.submitted_at or r.approved_at),
@@ -237,11 +256,12 @@ def today(db: Session = Depends(get_db)):
     day = svc.today(db, now)
     tmrw = day + timedelta(days=1)
     shown = (
-        svc.with_detail(svc.day_runs(db, day, skipped=True), photos=False)
+        svc.with_detail(svc.day_or_waiting(db, day, skipped=True), photos=False)
         .order_by(ChoreRun.id)
         .all()
     )
-    tasks = [t for t in shown if t.status != "skipped"]  # skipped: listed, never counted
+    older = [t for t in shown if t.day != day]  # waiting since earlier days: listed, not counted
+    tasks = [t for t in shown if t.status != "skipped" and t.day == day]  # skipped: never counted
     kid_rows = db.query(User).filter(User.role == UserRole.KID).order_by(User.id).all()
     devices = (
         db.query(Device)
@@ -260,12 +280,35 @@ def today(db: Session = Depends(get_db)):
     names = {k.id: k.full_name for k in kid_rows}
     notes = svc.note_texts(db, shown)
     deds = svc.deductions(db, shown)
+    own = [t.id for t in shown if t.status == "done" and t.approved_via in trust.SELF_APPROVED]
+    paid = (
+        {
+            (rid, uid): int(total)
+            for rid, uid, total in db.query(Points.run_id, Points.user_id, func.sum(Points.amount))
+            .filter(Points.run_id.in_(own), Points.amount > 0)
+            .group_by(Points.run_id, Points.user_id)
+        }
+        if own
+        else {}
+    )
     n_photos, n_msgs = svc.run_counts(db, shown)
     earned = svc.earned_today(db, shown)
-    needs = _needs_you(db, tasks, names, fam, balances)
+    needs = _needs_you(db, tasks + older, names, fam, balances)
     prices = sorted(p for (p,) in db.query(Reward.price).filter(Reward.active.is_(True)))
     now_local = local_now(fam.timezone, now)
     quiet = set(boost.quiet_kids(db, day))
+    untrusted = [k.id for k in kid_rows if not k.trust_mode]
+    approved = (  # skipped when every kid already has trust on
+        dict(
+            db.query(ChoreRun.kid_id, func.count())
+            .filter(ChoreRun.status == "done", ChoreRun.kid_id.in_(untrusted))
+            .group_by(ChoreRun.kid_id)
+        )
+        if untrusted
+        else {}
+    )
+    # solo runs only: team chores do not count toward the 10
+    try_trust = next((i for i in untrusted if approved.get(i, 0) >= 10), None)
     kids = []
     for k in kid_rows:
         devs = [device_out(db, d, fam, now, pre) for d in kid_devs[k.id]]
@@ -295,6 +338,7 @@ def today(db: Session = Depends(get_db)):
                         notes,
                         tmrw,
                         [d for d in deds.get(t.id, []) if d["kid_id"] == k.id],
+                        paid.get((t.id, k.id), 0) if t.id in own else None,
                         n_photos.get(t.id, 0),
                         n_msgs.get(t.id, 0),
                     )
@@ -308,10 +352,12 @@ def today(db: Session = Depends(get_db)):
         )
     out = {
         "day": day.isoformat(),
-        "pending_approvals": sum(t.status == "submitted" for t in tasks),
+        "pending_approvals": sum(t.status == "submitted" for t in tasks) + len(older),
         "new_devices": [device_out(db, d, fam, now, pre) for d in new],
         "needs_you": needs,
         "kids": kids,
+        "try_trust_kid": try_trust,
+        "waiting_at_reset_days": fam.waiting_reset_days,
     }
     db.commit()  # after the payload is built: commit expires every loaded row
     return out

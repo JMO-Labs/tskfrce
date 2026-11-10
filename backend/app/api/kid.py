@@ -34,6 +34,7 @@ from app.services import (
     inbox,
     kid_view,
     progression,
+    trust,
 )
 from app.services import chores as svc
 from app.services.chore_types import notes_for
@@ -203,6 +204,7 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
         "points_balance": balances[kid.id],
         "points_held": economy.pending_cost(db, kid.id),
         "progress": prog,
+        "trust": trust.badge(kid),
         "timezone": fam.timezone,
         "happy_hour": (
             {"ends_at": utc_z(hh.ends_at), "multiplier": hh.mult_x10 / 10} if hh else None
@@ -297,24 +299,31 @@ def done(chore_id: int, db: Session = Depends(get_db), kid: User = Depends(requi
         raise HTTPException(status_code=409, detail="Tick every step first.")
     if c.needs_photo and not svc.photo_count(r):
         raise HTTPException(status_code=409, detail="Add a photo first.")
+    if not chore_actions.claim(db, r):  # a racing finish already took it
+        raise HTTPException(status_code=409, detail="That chore is already done.")
     chore_actions.submit(r, kid.id, now)
-    inbox.notify_parents(
-        db,
-        "chore_submitted",
-        f"{kid.full_name} finished {c.title}",
-        "Take a look and approve it.",
-        run_id=r.id,
-    )
-    from app.integrations import events
+    verdict = trust.decide(db, r, trust.payees(r))
+    if verdict == "auto":
+        chore_actions.approve(db, r, None, via="trust")
+    else:
+        r.spot_check = verdict == "spot"
+        inbox.notify_parents(
+            db,
+            "chore_submitted",
+            f"{kid.full_name} finished {c.title}",
+            "Take a look and approve it.",
+            run_id=r.id,
+        )
+        from app.integrations import events
 
-    events.emit(
-        db, "request.created", [kid.id], chore_id=c.id, type="chore", id=r.id, title=c.title
-    )
+        events.emit(
+            db, "request.created", [kid.id], chore_id=c.id, type="chore", id=r.id, title=c.title
+        )
     db.commit()
     trigger()
     return {
         "id": r.id,
-        "status": "submitted_for_approval",
+        "status": "done" if verdict == "auto" else "submitted_for_approval",
         "submitted_for_approval_at": utc_z(r.submitted_at),
     }
 

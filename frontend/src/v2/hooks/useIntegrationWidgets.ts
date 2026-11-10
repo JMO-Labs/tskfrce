@@ -31,8 +31,8 @@ export function usePressButton(installId: number, surface: Surface) {
       }),
     onSuccess: (results) => {
       for (const r of results) {
-        if (r.result === 'applied') toastOk('Done.')
-        else if (r.result === 'pending') toastOk(surface === 'kid' ? 'Asked.' : 'Sent to Needs you.')
+        if (r.result === 'applied') toastOk('Done')
+        else if (r.result === 'pending') toastOk(surface === 'kid' ? 'Asked' : 'Sent to Needs you')
         else toastFail(new Error(r.reason || "That didn't work."))
       }
     },

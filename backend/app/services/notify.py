@@ -42,9 +42,10 @@ EVENTS = {
     "overdue": "Overdue",
     "workaround": "Tried a workaround",
     "boost": "Auto Happy Hour started",
+    "recap": "Weekly recap",
 }
 SECURITY = {"resisting", "box_offline"}
-HELD = {"chore_ok", "kid_note", "reward_request", "new_device", "workaround"}
+HELD = {"chore_ok", "kid_note", "reward_request", "new_device", "workaround", "recap"}
 DEFAULT_EVENTS = (
     "chore_ok",
     "kid_note",
@@ -54,6 +55,7 @@ DEFAULT_EVENTS = (
     "workaround",
     "summary",
     "boost",
+    "recap",
 )
 KIND_EVENT = {
     "chore_submitted": "chore_ok",
@@ -70,6 +72,7 @@ KIND_EVENT = {
     "level_up": "badge",
     "box_offline": "box_offline",
     "boost": "boost",
+    "recap": "recap",
 }
 
 _pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="apprise")

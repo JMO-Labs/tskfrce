@@ -31,6 +31,7 @@ from .reward import Redemption, Reward
 from .screen_bank import ScreenBank
 from .screen_time import ScreenTimeLimit
 from .tips import DismissedTip
+from .trust import TrustEvent
 from .user import PendingInvite, UsedInvite, User
 
 __all__ = [
@@ -73,6 +74,7 @@ __all__ = [
     "DevicePresence",
     "Override",
     "Notification",
+    "TrustEvent",
     "IntegrationInstall",
     "IntegrationKid",
     "IntegrationChore",

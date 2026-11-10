@@ -146,8 +146,10 @@
   padding: 0;
 }
 
-[data-look='parent'] .p-list-header-top button:hover {
-  background: var(--p-soft);
+@media (hover: hover) {
+  [data-look='parent'] .p-list-header-top button:hover {
+    background: var(--p-soft);
+  }
 }
 
 [data-look='parent'] .p-list-items {
@@ -189,6 +191,13 @@
   z-index: 1;
 }
 
+/* Every detail screen caps and centres its content (mockup .wrap.narrow); chat threads fill the pane */
+[data-look='parent'] :is(.p-detail-column, .p-detail-panel) > :not(.pc-thread) {
+  width: 100%;
+  max-width: 720px;
+  margin-inline: auto;
+}
+
 /* Mobile-only: detail-only view (when item is selected) */
 [data-look='parent'] .p-detail-only {
   display: flex;
@@ -200,9 +209,9 @@
 [data-look='parent'] .p-back-link {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  font-size: 14px;
+  gap: 6px;
+  padding: 10px 16px;
+  font-size: 13.5px;
   font-weight: 500;
   color: var(--p-ink);
   text-decoration: none;
@@ -212,9 +221,11 @@
   transition: background 0.15s ease;
 }
 
-[data-look='parent'] .p-back-link:focus-visible { outline: 2px solid var(--p-ink); outline-offset: -2px; }
-[data-look='parent'] .p-back-link:hover {
-  background: var(--p-soft);
+[data-look='parent'] .p-back-link:focus-visible { outline: 2px solid var(--p-focus); outline-offset: -2px; }
+@media (hover: hover) {
+  [data-look='parent'] .p-back-link:hover {
+    background: var(--p-soft);
+  }
 }
 
 [data-look='parent'] .p-detail-panel {
@@ -231,41 +242,6 @@
   gap: 8px;
   background: var(--p-card);
   overflow-y: auto;
-}
-
-/* ─────────────────────────────────────────────────────────────────────────── */
-/* Segmented control styling for list headers */
-/* ─────────────────────────────────────────────────────────────────────────── */
-
-[data-look='parent'] .p-segment-tabs .mantine-Tabs-list {
-  display: flex;
-  gap: 4px;
-  background: var(--p-soft);
-  border-radius: 12px;
-  padding: 4px;
-  margin-bottom: 0;
-}
-
-[data-look='parent'] .p-segment-tabs .mantine-Tabs-tab {
-  flex: 1;
-  border: 0;
-  border-radius: 8px;
-  padding: 8px 4px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--p-sub);
-  background: transparent;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-[data-look='parent'] .p-segment-tabs .mantine-Tabs-tab:hover:not([data-active]) {
-  color: var(--p-ink);
-}
-
-[data-look='parent'] .p-segment-tabs .mantine-Tabs-tab[data-active] {
-  background: var(--p-ink);
-  color: var(--p-card);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -375,8 +351,10 @@
   text-align: left;
 }
 
-[data-look='parent'] .p-more-link:hover {
-  background: var(--p-soft);
+@media (hover: hover) {
+  [data-look='parent'] .p-more-link:hover {
+    background: var(--p-soft);
+  }
 }
 
 [data-look='parent'] .p-more-link .ms {
@@ -409,20 +387,14 @@
   font-size: 14px;
 }
 
-[data-look='parent'] .p-more-logout:hover {
-  background: var(--p-soft);
+@media (hover: hover) {
+  [data-look='parent'] .p-more-logout:hover {
+    background: var(--p-soft);
+  }
 }
 
-/* phone header: account initial, opens More */
+/* header account initial, opens More (box: .p-htool in declutter.css) */
 [data-look='parent'] .p-head-me {
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  border: 1px solid var(--p-line);
-  background: var(--p-card);
-  color: var(--p-ink);
   font-weight: 700;
   text-decoration: none;
 }

@@ -7,17 +7,11 @@ import { MantineProvider } from '@mantine/core'
 import { api } from '@/v2/api'
 import { notifications } from '@mantine/notifications'
 import { TodayPage } from '@/v2/today/TodayPage'
+import { fakeRouter } from './helpers/fakeRouter'
 import type { Today, TodayKid } from '@/v2/types'
 
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
-jest.mock('next/router', () => ({
-  useRouter: () => ({
-    pathname: '/',
-    query: {},
-    replace: jest.fn(),
-    push: jest.fn(),
-  }),
-}))
+jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
 jest.mock('@/contexts/UnifiedAuthContext', () => ({
   useUnifiedAuth: () => ({ logout: jest.fn(), user: { id: 1 } }),
 }))
@@ -66,8 +60,7 @@ const wrap = (ui: React.ReactElement) =>
 
 beforeEach(() => {
   apiMock.mockReset()
-  // Dismiss the onboarding card so tests are focused
-  localStorage.setItem('task4ce-tip:onboard.parent', '1')
+  fakeRouter.reset('/') // the onboarding card stays hidden: /me/tips is unanswered, which reads as dismissed
   apiMock.mockImplementation(async (p) => {
     if (p.endsWith('/deduct')) return { balance: 5, deducted: 20 }
     if (p === '/today') return todayData()
@@ -82,6 +75,10 @@ beforeEach(() => {
     return undefined
   })
 })
+
+/** The calm row that focuses a kid (not the avatar details button). */
+const kidRow = (name: string) => screen.findByRole('button', { name: new RegExp(`^${name}(?! details)`, 'i') })
+const openKid = async (name = 'Kid1') => userEvent.click(await kidRow(name))
 
 describe('TodayPage', () => {
   test('no leaderboard on Today', async () => {
@@ -108,7 +105,7 @@ describe('TodayPage', () => {
     expect(await screen.findByText(/add your first kid/i)).toBeInTheDocument()
   })
 
-  test('kid list shows Today and Needs you tabs with count', async () => {
+  test('Needs strip shows the count, with no tabs', async () => {
     const data = todayData({
       needs_you: [{ type: 'chore', id: 1, kid_id: 1, kid_name: 'Kid1', title: 'Dishes' }],
     })
@@ -117,32 +114,37 @@ describe('TodayPage', () => {
       return undefined
     })
     wrap(<TodayPage />)
-    expect(await screen.findByRole('tab', { name: /today/i })).toBeInTheDocument()
-    expect(screen.getByRole('tab', { name: /needs you/i })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^needs you · 1/i })).toBeInTheDocument()
+    expect(screen.queryByRole('tab')).toBeNull()
   })
 
-  test('selecting a kid shows <Kid>\'s day with View as kid and Add chore buttons', async () => {
+  test('focusing a kid shows their day with Add chore and View as kid in the … menu', async () => {
     wrap(<TodayPage />)
-    const kidButton = await screen.findByRole('button', { name: /kid1/i })
-    await userEvent.click(kidButton)
-    expect(await screen.findByText(/kid1.*s day/i)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /view as kid/i })).toBeInTheDocument()
+    await openKid()
+    expect(await screen.findByRole('region', { name: /kid1.*s day/i })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /^More for Kid1/ }))
+    expect(await screen.findByRole('menuitem', { name: /view as kid/i })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /add chore/i })).toHaveAttribute('href', '/kids?section=chores&item=new')
   })
 
-  test('expanded kid card shows letter avatar and real stats', async () => {
+  test('details pop-over shows real stats and the row shows the points', async () => {
     wrap(<TodayPage />)
-    await userEvent.click(await screen.findByRole('button', { name: /kid1/i }))
-    const card = await screen.findByTestId('kid-expanded')
-    expect(card).toHaveTextContent('860')
-    expect(card).toHaveTextContent('3 days')
-    expect(card).toHaveTextContent('40 pts')
-    expect(card).toHaveTextContent(/\d+:\d\d [AP]M/)
-    expect(screen.getAllByText('K')[0]).toHaveClass('p-kid-avatar')
+    expect(await screen.findAllByText('860 pts')).toHaveLength(2)
+    const avatar = await screen.findByRole('button', { name: 'Kid1 details' })
+    expect(avatar).toHaveTextContent('K')
+    expect(avatar).toHaveClass('pt-kav')
+    await userEvent.click(avatar)
+    const pop = await screen.findByText('Streak')
+    const facts = pop.closest('.p-kid-facts') as HTMLElement
+    expect(facts).toHaveTextContent('3 days')
+    expect(facts).toHaveTextContent('40 pts')
+    expect(facts).toHaveTextContent(/\d+:\d\d [AP]M/)
+    expect(within(facts).getByText('Last active').nextSibling).toHaveTextContent('—')
   })
 
   test('chat opens beside the chore and closes', async () => {
     wrap(<TodayPage />)
+    await openKid()
     await userEvent.click((await screen.findAllByRole('button', { name: /dishes/i }))[0])
     expect(screen.queryByTestId('chat-column')).not.toBeInTheDocument()
     await userEvent.click(await screen.findByRole('button', { name: /open chat/i }))
@@ -157,6 +159,7 @@ describe('TodayPage', () => {
     const base = apiMock.getMockImplementation()!
     apiMock.mockImplementation(async (p, init) => (p === '/today' ? todayData({ kids: [k] }) : base(p, init)))
     wrap(<TodayPage />)
+    await openKid()
     await userEvent.click(await screen.findByRole('button', { name: /dishes/i }))
     await userEvent.click(await screen.findByRole('button', { name: /approve \+10/i }))
     // withUndo holds the call for the undo window and shows a toast first
@@ -169,6 +172,7 @@ describe('TodayPage', () => {
     const base = apiMock.getMockImplementation()!
     apiMock.mockImplementation(async (p, init) => (p === '/today' ? todayData({ kids: [k] }) : base(p, init)))
     wrap(<TodayPage />)
+    await openKid()
     await userEvent.click(await screen.findByRole('button', { name: /dishes/i }))
     await userEvent.click(await screen.findByRole('button', { name: /^send back$/i }))
     const send = screen.getAllByRole('button', { name: /^send back$/i }).at(-1)!
@@ -180,6 +184,7 @@ describe('TodayPage', () => {
 
   test('to-do chore has no approve; deduct posts amount and reason', async () => {
     wrap(<TodayPage />)
+    await openKid()
     await userEvent.click((await screen.findAllByRole('button', { name: /dishes/i }))[0])
     await screen.findByRole('button', { name: /open chat/i })
     expect(screen.queryByRole('button', { name: /approve/i })).not.toBeInTheDocument()
@@ -192,34 +197,15 @@ describe('TodayPage', () => {
     )
   })
 
-  test('expanded kid card displays progress meter and stats', async () => {
+  test('every kid row shows its chores progress ring', async () => {
+    apiMock.mockImplementation(async (p) => (p === '/today' ? todayData({ kids: [kid(1, 'Kid1', 1, 2)] }) : undefined))
     wrap(<TodayPage />)
-    const kidButton = await screen.findByRole('button', { name: /kid1/i })
-    await userEvent.click(kidButton)
-    const expandedSection = await screen.findByTestId('kid-expanded')
-    expect(within(expandedSection).getByText(/points/i)).toBeInTheDocument()
-    expect(within(expandedSection).getByText(/next reward/i)).toBeInTheDocument()
-  })
-
-  test('every kid row shows its chores progress bar', async () => {
-    const data = todayData({
-      kids: [kid(1, 'Kid1', 1, 2)], // 1 of 2 done = 50%
-    })
-    apiMock.mockImplementation(async (p) => {
-      if (p === '/today') return data
-      return undefined
-    })
-    wrap(<TodayPage />)
-    // shown on every kid row, selected or not
-    const track = await screen.findByRole('progressbar', { name: "Kid1's chores" })
-    const meterBar = track?.querySelector('.p-meter-bar')
-    expect(meterBar).toBeInTheDocument()
-    expect(meterBar).toHaveStyle('width: 50%')
+    expect(await screen.findByRole('img', { name: '1 of 2 done' })).toBeInTheDocument()
   })
 
   test('chore rows start collapsed', async () => {
     wrap(<TodayPage />)
-    await screen.findByRole('button', { name: /kid1/i })
+    await openKid()
     const chores = await screen.findAllByText(/dishes|laundry/i)
     chores.forEach((chore) => {
       const row = chore.closest('[data-testid="chore-row"]')
@@ -229,7 +215,7 @@ describe('TodayPage', () => {
 
   test('opening a second chore closes the first', async () => {
     wrap(<TodayPage />)
-    await screen.findByRole('button', { name: /kid1/i })
+    await openKid()
     const rows = await screen.findAllByTestId('chore-row')
     const buttons = rows.map((r) => r.querySelector('button'))
     if (buttons[0]) await userEvent.click(buttons[0])
@@ -257,38 +243,24 @@ describe('TodayPage', () => {
       return undefined
     })
     wrap(<TodayPage />)
-    await screen.findByRole('button', { name: /kid1/i })
+    await openKid()
     const row = (await screen.findAllByTestId('chore-row'))[0]
     expect(row).toHaveAttribute('data-state', 'done')
     expect(await screen.findByText(/^done \d+:\d+ [ap]m · approved$/i)).toBeInTheDocument()
   })
 
-  test('progress meter shows chores done and total', async () => {
+  test('the old summary strip is gone', async () => {
     wrap(<TodayPage />)
-    await screen.findByRole('button', { name: /kid1/i })
-    const progressText = await screen.findByText(/0 of 2 done/i)
-    expect(progressText).toBeInTheDocument()
+    await kidRow('Kid1')
+    expect(screen.queryByTestId('summary-strip')).toBeNull()
   })
 
-  test('summary strip shows status, today, earned, and last active info', async () => {
-    wrap(<TodayPage />)
-    await screen.findByRole('button', { name: /kid1/i })
-    const summaryStrip = await screen.findByTestId('summary-strip')
-    expect(summaryStrip).toBeInTheDocument()
-    const statusLabels = screen.getAllByText(/^status$/i)
-    expect(statusLabels.length).toBeGreaterThan(0)
-  })
-
-  test('Earned is the server\'s awarded points and a kid without devices reads No devices', async () => {
-    const k = { ...kid(1), online_all: false, earned: 10, chores: [
-      { id: 11, title: 'Dishes', points: 10, state: 'done' as const, due_time: null },
-      { id: 12, title: 'Laundry', points: 20, state: 'todo' as const, due_time: null },
-    ] }
+  test('Earned today is the server\'s awarded points, in the avatar pop-over', async () => {
+    const k = { ...kid(1), earned: 10 }
     apiMock.mockImplementation(async (p) => (p === '/today' ? todayData({ kids: [k] }) : undefined))
     wrap(<TodayPage />)
-    const strip = await screen.findByTestId('summary-strip')
-    expect(strip).toHaveTextContent('Earned10')
-    expect(screen.getByText('No devices')).toBeInTheDocument()
+    await userEvent.click(await screen.findByRole('button', { name: 'Kid1 details' }))
+    expect(await screen.findByText('Earned today: 10')).toBeInTheDocument()
   })
 
   test('needs you lists all kids\' items', async () => {
@@ -304,8 +276,7 @@ describe('TodayPage', () => {
       return undefined
     })
     wrap(<TodayPage />)
-    const needsYouTab = await screen.findByRole('tab', { name: /needs you.*2/i })
-    await userEvent.click(needsYouTab)
+    await userEvent.click(await screen.findByRole('button', { name: /^needs you · 2/i }))
     const dishesItems = screen.getAllByText(/dishes/i)
     expect(dishesItems.length).toBeGreaterThan(0)
     expect(await screen.findByText(/laundry/i)).toBeInTheDocument()

@@ -102,14 +102,20 @@ def test_setup_step_validates_and_is_parent_only(client, db):
     h = _tok(client)
     kid = _headers(db, _make_user(db, "kiddo", UserRole.KID))
     assert client.put("/api/v1/setup/step", json={"step": 1}, headers=h).status_code == 422
-    assert client.put("/api/v1/setup/step", json={"step": 8}, headers=h).status_code == 422
+    assert client.put("/api/v1/setup/step", json={"step": 9}, headers=h).status_code == 422
     assert client.get("/api/v1/setup/step").status_code == 401
     assert client.put("/api/v1/setup/step", json={"step": 4}, headers=kid).status_code == 403
 
 
+def test_extras_step_8_is_saved_and_resumed(client, db):
+    h = _tok(client)
+    assert client.put("/api/v1/setup/step", json={"step": 8}, headers=h).status_code == 200
+    assert client.get("/api/v1/setup/step", headers=h).json() == {"step": 8}
+
+
 def test_stored_step_above_last_reads_as_finished(client, db):
     h = _tok(client)
-    get_family(db).setup_step = 8  # saved by the old 8-step wizard
+    get_family(db).setup_step = 9
     db.commit()
     assert client.get("/api/v1/setup/step", headers=h).json() == {"step": None}
 

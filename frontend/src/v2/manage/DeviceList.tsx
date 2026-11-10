@@ -6,7 +6,8 @@ import { Tooltip } from '@mantine/core'
 import { ListHeader } from '@/v2/parent/ListHeader'
 import { SegmentedControl } from '@/v2/parent/SegmentedControl'
 import type { Device, Group as DeviceGroup, Kid } from '@/v2/types'
-import { deviceSubline, DEVICE_TYPE_ICON, getDeviceType, type DeviceType } from './deviceMeta'
+import { HomeNetworkRow } from './HomeNetworkRow'
+import { deviceSubline, DEVICE_TYPE_ICON, getDeviceType } from './deviceMeta'
 
 interface Props {
   devices: Device[]
@@ -40,20 +41,6 @@ const ownerName = (kids: Kid[], ownerIds: number[]) => {
     .filter((k) => ownerIds.includes(k.id))
     .map((k) => k.full_name || k.username)
     .join(', ')
-}
-
-const getGroupDeviceTypes = (devices: Device[], groupDeviceIds: number[]): DeviceType[] => {
-  const groupDevices = devices.filter((d) => groupDeviceIds.includes(d.id))
-  const types: DeviceType[] = []
-  const seen = new Set<DeviceType>()
-  groupDevices.forEach((d) => {
-    const type = getDeviceType(d.name, d.vendor)
-    if (!seen.has(type)) {
-      types.push(type)
-      seen.add(type)
-    }
-  })
-  return types
 }
 
 /** Devices by owner: new ones first, then each kid, shared, guests, and nobody's. */
@@ -135,7 +122,7 @@ export function DeviceList({
 
   return (
     <div role="region" aria-label="Devices and groups" ref={listRef}>
-      <ListHeader title={tab === 'devices' ? 'Devices' : 'Groups'}>
+      <ListHeader title={tab === 'devices' ? 'Devices' : 'Groups'} list="devices">
         <SegmentedControl
           value={tab}
           onChange={(t) => onTabChange?.(t)}
@@ -149,8 +136,9 @@ export function DeviceList({
       <div className="p-list-items">
         {/* Devices tab */}
         <div role="tabpanel" aria-label="Devices" hidden={tab !== 'devices'}>
+          <HomeNetworkRow />
           {sorted.length === 0 ? (
-            <p className="p-device-empty">No devices yet.</p>
+            <p className="p-device-empty">No devices yet. Open a web page on one to add it.</p>
           ) : (
             <div className="p-device-list">
               {byOwner(sorted, kids).map((g) => (
@@ -169,7 +157,6 @@ export function DeviceList({
               {groups.map((g) => {
                 const memberOwners = devices.filter((d) => g.device_ids.includes(d.id)).flatMap((d) => d.owner_ids)
                 const groupOwners = ownerName(kids, memberOwners)
-                const deviceTypes = getGroupDeviceTypes(devices, g.device_ids)
                 const isSelected = selectedGroup === g.id
                 const firstDevice = devices.find((d) => d.id === g.device_ids[0])
                 const firstType = firstDevice ? getDeviceType(firstDevice.name, firstDevice.vendor) : 'other'
@@ -192,11 +179,6 @@ export function DeviceList({
                       <div className="p-device-meta">
                         {g.device_ids.length} {g.device_ids.length === 1 ? 'device' : 'devices'} · {groupOwners}
                       </div>
-                    </div>
-                    <div className="p-group-stack" aria-hidden="true">
-                      {deviceTypes.slice(0, 3).map((type) => (
-                        <Icon key={type} name={DEVICE_TYPE_ICON[type]} size={16} />
-                      ))}
                     </div>
                   </button>
                 )

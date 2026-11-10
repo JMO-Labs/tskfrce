@@ -7,7 +7,7 @@ import { MantineProvider } from '@mantine/core'
 import { api, KID_TOKEN_KEY } from '@/v2/api'
 import { fridgeTheme } from '@/v2/theme'
 import { KidPage } from '@/v2/kid/KidPage'
-import { KidEditor } from '@/v2/manage/KidEditor'
+import { KidEditor, KidProfileForm } from '@/v2/manage/KidEditor'
 import { authService } from '@/services/authService'
 import { apiPost } from '@/services/api'
 
@@ -47,6 +47,38 @@ test('KidEditor rejects a PIN that is not 4 digits', async () => {
   await userEvent.type(screen.getByLabelText(/PIN/), '12')
   expect(screen.getByText('Use exactly 4 digits.')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Add kid' })).toBeDisabled()
+})
+
+test('KidProfileForm rejects a PIN that is not 4 digits and cannot be saved', async () => {
+  const kid = { id: 3, full_name: 'Zed', username: 'zed', avatar: null, has_pin: false, age_group: 'kid' } as const
+  render(wrap(<KidProfileForm kid={kid} onSaved={() => {}} />))
+  await userEvent.type(screen.getByLabelText(/PIN \(4 digits\)/), '12')
+  expect(screen.getByText('Use exactly 4 digits.')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+})
+
+test('KidProfileForm PIN error is an alert, flags the field, and clears when fixed', async () => {
+  const kid = { id: 3, full_name: 'Zed', username: 'zed', avatar: null, has_pin: false, age_group: 'kid' } as const
+  render(wrap(<KidProfileForm kid={kid} onSaved={() => {}} />))
+  const input = screen.getByLabelText(/PIN \(4 digits\)/)
+  await userEvent.type(input, '12')
+  expect(screen.getByRole('alert')).toHaveTextContent('Use exactly 4 digits.')
+  expect(input).toHaveAttribute('aria-invalid', 'true')
+  await userEvent.type(input, '34')
+  expect(input).toHaveValue('1234')
+  expect(screen.queryByRole('alert')).toBeNull()
+  expect(input).toHaveAttribute('aria-invalid', 'false')
+  expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+})
+
+test('KidProfileForm PIN with letters shows the digits-only alert', async () => {
+  const kid = { id: 3, full_name: 'Zed', username: 'zed', avatar: null, has_pin: false, age_group: 'kid' } as const
+  render(wrap(<KidProfileForm kid={kid} onSaved={() => {}} />))
+  const input = screen.getByLabelText(/PIN \(4 digits\)/)
+  await userEvent.type(input, '12ab')
+  expect(input).toHaveValue('12')
+  expect(screen.getByRole('alert')).toHaveTextContent('A PIN is digits only, exactly 4.')
+  expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
 })
 
 test('kid name survives a reload on a shared device', async () => {

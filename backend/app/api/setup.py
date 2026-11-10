@@ -26,7 +26,7 @@ router = APIRouter(prefix="/api/v1/setup", tags=["setup"])
 DONE = "Setup is already done. Log in instead."
 FINISHED = "Setup is already finished."
 RESUME_AFTER_ACCOUNT = 3  # the account exists from step 2 on; the wizard resumes at step 3
-LAST_STEP = 7
+LAST_STEP = 8
 CLAIM_WRONG = "That code doesn't match this box. Check the sticker and try again."
 
 
@@ -113,7 +113,7 @@ class StepIn(BaseModel):
 def get_step(db: Session = Depends(get_db), _: User = Depends(require_parent)):
     """The wizard step an unfinished setup should resume at (None = nothing to resume)."""
     step = get_family(db).setup_step
-    # old step-8 saves count as finished
+    # anything past the last step counts as finished
     return {"step": step if step is None or step <= LAST_STEP else None}
 
 

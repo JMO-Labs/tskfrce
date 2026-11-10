@@ -7,7 +7,7 @@ status and history; title, points, steps and photo rule are read from its chore.
 from datetime import UTC, date, datetime, timedelta
 
 from fastapi import HTTPException
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
@@ -22,6 +22,7 @@ from app.models.points import Points
 from app.models.user import User, UserRole
 from app.schemas.chore import ChoreOut
 from app.schemas.lock import utc_z
+from app.services import trust
 from app.services.chore_types import notes_for
 from app.services.economy import deadline_utc
 
@@ -58,11 +59,10 @@ def chore_of(run: ChoreRun) -> Chore:
 
 
 def state(run: ChoreRun) -> str:
-    """done (parent-approved) | needs_you (submitted) | skipped | todo."""
-    if (
-        run.status == "done"
-        and run.approved_by is not None
-        and run.approved_by.role == UserRole.PARENT
+    """done (parent- or trust-approved) | needs_you (submitted) | skipped | todo."""
+    if run.status == "done" and (
+        run.approved_via in trust.SELF_APPROVED
+        or (run.approved_by is not None and run.approved_by.role == UserRole.PARENT)
     ):
         return "done"
     if run.status == "skipped":
@@ -85,6 +85,23 @@ def day_runs(db: Session, day: date, skipped: bool = False):
     return db.query(ChoreRun).filter(ChoreRun.day == day, ChoreRun.status.notin_(gone))
 
 
+def day_or_waiting(db: Session, day: date, skipped: bool = False):
+    """Query: day_runs plus waiting runs from any other day, in one go."""
+    gone = ["cancelled"] if skipped else ["cancelled", "skipped"]
+    return db.query(ChoreRun).filter(
+        or_(
+            and_(ChoreRun.day == day, ChoreRun.status.notin_(gone)),
+            ChoreRun.status == "submitted",
+        )
+    )
+
+
+def waiting_runs(db: Session):
+    """Query: every run waiting on a parent, any day, oldest first, with detail loaded."""
+    q = db.query(ChoreRun).filter(ChoreRun.status == "submitted")
+    return with_detail(q, photos=False).order_by(ChoreRun.day, ChoreRun.id)
+
+
 def with_detail(q, kids: bool = True, photos: bool = True):
     """Eager-load everything chore_out/steps_out/state/photo_count read (no per-run queries)."""
     return q.options(
@@ -101,7 +118,7 @@ def with_detail(q, kids: bool = True, photos: bool = True):
 
 
 def counts(db: Session, kid_id: int, day: date) -> tuple[int, int]:
-    """(approved, total) for a kid today; approved needs a parent's approval."""
+    """(approved, total) for a kid today; approved needs a parent or trust approval."""
     runs = (
         day_runs(db, day)
         .options(joinedload(ChoreRun.approved_by))
@@ -271,15 +288,17 @@ def generate(db: Session, day: date) -> list[ChoreRun]:
 
 
 def run_reset(db: Session, day: date) -> int:
-    """Past todo runs become missed, other unfinished ones cancelled; create today's, retire past one-time assignments.
+    """Older to-do runs become missed (waiting ones stay for a parent); create today's, retire past
+    one-time assignments.
     No new runs while the setup wizard is open: nothing pauses a device during setup."""
     fam = get_family(db)
-    for r in db.query(ChoreRun).filter(
-        ChoreRun.day < day,
-        ChoreRun.status.notin_(["done", "cancelled", "skipped", "missed"]),
+    for r in db.query(ChoreRun).filter(ChoreRun.day < day, ChoreRun.status == "todo"):
+        r.status = "missed"  # counts against streaks and boost; cancelled doesn't
+    if fam.setup_step is None and any(
+        not r.spot_check and not chore_of(r).always_check and not trust.was_caught(db, r.id)
+        for r in waiting_runs(db)
     ):
-        # missed counts against streaks and boost; cancelled (a submitted one too, for now) doesn't
-        r.status = "missed" if r.status == "todo" else "cancelled"
+        fam.waiting_reset_days += 1  # days bedtime auto-approve would have cleared something
     created = 0 if fam.setup_step is not None else len(generate(db, day))
     for a in db.query(ChoreAssignment).filter(
         ChoreAssignment.repeat == "once", ChoreAssignment.on_date < day

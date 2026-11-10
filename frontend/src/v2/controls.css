@@ -137,7 +137,7 @@ input:checked + .f-switch.f-switch {
   width: 44px; height: 44px; font-size: 22px; cursor: pointer;
   background: transparent; border: 1.5px solid transparent; border-radius: 4px; color: var(--f-ink);
 }
-.f-pick-cell:hover { background: var(--f-mute); }
+@media (hover: hover) { .f-pick-cell:hover { background: var(--f-mute); } }
 .f-pick-cell[data-on] { border-color: var(--f-ink); background: var(--f-mute); }
 
 /* drawers and modals */
@@ -148,7 +148,7 @@ input:checked + .f-switch.f-switch {
   font-weight: 700; font-size: 18px; color: var(--f-ink);
 }
 .f-sheet-close.f-sheet-close { color: var(--f-sub); }
-.f-sheet-close.f-sheet-close:hover { background: var(--f-mute); }
+@media (hover: hover) { .f-sheet-close.f-sheet-close:hover { background: var(--f-mute); } }
 .f-sheet-body.f-sheet-body { padding: 16px; }
 .f-overlay.f-overlay { background: rgba(0, 0, 0, 0.55); opacity: 1; }
 /* dropdowns, popovers, selects: solid themed card so items never float over the page */
@@ -158,7 +158,8 @@ input:checked + .f-switch.f-switch {
   box-shadow: 3px 3px 0 var(--f-sun); padding: 6px;
 }
 .f-pop-item.f-pop-item { color: var(--f-ink); border-radius: 6px; font-weight: 600; }
-.f-pop-item.f-pop-item:where([data-hovered], [data-combobox-active], :hover) { background: var(--f-mute); }
+.f-pop-item.f-pop-item:where([data-hovered], [data-combobox-active]) { background: var(--f-mute); }
+@media (hover: hover) { .f-pop-item.f-pop-item:hover { background: var(--f-mute); } }
 .f-pop-item.f-pop-item[data-combobox-selected] { background: var(--f-sun); color: var(--f-on-color); }
 .f-pop-div.f-pop-div { border-color: var(--f-line); }
 .f-tip.f-tip { background: var(--f-ink); color: var(--f-card); font-weight: 600; }

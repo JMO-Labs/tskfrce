@@ -16,6 +16,7 @@ html[data-look='parent'] body { font-family: var(--mantine-font-family); }
   --p-card: #ffffff;
   --p-soft: #f3f3f3;
   --p-ink: #292928;
+  --p-focus: var(--p-ink); /* the one keyboard focus ring colour (2px, offset 2px) */
   --p-sub: #5f5f5c;
   --p-line: #e4e4e1;
   --p-lav: #e3d4fb;
@@ -43,6 +44,7 @@ html[data-look='parent'] body { font-family: var(--mantine-font-family); }
   --p-card: #292928;
   --p-soft: #323230;
   --p-ink: #f4f4f2;
+  --p-focus: #b4b4af; /* softer than ink: a white ring is heavy on dark surfaces */
   --p-sub: #a8a8a4;
   --p-line: #3d3d3b;
   --p-lav: #3d3354;
