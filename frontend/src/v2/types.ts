@@ -1,4 +1,5 @@
 import type { CelebrateLevel } from './funTypes'
+import type { KidPenalty, PenaltySize, SizeKey } from './penaltyTypes'
 import type { KidScreen } from './rewardTypes'
 import type { ChoreTrustFields, FamilyExtrasFields, KidTrust, KidTrustFields, RunTrustFields, TodayTryFields } from './trustTypes'
 /** Shapes of the v2 backend responses (backend/app/api/{family,kid,devices,kids,hours,chores,setup}.py). */
@@ -129,6 +130,9 @@ export interface Family extends FamilyExtrasFields {
   hh_weekly_surprise: boolean
   hh_auto_boost: boolean
   streak_freeze: boolean
+  penalties_enabled: boolean
+  penalty_sizes: Record<SizeKey, PenaltySize>
+  makeup_chores: string[]
 }
 
 /** GET /chore-types item */
@@ -358,6 +362,7 @@ export interface KidToday {
   happy_hour?: { ends_at: string; multiplier: number } | null
   /** null = trust mode off */
   trust?: KidTrust | null
+  penalties?: KidPenalty[]
 }
 
 /** GET /kids/{id}/push */
