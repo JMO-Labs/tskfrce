@@ -6,7 +6,7 @@ import random
 from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from app.models.chores import ChoreRun
@@ -23,6 +23,18 @@ def enabled(fam, kid) -> bool:
 
 def saved_count(db: Session, kid_id: int) -> int:
     return db.query(GamePlay).filter(GamePlay.kid_id == kid_id, GamePlay.status == "saved").count()
+
+
+def counts(db: Session, kid_id: int) -> dict:
+    """Saved plays and how many the kid hasn't seen yet (one query)."""
+    saved, fresh = (
+        db.query(
+            func.count(), func.coalesce(func.sum(case((GamePlay.seen.is_(False), 1), else_=0)), 0)
+        )
+        .filter(GamePlay.kid_id == kid_id, GamePlay.status == "saved")
+        .one()
+    )
+    return {"saved": saved, "fresh": int(fresh)}
 
 
 def earn(db: Session, run, fam, rng=random) -> list[int]:

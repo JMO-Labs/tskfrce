@@ -41,6 +41,7 @@ def _out(k: User) -> dict:
         "age_group": k.age_group,
         "celebrate": k.celebrate,  # raw: null = mode default
         "trust_mode": k.trust_mode,
+        "games_on": k.games_on,
         "trust_level": k.trust_level,
         "trust_clean": k.trust_clean,
         "chores_lock": k.chores_lock,
@@ -119,6 +120,8 @@ def patch_kid(
         kid.trust_mode = body.trust_mode
     if body.trust_level is not None and body.trust_level != kid.trust_level:
         trust.set_level(db, kid, body.trust_level, parent.id)
+    if body.games_on is not None:
+        kid.games_on = body.games_on
     if body.clear_pin:
         kid.pin_hash = None
     db.commit()

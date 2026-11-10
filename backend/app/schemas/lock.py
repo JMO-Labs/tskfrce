@@ -69,6 +69,7 @@ class KidPatch(BaseModel):
     trust_mode: bool | None = None
     trust_level: int | None = Field(default=None, ge=0, le=2)
     chores_lock: bool | None = None
+    games_on: bool | None = None
 
     _pin = field_validator("pin")(_pin)
 
@@ -99,6 +100,10 @@ class FamilyPatch(BaseModel):
     bedtime_auto: bool | None = None
     bedtime_auto_at: str | None = None
     recap_weekly: bool | None = None
+    games_on: bool | None = None
+    games_earn: Literal["every", "daily", "random", "custom"] | None = None
+    games_cap_pct: int | None = Field(default=None, ge=0, le=50)
+    games_board: bool | None = None
     accent: (
         Literal[
             "neon", "sun", "tangerine", "bubblegum", "lilac", "sky", "aqua", "mint", "peach", "ice"

@@ -19,6 +19,7 @@ from app.lock.state import Prefetch
 from app.models.chore_extra import ChorePhoto
 from app.models.chores import ChoreRun
 from app.models.family import get_family
+from app.models.game import GamePlay
 from app.models.lock import Device
 from app.models.points import Points
 from app.models.reward import Redemption, Reward
@@ -42,7 +43,7 @@ def _quick_replies(fam) -> list[str]:
     return v if ok else list(DEFAULT_QUICK_REPLIES)
 
 
-def _fam_out(fam) -> dict:
+def _fam_out(fam, db) -> dict:
     return {
         "quick_replies": _quick_replies(fam),
         "name": fam.name,
@@ -67,6 +68,11 @@ def _fam_out(fam) -> dict:
         "bedtime_auto": fam.bedtime_auto,
         "bedtime_auto_at": fam.bedtime_auto_at,
         "recap_weekly": fam.recap_weekly,
+        "games_on": fam.games_on,
+        "games_earn": fam.games_earn,
+        "games_cap_pct": fam.games_cap_pct,
+        "games_board": fam.games_board,
+        "games_rounds": db.query(GamePlay).filter(GamePlay.status == "done").count(),
     }
 
 
@@ -74,7 +80,7 @@ def _fam_out(fam) -> dict:
 def get_family_settings(db: Session = Depends(get_db)):
     fam = get_family(db)
     db.commit()
-    return _fam_out(fam)
+    return _fam_out(fam, db)
 
 
 @router.patch("/family")
@@ -105,7 +111,7 @@ def patch_family(body: FamilyPatch, db: Session = Depends(get_db)):
     if "ntfy_upstream_relay" in body.model_fields_set:
         push.write_conf(fam)
     trigger()
-    return _fam_out(fam)
+    return _fam_out(fam, db)
 
 
 def _needs_you(

@@ -33,6 +33,7 @@ from app.services import (
     happy_hour,
     inbox,
     kid_view,
+    minigames,
     progression,
     trust,
 )
@@ -201,6 +202,10 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
             }
             for r in runs
         ],
+        "games": {
+            "on": minigames.enabled(fam, kid),
+            **minigames.counts(db, kid.id),
+        },
         "points_balance": balances[kid.id],
         "points_held": economy.pending_cost(db, kid.id),
         "progress": prog,

@@ -45,6 +45,7 @@ from app.api.internal import router as internal_router
 from app.api.kid import router as kid_router
 from app.api.kid_enroll import kid_router as kid_enroll_kid_router
 from app.api.kid_enroll import parent_router as kid_enroll_parent_router
+from app.api.kid_games import router as kid_games_router
 from app.api.kid_goals import router as kid_goals_router
 from app.api.kid_push import router as kid_push_router
 from app.api.kid_rewards import router as kid_rewards_router
@@ -171,6 +172,7 @@ fastapi_app.include_router(recap_router)
 fastapi_app.include_router(kid_push_router)
 fastapi_app.include_router(kid_enroll_parent_router)
 fastapi_app.include_router(kid_enroll_kid_router)
+fastapi_app.include_router(kid_games_router)
 fastapi_app.include_router(kid_router)
 fastapi_app.include_router(kid_rewards_router)
 fastapi_app.include_router(kid_goals_router)
