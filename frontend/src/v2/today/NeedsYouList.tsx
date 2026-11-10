@@ -52,9 +52,11 @@ export function NeedsYouList({ items, today }: { items: NeedsItem[]; today?: str
     const via = i.integration ? `via ${i.integration.name}` : ''
     const parts = isChore(i)
       ? [i.attempt && i.attempt > 1 ? `${ordinal(i.attempt)} try` : '', i.subtasks_total ? `${i.subtasks_done}/${i.subtasks_total} steps` : '', i.submitted_at ? `Done ${clock(i.submitted_at)}` : '']
-      : [i.submitted_at ? `Asked ${clock(i.submitted_at)}` : '', i.device_name ? `from ${i.device_name}` : '', `${i.cost} pts`, `has ${i.kid_balance}`]
+      : [i.submitted_at ? `Asked ${clock(i.submitted_at)}` : '', `${i.cost} pts`]
     return [...parts, via].filter(Boolean).join(' · ')
   }
+  /** Request rows: device and balance live in the "…" menu as plain lines, so the sub stays short. */
+  const info = (i: NeedsItem) => [i.device_name ? `From ${i.device_name}` : '', typeof i.kid_balance === 'number' ? `Has ${i.kid_balance} pts` : ''].filter(Boolean)
 
   return (
     <div className="pt-needs-list">
@@ -98,6 +100,7 @@ export function NeedsYouList({ items, today }: { items: NeedsItem[]; today?: str
                 menu={note ? undefined : chore
                   ? [{ label: 'Send back', icon: 'undo', onClick: () => setSending(i.id) }, { label: 'Reply', icon: 'chat', onClick: () => act.reply(i) }]
                   : [{ label: 'Decline', icon: 'close', tone: 'red', onClick: () => act.decline(i) }]}
+                menuInfo={note || chore ? undefined : info(i)}
                 menuLabel={`More for ${i.title}`}
               >
                 {sending === i.id && chore && <SendBackBox item={i} act={act} onClose={() => setSending(null)} />}

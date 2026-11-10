@@ -92,6 +92,7 @@
 .p-pop .p-mi { border-radius: 8px; padding: 8px 10px; font-size: 13px; font-weight: 500; }
 .p-pop .p-mi[data-hovered] { background: var(--p-soft); }
 @media (hover: hover) { .p-pop .p-mi:hover { background: var(--p-soft); } }
+.p-pop .p-mi-info { color: var(--p-sub); font-size: 12.5px; font-weight: 500; padding: 4px 10px; cursor: default; } /* plain info, not an action */
 
 /* Helpers */
 .p-kn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; word-break: keep-all; overflow-wrap: normal; }

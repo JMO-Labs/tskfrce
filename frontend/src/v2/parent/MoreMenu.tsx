@@ -12,7 +12,9 @@ export interface MenuItem { label: string; icon: string; onClick?: () => void; h
 export const MenuPortalContext = createContext<HTMLElement | null>(null)
 
 /** The "…" menu on a header: secondary actions, Delete last in red. */
-export function MoreMenu({ label, items, id, className }: { label: string; items: MenuItem[]; id?: string; className?: string }) {
+export function MoreMenu({ label, items, id, className, info }: { label: string; items: MenuItem[]; id?: string; className?: string
+  /** plain info lines above the items: not actions, not focusable */
+  info?: string[] }) {
   const [giveBack, setGiveBack] = useState(true)
   const target = useContext(MenuPortalContext)
   return (
@@ -23,6 +25,7 @@ export function MoreMenu({ label, items, id, className }: { label: string; items
         </button>
       </Menu.Target>
       <Menu.Dropdown className="p-pop">
+        {info?.map((t) => <Menu.Label key={t} className="p-mi-info">{t}</Menu.Label>)}
         {items.filter((i) => !i.hidden).map((i) => (
           <Fragment key={i.label}>
             {i.divider && <Menu.Divider />}
