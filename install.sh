@@ -158,9 +158,17 @@ main() {
   ensure_docker
   fetch_code
   write_env
-  # Images match the code: release tag v1.2.3 -> image 1.2.3, otherwise latest (main).
+  # Images match the code: release tag v1.2.3 -> image 1.2.3, main -> latest. Only those are
+  # published, so any other ref (a beta branch, a commit) is built here unless TASK4CE_TAG names one.
   # Passed through env (sudo drops exports) so it wins over .env on upgrades.
-  case "$REF" in v[0-9]*) tag="${REF#v}" ;; *) tag="${TASK4CE_TAG:-latest}" ;; esac
+  case "$REF" in
+    v[0-9]*) tag="${REF#v}" ;;
+    main) tag="${TASK4CE_TAG:-latest}" ;;
+    *)
+      tag="${TASK4CE_TAG:-}"
+      [ -n "$tag" ] || { tag="$(printf '%s' "$REF" | tr -c 'A-Za-z0-9_.-' '-')" && TASK4CE_BUILD=1; }
+      ;;
+  esac
   dc() { (cd "$DIR" && $SUDO env TASK4CE_TAG="$tag" docker compose -f docker-compose.prod.yml "$@"); }
   # Remember the tag: a reboot or a plain `docker compose up` must keep these images, not fall back to :latest.
   if grep -q '^TASK4CE_TAG=' "$DIR/.env"; then
