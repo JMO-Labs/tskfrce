@@ -70,9 +70,10 @@ def test_screen_slice_rebanks(db, parent, kid):
 
 
 def _block_pen(db, parent, kid, device=None, n=2):
+    base = datetime.utcnow()  # approvals stamp the real clock
     p = Penalty(
         kid_id=kid.id, kind="block", amount=1440, amount_taken=1440, earn_back="half",
-        back_total=720, makeup_count=n, created_at=NAIVE, ends_at=NAIVE + timedelta(days=1),
+        back_total=720, makeup_count=n, created_at=base, ends_at=base + timedelta(days=1),
         all_devices=device is None,
     )  # fmt: skip
     db.add(p)
@@ -86,8 +87,12 @@ def _block_pen(db, parent, kid, device=None, n=2):
     return p
 
 
-def _dev(db, kid):
-    d = Device(mac="aa:bb:cc:dd:ee:01", name="D", status="assigned")
+def _dev2(db, kid):
+    return _dev(db, kid, 2)
+
+
+def _dev(db, kid, n=1):
+    d = Device(mac=f"aa:bb:cc:dd:ee:{n:02x}", name=f"D{n}", status="assigned")
     d.owners = [kid]
     db.add(d)
     db.commit()
@@ -103,7 +108,8 @@ def test_block_slice_pulls_end_earlier(db, parent, kid):
     assert p.ends_at == end - timedelta(minutes=360)
     assert db.query(Override).filter_by(penalty_id=p.id).one().expires_at == p.ends_at
     _approve(db, r2)
-    assert p.status == "ended" and db.query(Override).count() == 0
+    assert p.status == "active" and p.ends_at == end - timedelta(minutes=720)
+    assert db.query(Override).filter_by(penalty_id=p.id).one().expires_at == p.ends_at
 
 
 def test_block_whole_kid_moves_ends_at(db, parent, kid):
@@ -111,6 +117,8 @@ def test_block_whole_kid_moves_ends_at(db, parent, kid):
     end = p.ends_at
     _approve(db, _runs(db, p)[0])
     assert p.ends_at == end - timedelta(minutes=360) and p.status == "active"
+    _approve(db, _runs(db, p)[1])
+    assert p.ends_at == end - timedelta(minutes=720) and p.status == "active"
 
 
 def test_block_all_back_ends_now(db, parent, kid):
@@ -203,3 +211,55 @@ def test_tick_expires_penalties(db, parent, kid):
     db.commit()
     state.tick(db, NOW)
     assert p.status == "ended" and {r.status for r in _runs(db, p)} == {"cancelled"}
+
+
+def _give_block(db, parent, kid, earn_back="half", **kw):
+    [p] = penalties.give(
+        db,
+        [kid.id],
+        Give("block", 1440, earn_back, **kw),
+        parent,
+        datetime.utcnow().replace(tzinfo=UTC),
+    )
+    return p
+
+
+def test_block_earnback_through_give(db, parent, kid):
+    _dev(db, kid)
+    p = _give_block(db, parent, kid)
+    end, runs = p.ends_at, _runs(db, p)
+    assert len(runs) == 2 and p.back_total == 720
+    _approve(db, runs[0])
+    _approve(db, runs[1])
+    assert p.status == "active" and p.ends_at == end - timedelta(minutes=720)
+
+
+def test_block_earnback_all_ends_through_give(db, parent, kid):
+    d = _dev(db, kid)
+    p = _give_block(db, parent, kid, "all", device_id=d.id)
+    for r in _runs(db, p):
+        _approve(db, r)
+    assert p.status == "ended" and db.query(Override).count() == 0
+
+
+def test_cancel_block_after_one_slice(db, parent, kid):
+    d = _dev(db, kid)
+    p = _give_block(db, parent, kid, device_id=d.id)
+    _approve(db, _runs(db, p)[0])
+    eb.cancel(db, p, datetime.now(UTC))
+    assert p.status == "cancelled" and db.query(Override).count() == 0
+    assert sorted(r.status for r in _runs(db, p)) == ["cancelled", "done"]
+
+
+def test_forgive_block_unblocks(db, parent, kid):
+    d = _dev(db, kid)
+    now = datetime.now(UTC)
+    p = _give_block(db, parent, kid)
+    assert d.mac in state.desired_blocked(db, now)
+    eb.forgive(db, p, now)
+    assert p.status == "forgiven" and {r.status for r in _runs(db, p)} == {"cancelled"}
+    assert d.mac not in state.desired_blocked(db, now)
+    dv = _dev2(db, kid)
+    q = _give_block(db, parent, kid, device_id=dv.id)
+    eb.forgive(db, q, now)
+    assert db.query(Override).count() == 0

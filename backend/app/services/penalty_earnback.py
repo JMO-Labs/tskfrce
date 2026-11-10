@@ -63,7 +63,11 @@ def on_approved(db: Session, run: ChoreRun) -> int:
             p.ends_at -= timedelta(minutes=slice_)
             _sync_overrides(db, p)
         p.amount_returned += slice_
-        if done + 1 >= n or (p.kind == "block" and p.ends_at and p.ends_at <= now):
+        if p.kind == "block":
+            over = bool(p.ends_at and p.ends_at <= now)
+        else:
+            over = done + 1 >= n
+        if over:
             _end(db, p, "ended", now)
         db.flush()
         return slice_
@@ -94,7 +98,6 @@ def cancel(db: Session, p: Penalty, now: datetime) -> None:
     if p.status in ("cancelled", "forgiven"):
         return
     with economy.SPEND_LOCK:
-        db.commit()
         if p.kind == "points":
             db.query(Points).filter(Points.penalty_id == p.id).delete()
         elif p.kind == "screen" and p.amount_taken > p.amount_returned:
