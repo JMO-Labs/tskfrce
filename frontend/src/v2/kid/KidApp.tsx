@@ -118,7 +118,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
       requestAnimationFrame(() => document.querySelector<HTMLElement>('[data-customize]')?.focus()) // Me re-mounts first
     }} />
   else if (tab === 'games')
-    body = <GamesPage mode={mode} celebrate={celebrate} preview={preview} autoStart={auto} name={name} kidId={kidId} />
+    body = <GamesPage mode={mode} celebrate={celebrate} preview={preview} autoStart={auto} name={name} kidId={kidId} tz={d.timezone} />
   else if (tab === 'rewards')
     body = (
       <RewardsSection onExpired={onExit} mode={mode} />

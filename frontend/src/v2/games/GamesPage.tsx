@@ -15,7 +15,7 @@ type Phase = 'shelf' | 'wheel' | 'play' | 'results'
 const msg = (e: unknown) => (e instanceof ApiError ? e.detail : 'Something went wrong. Try again.')
 
 /** Games tab: shelf -> wheel -> play -> results. The server owns every number. */
-export function GamesPage({ mode, celebrate, preview, autoStart = false, name = 'your kid', kidId = null }: { mode: AgeGroup; celebrate: CelebrateLevel; preview: boolean; autoStart?: boolean; name?: string; kidId?: number | null }) {
+export function GamesPage({ mode, celebrate, preview, autoStart = false, name = 'your kid', kidId = null, tz }: { mode: AgeGroup; celebrate: CelebrateLevel; preview: boolean; autoStart?: boolean; name?: string; kidId?: number | null; /** family time zone for the wake time */ tz?: string }) {
   const shelf = useGamesShelf()
   const start = useStartGame()
   const finish = useFinishGame()
@@ -60,5 +60,5 @@ export function GamesPage({ mode, celebrate, preview, autoStart = false, name = 
   if (phase === 'results' && play && result) return <Results r={result} game={play.game} celebrate={celebrate} seed={play.play_id} onDone={done} />
   if (phase === 'results') return <p className="k-hint" role="status">Counting your stars…</p>
   if (!d) return <p className="k-hint" role="status">{shelf.isError ? 'Games will be back in a moment.' : 'Loading games…'}</p>
-  return <Shelf d={d} name={name} preview={preview} hint={hint} busy={start.isPending} celebrate={celebrate} seed={kidId ?? 0} onPlay={begin} />
+  return <Shelf d={d} name={name} preview={preview} hint={hint} busy={start.isPending} celebrate={celebrate} seed={kidId ?? 0} tz={tz} onPlay={begin} />
 }

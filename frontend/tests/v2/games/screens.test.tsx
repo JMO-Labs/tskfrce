@@ -93,6 +93,13 @@ describe('Shelf', () => {
     expect(screen.queryByRole('button', { name: 'Play' })).toBeNull()
   })
 
+  test('wake time is shown in the family time zone', async () => {
+    welcomed()
+    routes['GET /kid/games'] = shelf({ asleep_until: '2026-11-11T12:00:00Z' })
+    page({ tz: 'America/New_York' })
+    expect(await screen.findByText(/They wake up at 7:00 AM/)).toBeInTheDocument()
+  })
+
   test('preview disables Play with a hint', async () => {
     welcomed()
     page({ preview: true })

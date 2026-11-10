@@ -9,7 +9,7 @@ const stars = (n: number, rounds: number) => (n > 0 ? '⭐'.repeat(n) : rounds >
 const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
 
 /** Games shelf (mockup 6): saved plays, game tiles, weekly board; or the asleep screen. */
-export function Shelf({ d, name, preview, hint, busy, celebrate, seed, onPlay }: { d: GamesShelf; name: string; preview: boolean; hint: string | null; busy: boolean; celebrate: CelebrateLevel; seed: number; onPlay: () => void }) {
+export function Shelf({ d, name, preview, hint, busy, celebrate, seed, tz, onPlay }: { d: GamesShelf; tz?: string; name: string; preview: boolean; hint: string | null; busy: boolean; celebrate: CelebrateLevel; seed: number; onPlay: () => void }) {
   const mode = decor(celebrate)
   if (d.asleep_until)
     return (
@@ -19,7 +19,7 @@ export function Shelf({ d, name, preview, hint, busy, celebrate, seed, onPlay }:
           <img className={`${s.sleepm} ${s.bob}`} src={mascotSrc(seed)} alt="" />
           <b>Games are asleep</b>
           <small>
-            They wake up at {clockText(d.asleep_until)}.<br />
+            They wake up at {clockText(d.asleep_until, tz)}.<br />
             Your {plural(d.saved, 'saved game')} will be waiting.
           </small>
         </div>
