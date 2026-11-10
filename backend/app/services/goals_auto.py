@@ -81,9 +81,8 @@ def _check_limit(db: Session, fam: FamilySettings, kid: User) -> None:
 
 
 def can_add(db: Session, fam: FamilySettings, kid: User) -> bool:
-    return bool(
-        fam.goals_on and fam.goal_suggest and goals.own_count(db, kid.id) < goals.max_for(fam, kid)
-    )
+    """Room for another own goal (a typed idea or an allowed built-in)."""
+    return bool(fam.goals_on and goals.own_count(db, kid.id) < goals.max_for(fam, kid))
 
 
 def suggest(db: Session, kid: User, name: str) -> Goal:

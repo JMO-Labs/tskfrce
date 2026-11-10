@@ -56,6 +56,23 @@ describe('KidGoals', () => {
     expect(screen.queryByText('+ Suggest a goal')).toBeNull()
   })
 
+  test('built-ins stay pickable with suggestions off', async () => {
+    serve(data({ suggest: false, builtins: [{ kind: 'screen', name: '60 min extra screen time', target: 200, minutes: 60 }] }))
+    wrap(<KidGoals onExpired={() => {}} />)
+    await userEvent.click(await screen.findByRole('button', { name: '+ Pick a goal' }))
+    expect(screen.queryByLabelText('What do you want to save for?')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: '60 min extra screen time · 200 points' }))
+    expect(apiMock.mock.calls.some((x) => x[0] === '/kid/goals/start')).toBe(true)
+  })
+
+  test('auto-save can pick a family goal and the emoji shows', async () => {
+    serve(data({ auto: true, goals: [goal({ id: 9, family: true, kid_id: null, emoji: '🏰', name: 'Disney trip' })] }))
+    wrap(<KidGoals onExpired={() => {}} />)
+    expect(await screen.findByText('🏰', { exact: false })).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Auto-save here' }))
+    expect(apiMock.mock.calls.some((x) => x[0] === '/kid/goals/9/auto')).toBe(true)
+  })
+
   test('suggest button shown when on', async () => {
     serve(data())
     wrap(<KidGoals onExpired={() => {}} />)

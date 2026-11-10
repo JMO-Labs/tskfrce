@@ -59,10 +59,13 @@ export function GoalSheet({
 export function SuggestSheet({
   builtins,
   busy,
+  suggest = true,
   onSuggest,
   onStart,
 }: {
   builtins: GoalBuiltin[]
+  /** a parent allows typed ideas; built-ins show either way */
+  suggest?: boolean
   busy: boolean
   onSuggest: (name: string) => void
   onStart: (kind: GoalBuiltin['kind']) => void
@@ -70,13 +73,17 @@ export function SuggestSheet({
   const [name, setName] = useState('')
   return (
     <div className="kg-sheet">
-      <label className="kg-sub" htmlFor="kg-name">
-        What do you want to save for?
-      </label>
-      <input id="kg-name" className="kg-input" maxLength={60} value={name} onChange={(e) => setName(e.currentTarget.value)} />
-      <button type="button" className="kg-btn" disabled={busy || !name.trim()} onClick={() => onSuggest(name.trim())}>
-        Suggest
-      </button>
+      {suggest && (
+        <>
+          <label className="kg-sub" htmlFor="kg-name">
+            What do you want to save for?
+          </label>
+          <input id="kg-name" className="kg-input" maxLength={60} value={name} onChange={(e) => setName(e.currentTarget.value)} />
+          <button type="button" className="kg-btn" disabled={busy || !name.trim()} onClick={() => onSuggest(name.trim())}>
+            Suggest
+          </button>
+        </>
+      )}
       {builtins.length > 0 && (
         <div className="kg-chips">
           {builtins.map((b) => (

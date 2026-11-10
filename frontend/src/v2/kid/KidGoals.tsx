@@ -32,6 +32,7 @@ export function KidGoals({ onExpired, mode = 'kid' }: { onExpired: () => void; m
           <div key={g.id} className="kg-goal" data-kind={g.family ? 'fam' : g.status === 'full' ? 'full' : 'own'}>
             <div className="kg-t">
               <b className="k-disp">
+                {g.emoji && <span aria-hidden>{`${g.emoji} `}</span>}
                 {g.name}
                 {g.family && <span className="kg-chip">Family</span>}
               </b>
@@ -43,7 +44,7 @@ export function KidGoals({ onExpired, mode = 'kid' }: { onExpired: () => void; m
             <div className="kg-acts">
               <span>
                 {note(g)}
-                {g.status === 'active' && d.auto && g.id !== d.auto_goal_id && !g.family && (
+                {g.status === 'active' && d.auto && g.id !== d.auto_goal_id && (
                   <button type="button" className="kg-link" onClick={() => run(g.id, 'auto')}>
                     Auto-save here
                   </button>
@@ -70,14 +71,15 @@ export function KidGoals({ onExpired, mode = 'kid' }: { onExpired: () => void; m
           </div>
         )
       })}
-      {d.suggest && d.can_add && (
+      {d.can_add && (d.suggest || d.builtins.length > 0) && (
         <>
           <button type="button" className="kg-suggest" onClick={() => setOpen(open === 'suggest' ? null : 'suggest')}>
-            + Suggest a goal
+            {d.suggest ? '+ Suggest a goal' : '+ Pick a goal'}
           </button>
           {open === 'suggest' && (
             <SuggestSheet
               builtins={d.builtins}
+              suggest={d.suggest}
               busy={act.isPending}
               onSuggest={(name) => act.mutate({ action: 'suggest', body: { name } }, { onSuccess: () => setOpen(null) })}
               onStart={(kind) => act.mutate({ action: 'start', body: { kind } }, { onSuccess: () => setOpen(null) })}
@@ -90,7 +92,7 @@ export function KidGoals({ onExpired, mode = 'kid' }: { onExpired: () => void; m
           <h3 className="kg-sub2 k-disp">Done</h3>
           <ul className="kg-done">
             {d.done.map((g) => (
-              <li key={g.id}>{`✓ ${g.name}`}</li>
+              <li key={g.id}>{`✓ ${g.emoji ? `${g.emoji} ` : ''}${g.name}`}</li>
             ))}
           </ul>
         </>

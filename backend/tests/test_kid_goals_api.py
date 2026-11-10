@@ -226,3 +226,8 @@ def test_preview_get_ok_post_403(client, db, parent, kid, parent_headers):
     h = {**parent_headers, "X-View-As": str(kid.id)}
     assert client.get(U, headers=h).status_code == 200
     assert client.post(f"{U}/suggest", json={"name": "x"}, headers=h).status_code == 403
+
+
+def test_can_add_ignores_suggest_setting(client, db, kid, kid_headers):
+    _fam(db, goal_suggest=False)
+    assert client.get(U, headers=kid_headers).json()["can_add"] is True
