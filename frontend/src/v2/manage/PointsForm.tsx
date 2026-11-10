@@ -38,7 +38,7 @@ export function PointsForm({ kid, kind, onClose }: { kid: Kid; kind: 'bonus' | '
     if (give)
       bonusOnce(vars, {
         onSuccess: () => {
-          toastOk(`Sent! ${name} got +${n}`)
+          toastOk(`${name} got +${n}`)
           done()
         },
       })

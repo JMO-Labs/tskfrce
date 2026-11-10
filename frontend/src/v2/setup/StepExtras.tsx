@@ -45,7 +45,7 @@ export function StepExtras({ kids, trust, bedtime, onTrust, onBedtime }: Props) 
         <div className={styles.kidrow} style={{ padding: 0 }}>
           <div className={styles.t2}>
             <h3 style={{ margin: '0 0 4px' }}><Icon name="bedtime" size={18} />Bedtime auto-approve</h3>
-            <span style={{ fontWeight: 400, fontSize: 14, color: 'var(--p-sub)' }}>At 9:00 PM, chores still waiting approve themselves.</span>
+            <span style={{ fontWeight: 400, fontSize: 14, color: 'var(--p-sub)' }}>At 9:00 PM, chores still waiting for your OK approve themselves.</span>
           </div>
           <Sw on={bedtime} label="Bedtime auto-approve" onClick={() => onBedtime(!bedtime)} />
         </div>

@@ -43,19 +43,29 @@ test('rewards, screen time, badges and chat', async ({ page }) => {
     // 1. screen time: price 20, max 30 min/day, approve automatically
     await page.goto('/kids?section=rewards&item=screen')
     await expect(page.getByRole('heading', { name: 'Screen time' })).toBeVisible()
-    const how = page.getByRole('region', { name: 'How it works' })
-    if (!(await how.getByRole('switch', { name: 'Kids can buy extra minutes' }).isChecked())) {
-      await how.getByRole('switch', { name: 'Kids can buy extra minutes' }).click()
-    }
-    await how.getByLabel('Price (points per 15 min)').fill('20')
-    await how.getByLabel('Max per day').selectOption('30')
-    const auto = how.getByRole('switch', { name: 'Approve automatically' })
+    // every rule is a calm row that saves as it changes; open one at a time
+    const enable = page.getByRole('switch', { name: /kids can buy extra minutes/ })
+    if (!(await enable.isChecked())) await enable.click()
+    const head = (id: string) => page.locator(`[data-focus-head="${id}"]`)
+    await head('price').click()
+    await page.getByLabel('Points per 15 min').fill('20')
+    await page.getByLabel('Points per 15 min').press('Enter')
+    await expect(head('price')).toContainText('20 pts')
+    await head('max').click()
+    await page.getByRole('combobox', { name: 'Max per day' }).selectOption('30')
+    await expect(head('max')).toContainText('30 min')
+    await head('auto').click()
+    const auto = page.getByRole('switch', { name: 'Approve buys without asking' })
     if (!(await auto.isChecked())) await auto.click()
-    const hours = how.getByRole('switch', { name: 'Only during allowed hours' })
+    await expect(head('auto')).toContainText('On')
+    await head('hrs').click()
+    const hours = page.getByRole('switch', { name: 'Only during allowed hours' })
     if (await hours.isChecked()) await hours.click() // the lab clock is not ours: don't depend on allowed hours
-    await how.getByRole('button', { name: 'Save' }).click()
-    await expect(page.getByText('Saved').first()).toBeVisible()
-    await expect(page.locator('.p-header-chip', { hasText: 'Max 30 min/day' })).toBeVisible()
+    await expect(head('hrs')).toContainText('Off')
+    await expect.poll(async () => {
+      const st = await (await api.get('/api/proxy/screen-time')).json()
+      return [st.price, st.max_minutes_per_day, st.auto_approve, st.only_in_allowed_hours]
+    }).toEqual([20, 30, true, false])
 
     // 2. catalogue: a reward that needs no approval
     await page.goto('/kids?section=rewards&item=catalogue&pick=new')
@@ -93,10 +103,11 @@ test('rewards, screen time, badges and chat', async ({ page }) => {
     // 5. badges: award a custom badge with a note, see it under Recent
     badgeId = (await (await api.post('/api/proxy/custom-badges', { data: { name: badgeName, icon: 'military_tech' } })).json()).id
     await page.goto(`/kids?section=badges&item=custom&pick=${badgeId}`)
-    const award = page.getByRole('region', { name: 'Award it' })
+    await page.getByRole('button', { name: 'Award', exact: true }).click() // the award form opens on demand
+    const award = page.getByRole('region', { name: `Award ${badgeName}` })
     await award.getByRole('button', { name: `${first} Kid`, exact: true }).click()
     await award.getByLabel(`Note to ${first} Kid (optional)`).fill(note)
-    await award.getByRole('button', { name: `Award to ${first} Kid` }).click()
+    await award.getByRole('button', { name: `Award ${badgeName}` }).click()
     await page.goto('/kids?section=badges&item=recent')
     await expect(page.getByText(`“${note}”`)).toBeVisible()
 

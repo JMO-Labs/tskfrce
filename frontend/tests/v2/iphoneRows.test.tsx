@@ -6,8 +6,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MantineProvider } from '@mantine/core'
 import { api } from '@/v2/api'
 import { fridgeTheme } from '@/v2/theme'
-import { KidPushPane } from '@/v2/manage/KidPushPane'
-import { KidEditor } from '@/v2/manage/KidEditor'
+import { IphoneBody, IphoneHelp, iphoneSummary } from '@/v2/manage/IphoneRows'
+import { KidProfileForm } from '@/v2/manage/KidEditor'
 import type { Kid } from '@/v2/types'
 
 jest.mock('@/v2/api', () => ({ ...(jest.requireActual('@/v2/api') as object), api: jest.fn() }))
@@ -22,6 +22,14 @@ const wrap = (ui: unknown) => (
 const kid: Kid = { id: 7, full_name: 'Mia', username: 'mia', avatar: null, has_pin: false, age_group: 'kid' }
 const fam = (relay: boolean) => ({ name: 'S', ntfy_upstream_relay: relay })
 const push = (enabled: boolean, upstream = true) => ({ enabled, upstream, server: 'http://box:2586', topic: 'kid-abc', link: 'x', qr_svg: '<svg xmlns="http://www.w3.org/2000/svg"/>' })
+
+// the row body and the one (i) pop-over's content, side by side
+const IphoneRows = () => (
+  <>
+    <IphoneBody />
+    <IphoneHelp />
+  </>
+)
 
 const RELAY = "Kid phones signed in with a code get a short generic line, like 'You have a new chore', through a public relay (ntfy.sh by default). Names, chores and messages stay in your home."
 const serve = (enabled: boolean, relay = false, upstream = true) =>
@@ -38,10 +46,11 @@ beforeEach(() => {
   window.matchMedia ??= ((() => ({ matches: false, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} })) as never)
 })
 
-describe('KidPushPane', () => {
+describe('IphoneRows', () => {
   test('shows QR, server and topic', async () => {
     serve(true)
-    render(wrap(<KidPushPane />))
+    render(wrap(<IphoneRows />))
+    await userEvent.click(await screen.findByRole('button', { name: 'QR' }))
     const img = await screen.findByAltText('Kid phone code for Mia')
     expect(img.getAttribute('src')).toContain('data:image/svg+xml;utf8,')
     expect(screen.getByText('http://box:2586')).toBeInTheDocument()
@@ -50,23 +59,24 @@ describe('KidPushPane', () => {
 
   test('New code confirm posts the reset', async () => {
     serve(true)
-    render(wrap(<KidPushPane />))
+    render(wrap(<IphoneRows />))
+    await userEvent.click(await screen.findByRole('button', { name: 'QR' }))
     await userEvent.click(await screen.findByRole('button', { name: /New code/ }))
     expect(await screen.findByText(/stops getting alerts until you scan the new code/)).toBeInTheDocument()
-    await userEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'New code' }))
+    await userEvent.click(within(await screen.findByRole('dialog', { name: 'Make a new code?' })).getByRole('button', { name: 'New code' }))
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/kids/7/push/reset', { method: 'POST' }))
   })
 
   test('both off: not set up, no relay line', async () => {
     serve(false, false, false)
-    render(wrap(<KidPushPane />))
+    render(wrap(<IphoneRows />))
     expect(await screen.findByText(/Phone alerts aren't set up on this box\. See the guide:/)).toBeInTheDocument()
     const link = screen.getByRole('link', { name: "Alerts on a kid's phone" })
     expect(link).toHaveAttribute('href', 'https://github.com/JMO-Labs/tskfrce/blob/main/docs/guide/04-everyday-use.md#alerts-on-a-kids-phone')
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('rel', 'noreferrer')
     expect(document.body.textContent).not.toMatch(/BOX_URL|NTFY_URL|NTFY_UPSTREAM/)
-    expect(screen.queryByText(/Instant alerts on iPhones/)).toBeNull()
+    expect(screen.queryByText(/Instant alerts/)).toBeNull()
     expect(screen.queryByText(/unless you turn on iPhone alerts below/)).toBeNull()
     expect(screen.queryByAltText(/Kid phone code/)).toBeNull()
     expect(screen.queryByText(/ntfy\.sh by default/)).toBeNull()
@@ -74,37 +84,49 @@ describe('KidPushPane', () => {
 
   test('LAN off, relay on: relay disclosed, not "not set up"', async () => {
     serve(false, false, true)
-    render(wrap(<KidPushPane />))
+    render(wrap(<IphoneRows />))
     expect(await screen.findByText(RELAY)).toBeInTheDocument()
     expect(screen.queryByText(/aren't set up/)).toBeNull()
-    expect(screen.queryByText(/Instant alerts on iPhones/)).toBeNull()
+    expect(screen.queryByText(/Instant alerts/)).toBeNull()
     expect(screen.queryByAltText(/Kid phone code/)).toBeNull()
   })
 
   test('LAN on, relay off: no public relay claim', async () => {
     serve(true, false, false)
-    render(wrap(<KidPushPane />))
-    await screen.findByAltText('Kid phone code for Mia')
+    render(wrap(<IphoneRows />))
+    await screen.findByRole('button', { name: 'QR' })
     expect(screen.getByText('Alert text stays in your home.')).toBeInTheDocument()
     expect(screen.queryByText(/ntfy\.sh by default/)).toBeNull()
   })
 
-  test('both on: honest privacy line, QR inside a closed fold', async () => {
+  test('both on: honest privacy line, QR codes only behind the QR button', async () => {
     serve(true)
-    render(wrap(<KidPushPane />))
-    await screen.findByAltText('Kid phone code for Mia')
+    render(wrap(<IphoneRows />))
+    await userEvent.click(await screen.findByRole('button', { name: 'QR' }))
+    expect(await screen.findByAltText('Kid phone code for Mia')).toBeInTheDocument()
     expect(screen.getByText(RELAY)).toBeInTheDocument()
     expect(screen.queryByText(/Nothing leaves your home/)).toBeNull()
-    const fold = screen.getByText('Use the ntfy app instead').closest('details')!
-    expect(fold).not.toHaveAttribute('open')
-    expect(fold).toContainElement(screen.getByAltText('Kid phone code for Mia'))
+    expect(document.querySelector('details')).toBeNull()
     expect(document.body.textContent).not.toMatch(/BOX_URL|NTFY_URL|NTFY_UPSTREAM/)
+  })
+
+  test('QR codes are not on the page until asked for', async () => {
+    serve(true)
+    render(wrap(<IphoneRows />))
+    await screen.findByRole('button', { name: 'QR' })
+    expect(screen.queryByAltText(/Kid phone code/)).toBeNull()
+  })
+
+  test('not set up: the body says what to do, never empty', async () => {
+    serve(false, false, true)
+    render(wrap(<IphoneRows />))
+    expect(await screen.findByText(/Not set up on this box\. Tap the \(i\) for the setup guide\./)).toBeInTheDocument()
   })
 
   test('relay switch reflects the setting and patches it', async () => {
     serve(true, false)
-    render(wrap(<KidPushPane />))
-    const sw = await screen.findByLabelText('Instant alerts on iPhones (relays through ntfy.sh)')
+    render(wrap(<IphoneRows />))
+    const sw = await screen.findByLabelText('Instant alerts (relay through ntfy.sh)')
     expect(sw).not.toBeChecked()
     expect(screen.getByText(/content-free poll request; the alert text stays in your home/)).toBeInTheDocument()
     await userEvent.click(sw)
@@ -112,16 +134,24 @@ describe('KidPushPane', () => {
   })
 })
 
-describe('KidEditor age group', () => {
-  test('sends age_group only when changed', async () => {
+describe('iphoneSummary', () => {
+  test('says whether iPhones get instant alerts', () => {
+    expect(iphoneSummary(true)).toBe('Instant (relay)')
+    expect(iphoneSummary(false)).toBe('Late (no relay)')
+    expect(iphoneSummary(undefined)).toBe('Late (no relay)')
+    expect(iphoneSummary(true, false)).toBe('Not set up')
+    expect(iphoneSummary(false, true)).toBe('Late (no relay)')
+  })
+})
+
+describe('KidProfileForm age group', () => {
+  test('nothing to save until something changes; then only age_group is sent', async () => {
     apiMock.mockResolvedValue({})
-    render(wrap(<KidEditor kid={kid} />))
-    expect(screen.getByRole('button', { name: /Kid \(9–12\)/ })).toHaveAttribute('aria-pressed', 'true')
-    await userEvent.click(screen.getByRole('button', { name: 'Save kid' }))
-    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/kids/7', { method: 'PATCH', body: {} }))
-    apiMock.mockClear()
-    await userEvent.click(screen.getByRole('button', { name: /Teen \(13\+\)/ }))
-    await userEvent.click(screen.getByRole('button', { name: 'Save kid' }))
+    render(wrap(<KidProfileForm kid={kid} onSaved={() => {}} />))
+    expect(screen.getByRole('combobox', { name: 'Age group' })).toHaveValue('kid')
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Age group' }), 'teen')
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/kids/7', { method: 'PATCH', body: { age_group: 'teen' } }))
   })
 })

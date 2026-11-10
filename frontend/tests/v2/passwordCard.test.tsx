@@ -35,7 +35,7 @@ describe('PasswordCard', () => {
     apiMock.mockReset().mockResolvedValue({})
     await fill('old-pass-1', 'new-pass-123', 'new-pass-123')
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/users/password', { method: 'POST', body: { current_password: 'old-pass-1', new_password: 'new-pass-123' } }))
-    await waitFor(() => expect(mockShow).toHaveBeenCalledWith(expect.objectContaining({ message: 'Password changed.' })))
+    await waitFor(() => expect(mockShow).toHaveBeenCalledWith(expect.objectContaining({ message: 'Password changed' })))
   })
   test('mismatch never calls the server', async () => {
     apiMock.mockReset()

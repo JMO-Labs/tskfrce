@@ -40,18 +40,23 @@ test('chore model: type, chained steps, kid note, skip, deduction', async ({ pag
     await page.getByLabel('Add a note').press('Enter')
     await page.getByRole('button', { name: 'Create type' }).click()
     await expect(page.getByRole('button', { name: typeName, exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await page.locator('[data-focus-head="steps"]').click()
     for (const s of ['Sort the shelves', 'Sweep the floor']) {
       await page.getByLabel('Add a step').fill(s)
       await page.getByLabel('Add a step').press('Enter')
     }
-    await page.getByRole('button', { name: 'Any order' }).click()
+    await page.getByRole('button', { name: 'Any order', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Must be done after the step above' })).toBeVisible()
     await page.getByRole('button', { name: 'Save chore' }).click()
+    await expect(page).toHaveURL(/item=\d+/) // the editor swaps from the empty form to the saved chore
 
-    const who = page.getByRole('region', { name: 'Who and when' })
+    await page.locator('[data-focus-head="who"]').click() // saving a new chore leaves the editor calm
+    const who = page.getByRole('region', { name: 'Who & when' })
     await who.getByRole('button', { name: kidName }).click()
     await page.getByRole('button', { name: 'Save chore' }).click() // one Save sends the chore and Who & when
     await expect(page.getByRole('button', { name: new RegExp(`^${choreName}`) }).first()).toContainText('2 steps')
+    // the assignment is saved after the chore: wait for the kid's avatar on the card before reading today's runs
+    await expect(page.getByRole('button', { name: new RegExp(`^${choreName}`) }).first().getByRole('img', { name: kidName })).toBeVisible()
 
     const types: { id: number; name: string }[] = await (await api.get('/api/proxy/chore-types')).json()
     typeId = types.find((t) => t.name === typeName)?.id
@@ -94,7 +99,7 @@ test('chore model: type, chained steps, kid note, skip, deduction', async ({ pag
       await expect(kp.getByText('Note sent: Too cold')).toBeVisible()
       // 3. parent Today: Note chip and Skip today
       await page.goto('/')
-      await page.getByRole('button', { name: new RegExp(`^M ${kidName}`) }).click()
+      await page.getByRole('button', { name: new RegExp(`^${kidName}(?! details)`), expanded: false }).click() // the kid's row opens their day
       const row = page.getByTestId('chore-row').filter({ hasText: choreName })
       await expect(row.getByText('Note').first()).toBeVisible()
       await row.getByRole('button', { name: 'Skip today (no penalty)' }).click()
@@ -120,7 +125,7 @@ test('chore model: type, chained steps, kid note, skip, deduction', async ({ pag
         data: { kid_ids: [kid.id], mode: 'each', repeat: { type: 'daily' } },
       })
       await page.goto('/')
-      await page.getByRole('button', { name: new RegExp(`^M ${kidName}`) }).click()
+      await page.getByRole('button', { name: new RegExp(`^${kidName}(?! details)`), expanded: false }).click() // the kid's row opens their day
       await page.getByTestId('chore-row').filter({ hasText: thirdName }).getByRole('button').first().click()
       await page.getByRole('button', { name: 'Deduct points' }).click()
       await page.getByRole('button', { name: '−5', exact: true }).click()

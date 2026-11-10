@@ -7,13 +7,14 @@ import { useDismissTip, useTips } from '@/v2/hooks/useTips'
 import { CelebratePreview } from '@/v2/manage/CelebratePreview'
 import { toastFail } from '../notify'
 import { HappyHourButton } from './HappyHourButton'
-import { TRY_ORDER, nudgeKey, nudgeSnoozed, pickCard, snoozeNudge, writeShown } from './tryCards'
+import { SNOOZE_EVENT, TRY_ORDER, nudgeKey, nudgeSnoozed, pickCard, snoozeNudge, writeShown } from './tryCards'
 import { wallClock } from '@/v2/clockText'
 import { bedtimeAt, bedtimePossible } from '@/v2/trustTypes'
+import { TipLine } from './TipLine'
 import styles from '../components/QuickTip.module.css'
 
 const TEXT: Record<Exclude<(typeof TRY_ORDER)[number], 'try.trust' | 'try.bedtime'>, { icon: string; text: string }> = {
-  'try.celebrate': { icon: 'celebration', text: 'Kids now get a comic-book cheer when they finish a chore.' },
+  'try.celebrate': { icon: 'auto_awesome', text: 'Kids now get a comic-book cheer when they finish a chore.' },
   'try.happyhour': { icon: 'bolt', text: 'Double points for an hour gets chores moving.' },
   'try.autoboost': { icon: 'auto_awesome', text: 'If a kid goes quiet for 2 days, we start a Happy Hour for them and let you know.' },
   'try.streakfreeze': { icon: 'ac_unit', text: 'Kids earn a freeze every 7 days in a row, so one missed day doesn\'t break their streak.' },
@@ -25,17 +26,19 @@ export function hhCopy(multX10 = 20, minutes = 60) {
   return `${pts} for ${minutes === 60 ? 'an hour' : `${minutes} minutes`} gets chores moving.`
 }
 
-/** One "Try this" card at a time (Today). Dismissals are per parent (tips API); pacing is per device. */
-export function TryCards() {
+/** Which Try card is up (null = none), plus the data its body needs. */
+function useTryPick() {
+  const [, bump] = useState(0)
+  useEffect(() => {
+    const f = () => bump((n) => n + 1) // a "Not now" anywhere re-picks
+    window.addEventListener(SNOOZE_EVENT, f)
+    return () => window.removeEventListener(SNOOZE_EVENT, f)
+  }, [])
   const tips = useTips().data
   const fam = useFamily().data
   const kids = useKids().data
   const hh = useHappyHours().data
   const today = useToday().data
-  const dismiss = useDismissTip()
-  const patchFam = usePatchFamily()
-  const patchKid = usePatchKid()
-  const [, bump] = useState(0) // re-pick after a local "Not now"
 
   const quietKid = !fam?.hh_auto_boost ? today?.kids.find((k) => k.quiet && !nudgeSnoozed(k.id)) : undefined
   const trustKid = kids?.find((k) => k.id === today?.try_trust_kid)
@@ -51,6 +54,19 @@ export function TryCards() {
   }
   const eligible = ready ? [...TRY_ORDER.filter((k) => on[k] && !seen.has(k)), ...(quietKid ? [nudgeKey(quietKid.id)] : [])] : []
   const key = ready ? pickCard(eligible) : null
+  return { key, fam, kids, today, quietKid, trustKid }
+}
+
+/** The key of the Try card `TryCards` would show, or null (Today uses it to share one tip slot). */
+export const useTryCardKey = (): string | null => useTryPick().key
+
+/** One "Try this" card at a time (Today). Dismissals are per parent (tips API); pacing is per device. */
+/** `compact`: the one-line tip (Today's slot) with the actions under More; otherwise the full card. */
+export function TryCards({ compact = false }: { compact?: boolean } = {}) {
+  const { key, fam, kids, today, quietKid, trustKid } = useTryPick()
+  const dismiss = useDismissTip()
+  const patchFam = usePatchFamily()
+  const patchKid = usePatchKid()
   useEffect(() => {
     if (key) writeShown(key)
   }, [key])
@@ -58,8 +74,8 @@ export function TryCards() {
 
   const done = () => {
     dismiss.mutate(key)
-    // the card unmounts: park focus on the first chore row instead of <body>
-    requestAnimationFrame(() => document.querySelector<HTMLElement>('.pt-chore .pt-row')?.focus())
+    // the card unmounts: park focus on the first kid row instead of <body>
+    requestAnimationFrame(() => document.querySelector<HTMLElement>('.pt-krow')?.focus())
   }
   const off = (turnOff: () => void) => () => (turnOff(), done())
   const setFam = (body: { hh_auto_boost?: boolean; streak_freeze?: boolean; bedtime_auto?: boolean; bedtime_auto_at?: string }, onSuccess?: () => void) =>
@@ -119,8 +135,16 @@ export function TryCards() {
     actions = (
       <>
         <HappyHourButton kidId={k.id} label={`Start for ${k.name}`} />
-        <Btn onClick={() => (snoozeNudge(k.id), bump((n) => n + 1))}>Not now</Btn>
+        <Btn onClick={() => snoozeNudge(k.id)}>Not now</Btn>
       </>
+    )
+  }
+  if (compact) {
+    const nudge = key.startsWith('nudge.')
+    return (
+      <TipLine icon={icon} text={text} label="Try this" onDismiss={nudge ? () => snoozeNudge(quietKid!.id) : done}>
+        <div className="pt-tip-acts">{actions}</div>
+      </TipLine>
     )
   }
   return (

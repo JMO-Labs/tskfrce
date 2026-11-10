@@ -11,7 +11,7 @@ import { DEFAULT_DRAFTS } from '@/v2/setup/StepHours'
 
 const replace = jest.fn()
 const push = jest.fn()
-jest.mock('next/router', () => ({ useRouter: () => ({ push, replace, asPath: '/setup' }) }))
+jest.mock('next/router', () => ({ useRouter: () => ({ push, replace, asPath: '/setup', pathname: '/setup', query: {} }) }))
 jest.mock('@/v2/api', () => {
   class ApiError extends Error {
     status: number
@@ -147,7 +147,7 @@ describe('setup wizard', () => {
     await user.click(screen.getByRole('button', { name: 'Back' }))
     await user.type(await screen.findByLabelText('Name'), 'Ava')
     await user.click(screen.getByRole('button', { name: 'Add kid' }))
-    await screen.findByText(/Ava/)
+    await screen.findByText(/^Ava$/)
     await user.click(screen.getByRole('button', { name: 'Next' })) // 3 → 4 with a kid
     await screen.findByRole('button', { name: 'Show code for Ava' })
     for (let step = 4; step <= 7; step++) {
@@ -224,7 +224,7 @@ describe('setup wizard', () => {
     await finishAccount(user)
     await user.type(screen.getByLabelText('Name'), 'Ava')
     await user.click(screen.getByRole('button', { name: 'Add kid' }))
-    await screen.findByText(/Ava/)
+    await screen.findByText(/^Ava$/)
     expect(posts('/kids')[0][1]).toEqual({ method: 'POST', body: { full_name: 'Ava', avatar: '🦊', pin: null } })
     await user.click(screen.getByRole('button', { name: 'Next' })) // Step 3 → 4 (Kids' phones)
     await screen.findByRole('button', { name: 'Show code for Ava' })

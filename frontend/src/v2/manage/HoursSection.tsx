@@ -3,6 +3,7 @@ import { useFamily, usePatchFamily } from '@/v2/hooks/useFamily'
 import { useHours } from '@/v2/hooks/useHours'
 import { useKids } from '@/v2/hooks/useKids'
 import { useGroups } from '@/v2/hooks/useDevices'
+import { DetailHeader } from '@/v2/parent/DetailHeader'
 import { Icon } from '@/v2/parent/Icon'
 import type { HourRule, RuleBody } from '@/v2/types'
 import { HoursTimeline } from './HoursTimeline'
@@ -37,22 +38,23 @@ export function HoursSection() {
 
   return (
     <section className="ph" aria-label="Hours">
-      <header className="ph-head">
-        <div>
-          <h2>Hours</h2>
-          <p>When devices may be online. Outside these, they lock.</p>
-        </div>
-        <div className="pk-actions">
-          <button type="button" className="p-btn" onClick={() => edit({ initial: { category: 'holiday' } })}>
-            <Icon name="event" />
-            Add holiday
-          </button>
-          <button type="button" className="p-btn" data-variant="accent" onClick={() => edit({ initial: { category: 'other' } })}>
-            <Icon name="add" />
-            Add window
-          </button>
-        </div>
-      </header>
+      <DetailHeader
+        media={<span className="pk-tile pk-tile-lg"><Icon name="schedule" size={26} /></span>}
+        title="Hours"
+        sub="When devices may be online. Outside these, they lock."
+        main={
+          <>
+            <button type="button" className="p-btn" onClick={() => edit({ initial: { category: 'holiday' } })}>
+              <Icon name="event" />
+              Add holiday
+            </button>
+            <button type="button" className="p-btn" data-variant="accent" onClick={() => edit({ initial: { category: 'other' } })}>
+              <Icon name="add" />
+              Add window
+            </button>
+          </>
+        }
+      />
 
       <div className="pk-panel">
         <h3>

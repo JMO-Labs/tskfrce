@@ -7,7 +7,7 @@ import { MantineProvider } from '@mantine/core'
 import { api, KID_TOKEN_KEY } from '@/v2/api'
 import { fridgeTheme } from '@/v2/theme'
 import { KidPage } from '@/v2/kid/KidPage'
-import { KidEditor } from '@/v2/manage/KidEditor'
+import { KidEditor, KidProfileForm } from '@/v2/manage/KidEditor'
 import { authService } from '@/services/authService'
 import { apiPost } from '@/services/api'
 
@@ -47,6 +47,14 @@ test('KidEditor rejects a PIN that is not 4 digits', async () => {
   await userEvent.type(screen.getByLabelText(/PIN/), '12')
   expect(screen.getByText('Use exactly 4 digits.')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Add kid' })).toBeDisabled()
+})
+
+test('KidProfileForm rejects a PIN that is not 4 digits and cannot be saved', async () => {
+  const kid = { id: 3, full_name: 'Zed', username: 'zed', avatar: null, has_pin: false, age_group: 'kid' } as const
+  render(wrap(<KidProfileForm kid={kid} onSaved={() => {}} />))
+  await userEvent.type(screen.getByLabelText(/PIN \(4 digits\)/), '12')
+  expect(screen.getByText('Use exactly 4 digits.')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
 })
 
 test('kid name survives a reload on a shared device', async () => {

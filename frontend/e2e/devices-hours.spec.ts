@@ -80,9 +80,11 @@ test('hour rules and device activity: one rule, every target', async ({ page }) 
     const open = async () => {
       await page.goto(`/devices?item=${deviceId}`)
       await expect(page.getByRole('heading', { name: `Kid1 tablet ${tag}` })).toBeVisible()
+      await page.getByRole('button', { name: /^Right now/ }).click() // the region exists only while its row is open
     }
     const right = page.getByRole('region', { name: 'Right now' })
-    const state = right.locator('.pk-kv', { hasText: 'State' })
+    // the status chip in the header says Locked or Open
+    const state = page.getByRole('button', { name: /^(Locked|Open)$/ })
     await expect(async () => {
       await open()
       await expect(state).toContainText('Locked', { timeout: 10_000 })
@@ -107,11 +109,15 @@ test('hour rules and device activity: one rule, every target', async ({ page }) 
     await expect(state).toContainText('Locked')
     await page.getByRole('button', { name: 'Unlock 30 min' }).click()
     await expect(state).toContainText('Open')
-    await page.getByRole('tab', { name: 'Activity' }).click()
+    const openActivity = async () => {
+      const row = page.getByRole('button', { name: /^Activity/ })
+      if ((await row.getAttribute('aria-expanded')) !== 'true') await row.click() // a reload keeps ?open=activity
+    }
+    await openActivity()
     const log = page.getByRole('region', { name: 'Lock history' })
     await expect(async () => {
       await page.reload()
-      await page.getByRole('tab', { name: 'Activity' }).click()
+      await openActivity()
       await expect(log.getByText('Locked by Lab Parent')).toBeVisible({ timeout: 10_000 })
       // newest first: a parent's unlock always reads as theirs, even inside allowed hours
       await expect(log.locator('.pk-kv').first()).toContainText(/Unlocked .*by Lab Parent/, { timeout: 10_000 })
@@ -119,8 +125,8 @@ test('hour rules and device activity: one rule, every target', async ({ page }) 
 
     // 5. the group lists the rule under Hours for this group
     await page.goto(`/devices?tab=groups&item=${groupId}`)
+    await page.locator('[data-focus-head="ghours"]').click() // rows are calm until opened
     const hours = page.getByRole('region', { name: 'Hours' })
-    await expect(hours.getByText('Hours for this group')).toBeVisible()
     await expect(hours.getByText(ruleName)).toBeVisible()
   } finally {
     if (baseId) await api.delete(`/api/proxy/hours/${baseId}`)

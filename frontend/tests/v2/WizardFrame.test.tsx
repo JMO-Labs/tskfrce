@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import { MantineProvider } from '@mantine/core'
 import { WizardFrame } from '@/v2/setup/WizardFrame'
 
@@ -36,7 +36,7 @@ describe('WizardFrame', () => {
         <div>Content</div>
       </WizardFrame>,
     )
-    expect(screen.getByText(/Step 2 of 8/)).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: /Step 2 of 8/ })).toBeInTheDocument()
   })
 
   test('tracks maxStepReached when stepping forward', () => {
@@ -67,7 +67,7 @@ describe('WizardFrame', () => {
     )
 
     // Should show step 3 of 7
-    expect(screen.getByText(/Step 3 of 8/)).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: /Step 3 of 8/ })).toBeInTheDocument()
   })
 
   test('steps clickable and mark earlier steps done', () => {
@@ -214,5 +214,34 @@ describe('WizardFrame', () => {
     expect(screen.getByText('Step 4 of 8 · optional')).toBeInTheDocument()
     rerender(<MantineProvider>{at(5)}</MantineProvider>)
     expect(screen.getByText('Step 5 of 8')).toBeInTheDocument()
+  })
+
+  describe('step bar on phone', () => {
+    const steps = (c: HTMLElement) => c.querySelector('[data-step]')!.parentElement as HTMLElement
+    const mq = (matches: boolean) => { window.matchMedia = ((q: string) => ({ matches, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} })) as unknown as typeof window.matchMedia }
+    const frame = <WizardFrame step={6} onNext={() => {}} onStepClick={() => {}}><div /></WizardFrame>
+    afterEach(() => mq(false))
+
+    test('phone step bar shows the current label only', () => {
+      mq(true)
+      const { container } = wrap(frame)
+      const bar = steps(container)
+      expect(within(bar).getByText('Devices')).toBeInTheDocument()
+      for (const t of ['Welcome', 'Family', 'Kids', "Kids' phones", 'Chores', 'Hours', 'Optional extras']) expect(within(bar).queryByText(t)).not.toBeInTheDocument()
+      expect(within(bar).getByRole('button', { name: 'Step 5: Chores' })).toBeInTheDocument()
+    })
+
+    test.each([[4, 'Phones', "Kids' phones"], [8, 'Extras', 'Optional extras']])('step %i shows the short label "%s" on phone', (n, short, full) => {
+      mq(true)
+      const { container } = wrap(<WizardFrame step={n} onNext={() => {}}><div /></WizardFrame>)
+      expect(within(steps(container)).getByText(short)).toBeInTheDocument()
+      expect(within(steps(container)).queryByText(full)).not.toBeInTheDocument()
+    })
+
+    test('desktop step bar shows every label', () => {
+      mq(false)
+      const { container } = wrap(frame)
+      for (const t of ['Welcome', 'Family', 'Kids', 'Devices', 'Hours']) expect(within(steps(container)).getByText(t)).toBeInTheDocument()
+    })
   })
 })

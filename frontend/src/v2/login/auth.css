@@ -445,11 +445,13 @@
 
 /* States: keyboard focus, press, busy */
 [data-look='parent'] .p-auth-link:focus-visible,
-[data-look='parent'] .p-auth-kid-card:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 3px; border-radius: 8px; }
-[data-look='parent'] .p-auth-button:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 3px; }
-[data-look='parent'] .p-auth-checkbox input:focus-visible ~ i { outline: 2px solid var(--p-ink); outline-offset: 2px; }
-[data-look='parent'] .p-auth-button:hover:not(:disabled),
-[data-look='parent'] .p-auth-kid-card:hover { border-color: var(--p-ink); }
+[data-look='parent'] .p-auth-kid-card:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 3px; border-radius: 8px; }
+[data-look='parent'] .p-auth-button:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 3px; }
+[data-look='parent'] .p-auth-checkbox input:focus-visible ~ i { outline: 2px solid var(--p-focus); outline-offset: 2px; }
+@media (hover: hover) {
+  [data-look='parent'] .p-auth-button:hover:not(:disabled),
+  [data-look='parent'] .p-auth-kid-card:hover { border-color: var(--p-ink); }
+}
 [data-look='parent'] .p-auth-button:active:not(:disabled) { transform: scale(0.98); }
 [data-look='parent'] .p-auth-button:disabled { opacity: 0.7; cursor: progress; }
 [data-look='parent'] .p-auth-spin { animation: p-auth-spin 0.9s linear infinite; }

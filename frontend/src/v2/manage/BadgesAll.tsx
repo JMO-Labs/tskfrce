@@ -15,12 +15,10 @@ interface CardProps {
   custom: boolean
   tiers: Record<string, number>
   kids: Kid[]
-  selected?: boolean
-  onClick?: () => void
 }
 
-/** A badge: glyph tile, name, description, and one tier row per kid. A button when `onClick` is set. */
-export function BadgeCard({ glyph, name, description, custom, tiers, kids, selected, onClick }: CardProps) {
+/** A badge: glyph tile, name, description, and one tier row per kid. */
+export function BadgeCard({ glyph, name, description, custom, tiers, kids }: CardProps) {
   const body = (
     <>
       <span className="bd-top">
@@ -55,13 +53,7 @@ export function BadgeCard({ glyph, name, description, custom, tiers, kids, selec
       </span>
     </>
   )
-  return onClick ? (
-    <button type="button" className="bd-card" data-selected={selected} onClick={onClick}>
-      {body}
-    </button>
-  ) : (
-    <article className="bd-card">{body}</article>
-  )
+  return <article className="bd-card">{body}</article>
 }
 
 /** All badges pane: every built-in and custom badge with each kid's tier. */

@@ -8,10 +8,11 @@ import { notifications } from '@mantine/notifications'
 import { api } from '@/v2/api'
 import { NotificationsPane } from '@/v2/manage/NotificationsPane'
 import { SettingsPage } from '@/v2/manage/SettingsPage'
+import { fakeRouter } from './helpers/fakeRouter'
 
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
-jest.mock('next/router', () => ({ useRouter: () => ({ query: { section: 'notifications' }, push: jest.fn() }) }))
+jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
 jest.mock('@/v2/components/RequireParent', () => ({ RequireParent: ({ children }: { children: unknown }) => children }))
 jest.mock('@/v2/parent/ParentShell', () => ({
   ParentShell: ({ children, list }: { children: React.ReactNode; list: React.ReactNode }) => (
@@ -67,6 +68,7 @@ const calls = (p: string, method: string) => apiMock.mock.calls.filter((c) => c[
 beforeEach(() => {
   apiMock.mockReset()
   showMock.mockReset()
+  fakeRouter.reset('/settings', { section: 'notifications', open: 'place-1' })
   window.matchMedia =
     window.matchMedia ||
     ((() => ({ matches: false, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} })) as never)
@@ -86,7 +88,7 @@ describe('NotificationsPane', () => {
     wrap(<NotificationsPane />)
     expect(await screen.findByText('Re-enter this address')).toBeTruthy()
     expect(screen.getAllByText('Re-enter this address')).toHaveLength(1)
-    expect(screen.getByRole('button', { name: 'Change address' })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: 'Change address' })).toBeTruthy()
   })
 
   test('clicking a chip patches the place events', async () => {
@@ -127,12 +129,22 @@ describe('NotificationsPane', () => {
     expect(await screen.findByText('No places yet')).toBeTruthy()
   })
 
+  test('the address field says "Place address"; its (i) explains Apprise in a line or two', async () => {
+    serve([])
+    wrap(<NotificationsPane />)
+    await userEvent.click(await screen.findByRole('button', { name: 'Add a place' }))
+    expect(await screen.findByLabelText('Place address')).toBeTruthy()
+    expect(screen.queryByText('Apprise address')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'About place addresses' }))
+    expect((await screen.findByText(/Apprise, a free tool/)).textContent).toMatch(/Signal, Discord, email/)
+  })
+
   test('add a place posts name and url', async () => {
     serve([])
     wrap(<NotificationsPane />)
     await userEvent.click(await screen.findByRole('button', { name: 'Add a place' }))
     await userEvent.type(await screen.findByLabelText('Name'), 'Family Discord')
-    await userEvent.type(screen.getByLabelText('Apprise address'), 'json://127.0.0.1:9/nowhere')
+    await userEvent.type(screen.getByLabelText('Place address'), 'json://127.0.0.1:9/nowhere')
     await userEvent.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(calls('/notify/places', 'POST')).toHaveLength(1))
     expect(calls('/notify/places', 'POST')[0][1]?.body).toEqual({ name: 'Family Discord', url: 'json://127.0.0.1:9/nowhere' })
@@ -154,6 +166,7 @@ describe('Settings list', () => {
       if (p === '/notify/settings') return settings
       return {}
     })
+    fakeRouter.reset('/settings', { section: 'notifications', open: 'address' })
     wrap(<NotificationsPane />)
     const field = await screen.findByRole('textbox', { name: 'App address' })
     await userEvent.type(field, 'chores.local')

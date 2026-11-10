@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/v2/api'
 import type { History, PendingRedemption, Reward } from '@/v2/types'
 
@@ -54,6 +54,7 @@ export interface HistoryQuery {
 
 export const useRewardHistory = (q: HistoryQuery) =>
   useQuery({
+    placeholderData: keepPreviousData,
     queryKey: ['reward-history', q.days, q.kid_id ?? null, q.kind ?? null],
     queryFn: () => {
       const p = new URLSearchParams({ days: String(q.days) })
