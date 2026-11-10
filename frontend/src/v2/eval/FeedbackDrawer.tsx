@@ -41,6 +41,7 @@ export function FeedbackDrawer() {
   const [route, setRoute] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [capturing, setCapturing] = useState(false)
   const saved = useFormAbandon('feedback', text.trim() !== '')
 
   const [wasOpen, setWasOpen] = useState(false)
@@ -64,12 +65,14 @@ export function FeedbackDrawer() {
   }
 
   const capture = async () => {
+    setCapturing(true)
     closeFeedback()
     await new Promise((r) => setTimeout(r, 400))
     try {
       return await captureScreen()
     } finally {
       openFeedback()
+      setCapturing(false)
     }
   }
 
@@ -103,7 +106,9 @@ export function FeedbackDrawer() {
       position="right"
       size={small ? '100%' : 420}
       title="Send feedback"
-      keepMounted // the form survives the brief close while the screen is captured
+      // mounted only through the brief close for a capture: a closed drawer left in the DOM is a
+      // role="dialog" that every Esc handler reads as an open overlay
+      keepMounted={opened || capturing} // flipping it while open remounts the body and drops its state
       closeButtonProps={{ 'aria-label': 'Close' }}
       zIndex={350}
       classNames={{ content: 'pk-sheet', header: 'pk-sheet-head', title: 'pk-sheet-title', body: 'pk-sheet-body' }}
