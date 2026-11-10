@@ -20,7 +20,7 @@ const KIND: Record<NeedsItem['type'], Kind> = {
   reward: { label: 'Reward', icon: 'redeem', tone: 'lav', help: 'Reward request: spends points' },
   note: { label: 'Note', icon: 'flag', tone: 'lav', help: 'Note from a kid' },
   integration: { label: 'From an integration', icon: 'extension', tone: 'lav', help: 'From an integration' },
-  goal_full: { label: 'Goal full', icon: 'flag', tone: 'acc', help: 'Goal full: mark it fulfilled' },
+  goal_full: { label: 'Goal full', icon: 'flag', tone: 'lav', help: 'Goal full: mark it fulfilled' },
   goal_suggested: { label: 'Goal idea', icon: 'lightbulb', tone: 'lav', help: 'Goal idea: set a price' },
 }
 const SPOT: Kind = { label: 'Spot check', icon: 'visibility', tone: 'lav', help: 'Spot check: take a look before it counts' }
