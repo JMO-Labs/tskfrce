@@ -14,7 +14,9 @@ from app.eval.config import stats_on
 from app.eval.events import duration_bucket, emit
 from app.models.chat import ThreadMessage
 from app.models.chores import Chore, ChoreRun
-from app.models.lock import Device, Override, TimeWindow
+from app.models.family import FamilySettings
+from app.models.hours import HourRule
+from app.models.lock import Override
 
 _STATUS = {"submitted": "chores_done", "done": "chores_approved", "skipped": "chores_skipped"}
 
@@ -56,12 +58,11 @@ def _overrides(new) -> None:
         emit("override", {"action": action, "duration_bucket": duration_bucket(minutes)})
 
 
-# Owner note (2026-10-26): revisit this rule_off mapping after v3 Plan D lands; it should
-# then use the real hour-rule and chore-lock switches (Plan D removes TimeWindow).
 def _rule_off(session: Session) -> None:
-    kinds = ["hours" for o in session.deleted if isinstance(o, TimeWindow) and o.kind == "allowed"]
+    """A parent loosened the rules: deleted an online-hours rule, or turned the chore lock off."""
+    kinds = ["hours" for o in session.deleted if isinstance(o, HourRule) and o.kind == "allowed"]
     for o in session.dirty:
-        if isinstance(o, Device) and _new_value(o, "status") == "guest":
+        if isinstance(o, FamilySettings) and _new_value(o, "chores_lock") is False:
             kinds.append("chore_lock")
         elif isinstance(o, Chore):
             h = inspect(o).attrs.archived_at.history
