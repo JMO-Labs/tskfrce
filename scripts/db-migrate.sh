@@ -15,7 +15,7 @@ esac
 dc() { docker compose -f docker-compose.prod.yml "$@"; }
 
 dc stop backend
-if dc run --rm --no-deps backend python -m app.cli migrate-to "$url"; then
+if dc run --rm --no-deps --entrypoint python backend -m app.cli migrate-to "$url"; then
   stamp="$(date -u +%Y%m%dT%H%M%SZ)"
   bak=".env.bak-$stamp"
   (umask 077 && cp .env "$bak")
