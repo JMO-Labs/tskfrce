@@ -43,5 +43,5 @@ def test_step_8_becomes_finished(tmp_path):
     con = sqlite3.connect(path)
     assert con.execute("SELECT setup_step FROM family_settings ORDER BY id").fetchall() == [
         (None,),
-        (5,),
+        (4,),  # step 5 collapses to 4 in the presets migration
     ]

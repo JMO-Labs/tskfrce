@@ -68,6 +68,7 @@ class KidPatch(BaseModel):
     celebrate: Literal["full", "small", "off"] | None = None
     trust_mode: bool | None = None
     trust_level: int | None = Field(default=None, ge=0, le=2)
+    chores_lock: bool | None = None
 
     _pin = field_validator("pin")(_pin)
 

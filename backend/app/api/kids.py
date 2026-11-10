@@ -43,6 +43,8 @@ def _out(k: User) -> dict:
         "trust_mode": k.trust_mode,
         "trust_level": k.trust_level,
         "trust_clean": k.trust_clean,
+        "chores_lock": k.chores_lock,
+        "preset_style": k.preset_style,
         "trust_goal": trust.UP_AT.get(k.trust_level),  # None at Proven
     }
 
@@ -109,6 +111,8 @@ def patch_kid(
         kid.age_group = body.age_group
     if "celebrate" in body.model_fields_set:  # explicit null: back to the mode default
         kid.celebrate = body.celebrate
+    if body.chores_lock is not None:
+        kid.chores_lock = body.chores_lock
     if body.trust_mode is not None:
         if body.trust_mode and not kid.trust_mode:
             kid.trust_clean = 0  # opting in always starts a fresh count
