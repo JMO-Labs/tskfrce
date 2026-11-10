@@ -30,6 +30,8 @@ export interface Device {
   group_ids: number[]
   online: boolean
   override: Override | null
+  /** active block penalty on this device */
+  penalty?: { id: number; ends_at: string } | null
   last_seen: string | null
   /** seen on the network in the last few minutes (not the same as unlocked) */
   seen_now: boolean
