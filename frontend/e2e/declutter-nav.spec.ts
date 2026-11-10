@@ -83,11 +83,13 @@ test('URL-opened row shows no ring; Tab shows the one ring', async ({ page }) =>
   expect(await ring()).toMatchObject({ style: 'none', shadow: 'none' })
   await page.keyboard.press('Tab')
   expect((await ring()).width).toBe('2px')
-  const input = region.locator('input:not([type=checkbox]):not([type=radio]), textarea').first()
-  if (await input.count()) {
-    await input.click()
-    expect(await input.evaluate((el) => getComputedStyle(el).boxShadow)).toBe('none')
-  }
+  // a Mantine field (.f-input) clicked: the one ring, no kid sun shadow on top
+  await page.goto('/settings?section=notifications')
+  await page.getByRole('button', { name: 'Add a place' }).first().click()
+  const name = page.getByLabel('Name', { exact: true })
+  await name.click()
+  await expect(name).toHaveClass(/f-input/)
+  expect(await ring()).toMatchObject({ style: 'solid', width: '2px', shadow: 'none' })
 })
 
 test('header and tab bar do not move when a section opens', async ({ page }) => {

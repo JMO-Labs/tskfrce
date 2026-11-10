@@ -56,3 +56,12 @@ test('regression: wizard top bar keeps its lime ring', () => {
   const w = readdirSync(dir, { recursive: true }).map(String).find((f) => f.endsWith('wizard.module.css'))!
   expect(read(w)).toMatch(/\.st:focus-visible \{\s*outline: 2px solid var\(--p-acc\)/)
 })
+
+test('parent .f-input resets the global kid focus shadow (no double ring)', () => {
+  const sel = (x: string) => x.split('{')[0]
+  const global = rules(read('controls.css')).filter((x) => /\.f-input[^{]*:focus/.test(sel(x)) && /box-shadow:\s*(?!none)/.test(x))
+  expect(global.length).toBeGreaterThan(0) // the kid look keeps its sun shadow
+  const pseudos = global.flatMap((x) => sel(x).match(/:focus(-within|-visible)?/g) ?? [])
+  const parent = rules(read('parent/controls.css')).filter((x) => /\[data-look='parent'\] \.f-input\.f-input/.test(sel(x)) && /box-shadow:\s*none/.test(x))
+  pseudos.forEach((p) => expect(parent.some((x) => sel(x).includes(`.f-input.f-input${p}`))).toBe(true))
+})
