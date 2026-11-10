@@ -1,10 +1,12 @@
 """Penalties: earn-back slices, shorten, forgive, cancel, expiry (take-back side)."""
 
+import json
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
 from app.models.chores import ChoreRun
+from app.models.family import get_family
 from app.models.lock import Override
 from app.models.penalty import Penalty
 from app.models.points import Points, PointsType
@@ -42,6 +44,8 @@ def on_approved(db: Session, run: ChoreRun) -> int:
         done = _runs(db, p).filter(ChoreRun.status == "done", ChoreRun.id != run.id).count()
         n = p.makeup_count
         slice_ = p.back_total // n + (p.back_total % n if done >= n - 1 else 0)
+        slice_ = max(0, min(slice_, p.back_total - p.amount_returned))
+        run.makeup_slice = slice_
         now = _naive(run.approved_at or datetime.now(UTC))
         if p.kind == "points" and slice_:
             note = f"Earned back: {run.assignment.chore.title}"
@@ -71,6 +75,48 @@ def on_approved(db: Session, run: ChoreRun) -> int:
             _end(db, p, "ended", now)
         db.flush()
         return slice_
+
+
+def _block_overrides(db: Session, p: Penalty) -> None:
+    """Re-create a reactivated device/group block's Override rows."""
+    for dev_id in json.loads(p.device_ids or "[]"):
+        db.add(
+            Override(
+                device_id=dev_id,
+                action="lock",
+                source="penalty",
+                expires_at=p.ends_at,
+                created_by_id=p.given_by_id,
+                penalty_id=p.id,
+            )
+        )
+
+
+def on_reverted(db: Session, run: ChoreRun, now: datetime) -> None:
+    """An approved make-up run was taken back or undone: reverse its slice. Caller commits."""
+    p = db.get(Penalty, run.penalty_id) if run.penalty_id else None
+    slice_, run.makeup_slice = run.makeup_slice or 0, None
+    if p is None or p.status == "cancelled" or not slice_:
+        db.flush()
+        return
+    n = _naive(now)
+    with economy.SPEND_LOCK:
+        p.amount_returned = max(0, p.amount_returned - slice_)
+        if p.kind == "points":
+            db.query(Points).filter(Points.penalty_id == p.id, Points.run_id == run.id).delete()
+        elif p.kind == "screen":
+            screen_bank.take(db, get_family(db), p.kid_id, slice_)
+        elif p.ends_at:
+            p.ends_at += timedelta(minutes=slice_)
+            _sync_overrides(db, p)
+        if p.status == "ended" and p.ends_at and p.ends_at > n:
+            p.status, p.ended_at = "active", None
+            _runs(db, p).filter(ChoreRun.status == "cancelled", ChoreRun.id != run.id).update(
+                {ChoreRun.status: "todo"}, synchronize_session=False
+            )
+            if p.kind == "block":
+                _block_overrides(db, p)
+        db.flush()
 
 
 def shorten(db: Session, p: Penalty, minutes: int, now: datetime) -> None:

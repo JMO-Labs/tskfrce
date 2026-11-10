@@ -151,6 +151,7 @@ class ChoreRun(Base):
     penalty_id = Column(
         Integer, ForeignKey("penalties.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    makeup_slice = Column(Integer, nullable=True)  # earn-back this make-up run paid
     created_at = Column(DateTime, default=datetime.utcnow)
 
     assignment = relationship("ChoreAssignment")

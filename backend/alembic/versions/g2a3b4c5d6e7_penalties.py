@@ -72,6 +72,7 @@ def upgrade() -> None:
         b.add_column(sa.Column("penalty_id", sa.Integer(), nullable=True))
         _fk(b, "fk_run_penalty", "SET NULL")
         b.create_index("ix_chore_runs_penalty_id", ["penalty_id"])
+        b.add_column(sa.Column("makeup_slice", sa.Integer(), nullable=True))
     with op.batch_alter_table("chores") as b:
         b.add_column(sa.Column("makeup", sa.Boolean(), nullable=False, server_default="0"))
     with op.batch_alter_table("points") as b:
@@ -101,6 +102,7 @@ def downgrade() -> None:
     with op.batch_alter_table("chores") as b:
         b.drop_column("makeup")
     with op.batch_alter_table("chore_runs") as b:
+        b.drop_column("makeup_slice")
         b.drop_index("ix_chore_runs_penalty_id")
         b.drop_constraint("fk_run_penalty", type_="foreignkey")
         b.drop_column("penalty_id")
