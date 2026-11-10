@@ -43,3 +43,26 @@ def test_integration_kinds_migration_round_trips(tmp_path):
         for c in inspect(create_engine(url)).get_check_constraints("notifications")
     )
     assert "integration_done" in sql
+
+
+def test_goals_migration_round_trips(tmp_path):
+    url = f"sqlite:///{tmp_path / 'goals.db'}"
+
+    def alembic(*args):
+        subprocess.run(
+            [sys.executable, "-m", "alembic", *args],
+            cwd=BACKEND,
+            env={**os.environ, "DATABASE_URL": url},
+            check=True,
+        )
+
+    alembic("upgrade", "head")
+    alembic("downgrade", "-1")
+    assert "goals" not in inspect(create_engine(url)).get_table_names()
+    alembic("upgrade", "head")
+    insp = inspect(create_engine(url))
+    assert {"goals", "goal_contributions", "goal_auto", "goal_parties"} <= set(
+        insp.get_table_names()
+    )
+    sql = "".join(str(c["sqltext"]) for c in insp.get_check_constraints("points"))
+    assert "goal_save" in sql and "goal_return" in sql

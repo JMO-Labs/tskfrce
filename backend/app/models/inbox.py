@@ -45,6 +45,9 @@ KINDS = (
     "trust_down",
     "bedtime_done",
     "recap",
+    "goal_full",
+    "goal_suggested",
+    "jail_card",
 )
 
 
