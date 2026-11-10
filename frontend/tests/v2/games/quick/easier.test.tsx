@@ -153,6 +153,12 @@ test('match: lid sizes spread 10% more', () => {
   expect(w(true)).toBeCloseTo(112.8)
 })
 
+test('fold: easier never drops below two arrows', () => {
+  const { unmount } = mount(fold, 1, true)
+  expect(screen.getAllByTestId('fold-step').length).toBe(2)
+  unmount()
+})
+
 test('fold: one fewer arrow', () => {
   const n = (e: boolean) => { const { unmount } = mount(fold, 3, e); const c = screen.getAllByTestId('fold-step').length; unmount(); return c }
   expect(n(false)).toBe(3)

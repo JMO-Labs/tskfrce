@@ -8,7 +8,7 @@ const GLYPH: Record<Dir, string> = { up: '⬆️', down: '⬇️', left: '⬅️
 const label = (d: Dir) => d[0].toUpperCase() + d.slice(1)
 
 function FoldGame({ level, rng, onDone, easier }: MicroProps) {
-  const [seq] = useState<Dir[]>(() => Array.from({ length: Math.max(1, 2 + Math.floor(level / 2) - (easier ? 1 : 0)) }, () => DIRS[Math.floor(rng() * 4)]))
+  const [seq] = useState<Dir[]>(() => Array.from({ length: Math.max(2, 2 + Math.floor(level / 2) - (easier ? 1 : 0)) }, () => DIRS[Math.floor(rng() * 4)]))
   const [at, setAt] = useState(0)
   const pos = useRef(0)
   const done = useRef(false)
