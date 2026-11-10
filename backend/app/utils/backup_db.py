@@ -20,6 +20,7 @@ def backup_sqlite(src: Path, dest: Path) -> None:
     s, d = sqlite3.connect(src), sqlite3.connect(dest)
     try:
         s.backup(d)
+        d.execute("PRAGMA journal_mode=DELETE")  # one self-contained file, no -wal/-shm
     finally:
         d.close()
         s.close()
