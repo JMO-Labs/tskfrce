@@ -41,7 +41,15 @@ def load(fn, n, threads=4):
 # ---- docker stats -------------------------------------------------------------------
 def _mb(s):
     m = re.match(r"([\d.]+)\s*([KMG]?i?B)", s)  # "0B" when a container died (e.g. OOM)
-    unit = {"B": 1 / 1048576, "KiB": 1 / 1024, "KB": 1 / 1024, "MiB": 1, "MB": 1, "GiB": 1024, "GB": 1024}
+    unit = {
+        "B": 1 / 1048576,
+        "KiB": 1 / 1024,
+        "KB": 1 / 1024,
+        "MiB": 1,
+        "MB": 1,
+        "GiB": 1024,
+        "GB": 1024,
+    }
     return float(m[1]) * unit[m[2]]
 
 
@@ -49,7 +57,9 @@ def stats():
     ids = subprocess.check_output(
         ["docker", "ps", "-q", "--filter", f"label=com.docker.compose.project={PROJECT}"], text=True
     ).split()
-    out = subprocess.check_output(["docker", "stats", "--no-stream", "--format", "{{json .}}", *ids], text=True)
+    out = subprocess.check_output(
+        ["docker", "stats", "--no-stream", "--format", "{{json .}}", *ids], text=True
+    )
     res = {}
     for line in out.splitlines():
         j = json.loads(line)
@@ -62,7 +72,10 @@ def stats():
 
 def mean_stats(samples):
     return {
-        s: {k: round(statistics.mean(x[s][k] for x in samples if s in x), 1) for k in ("rss_mb", "cpu")}
+        s: {
+            k: round(statistics.mean(x[s][k] for x in samples if s in x), 1)
+            for k in ("rss_mb", "cpu")
+        }
         for s in samples[0]
     }
 
@@ -147,15 +160,24 @@ def run_bench(a, seed):
     blk = block_latency(a, seed)
     idle_m, busy_m = mean_stats(idle), mean_stats(busy or idle)
     return {
-        "tier": a.tier, "arch": a.arch, "startup_s": a.startup_s,
-        "p50_ms": p50, "p95_ms": p95, "paint_ms": pt, "paint_assets": assets,
-        "block_s": [round(x, 2) for x in blk], "block_s_p50": round(statistics.median(blk), 2),
+        "tier": a.tier,
+        "arch": a.arch,
+        "startup_s": a.startup_s,
+        "p50_ms": p50,
+        "p95_ms": p95,
+        "paint_ms": pt,
+        "paint_assets": assets,
+        "block_s": [round(x, 2) for x in blk],
+        "block_s_p50": round(statistics.median(blk), 2),
         "block_s_max": round(max(blk), 2),
-        "idle": idle_m, "load": busy_m,
+        "idle": idle_m,
+        "load": busy_m,
         "idle_cpu_pct_total": round(sum(s["cpu"] for s in idle_m.values()), 1),
         "rss_mb": {s: v["rss_mb"] for s, v in idle_m.items()},
         "rss_mb_total": round(sum(s["rss_mb"] for s in idle_m.values()), 1),
-        "rss_mb_peak_load": round(max(sum(s["rss_mb"] for s in x.values()) for x in busy or [idle[0]]), 1),
+        "rss_mb_peak_load": round(
+            max(sum(s["rss_mb"] for s in x.values()) for x in busy or [idle[0]]), 1
+        ),
     }
 
 
@@ -209,7 +231,14 @@ def main():
         return 0 if res["ok"] else 1
     res = run_bench(a, seed)
     out.write_text(json.dumps(res, indent=1))
-    print(json.dumps({k: res[k] for k in ("p95_ms", "paint_ms", "block_s_max", "rss_mb_total", "idle_cpu_pct_total")}))
+    print(
+        json.dumps(
+            {
+                k: res[k]
+                for k in ("p95_ms", "paint_ms", "block_s_max", "rss_mb_total", "idle_cpu_pct_total")
+            }
+        )
+    )
     if a.gate:
         misses = bl.gate(res, bl.load_targets(str(HERE / f"tiers/{a.tier}.env")))
         for m in misses:
