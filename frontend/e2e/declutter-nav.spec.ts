@@ -71,6 +71,27 @@ test('refresh keeps the focus state', async ({ page }) => {
   await expect(page).toHaveURL(/open=trust/)
 })
 
+test('URL-opened row shows no ring; Tab shows the one ring', async ({ page }) => {
+  await page.goto(`/kids?section=kids&item=${kid.id}&open=trust`)
+  const region = page.getByRole('region', { name: 'Trust' })
+  await expect(region).toBeVisible()
+  await expect(region).toBeFocused()
+  const ring = () => page.evaluate(() => {
+    const s = getComputedStyle(document.activeElement as Element)
+    return { style: s.outlineStyle, width: s.outlineWidth, shadow: s.boxShadow }
+  })
+  expect(await ring()).toMatchObject({ style: 'none', shadow: 'none' })
+  await page.keyboard.press('Tab')
+  expect((await ring()).width).toBe('2px')
+  // a Mantine field (.f-input) clicked: the one ring, no kid sun shadow on top
+  await page.goto('/settings?section=notifications')
+  await page.getByRole('button', { name: 'Add a place' }).first().click()
+  const name = page.getByLabel('Name', { exact: true })
+  await name.click()
+  await expect(name).toHaveClass(/f-input/)
+  expect(await ring()).toMatchObject({ style: 'solid', width: '2px', shadow: 'none' })
+})
+
 test('header and tab bar do not move when a section opens', async ({ page }) => {
   await page.goto(`/kids?section=kids&item=${kid.id}`)
   const header = page.locator('header').first()

@@ -1,3 +1,4 @@
+import type React from 'react'
 import fs from 'fs'
 import path from 'path'
 import { act, fireEvent, render, screen } from '@testing-library/react'
@@ -185,4 +186,41 @@ test('row motion is one short beat (120 ms, within the 150 ms limit) and off und
   expect(body?.[0]).toContain('animation: p-srow-in var(--srow-ms)')
   const reduce = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'))
   expect(reduce).toContain('.p-srow-body { animation: none; }')
+})
+
+describe('focus target (tskfrce#8: no ring on URL-opened rows)', () => {
+  const stub = (open: string | null) => ({ param: 'open', open, isOpen: (id: string) => id === open, openTo: jest.fn(), toggle: jest.fn(), close: jest.fn() })
+  const Row = ({ open, children }: { open: string | null; children: React.ReactNode }) => (
+    <><button data-focus-head="x">head</button><SummaryRow id="r" icon={<i />} title="R" summary="s" focus={stub(open)}>{children}</SummaryRow></>
+  )
+
+  test('focuses the body region, not the first control, when mounted open (URL load)', () => {
+    render(<Row open="r"><input aria-label="f" /></Row>)
+    expect(document.activeElement).toHaveClass('p-srow-body')
+  })
+
+  test('focuses the first control when opened after mount (toggle)', () => {
+    const { rerender } = render(<Row open={null}><input aria-label="f" /></Row>)
+    rerender(<Row open="r"><input aria-label="f" /></Row>)
+    expect(document.activeElement).toBe(screen.getByLabelText('f'))
+  })
+
+  test('falls back to the region when the body has no focusable control', () => {
+    const { rerender } = render(<Row open={null}><p>text</p></Row>)
+    rerender(<Row open="r"><p>text</p></Row>)
+    expect(document.activeElement).toHaveClass('p-srow-body')
+  })
+
+  test('returns focus to the head when closed', () => {
+    const { rerender } = render(<Row open={null}><input aria-label="f" /></Row>)
+    rerender(<Row open="r"><input aria-label="f" /></Row>)
+    rerender(<Row open={null}><input aria-label="f" /></Row>)
+    expect(document.activeElement).toBe(document.querySelector('.p-srow-head[data-focus-head="r"]'))
+  })
+
+  test('a disabled input is skipped when opened by toggle', () => {
+    const { rerender } = render(<Row open={null}><input disabled aria-label="d" /><button>go</button></Row>)
+    rerender(<Row open="r"><input disabled aria-label="d" /><button>go</button></Row>)
+    expect(document.activeElement).toBe(screen.getByText('go'))
+  })
 })
