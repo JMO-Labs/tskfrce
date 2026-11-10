@@ -279,15 +279,15 @@ If the home box stops checking in, a red **Home box offline** message appears at
 
 Homework mode opens only the school sites on a device that is paused, for a set time.
 
-1. Open the device, kid or group and choose **Homework**, then pick 30, 60, 90 or 120 minutes. Or wait for a kid to tap **Ask for homework time** and answer in **Needs you**.
+1. Open a paused device or a group, tap **…** and pick **Homework 30 min**, **1 hour**, **90 min** or **2 hours**. Or wait for a kid to tap **Ask for homework time** and answer in **Needs you**: **Approve** gives 1 hour, and the row's **…** has the other lengths and **Decline**.
 2. Add sites in **Settings → Homework**. "Allowed for everyone" adds to the built-in list. "Never during homework" always wins.
-3. For one kid only, open **Kids & chores**, pick the kid and use **Extra homework sites**.
+3. For one kid only, open **Kids & chores**, pick the kid and open the **Homework sites** row.
 
-The **Homework activity** panel shows what was used, so you can block a site or add one.
+While homework mode is on, the device's status chip says **Homework** (tap it for **Back to schedule**), and the **Homework activity** row shows what was used, so you can block a site or add one.
 
 If you say no to a request, your kid can ask again after 5 minutes.
 
-**Limits.** Big school sites share their servers with other sites (Google, Microsoft, Cloudflare). A determined kid can sometimes reach another site that sits on the same servers. The **Homework activity** panel is how you spot that: look for names you don't recognise, then block them or end homework early.
+**Limits.** Big school sites share their servers with other sites (Google, Microsoft, Cloudflare). A determined kid can sometimes reach another site that sits on the same servers. The **Homework activity** row is how you spot that: look for names you don't recognise, then block them or end homework early.
 
 ## Hours
 
