@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Checkbox, Modal } from '@mantine/core'
 import { Icon } from '../parent/Icon'
 import { useFamily } from '../hooks/useFamily'
+import { useGivePenalty } from '../hooks/usePenalties'
+import type { GiveBody } from '../hooks/usePenalties'
 import { useTakeBack } from '../hooks/useTrust'
 import { PenaltySheet } from './PenaltySheet'
 import { dayName, LEVELS, type TakeBackRun } from '../trustTypes'
@@ -24,6 +26,8 @@ export function WasntDoneSheet({ run, today, kidName, kidId, level, trustOn = tr
   const take = useTakeBack()
   const [lower, setLower] = useState(true)
   const [pen, setPen] = useState(false)
+  const draft = useRef<GiveBody | null>(null)
+  const give = useGivePenalty()
   const penalties = !!useFamily().data?.penalties_enabled && !!kidId
   const older = !!today && run.day < today
   const pts = run.points == null ? 'the points' : `the ${run.points} points`
@@ -34,7 +38,17 @@ export function WasntDoneSheet({ run, today, kidName, kidId, level, trustOn = tr
     onClose()
     requestAnimationFrame(() => opener?.isConnected && opener.focus())
   }
-  const go = () => take.mutate({ id: run.id, lower_trust: trustOn && !!level && lower }, { onSuccess: close })
+  const withPen = penalties && pen
+  const go = () =>
+    take.mutate(
+      { id: run.id, lower_trust: trustOn && !!level && lower },
+      {
+        onSuccess: () => {
+          if (withPen && draft.current) give.mutate(draft.current)
+          close()
+        },
+      },
+    )
   return (
     <Modal opened onClose={close} title="Wasn't done?" centered>
       <div className="pt-hh-sheet v2-sheet">
@@ -55,15 +69,15 @@ export function WasntDoneSheet({ run, today, kidName, kidId, level, trustOn = tr
           <Checkbox checked={pen} onChange={(e) => setPen(e.currentTarget.checked)} label="Give penalty" />
         )}
         {penalties && pen && kidId && (
-          // the sheet has its own Give button; "Wasn't done" itself stays a separate action
-          <PenaltySheet inline kidIds={[kidId]} from={{ chore_run_id: run.id }} reason={`Said ${run.title} was done`} onClose={() => setPen(false)} />
+          // no Give button of its own: "Wasn't done" takes the chore back, then gives this penalty
+          <PenaltySheet inline kidIds={[kidId]} from={{ chore_run_id: run.id }} reason={`Said ${run.title} was done`} onClose={() => setPen(false)} onDraft={(b) => (draft.current = b)} />
         )}
         <span className="pk-hint">{`${kidName} sees: "${kidMsg}"`}</span>
         <div className="pk-actions v2-end">
           <button type="button" className="p-btn" onClick={close}>
             Keep
           </button>
-          <button type="button" className="p-btn" data-variant="red" disabled={take.isPending || !today} aria-busy={take.isPending} onClick={go}>
+          <button type="button" className="p-btn" data-variant="red" disabled={take.isPending || give.isPending || !today} aria-busy={take.isPending} onClick={go}>
             <Icon name="undo" size={17} />
             Wasn&apos;t done
           </button>

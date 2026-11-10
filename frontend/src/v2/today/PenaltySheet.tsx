@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Modal } from "@mantine/core";
 import {
   useGivePenalty,
@@ -25,6 +25,8 @@ interface Props {
   reason?: string;
   /** render without the Modal (inside another sheet) */
   inline?: boolean;
+  /** inline only: report the current choices instead of showing a Give button (the host gives it) */
+  onDraft?: (body: GiveBody) => void;
 }
 
 type Pick = SizeKey | "custom";
@@ -40,6 +42,7 @@ function Body({
   onClose,
   from,
   reason: r0 = "",
+  onDraft,
   opts,
 }: Props & { opts: PenaltyOptions }) {
   const give = useGivePenalty();
@@ -66,7 +69,7 @@ function Body({
     setPick("custom");
     setDraft((d) => ({ ...d, ...patch }));
   };
-  const submit = () => {
+  const build = () => {
     const { reason, device_id, group_id, makeup, ...core } = draft;
     const body = {
       kid_ids: kidIds,
@@ -77,8 +80,13 @@ function Body({
       ...(core.earn_back !== "none" && makeup?.length && { makeup }),
       ...from,
     };
-    give.mutate(body as GiveBody, { onSuccess: onClose });
+    return body as GiveBody;
   };
+  const submit = () => give.mutate(build(), { onSuccess: onClose });
+  useEffect(() => {
+    onDraft?.(build());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft]);
   const toggle = (l: PenLine) => () => setOpen((o) => (o === l ? null : l));
   const name = family ? "everyone" : (kid?.name ?? "");
   return (
@@ -122,6 +130,7 @@ function Body({
           onChange={(reason) => setDraft((d) => ({ ...d, reason }))}
         />
       </div>
+      {!onDraft && (
       <button
         type="button"
         className="p-pen-give"
@@ -131,6 +140,7 @@ function Body({
       >
         Give penalty
       </button>
+      )}
     </div>
   );
 }

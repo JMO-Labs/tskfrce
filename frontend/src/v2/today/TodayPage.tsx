@@ -61,10 +61,14 @@ export function TodayPage() {
     )
 
   const needs = data?.needs_you ?? []
+  const todayMenu = [
+    { label: 'Start Happy Hour', icon: 'bolt', onClick: () => setHhOpen(true) },
+    { label: 'Penalty for everyone', icon: 'groups', takesFocus: true, hidden: !penalties, onClick: () => setPenAll(true) },
+  ]
   const calm = !kidFocus.open && !areaFocus.open
   const needsOpen = areaFocus.isOpen('needs')
   return (
-    <ParentShell title="Today" actions={<MoreMenu label="More for Today" items={[{ label: 'Start Happy Hour', icon: 'bolt', onClick: () => setHhOpen(true) }, { label: 'Penalty for everyone', icon: 'groups', takesFocus: true, hidden: !penalties, onClick: () => setPenAll(true) }]} />}>
+    <ParentShell title="Today" actions={<MoreMenu label="More for Today" items={todayMenu} />}>
       {penAll && data && <PenaltySheet kidIds={data.kids.map((k) => k.id)} onClose={() => setPenAll(false)} />}
       <HappyHourSheet opened={hhOpen} onClose={() => setHhOpen(false)} allKids />
       {isError && !data && <ErrorPanel kind="unreachable" error={error} onRetry={() => refetch()} />}

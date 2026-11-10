@@ -214,7 +214,7 @@ export function ChoreOpen({ chore, kid }: { chore: TodayChore; kid: TodayKid }) 
               Mark not done
             </button>
           )}
-          {penalties && chore.state === 'done' && (
+          {penalties && (chore.state === 'done' || chore.state === 'needs_you') && (
             <button className="p-btn" onClick={() => setPen(true)}>
               <Icon name="gavel" size={17} />
               Give penalty

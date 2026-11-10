@@ -1,6 +1,4 @@
 import { useState } from 'react'
-import { useDevices } from '../hooks/useDevices'
-import { useFamily } from '../hooks/useFamily'
 import { PenaltySheet } from '../today/PenaltySheet'
 import type { InboxItem } from '../hooks/useInbox'
 import { openChat, openChatAfterNav } from '../chat/dock'
@@ -28,6 +26,8 @@ type Props = {
   onOpen: () => void
   /** mark read, close the bell and go to `to` (null: just close); resolves once the page has changed */
   go: (to: string | null) => Promise<unknown>
+  /** kid a penalty can go to for this alert; undefined: no "Give penalty" action (see InboxPenaltyRow) */
+  penaltyKid?: number
 }
 
 const TONE: Record<Tone, ChipTone | undefined> = { hi: 'red', md: 'amb', lv: 'lav', ok: undefined }
@@ -38,14 +38,9 @@ const LABEL: Record<string, string> = {
 }
 
 /** One inbox row (v3): one main button; Send back, Decline, Ask, Dismiss live in the "..." menu. */
-export function InboxRow({ n, live, busy, sending, note, onNote, onApprove, onSendBack, onDecide, onDismiss, onLock, onOpen, go }: Props) {
+export function InboxRow({ n, live, busy, sending, note, onNote, onApprove, onSendBack, onDecide, onDismiss, onLock, onOpen, go, penaltyKid }: Props) {
   const needs = isNeedsYou(n)
   const [pen, setPen] = useState(false)
-  const alert = n.kind === 'device_resisting' || n.kind === 'device_bypass' || n.kind === 'workaround_try'
-  const penalties = !!useFamily().data?.penalties_enabled && alert
-  const devices = useDevices(penalties && !n.kid_id && !!n.device_id).data
-  const owners = devices?.find((d) => d.id === n.device_id)?.owner_ids
-  const penKid = n.kid_id ?? (owners?.length === 1 ? owners[0] : undefined)
   const device = n.device_id ? `/devices?item=${n.device_id}` : '/devices'
   const reply = () => void go(`/?chore=${n.run_id}`).then(() => openChatAfterNav('chore', String(n.run_id)))
   const ask = () => void go(null).then(() => openChat('private', String(n.kid_id)))
@@ -63,7 +58,7 @@ export function InboxRow({ n, live, busy, sending, note, onNote, onApprove, onSe
     else if (n.kind === 'device_resisting' || n.kind === 'device_bypass' || n.kind === 'workaround_try') {
       main = { label: 'View', onClick: () => void go(device), plain: true }
       menu = [{ label: `Ask ${n.kid_name ?? 'kid'}`, icon: 'chat', onClick: ask, hidden: !n.kid_id },
-        { label: 'Give penalty', icon: 'gavel', onClick: () => setPen(true), hidden: !penalties || !penKid },
+        { label: 'Give penalty', icon: 'gavel', onClick: () => setPen(true), hidden: !penaltyKid },
         { label: `Lock all ${n.kid_name ?? 'kid'}'s devices`, icon: 'lock', tone: 'red', onClick: onLock, hidden: !n.kid_id },
       ]
     } else if (n.kind === 'password_guess') main = { label: 'Change password', onClick: () => void go('/settings?section=parents#password'), plain: true }
@@ -76,29 +71,29 @@ export function InboxRow({ n, live, busy, sending, note, onNote, onApprove, onSe
   const sub = [n.body, n.points ? `+${n.points} pts` : '', when(n.created_at)].filter(Boolean).join(' · ')
   return (
     <>
-    {pen && penKid && <PenaltySheet kidIds={[penKid]} from={{ notification_id: n.id }} onClose={() => setPen(false)} />}
-    <ActionRow
-      icon={sev.name}
-      iconTone={TONE[sev.tone]}
-      iconLabel={LABEL[n.kind] ?? 'Notification'}
-      title={
-        <button type="button" className="p-bell-text" onClick={onOpen}>
-          {!n.read && <i className="p-bell-ud" aria-label="Unread" />}
-          {n.title}
-        </button>
-      }
-      sub={sub}
-      main={main && { ...main, busy, disabled: busy }}
-      menu={menu}
-      menuLabel={`More for ${n.title}`}
-    >
-      {sending && (
-        <div className="p-arow p-bell-sendrow">
-          <input className="p-bell-note" aria-label="Note for sending back" placeholder="What should they fix?" value={note} maxLength={500} autoFocus onChange={(e) => onNote(e.target.value)} />
-          <button type="button" className="p-btn" data-variant="accent" disabled={busy || !note.trim()} onClick={onSendBack}>Send</button>
-        </div>
-      )}
-    </ActionRow>
+      {pen && penaltyKid && <PenaltySheet kidIds={[penaltyKid]} from={{ notification_id: n.id }} onClose={() => setPen(false)} />}
+      <ActionRow
+        icon={sev.name}
+        iconTone={TONE[sev.tone]}
+        iconLabel={LABEL[n.kind] ?? 'Notification'}
+        title={
+          <button type="button" className="p-bell-text" onClick={onOpen}>
+            {!n.read && <i className="p-bell-ud" aria-label="Unread" />}
+            {n.title}
+          </button>
+        }
+        sub={sub}
+        main={main && { ...main, busy, disabled: busy }}
+        menu={menu}
+        menuLabel={`More for ${n.title}`}
+      >
+        {sending && (
+          <div className="p-arow p-bell-sendrow">
+            <input className="p-bell-note" aria-label="Note for sending back" placeholder="What should they fix?" value={note} maxLength={500} autoFocus onChange={(e) => onNote(e.target.value)} />
+            <button type="button" className="p-btn" data-variant="accent" disabled={busy || !note.trim()} onClick={onSendBack}>Send</button>
+          </div>
+        )}
+      </ActionRow>
     </>
   )
 }
