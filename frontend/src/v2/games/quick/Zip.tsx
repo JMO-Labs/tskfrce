@@ -38,10 +38,10 @@ function ZipGame({ level, onDone }: MicroProps) {
       onPointerUp={e => release(e.clientX, e.clientY)}>
       <div className={s.pack}>
         <div className={s.zipLine} />
-        <div className={s.pull} style={{ top: `${190 - (ups / need) * 150}px` }} />
+        <div className={s.pull} style={{ top: `${120 - (ups / need) * 90}px` }} />
       </div>
       <div className={`${s.ups} ${s.arrow}`} aria-hidden>⬆️ swipe up{need > 1 ? ` ×${need - ups}` : ''}</div>
-      <button type="button" className={`${s.kb} ${s.sun}`} style={{ position: 'absolute', bottom: 0 }} onClick={() => go('up')} aria-label="Zip up">Zip up</button>
+      <button type="button" className={`${s.kb} ${s.sun}`} onClick={() => go('up')} aria-label="Zip up">Zip up</button>
     </div>
   )
 }

@@ -27,9 +27,9 @@
 .grid { display: grid; gap: 8px; }
 .g3 { grid-template-columns: repeat(3, 76px); }
 .g4 { grid-template-columns: repeat(4, 68px); }
-.tile { height: 68px; min-height: 56px; font-size: 32px; border-radius: 14px; border: 2px solid var(--k-line); background: var(--k-card); cursor: pointer; padding: 0; }
+.tile { height: 68px; min-height: 56px; font-size: 32px; border-radius: 14px; border: 2px solid var(--k-line); background: #fff7e6; cursor: pointer; padding: 0; }
 .g3 .tile { height: 76px; }
-.mud { filter: sepia(1) saturate(3) hue-rotate(-20deg) brightness(.55); }
+.mud { filter: sepia(1) saturate(4) hue-rotate(-25deg) brightness(.6) drop-shadow(0 0 2px #fff) drop-shadow(0 0 1px #fff); }
 
 /* count */
 .cookies { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 300px; min-height: 140px; align-content: center; font-size: 56px; }

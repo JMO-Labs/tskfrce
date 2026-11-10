@@ -13,12 +13,12 @@ const choices = (n: number, rng: () => number) => {
 }
 
 function CountGame({ level, rng, onDone }: MicroProps) {
-  const [n] = useState(() => 3 + Math.floor(rng() * (2 + level)))
+  const [n] = useState(() => Math.min(7, 3 + Math.floor(rng() * (2 + level))))
   const [opts] = useState(() => choices(n, rng))
   const [shown, setShown] = useState(true)
   const done = useRef(false)
   useEffect(() => {
-    const t = setTimeout(() => setShown(false), 1100 - level * 120)
+    const t = setTimeout(() => setShown(false), Math.max(800, 1100 - level * 120))
     return () => clearTimeout(t)
   }, [level])
   const pick = (v: number) => {

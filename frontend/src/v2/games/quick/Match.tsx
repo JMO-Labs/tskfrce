@@ -14,7 +14,7 @@ function MatchGame({ level, rng, onDone }: MicroProps) {
     return { pot: Math.floor(rng() * 3), lids: order }
   })
   const done = useRef(false)
-  const step = 36 - level * 4
+  const step = Math.max(24, 36 - level * 4)
   const w = (size: number) => 60 + size * step
   const pick = (size: number) => {
     if (done.current) return

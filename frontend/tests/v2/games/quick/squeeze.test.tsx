@@ -10,9 +10,9 @@ const mount = (level: number) => {
 }
 const tap = (n: number) => { for (let i = 0; i < n; i++) fireEvent.click(screen.getByRole('button', { name: /squeeze/i })) }
 
-test('6+level*2 taps clears once; extra taps ignored', () => {
-  const onDone = mount(2) // 10
-  tap(9)
+test('6+level taps clears once; extra taps ignored', () => {
+  const onDone = mount(2) // 8
+  tap(7)
   expect(onDone).not.toHaveBeenCalled()
   tap(5)
   expect(onDone).toHaveBeenCalledTimes(1)
@@ -20,7 +20,7 @@ test('6+level*2 taps clears once; extra taps ignored', () => {
 })
 
 test('too few taps never calls (runner times out as a fail)', () => {
-  const onDone = mount(1)
-  tap(7)
+  const onDone = mount(1) // 7
+  tap(6)
   expect(onDone).not.toHaveBeenCalled()
 })

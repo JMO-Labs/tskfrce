@@ -14,7 +14,7 @@ function HangGame({ level, onDone }: MicroProps) {
     if (frozen !== null) return
     const t = Date.now() - t0
     setFrozen(t)
-    onDone(Math.abs(swing(t, level)) < 0.3 - level * 0.03)
+    onDone(Math.abs(swing(t, level)) < Math.max(0.13, 0.3 - level * 0.03))
   }
   const left = `${50 + x * 40}%`
   return (

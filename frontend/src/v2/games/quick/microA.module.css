@@ -2,6 +2,10 @@
 .stage { height: 330px; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; position: relative; overflow: hidden; touch-action: none; user-select: none; font-family: var(--font-display), 'Space Grotesk', system-ui, sans-serif; color: var(--k-ink); }
 .hint { font-size: 18px; font-weight: 700; color: var(--k-sub); margin: 0; }
 .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.socks { display: grid; grid-template-columns: repeat(4, 72px); gap: 8px; justify-content: center; }
+.socks .tray { min-width: 0; min-height: 96px; padding: 0; }
+.many .tray { min-height: 72px; }
+.many .sock { transform: scale(0.75); }
 
 /* sock-snatch */
 .sock { position: relative; display: block; width: 52px; height: 72px; --c: #e0457b; }

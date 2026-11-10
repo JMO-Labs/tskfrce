@@ -3,7 +3,7 @@ import type { Micro, MicroProps } from '../types'
 import s from './microB.module.css'
 
 function SqueezeGame({ level, onDone }: MicroProps) {
-  const need = 6 + level * 2
+  const need = 6 + level
   const [n, setN] = useState(0)
   const done = useRef(false)
   const tap = () => {

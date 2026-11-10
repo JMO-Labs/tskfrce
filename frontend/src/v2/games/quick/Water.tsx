@@ -4,8 +4,8 @@ import s from './microC.module.css'
 
 function WaterGame({ level, onDone }: MicroProps) {
   const dur = 1400 - level * 120
-  const lo = 59 + level
-  const hi = 81 - level
+  const lo = 59 + level * 0.4
+  const hi = 81 - level * 0.4
   const done = useRef(false)
   const t0 = useRef<number | null>(null)
   const [fill, setFill] = useState(0)

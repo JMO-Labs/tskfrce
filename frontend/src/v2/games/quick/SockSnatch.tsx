@@ -42,7 +42,7 @@ function SockSnatchGame({ level, rng, onDone }: MicroProps) {
         <Sock c={picks.target.c} big />
       </div>
       <p className={s.hint}>Find the match</p>
-      <div className={s.row}>
+      <div className={`${s.socks} ${picks.list.length > 4 ? s.many : ''}`}>
         {picks.list.map((p) => (
           <button key={p.name} type="button" className={s.tray} aria-label={`${p.name} sock`} onClick={() => pick(p.name)}>
             <Sock c={p.c} />

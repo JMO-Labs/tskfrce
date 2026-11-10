@@ -8,7 +8,7 @@ function FlipGame({ level, rng, onDone }: MicroProps) {
   const ms = useElapsed()
   const [flipped, setFlipped] = useState(false)
   const done = useRef(false)
-  const hot = ms >= start && ms <= start + (500 - level * 50)
+  const hot = ms >= start && ms <= start + (Math.max(350, 500 - level * 50))
   const tap = () => {
     if (done.current) return
     done.current = true
