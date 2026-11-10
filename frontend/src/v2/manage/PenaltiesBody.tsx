@@ -19,7 +19,7 @@ function SizeRow({ name, size, save }: { name: string; size: PenaltySize; save: 
   }
   const draft = toDraft(size)
   return (
-    <div className="ch-setl" role="group" aria-label={`${name} penalty`}>
+    <div className="p-pen-size" role="group" aria-label={`${name} penalty`}>
       <b>{name}</b>
       <WhatLine draft={draft} open={open === 'what'} onOpen={() => setOpen('what')} onChange={change} />
       <EarnLine draft={draft} makeupChores={[]} open={open === 'earn'} onOpen={() => setOpen('earn')} onChange={change} />

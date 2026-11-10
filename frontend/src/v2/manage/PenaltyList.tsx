@@ -26,8 +26,8 @@ function Row({ p, name }: { p: Penalty; name: string }) {
   const run = (action: 'shorten' | 'forgive' | 'cancel', minutes?: number) => act.mutate({ id: p.id, action, minutes })
   const sub = when(p)
   return (
-    <div className="p-pen-edit">
-      <button type="button" className="p-pen-sum" aria-expanded={open} onClick={() => setOpen(!open)} style={{ width: '100%', background: 'none', border: 0, font: 'inherit', color: 'inherit', cursor: 'pointer' }}>
+    <div className="p-pen-edit" data-open={open}>
+      <button type="button" className="p-pen-sum p-pen-row" aria-expanded={open} onClick={() => setOpen(!open)}>
         <span><Icon name={ICON[p.kind]} size={16} /> {p.summary}</span>
         {sub && <em>{sub}</em>}
       </button>
@@ -42,7 +42,7 @@ function Row({ p, name }: { p: Penalty; name: string }) {
               </div>
             </>
           )}
-          <div className="pk-actions" style={{ marginTop: 8 }}>
+          <div className="pk-actions p-pen-acts">
             <button type="button" className="p-btn" disabled={act.isPending} onClick={() => run('forgive')}>Forgive</button>
             <button type="button" className="p-btn" data-variant="red" disabled={act.isPending} onClick={() => setUndo(true)}>Cancel</button>
           </div>
@@ -59,7 +59,7 @@ export function PenaltyList({ kidId, name }: { kidId: number; name: string }) {
   const active = Array.isArray(data) ? data.filter((p) => p.status === 'active') : []
   if (!active.length) return null
   return (
-    <section className="p-pen-sheet" aria-label="Penalties">
+    <section className="p-pen-sheet p-pen-list" aria-label="Penalties">
       <div className="p-pen-lbl">Penalties</div>
       {active.map((p) => <Row key={p.id} p={p} name={name} />)}
     </section>
