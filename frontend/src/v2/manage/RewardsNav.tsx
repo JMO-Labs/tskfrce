@@ -14,7 +14,7 @@ export function RewardsNav({ selected, onSelect }: { selected?: string; onSelect
   const waiting = usePendingRedemptions().data?.length
   const rewards = useRewards().data ?? []
   const st = useScreenTime().data
-  const gw = useGoals().data?.waiting.length ?? 0
+  const gw = useGoals().data?.waiting?.length ?? 0
   const hidden = rewards.filter((r) => !r.visible).length
   const items: { id: RewardsItem; icon: string; name: string; sub: string; end?: ReactNode }[] = [
     {
