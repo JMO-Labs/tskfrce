@@ -32,7 +32,7 @@
 .saved { display: flex; align-items: center; gap: 8px; background: var(--k-card); border: 2px solid var(--k-ink); box-shadow: var(--k-shadow); border-radius: 18px; padding: 12px 14px; font-size: 17px; }
 .hint { color: var(--k-sub); font-size: 15px; margin: 10px 2px 0; }
 .err { color: var(--k-coral); font-weight: 600; font-size: 15px; margin: 10px 2px 0; }
-.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(160px, 40%), 1fr)); gap: 10px; margin-top: 16px; }
 .tile { background: var(--k-card); border: 2px solid var(--k-line); border-radius: 18px; padding: 12px; display: grid; gap: 2px; }
 .ge { font-size: 34px; }
 .tile b { font: 700 16px var(--disp); }

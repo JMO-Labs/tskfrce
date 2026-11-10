@@ -24,6 +24,8 @@ export function GamesBody({ fam, save }: { fam: Family; save: SaveFamily }) {
         <>
           <Setr label="Earn a game">
             <SegmentedControl
+              className="gm-seg"
+              size="xs"
               aria-label="Earn a game"
               data={(Object.keys(EARN_LABEL) as Earn[]).map((v) => ({ label: EARN_LABEL[v], value: v }))}
               value={fam.games_earn ?? 'every'}
@@ -32,7 +34,7 @@ export function GamesBody({ fam, save }: { fam: Family; save: SaveFamily }) {
           </Setr>
           {fam.games_earn === 'custom' && <span className="pk-hint ch-hint">Pick chores in the chore editor: Earns a game.</span>}
           <Setr label="Game points cap" info={<Info label="About the points cap">Most points games can add, as a share of a kid&apos;s chore points.</Info>}>
-            <select className="pk-input ch-w" aria-label="Game points cap" value={fam.games_cap_pct ?? 10} onChange={(e) => void save({ games_cap_pct: Number(e.currentTarget.value) })}>
+            <select className="pk-input gm-cap" aria-label="Game points cap" value={fam.games_cap_pct ?? 10} onChange={(e) => void save({ games_cap_pct: Number(e.currentTarget.value) })}>
               {CAPS.map((c) => <option key={c} value={c}>{c}% of chore points</option>)}
             </select>
           </Setr>

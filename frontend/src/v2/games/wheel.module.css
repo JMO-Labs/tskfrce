@@ -1,5 +1,5 @@
 /* 2 mascot wheel (mockup section 2). */
-.root { --disp: var(--font-display), 'Space Grotesk', system-ui, sans-serif; }
+.root { --disp: var(--font-display), 'Space Grotesk', system-ui, sans-serif; overflow-x: clip; }
 @keyframes slidein { from { transform: translateX(-120%); } to { transform: none; } }
 @keyframes bob { to { transform: translateY(-8px) rotate(3deg); } }
 .enter { display: flex; align-items: flex-end; gap: 8px; }

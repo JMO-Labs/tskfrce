@@ -8,7 +8,8 @@ const title = (stars: number, game: string) =>
 
 export function pointsLine(r: Pick<FinishResult, 'capped' | 'points'>) {
   if (r.capped && r.points === 0) return "Today's game points are full"
-  return r.capped ? `→ +${r.points} pts (today's cap)` : `→ +${r.points} pts toward screen time`
+  const pts = r.points === 1 ? 'pt' : 'pts'
+  return r.capped ? `→ +${r.points} ${pts} (today's cap)` : `→ +${r.points} ${pts} toward screen time`
 }
 
 /** Round results (mockup 5): stars pop in, tickets to points, new best, badges, Done. */
