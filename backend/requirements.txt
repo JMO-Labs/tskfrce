@@ -7,6 +7,7 @@ Pillow==13.0.0
 # Database
 sqlalchemy==2.1.8
 alembic==1.20.1
+psycopg[binary]==3.3.8  # optional external Postgres (DATABASE_URL=postgresql+psycopg://...)
 
 # Authentication and Security
 PyJWT==2.15.1

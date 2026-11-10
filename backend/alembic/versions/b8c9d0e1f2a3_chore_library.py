@@ -113,6 +113,7 @@ def _create_tables() -> None:
         ["assignment_id", "day", "kid_id"],
         unique=True,
         sqlite_where=sa.text("kid_id IS NOT NULL"),
+        postgresql_where=sa.text("kid_id IS NOT NULL"),
     )
     op.create_index(
         "uq_run_shared_day",
@@ -120,6 +121,7 @@ def _create_tables() -> None:
         ["assignment_id", "day"],
         unique=True,
         sqlite_where=sa.text("kid_id IS NULL"),
+        postgresql_where=sa.text("kid_id IS NULL"),
     )
     op.create_table(
         "run_kids",
