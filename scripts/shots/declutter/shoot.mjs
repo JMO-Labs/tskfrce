@@ -1,5 +1,5 @@
 // Declutter shot script. Usage: node shoot.mjs <outDir> <name> <appPath> [<mockupFile> <preset> [step=<n>]]
-// Env CLICK = app button names to click first (| separated), MOCKCLICK = css selectors to click in the mockup (| separated); the mouse is parked afterwards. Shoots phone + desktop x light + dark of <appPath> (and the mockup's #box when given). Env PRESS (+PRESS_DOWN=1) = hover / hold a control. Env SCROLLTO = css selector scrolled into view (bottom aligned) before the shot. Env DESKTOP_H sets desktop height (default 900).
+// Env CLICK = app button names to click first (| separated), MOCKCLICK = css selectors to click in the mockup (| separated); the mouse is parked afterwards. Shoots phone + desktop x light + dark of <appPath> (and the mockup's #box when given). Env PRESS (+PRESS_DOWN=1) = hover / hold a control. Env FILL = label=value pairs (| separated) filled after the CLICK steps. Env SCROLLTO = css selector scrolled into view before the shot; SCROLLBLOCK = start | end (default end) aligns it to the top or bottom. Env DESKTOP_H sets desktop height (default 900).
 import { createRequire } from 'node:module'
 import { mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -33,7 +33,8 @@ for (const [dv, vp] of [['phone', { width: 390, height: 844 }], ['desktop', { wi
       await page.locator('main').first().waitFor({ timeout: 240000 })
       await page.waitForTimeout(1200)
       if (process.env.CLICK) { for (const n of process.env.CLICK.split('|')) { if (n === 'Escape') await page.keyboard.press('Escape'); else { await page.getByRole('button', { name: n, exact: true }).focus(); await page.keyboard.press('Enter') } await page.waitForTimeout(400) } await page.mouse.move(0, 0); await page.waitForTimeout(300) }
-      if (process.env.SCROLLTO) { await page.locator(process.env.SCROLLTO).last().evaluate((e) => e.scrollIntoView({ block: 'end' })); await page.waitForTimeout(400) }
+      if (process.env.FILL) { for (const pair of process.env.FILL.split('|')) { const i = pair.indexOf('='); await page.getByLabel(pair.slice(0, i)).fill(pair.slice(i + 1)) } await page.waitForTimeout(400) }
+      if (process.env.SCROLLTO) { const block = process.env.SCROLLBLOCK === 'start' ? 'start' : 'end'; await page.locator(process.env.SCROLLTO).last().evaluate((e, b) => e.scrollIntoView({ block: b }), block); await page.waitForTimeout(400) }
       if (process.env.PRESS) { const b = await page.locator(process.env.PRESS).first().boundingBox(); await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); if (process.env.PRESS_DOWN) await page.mouse.down(); await page.waitForTimeout(300) } // PRESS = css selector: park the mouse on it (and hold the button down with PRESS_DOWN=1)
       await page.screenshot({ path: `${OUT}/${NAME}-${dv}-${scheme}.png` })
       console.log('shot', NAME, dv, scheme)
