@@ -63,6 +63,19 @@ def device_out(
     if ov and ov.expires_at and ov.expires_at <= now.replace(tzinfo=None):
         ov = None
     f = device_facts(db, d, fam, now, pre)
+    pen = None
+    if f.penalty:
+        naive = now.replace(tzinfo=None)
+        q = pre.overrides[d.id] if pre else db.query(Override).filter(Override.device_id == d.id)
+        po = next(
+            (
+                o
+                for o in sorted(q, key=lambda o: (o.created_at, o.id), reverse=True)
+                if o.source == "penalty" and (o.expires_at is None or o.expires_at > naive)
+            ),
+            None,
+        )
+        pen = {"id": po.penalty_id, "ends_at": utc_z(po.expires_at)} if po else None
     now_local = local_now(fam.timezone, now)
     reason = block_reason(f, now_local)
     online = reason is None
@@ -100,6 +113,7 @@ def device_out(
         "chores_done": sum(o.approved for o in f.owners),
         "chores_total": sum(o.total for o in f.owners),
         "locks_at": utc_z(lock_at),
+        "penalty": pen,
         "alerts": alerts,
     }
     if addresses:

@@ -80,6 +80,7 @@ def device_facts(
         chores_apply=fam.chores_lock and all(g.chore_lock for g in device.groups),
         override=manual[0].action if manual else None,
         bonus_active=any(o.source == "bonus" for o in live),
+        penalty=any(o.source == "penalty" for o in live),
         new_devices_blocked=fam.new_devices_blocked,
         points_unlock_early=fam.points_unlock_early,
         bonus_any_hours=not fam.screen_only_allowed_hours,
