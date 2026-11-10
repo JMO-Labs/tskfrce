@@ -7,7 +7,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import SetupPage from '../../pages/setup'
 import { api, ApiError } from '@/v2/api'
 import { fridgeTheme } from '@/v2/theme'
-import { DEFAULT_DRAFTS } from '@/v2/setup/StepHours'
+import { DEFAULT_DRAFTS } from '@/v2/setup/setupJobs'
+import { catalog } from './helpers/presetCatalog'
 
 const replace = jest.fn()
 const push = jest.fn()
@@ -30,7 +31,7 @@ jest.mock('@/contexts/UnifiedAuthContext', () => ({
   useUnifiedAuth: () => ({ loginWithToken, isInitialized: true, isAuthenticated: authed }),
 }))
 
-const apiMock = api as unknown as Mock<(p: string, i?: { method?: string }) => Promise<unknown>>
+const apiMock = api as unknown as Mock<(p: string, i?: { method?: string; body?: unknown }) => Promise<unknown>>
 
 const wrap = () =>
   render(
@@ -56,7 +57,8 @@ beforeEach(() => {
     if (path === '/devices') return []
     if (path === '/chores/') return { id: 31 }
     if (path === '/chore-types') return [{ id: 4, name: 'Personal' }, { id: 2, name: 'Kitchen' }]
-    if (path === '/kids') return { id: 7, full_name: 'Ava', username: 'kid-ava', avatar: '🦊', has_pin: false }
+    if (path === '/kids') return { id: 7, full_name: 'Ava', username: 'kid-ava', avatar: '🦊', has_pin: false, age_group: 'kid' }
+    if (path === '/presets') return catalog
     return {}
   })
   authed = false
@@ -90,9 +92,11 @@ const skipStep = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(await screen.findByRole('button', { name: 'Skip' }))
 }
 /** Step 4 with no kids has no Skip, only Next. */
-/** Hours (7) → Optional extras (8) → the finish screen, leaving every extra off. */
+/** Tweak Hours → Extras → (apply) Phones → Devices → the finish screen, leaving every extra off. */
 const finishWizard = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(await screen.findByRole('button', { name: 'Next' }))
+  await user.click(await screen.findByRole('button', { name: 'Next' })) // Hours → Extras
+  await user.click(await screen.findByRole('button', { name: 'Next' })) // Extras → apply → Phones
+  await user.click(await screen.findByRole('button', { name: 'Skip' })) // Phones → Devices
   await user.click(await screen.findByRole('button', { name: 'Finish' }))
 }
 const nextNoSkip = async (user: ReturnType<typeof userEvent.setup>) => {
@@ -137,36 +141,40 @@ describe('setup wizard', () => {
     expect(link).toHaveAttribute('href', '/login')
   })
 
-  test('Skip is on steps 4 (with kids) to 8 and off step 4 without kids', async () => {
+  test('Skip is on steps 3 to 7 and off Phones without kids', async () => {
     const user = userEvent.setup()
     wrap()
     await finishAccount(user)
-    await user.click(screen.getByRole('button', { name: 'Skip' })) // 3 → 4, no kids yet
+    for (let i = 0; i < 3; i++) await user.click(screen.getByRole('button', { name: 'Skip' })) // 3 → 4 → 5 → 6, no kids yet
     expect(await screen.findByText('Add a kid first, or tap Next to go on.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull()
-    await user.click(screen.getByRole('button', { name: 'Back' }))
+    for (let i = 0; i < 3; i++) await user.click(screen.getByRole('button', { name: 'Back' }))
     await user.type(await screen.findByLabelText('Name'), 'Ava')
     await user.click(screen.getByRole('button', { name: 'Add kid' }))
     await screen.findByText(/^Ava$/)
     await user.click(screen.getByRole('button', { name: 'Next' })) // 3 → 4 with a kid
+    await screen.findByRole('heading', { name: 'How strict should it be?' })
+    await user.click(screen.getByRole('button', { name: 'Skip' })) // 4 → 5
+    await screen.findByRole('heading', { name: "Here's your plan" })
+    await user.click(screen.getByRole('button', { name: 'Skip' })) // 5 → 6 without applying
     await screen.findByRole('button', { name: 'Show code for Ava' })
-    for (let step = 4; step <= 7; step++) {
-      expect(screen.getByRole('button', { name: 'Skip' })).toBeInTheDocument() // step 4..7
+    expect(posts('/presets/apply')).toHaveLength(0)
+    for (let step = 6; step <= 7; step++) {
+      expect(screen.getByRole('button', { name: 'Skip' })).toBeInTheDocument()
       await skipStep(user)
     }
-    expect(await screen.findByRole('button', { name: 'Finish' })).toBeInTheDocument() // step 8 is the last
-    expect(screen.getByRole('heading', { name: 'Optional extras' })).toBeInTheDocument()
+    expect(await screen.findByText("You're all set")).toBeInTheDocument() // step 7 is the last
   })
 
-  test('skipping steps 3 to 7 reaches the finish screen', async () => {
+  test('skipping every step reaches the finish screen', async () => {
     const user = userEvent.setup()
     wrap()
     await toFamily(user)
     await user.click(screen.getByRole('button', { name: 'Next' }))
     await waitFor(() => expect(loginWithToken).toHaveBeenCalledWith('t', 'r', 1800))
-    await skipStep(user) // 3 → 4
-    await nextNoSkip(user) // 4 → 5, no kids
-    for (let i = 0; i < 4; i++) await skipStep(user) // 5 → finish
+    for (let i = 0; i < 3; i++) await skipStep(user) // 3 → 4 → 5 → 6
+    await nextNoSkip(user) // 6 → 7, no kids
+    await skipStep(user) // 7 → finish
     expect(await screen.findByText('Hours start now.')).toBeInTheDocument() // no kids, no chores
     expect(screen.queryByText(/next daily reset/)).toBeNull()
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
@@ -218,56 +226,127 @@ describe('setup wizard', () => {
     expect(posts('/setup')).toHaveLength(1)
   })
 
-  test('kids, chores and bedtime post exact bodies once, even after Back and Next', async () => {
+  /** Add Ava, then Next to How strict and Next to Your plan. */
+  const toPlan = async (user: ReturnType<typeof userEvent.setup>) => {
+    await finishAccount(user)
+    await user.type(screen.getByLabelText('Name'), 'Ava')
+    await user.click(screen.getByRole('button', { name: 'Add kid' }))
+    await screen.findByText(/^Ava$/)
+    await user.click(screen.getByRole('button', { name: 'Next' })) // 3 → 4
+    await screen.findByRole('heading', { name: 'How strict should it be?' })
+    await user.click(screen.getByRole('button', { name: 'Next' })) // 4 → 5
+    await screen.findByRole('heading', { name: "Here's your plan" })
+  }
+
+  test('style step: three choices, Balanced picked, no per-kid switch with one kid, table collapsed', async () => {
     const user = userEvent.setup()
     wrap()
     await finishAccount(user)
     await user.type(screen.getByLabelText('Name'), 'Ava')
     await user.click(screen.getByRole('button', { name: 'Add kid' }))
     await screen.findByText(/^Ava$/)
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    expect(await screen.findByRole('radio', { name: /Balanced/ })).toBeChecked()
+    expect(screen.getAllByRole('radio')).toHaveLength(3)
+    expect(screen.queryByRole('switch', { name: 'Different for each kid' })).toBeNull()
+    expect(await screen.findByText('See what this sets')).toBeInTheDocument()
+    expect(document.querySelector('details')).not.toHaveAttribute('open')
+  })
+
+  test('the per-kid switch shows with two kids', async () => {
+    const user = userEvent.setup()
+    let n = 0
+    const base = apiMock.getMockImplementation()!
+    apiMock.mockImplementation(async (path, init) =>
+      path === '/kids' && init?.method === 'POST' ? { id: 7 + n, full_name: ['Ava', 'Ben'][n++], username: 'k', avatar: '🦊', has_pin: false, age_group: 'kid' } : base(path, init),
+    )
+    wrap()
+    await finishAccount(user)
+    for (const name of ['Ava', 'Ben']) {
+      await user.type(screen.getByLabelText('Name'), name)
+      await user.click(screen.getByRole('button', { name: 'Add kid' }))
+      await screen.findByText(new RegExp(`^${name}$`))
+    }
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    expect(await screen.findByRole('switch', { name: 'Different for each kid' })).toBeInTheDocument()
+  })
+
+  test('Looks good posts /presets/apply once, even after Back and Next, and lands on Phones', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await toPlan(user)
     expect(posts('/kids')[0][1]).toEqual({ method: 'POST', body: { full_name: 'Ava', avatar: '🦊', pin: null } })
-    await user.click(screen.getByRole('button', { name: 'Next' })) // Step 3 → 4 (Kids' phones)
+    expect(await screen.findByText('Ava · Balanced')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Looks good' }))
     await screen.findByRole('button', { name: 'Show code for Ava' })
-    await user.click(screen.getByRole('button', { name: 'Next' })) // Step 4 → 5 (Chores)
-    await user.click(await screen.findByRole('button', { name: /^Make bed/ }))
+    expect(posts('/presets/apply')).toHaveLength(1)
+    expect(posts('/presets/apply')[0][1]).toEqual({ method: 'POST', body: { style: 'balanced', kids: { 7: null } } })
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+    await user.click(await screen.findByRole('button', { name: 'Looks good' }))
+    await screen.findByRole('button', { name: 'Show code for Ava' })
+    expect(posts('/presets/apply')).toHaveLength(1)
+    expect(posts('/chores/')).toHaveLength(0) // the server makes the chores
+    expect(posts('/hours')).toHaveLength(0)
+  })
+
+  test('Tweak: chores, hours and extras are pre-filled; nothing is posted until the end, then the plan applies with those skipped', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await toPlan(user)
+    await user.click(await screen.findByRole('button', { name: 'Tweak' }))
+    expect(await screen.findByText('2 picked')).toBeInTheDocument() // Make bed, Tidy room from the plan
+    await user.click(screen.getByRole('button', { name: /^Tidy room/ }))
     expect(screen.getByText('1 picked')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Next' })) // Step 5 → 6 (Devices)
-    expect(await screen.findByText(/Looking for devices/)).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Next' })) // Step 6 → 7 (Hours)
+    await user.click(screen.getByRole('button', { name: 'Next' })) // → Hours
     await screen.findByText('Allowed hours')
+    expect(screen.getByLabelText('Bedtime on school nights')).toHaveValue('20:30')
     await user.click(screen.getByRole('button', { name: 'Back' }))
     await user.click(await screen.findByRole('button', { name: 'Next' }))
-    await finishWizard(user) // 7 → 8 → all set
-    await screen.findByText("You're all set")
+    await screen.findByText('Allowed hours')
+    await user.click(screen.getByRole('button', { name: 'Next' })) // → Extras
+    await screen.findByRole('heading', { name: 'Optional extras' })
+    expect(posts('/chores/')).toHaveLength(0)
+    await user.click(screen.getByRole('button', { name: 'Next' })) // → apply → Phones
+    await screen.findByRole('button', { name: 'Show code for Ava' })
     expect(posts('/chores/')).toHaveLength(1)
-    expect(posts('/chores/')[0][1]).toEqual({
-      method: 'POST',
-      body: { title: 'Make bed', points: 10, needs_photo: false, steps: [], type_id: 4 },
-    })
-    expect(posts('/chores/31/assignments')).toHaveLength(1)
+    expect(posts('/chores/')[0][1]).toEqual({ method: 'POST', body: { title: 'Make bed', points: 10, needs_photo: false, steps: [], type_id: 4 } })
     expect(posts('/chores/31/assignments')[0][1]).toEqual({
       method: 'POST',
       body: { kid_ids: [7], mode: 'each', repeat: { type: 'daily', days: [] }, on_date: null, due_time: null },
     })
-    expect(posts('/hours')).toHaveLength(2) // posted once on the way past, never again
+    expect(posts('/hours')).toHaveLength(2)
+    expect(apiMock).toHaveBeenCalledWith('/family', { method: 'PATCH', body: { chores_lock: true } })
+    expect(posts('/presets/apply')).toHaveLength(1)
+    expect(posts('/presets/apply')[0][1]).toEqual({ method: 'POST', body: { style: 'balanced', kids: { 7: null }, skip: ['chores', 'bedtime', 'trust'] } })
+  })
+
+  test('Back from Tweak Chores returns to the plan', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await toPlan(user)
+    await user.click(await screen.findByRole('button', { name: 'Tweak' }))
+    await screen.findByRole('heading', { name: 'Pick some starter chores' })
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+    expect(await screen.findByRole('heading', { name: "Here's your plan" })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Looks good' })).toBeInTheDocument()
   })
 
   const toHours = async (user: ReturnType<typeof userEvent.setup>) => {
-    await finishAccount(user)
-    await skipStep(user) // 3 → 4
-    await nextNoSkip(user) // 4 → 5
-    for (let i = 0; i < 2; i++) await skipStep(user) // 5 → 7
+    await toPlan(user)
+    await user.click(await screen.findByRole('button', { name: 'Tweak' }))
+    await screen.findByText('2 picked')
+    await user.click(screen.getByRole('button', { name: 'Next' }))
     await screen.findByText('Allowed hours')
   }
   const rowText = (name: string) => screen.getByRole('button', { name: `Edit ${name}` }).parentElement!.textContent
 
-  test('step 7 shows the default rules and bedtime edits the range', async () => {
+  test('Hours starts from the plan and bedtime edits the range', async () => {
     const user = userEvent.setup()
     wrap()
     await toHours(user)
-    expect(rowText('School nights')).toContain('7a–8p')
+    expect(rowText('School nights')).toContain('7a–8:30p')
     expect(rowText('Weekends')).toContain('8a–10p')
-    expect(screen.getByLabelText('Bedtime on school nights')).toHaveValue('20:00')
+    expect(screen.getByLabelText('Bedtime on school nights')).toHaveValue('20:30')
     fireEvent.change(screen.getByLabelText('Bedtime on weekends'), { target: { value: '23:00' } })
     expect(rowText('Weekends')).toContain('8a–11p')
   })
@@ -277,6 +356,7 @@ describe('setup wizard', () => {
     wrap()
     await toHours(user)
     expect(screen.getByText('Starts at the next daily reset after you finish, so nobody is paused during setup.')).toBeInTheDocument()
+    expect(screen.getByRole('switch', { name: "Lock until today's chores are done" })).toHaveAttribute('aria-checked', 'true') // the plan locks
     await user.click(screen.getByRole('switch', { name: "Lock until today's chores are done" }))
     await finishWizard(user)
     await screen.findByText("You're all set")
@@ -285,16 +365,17 @@ describe('setup wizard', () => {
     expect(bodies[0]).toEqual({
       name: 'School nights', category: 'school_night', kind: 'allowed', days: '01236', everyone: true,
       kid_ids: [], group_ids: [], start_date: null, end_date: null,
-      times: [{ start: '07:00', end: '20:00' }],
+      times: [{ start: '07:00', end: '20:30' }],
     })
     expect(bodies[1]).toMatchObject({ category: 'weekend', days: '45', everyone: true, times: [{ start: '08:00', end: '22:00' }] })
     expect(apiMock).toHaveBeenCalledWith('/family', { method: 'PATCH', body: { chores_lock: false } })
   })
 
+  const planRule = { ...DEFAULT_DRAFTS[0], times: [{ start: '07:00', end: '20:30' }] }
   test('a rule already on the server is not posted again', async () => {
     const base = apiMock.getMockImplementation()!
     apiMock.mockImplementation(async (path, init) =>
-      path === '/hours' && !init?.method ? { today: null, rules: [{ id: 5, ...DEFAULT_DRAFTS[0] }] } : base(path, init),
+      path === '/hours' && !init?.method ? { today: null, rules: [{ id: 5, ...planRule }] } : base(path, init),
     )
     const user = userEvent.setup()
     wrap()
@@ -307,7 +388,7 @@ describe('setup wizard', () => {
   test('a server rule with the same name but a different body does not suppress the post', async () => {
     const base = apiMock.getMockImplementation()!
     apiMock.mockImplementation(async (path, init) =>
-      path === '/hours' && !init?.method ? { today: null, rules: [{ id: 5, ...DEFAULT_DRAFTS[0], days: '0123456' }] } : base(path, init),
+      path === '/hours' && !init?.method ? { today: null, rules: [{ id: 5, ...planRule, days: '0123456' }] } : base(path, init),
     )
     const user = userEvent.setup()
     wrap()
@@ -345,116 +426,11 @@ describe('setup wizard', () => {
     await finishAccount(user)
     const puts = () => apiMock.mock.calls.filter((c) => c[0] === '/setup/step').map((c) => (c[1] as { body: unknown }).body)
     await skipStep(user) // 3 → 4
-    await nextNoSkip(user) // 4 → 5, no kids
+    await skipStep(user) // 4 → 5
     await waitFor(() => expect(puts()).toEqual([{ step: 4 }, { step: 5 }]))
-    for (let i = 0; i < 4; i++) await skipStep(user) // → finish
+    await skipStep(user) // 5 → 6
+    await nextNoSkip(user) // 6 → 7, no kids
+    await skipStep(user) // → finish
     await waitFor(() => expect(puts().at(-1)).toEqual({ step: null }))
-  })
-})
-
-describe('turnkey defaults', () => {
-  test('default hours are one window per day type', () => {
-    expect(DEFAULT_DRAFTS.map((d) => [d.days, d.times])).toEqual([
-      ['01236', [{ start: '07:00', end: '20:00' }]],
-      ['45', [{ start: '08:00', end: '22:00' }]],
-    ])
-  })
-
-  test('Homework repeats on school days only', async () => {
-    const user = userEvent.setup()
-    authed = true
-    apiMock.mockImplementation(async (path, init) => {
-      if (path === '/setup') return { needed: false }
-      if (path === '/setup/step') return init?.method === 'PUT' ? {} : { step: 5 }
-      if (path === '/kids') return [{ id: 7, full_name: 'Ava', username: 'kid-ava', avatar: '🦊', has_pin: false }]
-      if (path === '/chores/' && init?.method === 'POST') return { id: 31 }
-      if (path === '/chore-types') return [{ id: 5, name: 'Schoolwork' }]
-      return []
-    })
-    wrap()
-    expect(await screen.findByText(/30 pts · school days/)).toBeInTheDocument()
-    await user.click(await screen.findByRole('button', { name: /^Homework/ }))
-    await user.click(screen.getByRole('button', { name: 'Next' }))
-    await waitFor(() => expect(posts('/chores/31/assignments')).toHaveLength(1))
-    expect((posts('/chores/31/assignments')[0][1] as { body: { repeat: unknown } }).body.repeat).toEqual({ type: 'weekly', days: [0, 1, 2, 3, 4] })
-  })
-})
-
-describe('resuming an unfinished setup', () => {
-  test('a signed-in parent lands on the saved step with their kids loaded', async () => {
-    authed = true
-    apiMock.mockImplementation(async (path) => {
-      if (path === '/setup') return { needed: false }
-      if (path === '/setup/step') return { step: 6 }
-      if (path === '/kids') return [{ id: 7, full_name: 'Ava', username: 'kid-ava', avatar: '🦊', has_pin: false }]
-      return []
-    })
-    wrap()
-    expect(await screen.findByText('Whose devices are these?')).toBeInTheDocument()
-    expect(replace).not.toHaveBeenCalled()
-    expect(apiMock).toHaveBeenCalledWith('/kids')
-  })
-
-  const kid = { id: 7, full_name: 'Ava', username: 'kid-ava', avatar: '🦊', has_pin: false }
-  const resumeAt = (step: number, extra: Record<string, unknown> = {}) => {
-    authed = true
-    apiMock.mockImplementation(async (path, init) => {
-      if (path === '/setup') return { needed: false }
-      if (path === '/setup/step') return init?.method === 'PUT' ? {} : { step }
-      if (path === '/kids') return [kid]
-      return path in extra ? extra[path] : []
-    })
-  }
-
-  test('Finish on a resumed wizard shows "You\'re all set" with the real counts', async () => {
-    const user = userEvent.setup()
-    resumeAt(7, { '/chores/': [{ id: 1 }, { id: 2 }, { id: 3 }], '/hours': { rules: [{}, {}] } })
-    wrap()
-    await screen.findByText('Allowed hours')
-    await finishWizard(user)
-    expect(await screen.findByText("You're all set")).toBeInTheDocument()
-    expect(replace).not.toHaveBeenCalled()
-    expect(await screen.findByText(/1 kid, 3 chores, 0 devices, 2 schedules/)).toBeInTheDocument()
-  })
-
-  test('a family stored past the last step resumes on the finish screen', async () => {
-    resumeAt(9, { '/family': { reset_time: '06:00:00', chores_lock: true }, '/chores/': [{ id: 1 }], '/hours': { rules: [] } })
-    wrap()
-    expect(await screen.findByText("You're all set")).toBeInTheDocument()
-    expect(await screen.findByText('Hours start now. Chores, and the chore lock, start at the next daily reset (6:00 AM).')).toBeInTheDocument()
-    expect(screen.getByText(/Want to approve chores away from home\? Set up Tailscale\. Takes 5 minutes\./)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'How to set it up' })).toBeInTheDocument()
-    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/setup/step', { method: 'PUT', body: { step: null } })) // self-heal
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Go to Today' }))
-    expect(push).toHaveBeenCalledWith('/')
-    expect(replace).not.toHaveBeenCalledWith('/setup')
-  })
-
-  test('a starter that already exists is locked as Added and not created again', async () => {
-    const user = userEvent.setup()
-    resumeAt(5, { '/chores/': [{ id: 9, title: 'Make bed' }] })
-    wrap()
-    const bed = await screen.findByRole('button', { name: /^Make bed/ })
-    await waitFor(() => expect(bed).toBeDisabled())
-    expect(bed).toHaveAttribute('aria-pressed', 'true')
-    expect(bed).toHaveTextContent('Added')
-    await user.click(screen.getByRole('button', { name: 'Next' }))
-    await screen.findByText(/Looking for devices/)
-    expect(posts('/chores/')).toHaveLength(0)
-    expect(posts('/chores/9/assignments')).toHaveLength(0)
-  })
-
-  test('resuming step 5: made starters are Added and do not count as picked', async () => {
-    resumeAt(5, { '/chores/': [{ id: 9, title: 'Make bed' }, { id: 10, title: 'Custom thing' }] })
-    wrap()
-    expect(await screen.findByText('Added')).toBeInTheDocument()
-    expect(screen.getByText('0 picked')).toBeInTheDocument()
-  })
-
-  test('nothing to resume goes to log in', async () => {
-    authed = true
-    apiMock.mockImplementation(async (path) => (path === '/setup' ? { needed: false } : { step: null }))
-    wrap()
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/login'))
   })
 })
