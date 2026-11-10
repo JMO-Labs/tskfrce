@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Presets mockup</title>
+<style>
+:root{--pg-bg:#ececea;--p-bg:#f8f8f8;--p-card:#fff;--p-ink:#292928;--p-sub:#5f5f5c;--p-line:#e4e4e1;--p-soft:#f3f3f3;--p-acc:#c3f832;--p-amb:#ffefcc;--p-ambink:#5c3a00;--p-lav:#e3d4fb;--p-lav-ink:#4a2f8a}
+@media (prefers-color-scheme:dark){:root{--pg-bg:#111110;--p-bg:#1c1c1b;--p-card:#292928;--p-ink:#f4f4f2;--p-sub:#a8a8a4;--p-line:#3d3d3b;--p-soft:#323230;--p-amb:#3b2f17;--p-ambink:#ffd38a;--p-lav:#3d3354;--p-lav-ink:#d8c8fb}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--pg-bg);color:var(--p-ink);font:15px/1.45 Inter,system-ui,sans-serif;padding:24px 16px 48px}
+.wrap{max-width:1120px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px}.lead{color:var(--p-sub);margin:0 0 24px;max-width:72ch}
+.row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.col{flex:1 1 320px;max-width:360px}.col>h2{font-size:17px;margin:0 0 2px}.why{color:var(--p-sub);font-size:13px;margin:0 0 12px;min-height:38px}
+.phone{background:var(--p-bg);border:1px solid var(--p-line);border-radius:28px;padding:18px 14px}
+.dots{display:flex;gap:6px;justify-content:center;margin-bottom:12px}.dots i{width:7px;height:7px;border-radius:50%;background:var(--p-line)}.dots i.on{background:var(--p-ink);width:18px;border-radius:999px}
+.phone h3{font-size:19px;margin:0 0 4px}.phone .s{color:var(--p-sub);font-size:13px;margin:0 0 14px}
+.style{display:block;border:1px solid var(--p-line);background:var(--p-card);border-radius:12px;padding:12px;margin-bottom:8px}
+.style.on{border:2px solid var(--p-ink)}
+.style b{font-size:15px}.style small{display:block;color:var(--p-sub);font-size:13px}
+.style .rec{float:right;font-size:11px;background:var(--p-acc);color:#292928;border-radius:999px;padding:2px 8px}
+details{background:var(--p-card);border:1px solid var(--p-line);border-radius:12px;padding:10px 12px;margin-top:4px}
+summary{cursor:pointer;font-size:14px;color:var(--p-sub)}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+td,th{padding:5px 4px;border-bottom:1px solid var(--p-line);text-align:left}th{color:var(--p-sub);font-weight:600}
+td:last-child,th:last-child{text-align:right}
+.btn{display:block;width:100%;margin-top:14px;padding:11px;border-radius:8px;border:0;background:var(--p-ink);color:var(--p-card);font:600 14px system-ui}
+.btn.ghost{background:transparent;color:var(--p-ink);border:1px solid var(--p-line);margin-top:8px}
+.card{background:var(--p-card);border:1px solid var(--p-line);border-radius:12px;padding:2px 12px;margin-bottom:10px}
+.li{display:flex;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid var(--p-line);font-size:14px}.li:last-child{border:0}
+.li span:last-child{color:var(--p-sub);text-align:right}
+.kid{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;margin:6px 0}
+.av{width:26px;height:26px;border-radius:50%;background:var(--p-lav);color:var(--p-lav-ink);display:grid;place-items:center;font-size:12px}
+.prev{background:var(--p-amb);color:var(--p-ambink);border-radius:12px;padding:10px 12px;font-size:13px;margin:10px 0}
+.seg{display:flex;border:1px solid var(--p-line);border-radius:999px;padding:3px;background:var(--p-soft)}.seg span{flex:1;text-align:center;padding:7px 0;border-radius:999px;font-size:13px}.seg span.on{background:var(--p-ink);color:var(--p-card);font-weight:600}
+.note{margin-top:28px;background:var(--p-card);border:1px solid var(--p-line);border-radius:12px;padding:14px 16px;max-width:780px}.note ul{margin:0;padding-left:18px}
+</style></head><body><div class="wrap">
+<h1>Setup presets</h1>
+<p class="lead">After the Kids step, one question sets up chores, hours and extras for each kid's age. Then a single plan screen, and later a switch in Settings.</p>
+<div class="row">
+
+<div class="col"><h2>Step 4: How strict? (v2)</h2><p class="why">One family pick by default. With 2+ kids, a switch gives each kid their own pick. Limits stay tucked away.</p>
+<div class="phone"><div class="dots"><i></i><i></i><i></i><i class="on"></i><i></i><i></i><i></i></div>
+ <h3>How strict should it be?</h3><p class="s">You can change anything later.</p>
+ <div class="style"><b>Relaxed</b><small>Light chores, more screen time, kids are trusted</small></div>
+ <div class="style on"><span class="rec">Most families</span><b>Balanced</b><small>Chores first, then internet</small></div>
+ <div class="style"><b>Strict</b><small>More chores, less screen time, every chore checked</small></div>
+ <div class="card" style="padding:8px 12px;margin-top:4px">
+  <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:8px"><b>Different for each kid</b><span class="sw" style="width:36px;height:20px;border-radius:999px;background:var(--p-ink);position:relative;display:inline-block"><span style="position:absolute;right:3px;top:3px;width:14px;height:14px;border-radius:50%;background:var(--p-card)"></span></span></div>
+  <div class="kid"><span class="av">I</span>Ivy (8)</div>
+  <div class="seg"><span>Relaxed</span><span class="on">Balanced</span><span>Strict</span></div>
+  <div class="kid" style="margin-top:10px"><span class="av">T</span>Theo (13)</div>
+  <div class="seg"><span class="on">Relaxed</span><span>Balanced</span><span>Strict</span></div>
+ </div>
+ <details><summary>See what this sets</summary>
+  <table><tr><th></th><th>Ivy · Balanced</th><th>Theo · Relaxed</th></tr>
+  <tr><td>Chores a day</td><td>3</td><td>2</td></tr>
+  <tr><td>Screen time</td><td>2h</td><td>3h 30m</td></tr>
+  <tr><td>Bedtime</td><td>8:30</td><td>10:00</td></tr>
+  <tr><td>Internet locks till chores done</td><td>yes</td><td>no</td></tr>
+  <tr><td>You check every chore</td><td>yes</td><td>trust mode</td></tr></table>
+  <div style="font-size:12px;color:var(--p-sub);margin-top:6px">Family-wide: goals and banked time on, penalties off (follows the family pick)</div>
+ </details>
+ <button class="btn">Next</button>
+</div></div>
+
+<div class="col"><h2>Step 5: Your plan</h2><p class="why">Replaces walking through Chores, Hours and Extras. Tweak opens the old steps.</p>
+<div class="phone"><div class="dots"><i></i><i></i><i></i><i></i><i class="on"></i><i></i><i></i></div>
+ <h3>Here's your plan</h3><p class="s">Set for each kid's age and style.</p>
+ <div class="kid"><span class="av">I</span>Ivy · Balanced</div>
+ <div class="card"><div class="li"><span>Chores</span><span>Make bed, feed cat, tidy room</span></div><div class="li"><span>Screen time</span><span>2h · bed 8:30</span></div></div>
+ <div class="kid"><span class="av">T</span>Theo · Relaxed</div>
+ <div class="card"><div class="li"><span>Chores</span><span>Dishes, trash</span></div><div class="li"><span>Screen time</span><span>3h 30m · bed 10:00</span></div></div>
+ <button class="btn">Looks good</button>
+ <button class="btn ghost">Tweak</button>
+</div></div>
+
+<div class="col"><h2>Later: Settings</h2><p class="why">Switching only changes what the parent never edited, and says so first.</p>
+<div class="phone">
+ <h3>Family style</h3><p class="s">Sets defaults for chores, hours and extras. Each kid page has its own style switch too.</p>
+ <div class="seg"><span>Relaxed</span><span>Balanced</span><span class="on">Strict</span></div>
+ <div class="prev"><b>Switching to Strict</b><br>Changes 6 settings. Keeps your 3 edits (Ivy's bedtime, 2 chores you added).</div>
+ <details><summary>See what changes</summary>
+  <table><tr><th></th><th>Now</th><th>Strict</th></tr>
+  <tr><td>Screen time (Ivy)</td><td>2h</td><td>1h</td></tr>
+  <tr><td>Chores a day</td><td>3</td><td>4</td></tr>
+  <tr><td>Penalties</td><td>off</td><td>on</td></tr></table>
+ </details>
+ <button class="btn">Switch to Strict</button>
+</div></div>
+
+</div>
+<div class="note"><ul>
+<li>Ages come from the Kids step. Little, Kid and Teen shift each preset.</li>
+<li>Steps: Welcome, Family, Kids, How strict, Your plan, Phones (optional), Devices. That is 7 instead of 8, but the three slow ones (Chores, Hours, Extras) become one tap.</li>
+</ul></div>
+</div></body></html>
