@@ -1,11 +1,16 @@
 import os
 import shutil
+import subprocess
 
 import pytest
 
 from . import journey as j
 
 os.environ["INTERNAL_TOKEN"] = "labtoken"
+# journey.py calls compose directly; the e2e image tag needs PW_VERSION to interpolate
+os.environ["PW_VERSION"] = subprocess.run(
+    [*j.LAB, "pw-version"], check=True, capture_output=True, text=True
+).stdout.strip()
 
 
 @pytest.fixture(scope="session", autouse=True)
