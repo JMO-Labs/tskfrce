@@ -133,6 +133,9 @@ def tick(db: Session, now_utc: datetime) -> list[str]:
         screen_bank.settle(db, fam, now_utc)
         chores.run_reset(db, now_local.date())
     now = _naive_utc(now_utc)
+    from app.services import penalty_earnback  # services import this module
+
+    penalty_earnback.expire(db, now)
     db.query(Override).filter(Override.expires_at.isnot(None), Override.expires_at <= now).delete()
     db.commit()
     devices = db.query(Device).all()
