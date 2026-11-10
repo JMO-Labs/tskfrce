@@ -47,5 +47,4 @@
 /* Step 5 plan card rows (mockup presets-v2 .li) */
 .li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: 14px; }
 .li + .li { border-top: 1px solid var(--p-line); }
-.li span:first-child { color: var(--p-sub); }
-.li span:last-child { text-align: right; font-weight: 600; }
+.li span:last-child { text-align: right; color: var(--p-sub); }

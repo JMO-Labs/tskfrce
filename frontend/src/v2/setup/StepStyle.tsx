@@ -6,6 +6,7 @@ import type { Style } from '../presets/types'
 import { usePresets } from '../presets/usePresets'
 import type { Kid } from '../types'
 import { presetKids } from './setupJobs'
+import p from '../presets/presets.module.css'
 import styles from './stepCards.module.css'
 
 interface Props {
@@ -43,12 +44,10 @@ export function StepStyle({ kids, style, onStyle, styles: perKid, onStyles }: Pr
               const name = listed[i].name
               return (
                 <div key={k.id} style={{ marginTop: 10 }}>
-                  <div className={styles.kidrow} style={{ padding: '0 0 6px' }}>
-                    <span className={styles.av} aria-hidden="true">{name[0]}</span>
-                    <div className={styles.t2}>
-                      {name}
-                      <small>{AGE_LABEL[k.age_group]}</small>
-                    </div>
+                  <div className={p.kid} style={{ marginTop: 0 }}>
+                    <span className={p.av} aria-hidden="true">{name[0]}</span>
+                    {name}
+                    <small>{AGE_LABEL[k.age_group]}</small>
                   </div>
                   <StyleSeg value={perKid[k.id] ?? style} label={`Style for ${name}`} onChange={(s) => onStyles({ ...perKid, [k.id]: s })} />
                 </div>

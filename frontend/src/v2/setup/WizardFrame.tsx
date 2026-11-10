@@ -30,10 +30,12 @@ interface Props {
   note?: string
   /** the finished screen: accent icon tile above the title, and no Back/Next row (its own buttons lead on) */
   done?: boolean
+  /** the step body has its own submit button */
+  hideNext?: boolean
 }
 
 export function WizardFrame({
-  step, children, title, subtitle, onBack, onNext, nextLabel = 'Next', onSkip, onStepClick, busy, done, note
+  step, children, title, subtitle, onBack, onNext, nextLabel = 'Next', onSkip, onStepClick, busy, done, note, hideNext
 }: Props) {
   useLook('parent')
   const phone = useMediaQuery('(max-width: 767px)') // phone: dots and ticks, plus the current label only
@@ -122,9 +124,9 @@ export function WizardFrame({
                   Skip
                 </Button>
               )}
-              <Button type="submit" variant="filled" loading={busy} rightSection={<span className="ms" aria-hidden="true">{nextLabel === 'Finish' ? 'check' : 'chevron_right'}</span>}>
+              {!hideNext && <Button type="submit" variant="filled" loading={busy} rightSection={<span className="ms" aria-hidden="true">{nextLabel === 'Finish' ? 'check' : 'chevron_right'}</span>}>
                 {nextLabel}
-              </Button>
+              </Button>}
             </div>
           </div>
         )}

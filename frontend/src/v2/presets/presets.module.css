@@ -9,14 +9,21 @@
 
 .seg { background: var(--p-soft); border: 1px solid var(--p-line); border-radius: 999px; padding: 3px; }
 .seg :global(.mantine-SegmentedControl-indicator) { background: var(--p-ink); border-radius: 999px; box-shadow: none; }
-.seg :global(.mantine-SegmentedControl-label) { color: var(--p-ink); border-radius: 999px; font-size: 13px; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+.seg :global(.mantine-SegmentedControl-label) { color: var(--p-ink); border-radius: 999px; font-size: 13px; min-height: 38px; display: flex; align-items: center; justify-content: center; }
 .seg :global(.mantine-SegmentedControl-label[data-active]) { color: var(--p-card); font-weight: 600; }
 
 .details { background: var(--p-card); color: var(--p-ink); border: 1px solid var(--p-line); border-radius: 12px; padding: 10px 12px; margin-top: 4px; }
-.details summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+.details summary { cursor: pointer; font-size: 14px; color: var(--p-sub); }
 .table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 8px; }
 .table td, .table th { padding: 5px 4px; border-bottom: 1px solid var(--p-line); text-align: left; }
 .table th { color: var(--p-sub); font-weight: 600; }
 .table td:last-child, .table th:last-child { text-align: right; }
 .note { font-size: 12px; color: var(--p-sub); margin-top: 6px; }
 .prev { background: var(--p-amb); color: var(--p-ambink); border-radius: 12px; padding: 10px 12px; font-size: 13px; margin: 10px 0; }
+
+.seg :global(.mantine-SegmentedControl-control)::before, .seg :global(.mantine-SegmentedControl-innerLabel)::before { display: none; }
+.seg :global(.mantine-SegmentedControl-control) { border: 0; }
+/* kid heading: small lavender avatar + name (mockup presets-v2 .kid / .av) */
+.kid { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; margin: 10px 0 6px; }
+.kid small { color: var(--p-sub); font-weight: 400; font-size: 12px; }
+.av { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--p-lav); color: var(--p-lav-ink); display: grid; place-items: center; font-size: 12px; font-weight: 600; }

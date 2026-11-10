@@ -260,8 +260,9 @@ export default function SetupPage() {
           subtitle={step > LAST ? finishSummary(kids.length, made.data?.chores ?? chores.length, devices, made.data?.rules ?? schedules) : head.sub}
           onBack={step > 2 || (step === 2 && !accountDone) ? back : undefined}
           onNext={next}
-          nextLabel={step === LAST ? 'Finish' : step === 5 && !tweak ? 'Looks good' : 'Next'}
-          onSkip={step >= 3 && step <= LAST && !tweak && !(step === 6 && kids.length === 0) ? () => go(step + 1) : undefined}
+          nextLabel={step === LAST ? 'Finish' : 'Next'}
+          hideNext={step === 5 && !tweak}
+          onSkip={step >= 3 && step <= LAST && step !== 4 && step !== 5 && !tweak && !(step === 6 && kids.length === 0) ? () => go(step + 1) : undefined}
           onStepClick={(n) => {
             if (n > step && n > step + 1) return // Can't skip ahead multiple steps
             go(n)
@@ -284,7 +285,7 @@ export default function SetupPage() {
           {step === 3 && <StepKids kids={kids} name={kidDraft} onName={setKidDraft} onAdd={(k) => setKids([...kids, k])}
               draftError={tried && kidDraft.trim() ? `Add ${kidDraft.trim()} first or clear the field.` : undefined} />}
           {step === 4 && <StepStyle kids={kids} style={style} onStyle={setStyle} styles={kidStyles} onStyles={setKidStyles} />}
-          {step === 5 && !tweak && <StepPlan kids={presetKids(kids, kidStyles, style)} style={style} onTweak={startTweak} />}
+          {step === 5 && !tweak && <StepPlan kids={presetKids(kids, kidStyles, style)} style={style} onTweak={startTweak} busy={apply.isPending} />}
           {step === 5 && tweak === 'chores' && <StepChores selected={chores} made={addedStarters} hasKids={kids.length > 0} onChange={setChores} />}
           {step === 5 && tweak === 'hours' && <StepHours drafts={hours} onChange={setHours} choresLock={choresLock} onChoresLock={setChoresLock} />}
           {step === 5 && tweak === 'extras' && <StepExtras kids={kids} trust={trustKids} bedtime={bedtimeAuto} onTrust={setTrustKids} onBedtime={setBedtimeAuto} />}
