@@ -12,6 +12,7 @@ import {
   type PenaltyOptions,
   type SizeKey,
 } from "../penaltyTypes";
+import { Icon } from "../parent/Icon";
 import { EarnLine, ReasonLine, WhatLine, type PenLine } from "./PenaltyLines";
 
 export interface PenaltyFrom {
@@ -154,10 +155,23 @@ export function PenaltySheet(props: Props) {
     requestAnimationFrame(() => opener?.isConnected && opener.focus());
   };
   const one = data?.kids.find((k) => k.id === props.kidIds[0]);
-  const title =
-    props.kidIds.length > 1
-      ? "Penalty for everyone"
-      : `Give ${one?.name ?? ""} a penalty`.replace("  ", " ");
+  const family = props.kidIds.length > 1;
+  const label = family
+    ? "Penalty for everyone"
+    : `Give ${one?.name ?? ""} a penalty`.replace("  ", " ");
+  // mockup header: avatar + name + "Give a penalty"; the dialog's name stays the full sentence
+  const title = (
+    <span className="p-pen-head">
+      <span className="p-pen-vh">{label}</span>
+      <span className="p-pen-av" aria-hidden>
+        {family ? <Icon name="groups" size={18} /> : (one?.name ?? "").slice(0, 1).toUpperCase()}
+      </span>
+      <span aria-hidden>
+        <b>{family ? "Everyone" : one?.name}</b>
+        <small>{family ? "Penalty for everyone" : "Give a penalty"}</small>
+      </span>
+    </span>
+  );
   const body = data ? (
     <Body
       {...props}

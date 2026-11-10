@@ -4,7 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { api } from '@/v2/api'
-import { PenaltyCards } from '@/v2/kid/PenaltyCard'
+import { PenaltyCards, backText } from '@/v2/kid/PenaltyCard'
 import type { KidPenalty } from '@/v2/penaltyTypes'
 
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
@@ -30,7 +30,7 @@ describe('PenaltyCards', () => {
     expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('5')
     expect(screen.getByText('✓ Wipe counters')).toBeTruthy()
     expect(screen.getByText('… Mop')).toBeTruthy()
-    expect(screen.getByText('1 of 3 done')).toBeTruthy()
+    expect(screen.getByText('5 of 10 points back')).toBeTruthy()
   })
   test('no reason shows only the giver', () => {
     wrap([pen({ reason: null })])
@@ -50,6 +50,14 @@ describe('PenaltyCards', () => {
     wrap([pen({ back_total: 0, makeup: [], seen_by_kid: true }), pen({ id: 6 })])
     await new Promise((r) => setTimeout(r, 20))
     expect(apiMock.mock.calls.filter((c) => String(c[0]).includes('/seen'))).toHaveLength(0)
+  })
+  test('backText per kind', () => {
+    const b = (kind: KidPenalty['kind'], amount_returned: number, back_total: number) => backText({ kind, amount_returned, back_total })
+    expect(b('points', 5, 10)).toBe('5 of 10 points back')
+    expect(b('screen', 15, 30)).toBe('15 of 30 min back')
+    expect(b('block', 1440, 2880)).toBe('1 of 2 days back')
+    expect(b('block', 0, 2880)).toBe('0 of 2 days back')
+    expect(b('block', 720, 1440)).toBe('12 hours of 1 day back')
   })
   test('empty renders nothing', () => {
     wrap([])

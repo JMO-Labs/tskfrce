@@ -75,7 +75,8 @@ beforeEach(() => {
 describe("PenaltySheet", () => {
   test("renders sizes, title and give button; Small preselected at recent=0", async () => {
     show([1]);
-    expect(await screen.findByText("Give Ivy a penalty")).toBeTruthy();
+    expect(await screen.findByRole("dialog", { name: "Give Ivy a penalty" })).toBeTruthy();
+    expect(screen.getByText("Give a penalty")).toBeTruthy();
     for (const n of ["Small", "Medium", "Big", "Custom"])
       expect(screen.getByRole("button", { name: n })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Give penalty" })).toBeTruthy();
@@ -144,7 +145,8 @@ describe("PenaltySheet", () => {
   test("family mode posts all kids and hides device chips", async () => {
     const u = userEvent.setup();
     show([1, 2]);
-    expect(await screen.findByText("Penalty for everyone")).toBeTruthy();
+    expect(await screen.findByRole("dialog", { name: "Penalty for everyone" })).toBeTruthy();
+    expect(screen.getByText("Everyone")).toBeTruthy();
     await u.click(await screen.findByRole("button", { name: "Custom" }));
     expect(screen.getByRole("button", { name: "Points" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Screen time" })).toBeTruthy();

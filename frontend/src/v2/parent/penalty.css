@@ -35,3 +35,9 @@
 [data-look='parent'] .p-pen-size { border: 1px solid var(--p-line); border-radius: 12px; background: var(--p-soft); padding: 10px 12px 2px; margin: 0 0 8px; color: var(--p-ink); }
 [data-look='parent'] .p-pen-size > b { font-size: 14px; }
 [data-look='parent'] .p-pen-size .p-pen-sum:last-child { border-bottom: 0; }
+/* Sheet header (mockup .top): avatar, name, small sub line */
+[data-look='parent'] .p-pen-head { display: flex; align-items: center; gap: 10px; }
+[data-look='parent'] .p-pen-head b { display: block; font-size: 16px; line-height: 1.25; color: var(--p-ink); }
+[data-look='parent'] .p-pen-head small { display: block; font-size: 12px; font-weight: 400; color: var(--p-sub); }
+[data-look='parent'] .p-pen-av { flex: none; width: 36px; height: 36px; border-radius: 50%; background: var(--p-lav); color: var(--p-lav-ink); display: grid; place-items: center; font-weight: 700; font-size: 15px; }
+[data-look='parent'] .p-pen-vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

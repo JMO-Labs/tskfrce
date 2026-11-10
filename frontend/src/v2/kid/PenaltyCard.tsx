@@ -1,7 +1,16 @@
 import { useEffect } from 'react'
 import { useSeenPenalty } from '../hooks/usePenalties'
-import { kidTitle } from '../penaltyTypes'
+import { duration, kidTitle } from '../penaltyTypes'
 import type { KidPenalty } from '../penaltyTypes'
+
+/** Right-hand label: how much of the earn-back is back so far (mockup "1 of 2 days back"). */
+export function backText(p: Pick<KidPenalty, 'kind' | 'amount_returned' | 'back_total'>): string {
+  const { amount_returned: got, back_total: all } = p
+  if (p.kind === 'points') return `${got} of ${all} points back`
+  if (p.kind === 'screen') return `${got} of ${all} min back`
+  if (all % 1440 === 0 && got % 1440 === 0) return `${got / 1440} of ${all / 1440} days back`
+  return `${duration(got)} of ${duration(all)} back`
+}
 
 type Done = { mutate: (id: number) => void; isPending: boolean }
 
@@ -13,7 +22,6 @@ function Card({ p, done }: { p: KidPenalty; done: Done }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p.id, none])
   const n = p.makeup.length
-  const nDone = p.makeup.filter((m) => m.status === 'done').length
   const pct = none ? 0 : Math.min(100, Math.round((p.amount_returned / p.back_total) * 100))
   return (
     <div className="k-pen" data-testid="penalty-card">
@@ -39,7 +47,7 @@ function Card({ p, done }: { p: KidPenalty; done: Done }) {
               ),
             )}
           </span>
-          <span>{`${nDone} of ${n} done`}</span>
+          {!none && <span className="k-pen-back">{backText(p)}</span>}
         </div>
       )}
     </div>
