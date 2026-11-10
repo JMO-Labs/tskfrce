@@ -32,7 +32,7 @@ function usePin() {
   }
 }
 const pinError = (p: ReturnType<typeof usePin>) =>
-  (p.bad || p.letters) && <span className="pk-error">{p.letters ? 'A PIN is digits only, exactly 4.' : 'Use exactly 4 digits.'}</span>
+  (p.bad || p.letters) && <span className="pk-error" role="alert">{p.letters ? 'A PIN is digits only, exactly 4.' : 'Use exactly 4 digits.'}</span>
 
 const AgeSelect = ({ value, onChange }: { value: AgeGroup; onChange: (a: AgeGroup) => void }) => (
   <select className="pk-input kd-in" aria-label="Age group" value={value} onChange={(e) => onChange(e.currentTarget.value as AgeGroup)}>

@@ -57,6 +57,30 @@ test('KidProfileForm rejects a PIN that is not 4 digits and cannot be saved', as
   expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
 })
 
+test('KidProfileForm PIN error is an alert, flags the field, and clears when fixed', async () => {
+  const kid = { id: 3, full_name: 'Zed', username: 'zed', avatar: null, has_pin: false, age_group: 'kid' } as const
+  render(wrap(<KidProfileForm kid={kid} onSaved={() => {}} />))
+  const input = screen.getByLabelText(/PIN \(4 digits\)/)
+  await userEvent.type(input, '12')
+  expect(screen.getByRole('alert')).toHaveTextContent('Use exactly 4 digits.')
+  expect(input).toHaveAttribute('aria-invalid', 'true')
+  await userEvent.type(input, '34')
+  expect(input).toHaveValue('1234')
+  expect(screen.queryByRole('alert')).toBeNull()
+  expect(input).toHaveAttribute('aria-invalid', 'false')
+  expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+})
+
+test('KidProfileForm PIN with letters shows the digits-only alert', async () => {
+  const kid = { id: 3, full_name: 'Zed', username: 'zed', avatar: null, has_pin: false, age_group: 'kid' } as const
+  render(wrap(<KidProfileForm kid={kid} onSaved={() => {}} />))
+  const input = screen.getByLabelText(/PIN \(4 digits\)/)
+  await userEvent.type(input, '12ab')
+  expect(input).toHaveValue('12')
+  expect(screen.getByRole('alert')).toHaveTextContent('A PIN is digits only, exactly 4.')
+  expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+})
+
 test('kid name survives a reload on a shared device', async () => {
   const kids = [
     { id: 1, full_name: 'Ana', avatar: null, has_pin: false },
