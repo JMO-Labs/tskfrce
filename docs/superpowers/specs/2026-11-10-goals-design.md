@@ -110,3 +110,41 @@ for. Parents stay in control of what's allowed and what it costs.
 ## Left to the builder
 API shapes, data model details (e.g. `Goal`, `GoalContribution`, `GoalSuggestion`), component split, copy
 polish within the mockup, and tests.
+
+## Builder's calls (step 0, 2026-11-10)
+Settled while reading the spec as the builder. Each is easy to change later.
+
+1. **Picture:** an optional emoji only (no image upload).
+2. **Suggestions are goals** with status `suggested` and no price. Approving sets the price and makes it
+   `active`; declining deletes it. A pending suggestion counts toward the kid's goal limit.
+3. **Kids can start an allowed built-in themselves** from the "+ Suggest a goal" sheet, at the parent's price
+   (the parent already priced it). Parents can also add one from "+ New goal".
+4. **Limit counts** a kid's own goals that are suggested, active or full. Family goals don't count.
+5. **Default way points go in:** by hand (turnkey: nothing moves on its own). In automatic mode, 25% of each
+   approved chore (base + early bonus) goes to the kid's chosen goal, or their oldest active goal if they
+   haven't picked. The kid can pick a family goal too. "+ Add" works in both modes.
+6. **No overfill:** saves, auto-shares and chip-ins stop at the price. Reaching it sets `full`.
+7. **"Waiting on [parent]"** names the parent who created or priced the goal (else the family owner).
+8. **Removing goals:** a parent can delete any goal that isn't fulfilled; every kid's saved points go back
+   to them (family goals too). A kid can remove their own goal unless it's full; its points come back,
+   and with withdrawals off only an empty goal can be removed.
+9. **Turning Goals off** hides Goals for kids and stops auto-sharing. Saved points stay in the goals and come
+   back into view when Goals is turned on again.
+10. **Ledger:** saves are `PointsType.TRANSFER` rows with reason `goal_save` (negative); returns use
+    `goal_return` (positive). TRANSFER keeps XP and levels untouched. Parent chip-ins add no ledger row.
+11. **Party** plays for each kid who has a party row (one row per kid on fulfill; family goals add a row for
+    every kid). Reduced motion or celebrations set to Off gives the static pose with no confetti.
+12. **Placement:** the parent Goals screen is a "Goals" item in Kids & chores → Rewards, next to Requests and
+    Screen time (the nav bar and tabs stay the same). Goal settings is a sub-pane opened from the
+    "Goal settings" link. The kid's "My goals" sits at the top of the Rewards (Prizes) tab.
+13. **Needs you:** a full goal shows **Fulfilled** as its main action. A suggestion shows **Set price**,
+    which opens the Goals screen. Neither is part of "Approve all".
+14. **Done history:** the last 5 fulfilled goals on the kid screen and the last 10 on the parent screen.
+15. **Built-in defaults:** extra screen time is 60 minutes for 200 points, and Get out of jail free is
+    500 points. Both are off.
+16. **Banked screen time into family goals:** deferred (not in v1).
+17. **Extra screen time** is offered only while screen banking is on (screen time on, rollover on). On
+    fulfill, the minutes go into `ScreenBank.minutes`, through a single function
+    (`goals.grant_screen`), so a different payout is a one-line change.
+18. **New inbox kinds:** `goal_full` and `goal_suggested` go to parents, and `jail_card` (a card was played)
+    goes to parents.
