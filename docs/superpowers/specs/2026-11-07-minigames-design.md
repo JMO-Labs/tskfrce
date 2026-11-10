@@ -160,3 +160,27 @@ Plus the turnkey introductions (owner: "highlight everything to show value"): a 
 - Spec approved: "ship to swarm".
 - **Make-up chores (Penalties feature) earn no game plays and no tickets.** They only reduce a penalty.
 - Built on `feat/declutter` (2.8.0); the parent UI follows declutter calm-then-focus. Ships after Presets (2.12.0).
+
+## Builder's calls (2026-11-10)
+
+Minor questions settled while planning. Each is marked "builder's call"; the owner can overrule any of them.
+
+- **Phases split into two PRs** (builder's call). PR 1 (2.12.0): server framework (plays, tokens, cap, tickets, stars, leaderboard, family total, badges, recap line), parent card and introductions, kid toast, shelf, wheel, results, bedtime sleep, quick-fire run with all 20 microgames, and Hungry Cat. PR 2 (stacked): Math Dash, Pack the Box, Shelf Memory, upgrades, power-ups and the wheel bonus. The results screen in PR 1 has no upgrade bar or wheel bonus yet.
+- **The wheel result is picked by the server** at round start (builder's call), so closing the app and reopening can't re-roll it. An unfinished round resumes with the same game and the same token.
+- **Wheel odds** (builder's call): half quick-fire, half thinking games. Each thinking game that lists the kid's age group gets equal weight.
+- **Asleep window** (builder's call): from the family bedtime (`bedtime_auto_at`, used as "bedtime" even when auto-approve is off) to the day reset, plus the family quiet hours when set. The shelf shows the end of the window as the wake time.
+- **Tickets by stars** (builder's call): 0 stars 1, 1 star 3, 2 stars 6, 3 stars 10. Points = tickets, cut to what is left of the earned day's cap.
+- **Quick-fire scoring** (builder's call): each cleared microgame scores 100 plus a speed bonus of up to 50 (`max(0, 50 - ms // 60)`). The server recomputes the score from the reported parts and ignores the client total. Stars at 500 / 1100 / 1800.
+- **Hungry Cat scoring** (builder's call): one point per treat, 60 s clock, 3 hearts lost to socks. Stars at 10 / 25 / 40.
+- **Validation** (builder's call): each game has a maximum score, a minimum duration and a maximum score rate per second. Quick-fire parts are capped at 45, each part's time must be 150 to 6000 ms, at most 3 misses, and the parts' total time can't exceed the elapsed time plus 2 s.
+- **Per-microgame progress** (builder's call): each of the 20 microgames keeps its own rounds and clears on the server (`qf:<key>` rows), ready for PR 2's upgrades. Leaderboard stars are the run's stars.
+- **Start level** (builder's call): Little 1, Kid 2, Teen 3, on a 1 to 5 scale. Doing well raises it during a round.
+- **Art** (builder's call): emoji and CSS shapes in the kid app style, plus the owner's mascots. Drawn art per game is a later pass.
+- **Games tab** (builder's call): a Games tab in the kid nav for every age mode, after Chores, with a saved-plays count. It hides when games are off for the kid.
+- **Gameplay motion** (builder's call): game motion is the game, so it runs under reduced motion. Decorative motion (mascot entry, wheel spin, stars popping, waving) is skipped under reduced motion or Celebrations Off, and is shorter under Small.
+- **Parent previewing a kid** (builder's call) sees the shelf but can't start a round.
+- **Make-up chores** (addendum): a run with a `penalty_id` earns nothing. The check reads the attribute defensively, so it works before and after Penalties merges.
+- **Custom mode** (builder's call): the chore editor gets an "Earns a game" switch, shown only when the family uses Custom. It defaults off.
+- **Undo** (builder's call): undoing a chore or "Wasn't done" first revokes that chore's own play if it is unplayed, otherwise the newest unplayed play. Revoked plays stay in the table as `revoked` for history.
+- **Badges** (builder's call): Arcade Ace (rounds played), Triple Star (3-star rounds), Try It All (quick-fire games tried), House Record (family bests held), Cat Snack Champ (3-star Hungry Cat rounds).
+- **Try card** (builder's call): shows while games are on and no kid has finished a round, and opens Settings → Family → Minigames.
