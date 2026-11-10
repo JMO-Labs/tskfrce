@@ -10,7 +10,20 @@ USER_=labparent PASS_=labpassword1
 
 _curl_parent() { $COMPOSE exec -T parent curl -s -m 30 "$@"; }
 # Every probe runs from the parent container: without it, waits would only time out.
-_running() { [ -n "$($COMPOSE ps -q --status running parent 2>/dev/null)" ]; }
+_running() { _mine && [ -n "$($COMPOSE ps -q --status running parent 2>/dev/null)" ]; }
+
+# One lab per machine: fixed subnets and one compose project, so every checkout drives the same
+# containers. Refuse to build over, test on or tear down another checkout's lab.
+_others() {
+  docker ps -a --filter label=com.docker.compose.project=task4ce-lab \
+    --format '{{.Label "com.docker.compose.project.working_dir"}}' | sort -u | grep -vxF "$(pwd -P)/lab" || true
+}
+_mine() { [ -z "$(_others)" ]; }
+_guard() {
+  { [ -n "${LAB_FORCE:-}" ] || _mine; } && return 0
+  echo "lab in use by $(_others | tr '\n' ' ')- one lab per machine; wait for it (LAB_FORCE=1 overrides)" >&2
+  exit 3
+}
 
 _mac_of() {
   case "$1" in
@@ -118,9 +131,9 @@ _e2e() {
 
 cmd=${1:-}; shift || true
 case "$cmd" in
-  up) _up ;;
-  down) rm -f "$TOKEN_FILE"; _bridges -D 2>/dev/null || true; $COMPOSE --profile e2e down -v ;;  # profile: also remove frontend
-  e2e) _e2e ;;
+  up) _guard; _up ;;
+  down) _guard; rm -f "$TOKEN_FILE"; _bridges -D 2>/dev/null || true; $COMPOSE --profile e2e down -v ;;  # profile: also remove frontend
+  e2e) _guard; _e2e ;;
   running) _running ;;
   wait-blocker) _wait_http "$BLK/health" ;;
   token) _token ;;
