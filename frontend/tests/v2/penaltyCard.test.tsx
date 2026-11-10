@@ -46,6 +46,11 @@ describe('PenaltyCards', () => {
     expect(screen.queryByRole('progressbar')).toBeNull()
     await waitFor(() => expect(apiMock.mock.calls.filter((c) => c[0] === '/kid/penalties/5/seen')).toHaveLength(1))
   })
+  test('already seen or earn-back card: no seen post', async () => {
+    wrap([pen({ back_total: 0, makeup: [], seen_by_kid: true }), pen({ id: 6 })])
+    await new Promise((r) => setTimeout(r, 20))
+    expect(apiMock.mock.calls.filter((c) => String(c[0]).includes('/seen'))).toHaveLength(0)
+  })
   test('empty renders nothing', () => {
     wrap([])
     expect(screen.queryByTestId('penalty-card')).toBeNull()
