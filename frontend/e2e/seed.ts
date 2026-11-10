@@ -36,6 +36,8 @@ export async function parentApi(): Promise<APIRequestContext> {
       await new Promise((r) => setTimeout(r, 15_000))
       res = await anon.post('/api/proxy/auth/login', { data: PARENT })
     }
+    // fail here, not later as a confusing 401 on every request with "Bearer undefined"
+    if (!res.ok()) throw new Error(`e2e parent login failed: HTTP ${res.status()} ${await res.text()}`)
     const { access_token } = await res.json()
     await anon.dispose()
     return access_token as string
@@ -50,6 +52,7 @@ export async function parentApi(): Promise<APIRequestContext> {
 /** A kid with no device, deleted by the returned `undo` (chores go with them). */
 export async function makeKid(api: APIRequestContext, name: string) {
   const res = await api.post('/api/proxy/kids', { data: { full_name: name } })
+  if (!res.ok()) throw new Error(`makeKid(${name}) failed: HTTP ${res.status()} ${await res.text()}`)
   const kid = await res.json()
   return { kid, undo: () => api.delete(`/api/proxy/kids/${kid.id}`) }
 }
