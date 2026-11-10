@@ -119,6 +119,7 @@ function KidStyle({ kid }: { kid: Kid }) {
       <PresetSwitch kidId={kid.id} />
       <Switch
         className="pn-sw"
+        mt={12}
         label="Internet locks until chores are done"
         labelPosition="left"
         checked={kid.chores_lock ?? true}

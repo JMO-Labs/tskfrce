@@ -36,7 +36,7 @@ export function PresetSwitch({ kidId }: { kidId?: number }) {
     })
   return (
     <div className="pn">
-      <div className="p-sec-h">{kidId != null ? 'Style' : 'Family style'}</div>
+      {kidId != null && <div className="p-sec-h">Style</div>}
       {kidId == null && <p className={s.note}>Sets defaults for chores, hours and extras. Each kid page has its own style switch too.</p>}
       <StyleSeg value={shown} onChange={(v) => setPick(v === saved ? null : v)} label={kidId != null ? 'Style' : 'Family style'} />
       {changing && prev && (
@@ -63,7 +63,7 @@ export function PresetSwitch({ kidId }: { kidId?: number }) {
               </table>
             </details>
           )}
-          <button type="button" className="p-btn" data-variant="primary" style={{ width: '100%', marginTop: 8 }} disabled={apply.isPending} onClick={go}>
+          <button type="button" className="p-btn" data-variant="accent" style={{ width: '100%', marginTop: 8 }} disabled={apply.isPending} onClick={go}>
             Switch to {label}
           </button>
         </>

@@ -262,7 +262,7 @@ export default function SetupPage() {
           onNext={next}
           nextLabel={step === LAST ? 'Finish' : 'Next'}
           hideNext={step === 5 && !tweak}
-          onSkip={step >= 3 && step <= LAST && step !== 4 && step !== 5 && !tweak && !(step === 6 && kids.length === 0) ? () => go(step + 1) : undefined}
+          onSkip={step >= 3 && step <= LAST && !tweak && !(step === 6 && kids.length === 0) ? () => go(step + 1) : undefined}
           onStepClick={(n) => {
             if (n > step && n > step + 1) return // Can't skip ahead multiple steps
             go(n)

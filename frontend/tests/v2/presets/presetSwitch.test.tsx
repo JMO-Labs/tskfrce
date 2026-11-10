@@ -30,7 +30,7 @@ describe('PresetSwitch', () => {
 
   test('family: no preview until picked, then summary, table and apply', async () => {
     setup()
-    expect(await screen.findByText('Family style')).toBeInTheDocument()
+    expect(await screen.findByRole('radiogroup', { name: 'Family style' })).toBeInTheDocument()
     expect(calls('/presets/preview')).toHaveLength(0)
     await userEvent.click(await screen.findByText('Strict'))
     expect(await screen.findByText(/Changes 2 settings/)).toBeInTheDocument()
