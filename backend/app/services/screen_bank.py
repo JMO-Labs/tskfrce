@@ -68,3 +68,22 @@ def clear_all(db: Session) -> None:
     """Rollover turned off: every bank back to 0."""
     db.query(ScreenBank).update({ScreenBank.minutes: 0})
     db.flush()
+
+
+def take(db: Session, fam: FamilySettings, kid_id: int, minutes: int) -> int:
+    """Dock up to `minutes` from the saved bank (never below 0). Returns minutes taken. Flushes."""
+    got = min(minutes, saved(db, fam, kid_id))
+    if got:
+        db.get(ScreenBank, kid_id).minutes = saved(db, fam, kid_id) - got
+        db.flush()
+    return got
+
+
+def put(db: Session, kid_id: int, minutes: int) -> None:
+    """Add minutes back to the bank, creating the row. Flushes."""
+    row = db.get(ScreenBank, kid_id)
+    if row is None:
+        db.add(ScreenBank(kid_id=kid_id, minutes=minutes))
+    else:
+        row.minutes += minutes
+    db.flush()
