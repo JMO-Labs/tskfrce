@@ -57,7 +57,7 @@ def test_goals_migration_round_trips(tmp_path):
         )
 
     alembic("upgrade", "head")
-    alembic("downgrade", "-1")
+    alembic("downgrade", "f1a2b3c4d5e7")  # just below goals, whatever comes after it
     assert "goals" not in inspect(create_engine(url)).get_table_names()
     alembic("upgrade", "head")
     insp = inspect(create_engine(url))

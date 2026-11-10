@@ -1,10 +1,18 @@
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from app.models.game import GamePlay
+from app.services import minigames
 
 from tests.factories import make_run
 
 G = "/api/v1/kid/games"
+
+
+@pytest.fixture(autouse=True)
+def _awake(monkeypatch):
+    """These tests use the real clock; the asleep window has its own tests."""
+    monkeypatch.setattr(minigames, "asleep_until", lambda fam, now: None)
 
 
 def _saved(db, kid, n=1, seen=False):
