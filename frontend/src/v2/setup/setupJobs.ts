@@ -109,7 +109,8 @@ export const hoursJobs = (hours: RuleBody[], choresLock: boolean): Job[] => [
   { key: `chores_lock:${choresLock}`, run: () => api('/family', { method: 'PATCH', body: { chores_lock: choresLock } }) },
 ]
 
-export const extrasJobs = (trustKids: number[], bedtimeAuto: boolean): Job[] => [
+export const extrasJobs = (trustKids: number[], bedtimeAuto: boolean, goalsOn = true): Job[] => [
   ...trustKids.map((id) => ({ key: `trust:${id}`, run: () => api(`/kids/${id}`, { method: 'PATCH', body: { trust_mode: true } }) })),
   ...(bedtimeAuto ? [{ key: 'bedtime', run: () => api('/family', { method: 'PATCH', body: { bedtime_auto: true } }) }] : []),
+  { key: `goals:${goalsOn}`, run: () => api('/goals/settings', { method: 'PATCH', body: { on: goalsOn } }) },
 ]

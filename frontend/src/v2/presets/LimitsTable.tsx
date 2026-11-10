@@ -14,7 +14,10 @@ export function LimitsTable({ catalog, kids, style }: Props) {
   const family: Style = style ?? catalog.style ?? 'balanced'
   const cols = kids.map((k) => ({ k, st: k.style ?? family }))
   const fam = catalog.family[family]
-  const parts = [fam?.banked === undefined ? '' : `banked time ${fam.banked ? 'on' : 'off'}`].filter(Boolean)
+  const parts = [
+    fam?.goals === undefined ? '' : `goals ${fam.goals ? 'on' : 'off'}`,
+    fam?.banked === undefined ? '' : `banked time ${fam.banked ? 'on' : 'off'}`,
+  ].filter(Boolean)
   return (
     <details className={s.details}>
       <summary>See what this sets</summary>

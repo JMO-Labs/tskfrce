@@ -44,12 +44,12 @@ def test_picks_in_starters():
 
 
 def test_family_and_catalog():
-    assert family_plan("strict") == {"banked": False}
-    assert family_plan("balanced") == {"banked": True}
+    assert family_plan("strict") == {"banked": False, "goals": True}
+    assert family_plan("balanced") == {"banked": True, "goals": True}
     c = catalog()
     assert set(c["plans"]) == set(AGES)
     assert set(c["plans"]["kid"]) == set(STYLES)
-    assert c["family"]["relaxed"] == {"banked": True}
+    assert c["family"]["relaxed"] == {"banked": True, "goals": True}
 
 
 def test_starters_match_frontend():

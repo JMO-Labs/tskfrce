@@ -78,7 +78,7 @@ describe('optional extras step (Tweak)', () => {
     })
   }
   const puts = () => apiMock.mock.calls.filter((c) => c[0] === '/setup/step' && c[1]?.method === 'PUT').map((c) => (c[1] as { body: unknown }).body)
-  const patches = () => apiMock.mock.calls.filter(([p, i]) => p !== '/setup/step' && i?.method === 'PATCH' && !JSON.stringify(i).includes('chores_lock'))
+  const patches = () => apiMock.mock.calls.filter(([p, i]) => p !== '/setup/step' && i?.method === 'PATCH' && !JSON.stringify(i).includes('chores_lock') && p !== '/goals/settings')
   /** a family stored at step 5, then Tweak, Next (chores), Next (hours): the extras sub-step */
   const toExtras = async (user: ReturnType<typeof userEvent.setup>) => {
     resume(5)
@@ -119,7 +119,16 @@ describe('optional extras step (Tweak)', () => {
     await screen.findByRole('button', { name: 'Show code for Ava' })
     expect(apiMock).toHaveBeenCalledWith('/kids/7', { method: 'PATCH', body: { trust_mode: true } })
     expect(apiMock).toHaveBeenCalledWith('/family', { method: 'PATCH', body: { bedtime_auto: true } })
-    expect(apiMock).toHaveBeenCalledWith('/presets/apply', { method: 'POST', body: { style: 'balanced', kids: { 7: null }, skip: ['chores', 'bedtime', 'trust'] } })
+    expect(apiMock).toHaveBeenCalledWith('/presets/apply', { method: 'POST', body: { style: 'balanced', kids: { 7: null }, skip: ['chores', 'bedtime', 'trust', 'goals'] } })
+  })
+
+  test('Goals is on in Tweak; switching it off saves on:false and the plan leaves it alone', async () => {
+    const user = userEvent.setup()
+    await toExtras(user)
+    await user.click(screen.getByRole('switch', { name: 'Goals' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await screen.findByRole('button', { name: 'Show code for Ava' })
+    expect(apiMock).toHaveBeenCalledWith('/goals/settings', { method: 'PATCH', body: { on: false } })
   })
 
   test('Next on Extras with all off patches nothing', async () => {

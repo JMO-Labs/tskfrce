@@ -60,9 +60,9 @@ STARTERS = {
 }
 
 FAMILY = {
-    "relaxed": {"banked": True},
-    "balanced": {"banked": True},
-    "strict": {"banked": False},
+    "relaxed": {"banked": True, "goals": True},
+    "balanced": {"banked": True, "goals": True},
+    "strict": {"banked": False, "goals": True},
 }
 
 

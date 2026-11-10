@@ -30,6 +30,7 @@ const KEYS: Record<string, string> = {
   trust: 'Trust mode',
   photo: 'Photo proof',
   banked: 'Banked time',
+  goals: 'Goals',
 }
 
 export const keyLabel = (key: string): string => KEYS[key] ?? key

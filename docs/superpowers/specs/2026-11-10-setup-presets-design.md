@@ -110,3 +110,6 @@ Age offsets, data model for edit tracking, API shapes, copy polish within the mo
 - **API**: `GET /api/v1/presets` (catalog), `POST /api/v1/presets/preview` and `POST /api/v1/presets/apply`
   with `{style?, kids?: {id: style|null}, skip?: [keys]}`. Parents only. With `style`, family keys and all
   kids are in scope. Without it, only the listed kids are.
+- **Goals and Penalties** (2026-11-10): Goals (2.10.0) merged into `feat/declutter`, so `goals` is a family
+  key (`family_settings.goals_on`, on for every style; the Tweak Extras switch wins). Penalties is not
+  merged yet: its key (`penalties_enabled`, Strict on) is a follow-up.

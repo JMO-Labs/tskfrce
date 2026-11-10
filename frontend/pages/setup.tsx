@@ -56,6 +56,7 @@ export default function SetupPage() {
   const [hours, setHours] = useState<RuleBody[]>(DEFAULT_DRAFTS)
   const [trustKids, setTrustKids] = useState<number[]>([])
   const [bedtimeAuto, setBedtimeAuto] = useState(false)
+  const [goalsOn, setGoalsOn] = useState(true)
   const [choresLock, setChoresLock] = useState(true)
   const [style, setStyle] = useState<Style>('balanced')
   const [kidStyles, setKidStyles] = useState<Record<number, Style> | null>(null) // set = "Different for each kid"
@@ -189,8 +190,8 @@ export default function SetupPage() {
     run([
       ...(kids.length === 0 ? [] : choreJobs(chores, (t) => assign[t] ?? kids.map((k) => k.id), choreCache.current)),
       ...hoursJobs(hours, choresLock),
-      ...extrasJobs(trustKids, bedtimeAuto),
-      presetJob(['chores', 'bedtime', 'trust']),
+      ...extrasJobs(trustKids, bedtimeAuto, goalsOn),
+      presetJob(['chores', 'bedtime', 'trust', 'goals']),
     ])
   }
   const back = () => (tweak === 'extras' ? sub('hours') : tweak === 'hours' ? sub('chores') : tweak === 'chores' ? sub(null) : go(step - 1))
@@ -288,7 +289,7 @@ export default function SetupPage() {
           {step === 5 && !tweak && <StepPlan kids={presetKids(kids, kidStyles, style)} style={style} onTweak={startTweak} busy={apply.isPending} />}
           {step === 5 && tweak === 'chores' && <StepChores selected={chores} made={addedStarters} hasKids={kids.length > 0} onChange={setChores} />}
           {step === 5 && tweak === 'hours' && <StepHours drafts={hours} onChange={setHours} choresLock={choresLock} onChoresLock={setChoresLock} />}
-          {step === 5 && tweak === 'extras' && <StepExtras kids={kids} trust={trustKids} bedtime={bedtimeAuto} onTrust={setTrustKids} onBedtime={setBedtimeAuto} />}
+          {step === 5 && tweak === 'extras' && <StepExtras kids={kids} trust={trustKids} bedtime={bedtimeAuto} goals={goalsOn} onTrust={setTrustKids} onBedtime={setBedtimeAuto} onGoals={setGoalsOn} />}
           {step === 6 && <StepPhones kids={kids} />}
           {step === 7 && <StepDevices kids={kids} />}
           {step > LAST && (

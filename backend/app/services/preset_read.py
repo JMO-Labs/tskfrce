@@ -10,7 +10,7 @@ from app.models.user import User
 from app.services.presets import STARTERS
 
 KID_KEYS = ("chores", "screen", "bedtime", "lock", "trust", "photo")
-FAMILY_KEYS = ("banked",)
+FAMILY_KEYS = ("banked", "goals")
 
 # What a family that never touched presets has.
 DEFAULT = {
@@ -21,6 +21,7 @@ DEFAULT = {
     "trust": False,
     "photo": False,
     "banked": True,
+    "goals": True,
 }
 
 
@@ -78,7 +79,8 @@ def current(db: Session, kid: User) -> dict:
 
 
 def family_current(db: Session) -> dict:
-    return {"banked": bool(get_family(db).screen_rollover)}
+    fam = get_family(db)
+    return {"banked": bool(fam.screen_rollover), "goals": bool(fam.goals_on)}
 
 
 def edited(key: str, now, base: dict):

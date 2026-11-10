@@ -218,3 +218,17 @@ def test_photo_off_keeps_a_shared_chore_photo_for_a_strict_kid_out_of_scope(db, 
     preset_state.run(db, parent, {"kids": {str(a.id): "balanced"}}, True)
     bed = db.query(Chore).filter(Chore.title == "Make bed").all()
     assert any(c.needs_photo for c in bed if b in [k for x in c.assignments for k in x.kids])
+
+
+def test_goals_follow_the_family_pick_unless_edited(db, parent):
+    fam = get_family(db)
+    fam.goals_on = False  # the parent switched Goals off before presets: an edit, kept
+    db.commit()
+    out = ps.run(db, parent, {"style": "strict"}, True)
+    assert [k["key"] for k in out["kept"]] == ["goals"]
+    assert get_family(db).goals_on is False
+    fam.goals_on = True
+    fam.preset_base = None
+    db.commit()
+    out = ps.run(db, parent, {"style": "relaxed"}, False)
+    assert "goals" not in [c["key"] for c in out["changes"] + out["kept"]]
