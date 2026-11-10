@@ -116,3 +116,55 @@ def test_per_client_cap_keyed_by_mac_across_ips():
     t.join(2)
     for c in socks:
         c.close()
+
+
+def _serve(port, stop, **kw):
+    t = threading.Thread(
+        target=run_dns, args=(None, "10.0.0.2", stop), kwargs={"bind": ("127.0.0.1", port), **kw}
+    )
+    t.daemon = True
+    t.start()
+    time.sleep(0.2)
+    return t
+
+
+def test_on_query_sees_portal_answers_for_claimed_and_unclaimed_clients():
+    """Bypass alerts: a homework refusal (handle -> None) and a plain portal answer both report."""
+    seen = []
+    for claimed in (True, False):
+        port, stop = _free_port(), threading.Event()
+        t = _serve(
+            port,
+            stop,
+            handle=lambda ip, data: None,  # homework gate refuses the name
+            claims=lambda ip, c=claimed: c,
+            on_query=lambda ip, name: seen.append((claimed, name)),
+        )
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as c:
+            c.settimeout(2)
+            c.sendto(_q(1), ("127.0.0.1", port))
+            assert str(DNS(c.recv(512)).an[0].rdata) == "10.0.0.2"
+        stop.set()
+        t.join(2)
+    assert seen == [(True, "x.com."), (False, "x.com.")]
+
+
+def test_on_query_not_called_for_forwarded_homework_answers():
+    """An allowed homework name is answered upstream; it is not a workaround try."""
+    seen = []
+    port, stop = _free_port(), threading.Event()
+    upstream = bytes(DNS(id=1, qr=1, qd=[DNSQR(qname="x.com.", qtype=1)]))
+    t = _serve(
+        port,
+        stop,
+        handle=lambda ip, data: upstream,
+        claims=lambda ip: True,
+        on_query=lambda ip, name: seen.append(name),
+    )
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as c:
+        c.settimeout(2)
+        c.sendto(_q(1), ("127.0.0.1", port))
+        assert c.recv(512) == upstream
+    stop.set()
+    t.join(2)
+    assert seen == []
