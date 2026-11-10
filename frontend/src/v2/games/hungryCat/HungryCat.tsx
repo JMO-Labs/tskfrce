@@ -1,18 +1,22 @@
 /** Hungry Cat: slide the cat, catch food in the bowl, dodge socks. 60 s, 3 hearts. */
 import { useEffect, useRef, useState } from 'react'
 import { seeded } from '../rng'
-import { CAT_MS, initCat, stepCat } from './logic'
+import { PowerSlots } from '../PowerSlots'
+import type { PowerUp } from '../types'
+import { initCat, stepCat } from './logic'
 import s from './HungryCat.module.css'
 
 const clamp = (n: number) => Math.min(1, Math.max(0, n))
-const clock = (ms: number) => {
-  const sec = Math.ceil(Math.max(0, CAT_MS - ms) / 1000)
+const clock = (ms: number, dur: number) => {
+  const sec = Math.ceil(Math.max(0, dur - ms) / 1000)
   return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
 }
 
-export function HungryCat({ level, seed, onEnd }: { level: number; seed: number; onEnd: (score: number) => void }) {
+interface Props { level: number; seed: number; onEnd: (score: number) => void; upgrades?: string[]; powerUp?: string | null; /** power-ups held (display only; powerUp is the armed one) */ held?: PowerUp[] }
+
+export function HungryCat({ level, seed, onEnd, upgrades = [], powerUp = null, held = [] }: Props) {
   const [rng] = useState(() => seeded(seed))
-  const [st, setSt] = useState(() => initCat(level, rng))
+  const [st, setSt] = useState(() => initCat(level, rng, { upgrades, powerUp }))
   const catX = useRef(0.5)
   const field = useRef<HTMLDivElement>(null)
   const ended = useRef(false)
@@ -58,7 +62,7 @@ export function HungryCat({ level, seed, onEnd }: { level: number; seed: number;
       <div className={s.hud}>
         <span>🍽️ {st.score}</span>
         <span aria-label={`${st.hearts} hearts`} role="img">{'❤️'.repeat(Math.max(0, st.hearts))}{'🖤'.repeat(3 - Math.max(0, st.hearts))}</span>
-        <span>⏱ {clock(st.t)}</span>
+        <span>⏱ {clock(st.t, st.dur)}</span>
       </div>
       <div
         ref={field}
@@ -74,10 +78,15 @@ export function HungryCat({ level, seed, onEnd }: { level: number; seed: number;
           <img className={s.catimg} src="/celebrate/mascots/cat-princess.svg" alt="" />
           <div className={s.bowl}>🥣</div>
         </div>
+        {st.cat2 !== null && (
+          <div className={s.cat} data-testid="cat2" style={{ left: `${Math.round(st.cat2 * 100)}%` }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className={s.catimg} src="/celebrate/mascots/cat-princess.svg" alt="" />
+            <div className={s.bowl}>🥣</div>
+          </div>
+        )}
       </div>
-      <div className={s.pups}>
-        {[0, 1, 2].map((i) => <span key={i} className={`${s.pu} ${s.empty}`} data-testid="pu-empty">+</span>)}
-      </div>
+      <PowerSlots held={held} armed={powerUp} />
     </div>
   )
 }

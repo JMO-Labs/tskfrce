@@ -43,7 +43,7 @@ export function Shelf({ d, name, preview, hint, busy, celebrate, seed, tz, onPla
           <div key={g.key} className={s.tile}>
             <span className={s.ge} aria-hidden="true">{g.icon}</span>
             <b>{g.name}</b>
-            <small>{stars(g.stars, g.rounds)}</small>
+            <small>{stars(g.stars, g.rounds)}{!!g.upgrades && <span className={s.ups} title="Upgrades unlocked"> ⬆️ {g.upgrades}</span>}</small>
           </div>
         ))}
       </div>

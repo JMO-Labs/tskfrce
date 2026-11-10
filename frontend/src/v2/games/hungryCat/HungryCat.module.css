@@ -4,6 +4,3 @@
 .cat{position:absolute;bottom:4px;width:120px;transform:translateX(-50%);z-index:1;pointer-events:none}
 .catimg{display:block;width:120px}
 .bowl{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:40px;line-height:1;z-index:2}
-.pups{display:flex;gap:8px;margin-top:12px}
-.pu{flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;padding:10px 6px;border-radius:14px;border:2px solid var(--k-line);background:var(--k-card);color:var(--k-ink);font:700 14px var(--font-display),'Space Grotesk',system-ui,sans-serif}
-.empty{border-style:dashed;background:transparent;color:var(--k-sub)}

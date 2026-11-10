@@ -21,24 +21,31 @@ jest.mock('@/v2/games/QuickFire', () => ({
   ),
 }))
 jest.mock('@/v2/games/hungryCat/HungryCat', () => ({
-  HungryCat: ({ onEnd }: { onEnd: (s: number) => void }) => <button onClick={() => onEnd(23)}>end cat</button>,
+  HungryCat: ({ onEnd, upgrades, powerUp }: { onEnd: (s: number) => void; upgrades: string[]; powerUp: string | null }) => <button onClick={() => onEnd(23)}>{`end cat ${upgrades.join('+')}|${powerUp}`}</button>,
 }))
+function Stub({ name, onEnd, powerUp }: { name: string; onEnd: (s: number) => void; powerUp: string | null }) {
+  return <button onClick={() => onEnd(9)}>{`end ${name} ${powerUp}`}</button>
+}
+jest.mock('@/v2/games/mathDash/MathDash', () => ({ MathDash: (p: { onEnd: (s: number) => void; powerUp: string | null }) => <Stub name="math" {...p} /> }))
+jest.mock('@/v2/games/packBox/PackBox', () => ({ PackBox: (p: { onEnd: (s: number) => void; powerUp: string | null }) => <Stub name="pack" {...p} /> }))
+jest.mock('@/v2/games/shelfMemory/ShelfMemory', () => ({ ShelfMemory: (p: { onEnd: (s: number) => void; powerUp: string | null }) => <Stub name="shelf" {...p} /> }))
 
 const apiMock = api as unknown as Mock<(p: string, i?: { method?: string; body?: unknown }) => Promise<unknown>>
 const routes: Record<string, unknown> = {}
 
-const started: StartedPlay = { play_id: 7, token: 'tok', game: 'quickfire', kind: 'quick', level: 2, slots: ['quickfire', 'hungry-cat', 'quickfire', 'hungry-cat', 'quickfire', 'hungry-cat'], slot: 1 }
+const started: StartedPlay = { play_id: 7, token: 'tok', game: 'quickfire', kind: 'quick', level: 2, slots: ['quickfire', 'hungry-cat', 'quickfire', 'hungry-cat', 'quickfire', 'hungry-cat'], slot: 1, upgrades: [], power_ups: [] }
 const shelf = (over: Partial<GamesShelf> = {}): GamesShelf => ({
   on: true, saved: 3, fresh: 0, started: null, asleep_until: null,
   games: [
-    { key: 'quickfire', name: 'Quick-fire', kind: 'quick', icon: '⚡', stars: 2, rounds: 5, best: 1240 },
-    { key: 'hungry-cat', name: 'Hungry Cat', kind: 'think', icon: '🐱', stars: 0, rounds: 0, best: 0 },
+    { key: 'quickfire', name: 'Quick-fire', kind: 'quick', icon: '⚡', stars: 2, rounds: 5, best: 1240, upgrades: 2 },
+    { key: 'hungry-cat', name: 'Hungry Cat', kind: 'think', icon: '🐱', stars: 0, rounds: 0, best: 0, upgrades: 0 },
+    { key: 'math-dash', name: 'Math Dash', kind: 'think', icon: '🧮', stars: 0, rounds: 0, best: 0 },
   ],
   board: { band: 'kid', rows: [{ kid_id: 3, name: 'Leo', avatar: '🦁', stars: 12, me: true }, { kid_id: 4, name: 'Maya', avatar: null, stars: 9, me: false }] },
   family_rounds: 14, cap: { left: 3, max: 5 },
   ...over,
 })
-const result: FinishResult = { stars: 2, tickets: 6, points: 3, capped: true, score: 1240, best: 1240, new_best: true, badges: [{ key: 'arcade_ace', name: 'Arcade Ace', icon: '🕹️', tier: 1 }], saved: 2 }
+const result: FinishResult = { stars: 2, tickets: 6, points: 3, capped: true, score: 1240, best: 1240, new_best: true, badges: [{ key: 'arcade_ace', name: 'Arcade Ace', icon: '🕹️', tier: 1 }], saved: 2, upgrade: null, unlocked: null, bonus: null }
 
 const media = (reduce: boolean) =>
   (window.matchMedia = ((q: string) => ({ matches: reduce && q.includes('reduce'), media: q, onchange: null, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => false })) as unknown as typeof window.matchMedia)
@@ -68,7 +75,10 @@ describe('Shelf', () => {
     expect(await screen.findByText('3 games saved')).toBeInTheDocument()
     expect(screen.getByText('Quick-fire')).toBeInTheDocument()
     expect(screen.getByText('⭐⭐')).toBeInTheDocument()
-    expect(screen.getByText('New')).toBeInTheDocument()
+    expect(screen.getAllByText('New')).toHaveLength(2)
+    expect(screen.getByText('Math Dash')).toBeInTheDocument()
+    expect(screen.getByText(/⬆️ 2/)).toBeInTheDocument()
+    expect(screen.getAllByText(/⬆️/)).toHaveLength(1)
     expect(screen.getByText('This week, Kid group')).toBeInTheDocument()
     expect(screen.getByText('🥇 You · 12 ⭐')).toBeInTheDocument()
     expect(screen.getByText('🥈 Maya · 9 ⭐')).toBeInTheDocument()
@@ -149,7 +159,7 @@ describe('flow', () => {
     await act(async () => { jest.advanceTimersByTime(700) })
     jest.useRealTimers()
     await userEvent.click(await screen.findByRole('button', { name: 'end quickfire' }))
-    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/kid/games/finish', expect.objectContaining({ method: 'POST', body: { token: 'tok', score: 140, parts: [{ game: 'flip', ok: true, ms: 600 }, { game: 'zip', ok: false, ms: 3000 }] } })))
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/kid/games/finish', expect.objectContaining({ method: 'POST', body: { token: 'tok', score: 140, parts: [{ game: 'flip', ok: true, ms: 600 }, { game: 'zip', ok: false, ms: 3000 }], power_up: null } })))
     expect(await screen.findByText('Great run!')).toBeInTheDocument()
     expect(screen.getByText('🎟️ +6 tickets')).toBeInTheDocument()
     expect(screen.getByText("→ +3 pts (today's cap)")).toBeInTheDocument()
@@ -165,8 +175,8 @@ describe('flow', () => {
     routes['POST /kid/games/finish'] = { ...result, capped: false, new_best: false, badges: [] }
     page({ autoStart: true })
     await userEvent.click(await screen.findByRole('button', { name: 'SPIN!' }))
-    await userEvent.click(await screen.findByRole('button', { name: 'end cat' }, { timeout: 3000 }))
-    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/kid/games/finish', expect.objectContaining({ body: { token: 'tok', score: 23, parts: null } })))
+    await userEvent.click(await screen.findByRole('button', { name: /^end cat/ }, { timeout: 3000 }))
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/kid/games/finish', expect.objectContaining({ body: { token: 'tok', score: 23, parts: null, power_up: null } })))
     expect(await screen.findByText('Nice catching!')).toBeInTheDocument()
     expect(screen.getByText('→ +3 pts toward screen time')).toBeInTheDocument()
   })
@@ -186,10 +196,61 @@ describe('flow', () => {
     for (let round = 0; round < 2; round++) {
       await userEvent.click(await screen.findByRole('button', { name: 'Play' }))
       await userEvent.click(await screen.findByRole('button', { name: 'SPIN!' }))
-      await userEvent.click(await screen.findByRole('button', { name: 'end cat' }, { timeout: 3000 }))
+      await userEvent.click(await screen.findByRole('button', { name: /^end cat/ }, { timeout: 3000 }))
       if (round === 0) expect(await screen.findByText("That score isn't possible.")).toBeInTheDocument()
     }
     expect(await screen.findByText('Nice catching!')).toBeInTheDocument()
+  })
+
+  test('a held power-up can be armed before the round and is sent on finish; none by default', async () => {
+    welcomed()
+    const held = [{ key: 'magnet', name: 'Magnet', icon: '🧲' }, { key: 'multiply', name: 'Multiply', icon: '✖️2' }]
+    routes['POST /kid/games/start'] = { ...started, game: 'hungry-cat', kind: 'think', upgrades: ['big_bowl'], power_ups: held }
+    routes['POST /kid/games/finish'] = { ...result, badges: [] }
+    page({ autoStart: true })
+    await userEvent.click(await screen.findByRole('button', { name: 'SPIN!' }))
+    expect(await screen.findByText('Use a power-up?', undefined, { timeout: 3000 })).toBeInTheDocument()
+    const mg = screen.getByRole('button', { name: '🧲 Magnet' })
+    await userEvent.click(mg)
+    expect(mg).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(screen.getByRole('button', { name: '✖️2 Multiply' }))
+    expect(mg).toHaveAttribute('aria-pressed', 'false')
+    await userEvent.click(screen.getByRole('button', { name: 'Go!' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'end cat big_bowl|multiply' }))
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/kid/games/finish', expect.objectContaining({ body: expect.objectContaining({ power_up: 'multiply' }) })))
+  })
+
+  test('going without arms nothing', async () => {
+    welcomed()
+    routes['POST /kid/games/start'] = { ...started, game: 'math-dash', kind: 'think', power_ups: [{ key: 'freeze', name: 'Freeze', icon: '❄️' }] }
+    routes['POST /kid/games/finish'] = { ...result, badges: [] }
+    page({ autoStart: true })
+    await userEvent.click(await screen.findByRole('button', { name: 'SPIN!' }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Go without' }, { timeout: 3000 }))
+    await userEvent.click(await screen.findByRole('button', { name: 'end math null' }))
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/kid/games/finish', expect.objectContaining({ body: expect.objectContaining({ power_up: null, parts: null }) })))
+  })
+
+  test.each([['pack-the-box', 'end pack null'], ['shelf-memory', 'end shelf null']])('%s routes to its component', async (game, label) => {
+    welcomed()
+    routes['POST /kid/games/start'] = { ...started, game, kind: 'think' }
+    page({ autoStart: true })
+    await userEvent.click(await screen.findByRole('button', { name: 'SPIN!' }))
+    expect(await screen.findByRole('button', { name: label }, { timeout: 3000 })).toBeInTheDocument()
+  })
+
+  test('results: upgrade bar, unlocked line and wheel bonus', async () => {
+    welcomed()
+    routes['POST /kid/games/start'] = { ...started, game: 'hungry-cat', kind: 'think' }
+    routes['POST /kid/games/finish'] = { ...result, badges: [], upgrade: { name: 'Bigger bowl', have: 5, need: 6 }, unlocked: 'Slower food', bonus: { key: 'magnet', name: 'Magnet', icon: '🧲' } }
+    page({ autoStart: true })
+    await userEvent.click(await screen.findByRole('button', { name: 'SPIN!' }))
+    await userEvent.click(await screen.findByRole('button', { name: /^end cat/ }, { timeout: 3000 }))
+    expect(await screen.findByText('Bigger bowl')).toBeInTheDocument()
+    expect(screen.getByText('5 of 6 ⭐')).toBeInTheDocument()
+    expect(document.querySelector('i[style*="83%"]')).not.toBeNull()
+    expect(screen.getByText(/🎉 Unlocked: Slower food/)).toBeInTheDocument()
+    expect(screen.getByText(/Wheel bonus:/)).toHaveTextContent('🎡 Wheel bonus: 🧲 Magnet saved for next time')
   })
 
   test('capped with no points', async () => {

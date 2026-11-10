@@ -65,3 +65,12 @@ test('useElapsed ticks with fake timers and pauses', () => {
   })
   expect(seen).toBe(at)
 })
+
+test('phase 2 games: names, icons and star thresholds', () => {
+  expect(GAME_INFO['math-dash']).toEqual({ name: 'Math Dash', icon: '🧮', kind: 'think' })
+  expect(GAME_INFO['pack-the-box'].icon).toBe('📦')
+  expect(GAME_INFO['shelf-memory'].name).toBe('Shelf Memory')
+  expect([starsFor('math-dash', 9), starsFor('math-dash', 20)]).toEqual([0, 2])
+  expect([starsFor('pack-the-box', 4), starsFor('pack-the-box', 7)]).toEqual([2, 3])
+  expect([starsFor('shelf-memory', 8), starsFor('shelf-memory', 28)]).toEqual([1, 3])
+})

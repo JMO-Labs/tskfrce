@@ -4,12 +4,13 @@ import type { AgeGroup } from '../types'
 import type { GamePart, Micro } from './types'
 import { MICROS } from './quick'
 import { seeded } from './rng'
-import { HEARTS, RUN_MS, microLevel, partScore, windowMs } from './scoring'
+import { RUN_MS, microLevel, partScore } from './scoring'
+import { runHearts, runLevel, runWindow } from './quickRun'
 import s from './QuickFire.module.css'
 
-interface Props { age: AgeGroup; startLevel: number; seed: number; onEnd: (parts: GamePart[]) => void; micros?: Micro[] }
+interface Props { age: AgeGroup; startLevel: number; seed: number; onEnd: (parts: GamePart[]) => void; micros?: Micro[]; upgrades?: string[]; powerUp?: string | null; microUpgrades?: Record<string, string[]> }
 
-export function QuickFire({ age, startLevel, seed, onEnd, micros = MICROS }: Props) {
+export function QuickFire({ age, startLevel, seed, onEnd, micros = MICROS, upgrades = [], powerUp = null, microUpgrades = {} }: Props) {
   const order = useMemo(() => {
     const a = [...micros]
     const r = seeded(seed)
@@ -20,12 +21,13 @@ export function QuickFire({ age, startLevel, seed, onEnd, micros = MICROS }: Pro
     return a
   }, [micros, seed])
   const [i, setI] = useState(0)
-  const [hearts, setHearts] = useState(HEARTS)
+  const maxHearts = runHearts(upgrades, powerUp)
+  const [hearts, setHearts] = useState(maxHearts)
   const [score, setScore] = useState(0)
   const [flash, setFlash] = useState<boolean | null>(null)
   const [fast, setFast] = useState(false)
   // mutable run state: one part per game, onEnd once
-  const runRef = useRef({ parts: [] as GamePart[], live: true, ended: false, hearts: HEARTS, t0: 0, i: 0 })
+  const runRef = useRef({ parts: [] as GamePart[], live: true, ended: false, hearts: maxHearts, t0: 0, i: 0 })
   const onEndRef = useRef(onEnd)
   useEffect(() => { onEndRef.current = onEnd })
 
@@ -38,8 +40,9 @@ export function QuickFire({ age, startLevel, seed, onEnd, micros = MICROS }: Pro
   }
 
   const micro = order[i % Math.max(order.length, 1)]
-  const level = microLevel(startLevel, i)
-  const win = windowMs(age, i)
+  const fx = { upgrades, powerUp, micro: (micro && microUpgrades[micro.key]) || [] }
+  const level = runLevel(startLevel, i, order.length, fx)
+  const win = runWindow(age, i, fx)
 
   const record = (ok: boolean) => {
     const run = runRef.current
@@ -85,14 +88,14 @@ export function QuickFire({ age, startLevel, seed, onEnd, micros = MICROS }: Pro
     <div className={s.root}>
       <div className={s.hud}>
         <span aria-label={`${hearts} hearts left`}>
-          {Array.from({ length: HEARTS }, (_, k) => <span key={k} className={k >= hearts ? s.lost : undefined}>❤️</span>)}
+          {Array.from({ length: maxHearts }, (_, k) => <span key={k} className={k >= hearts ? s.lost : undefined}>❤️</span>)}
         </span>
         <span>Game {i + 1} · ⭐ {score}</span>
       </div>
       {fast && <div className={s.speed}>FASTER!</div>}
       <div className={s.cmd}>{micro.cmd}</div>
       <div className={s.stage}>
-        {flash === null ? <C key={i} level={level} rng={seeded(seed + i)} onDone={(ok) => recordRef.current(ok)} /> : <div className={s.flash} role="img" aria-label={flash ? 'Yes' : 'Missed'}>{flash ? '✓' : '✗'}</div>}
+        {flash === null ? <C key={i} level={level} easier={fx.micro.includes('steady')} rng={seeded(seed + i)} onDone={(ok) => recordRef.current(ok)} /> : <div className={s.flash} role="img" aria-label={flash ? 'Yes' : 'Missed'}>{flash ? '✓' : '✗'}</div>}
       </div>
       <div className={s.timer}><i key={i} style={{ animationDuration: `${win}ms` }} /></div>
     </div>

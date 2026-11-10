@@ -16,5 +16,8 @@ export const HEARTS = 3
 const STARS_AT: Record<string, [number, number, number]> = {
   quickfire: [500, 1100, 1800],
   'hungry-cat': [10, 25, 40],
+  'math-dash': [10, 20, 30],
+  'pack-the-box': [2, 4, 7],
+  'shelf-memory': [8, 16, 28],
 }
 export const starsFor = (game: string, score: number) => (STARS_AT[game] ?? [Infinity, Infinity, Infinity]).filter((t) => score >= t).length

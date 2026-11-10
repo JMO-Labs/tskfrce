@@ -38,3 +38,18 @@ test('onEnd fires exactly once after the 60 s clock', () => {
   expect(onEnd).toHaveBeenCalledTimes(1)
   expect(typeof onEnd.mock.calls[0][0]).toBe('number')
 })
+
+const held = [{ key: 'magnet', name: 'Magnet', icon: '🧲' }, { key: 'multiply', name: 'Multiply', icon: '✖️2' }]
+
+test('slots show held power-ups with the armed one lit', () => {
+  render(<HungryCat level={1} seed={1} onEnd={() => {}} held={held} powerUp="magnet" />)
+  expect(screen.getByText('🧲 Magnet').getAttribute('data-armed')).toBe('true')
+  expect(screen.getByText('✖️2 Multiply').getAttribute('data-armed')).toBe('false')
+  expect(screen.getAllByTestId('pu-empty')).toHaveLength(1)
+})
+
+test('multiply shows a second cat; extra_time lengthens the clock', () => {
+  render(<HungryCat level={1} seed={1} onEnd={() => {}} upgrades={['extra_time']} powerUp="multiply" />)
+  expect(screen.getByTestId('cat2')).toBeTruthy()
+  expect(screen.getByText('⏱ 1:09')).toBeTruthy()
+})

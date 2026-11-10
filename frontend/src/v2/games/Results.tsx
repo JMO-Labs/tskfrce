@@ -28,6 +28,15 @@ export function Results({ r, game, celebrate, seed, onDone }: { r: FinishResult;
         <small>{pointsLine(r)}</small>
       </div>
       {r.new_best && <span className={s.chip}>New best!</span>}
+      {r.unlocked && <div className={`${s.chip} ${s.pop}`}>🎉 Unlocked: {r.unlocked}</div>}
+      {r.upgrade && (
+        <div className={s.up}>
+          <b>{r.upgrade.name}</b>
+          <div className={s.bar}><i style={{ width: `${Math.min(100, Math.round((r.upgrade.have / Math.max(1, r.upgrade.need)) * 100))}%` }} /></div>
+          <small>{r.upgrade.have} of {r.upgrade.need} ⭐</small>
+        </div>
+      )}
+      {r.bonus && <div className={`${s.got} ${s.pop}`}>🎡 Wheel bonus: <b>{r.bonus.icon} {r.bonus.name}</b> saved for next time</div>}
       {r.badges.map((b) => (
         <div key={b.key} className={`${s.badge} ${s.pop2}`}>
           🏅 New badge: <b>{b.name}</b>
