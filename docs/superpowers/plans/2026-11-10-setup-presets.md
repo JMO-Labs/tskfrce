@@ -9,7 +9,7 @@ Mockup (binding look): `.superpowers/mockups/presets-v2.html`. Version 2.11.0.
   Never `git add -A`, `git stash`, `git reset`, `git checkout -- .` or a rebase.
 - Strict TDD: write the failing test, see it fail, write the code, see it pass.
 - Files stay under 500 lines. Plain words in UI copy. No new dependencies.
-- Python: `/home/user/code/tskfrce/backend/.venv/bin/python -m pytest tests/<file> -q` from `backend/`.
+- Python: `.venv/bin/python -m pytest tests/<file> -q` from `backend/`.
   Then `ruff format backend && ruff check backend` (run from the repo root).
 - Frontend (from `frontend/`): `npx jest <path>`, `npm run lint`, `npm run type-check`.
 - Commit: semantic message, body ends with a blank line and
