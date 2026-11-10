@@ -146,6 +146,8 @@ describe("PenaltySheet", () => {
     show([1, 2]);
     expect(await screen.findByText("Penalty for everyone")).toBeTruthy();
     await u.click(await screen.findByRole("button", { name: "Custom" }));
+    expect(screen.getByRole("button", { name: "Points" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Screen time" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "All devices" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Switch" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Nintendo" })).toBeNull();
