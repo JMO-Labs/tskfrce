@@ -10,12 +10,7 @@ from .journey import (
     wait_online,
 )
 
-# ponytail: needs a lab DNS server (fake-internet only serves HTTP) answering allowed/helper/other.test
-# and the blocker's upstream_dns pointed at it; homework DNS/firewall logic is covered by blocker unit tests.
-pytestmark = [
-    pytest.mark.integration,
-    pytest.mark.skip(reason="lab has no upstream DNS server for the homework journey yet"),
-]
+pytestmark = pytest.mark.integration
 
 
 def test_homework_mode_journey():
@@ -44,6 +39,14 @@ def test_homework_mode_journey():
 
     time.sleep(2)
 
+    # ponytail: the lab has no DNS server yet (fake-internet is HTTP only), so the DNS steps
+    # skip until one answers allowed/helper/other.test; blocker unit tests cover the homework DNS path.
+    probe = lab(
+        "dig", "parent", "example.com"
+    )  # parent is never blocked: asks 203.0.113.1 directly
+    if "communications error" in probe.stdout or probe.stdout.strip() == "error":
+        pytest.skip("lab has no upstream DNS server; steps 4-10 need one")
+
     # Step 4: Check DNS for allowed.test resolves to real IP (203.0.113.1)
     def check_allowed_dns():
         try:
@@ -53,7 +56,7 @@ def test_homework_mode_journey():
                 "allowed.test",
             )
             # lab dig should return the IP - if it fails or returns box IP, it's not working
-            return "203.0.113.1" in result.stdout
+            return "203.0.113.1" in result.stdout.split()
         except Exception:  # noqa: BLE001 - lab probe: any failure means not yet
             return False
 
@@ -77,7 +80,7 @@ def test_homework_mode_journey():
                 "kid1",
                 "helper.test",
             )
-            return "203.0.113.1" in result.stdout
+            return "203.0.113.1" in result.stdout.split()
         except Exception:  # noqa: BLE001 - lab probe: any failure means not yet
             return False
 
@@ -98,7 +101,7 @@ def test_homework_mode_journey():
                 "other.test",
             )
             # Portal returns 10.99.0.4 (the blocker box)
-            return "10.99.0.4" in result.stdout
+            return "10.99.0.4" in result.stdout.split()
         except Exception:  # noqa: BLE001 - lab probe: any failure means not yet
             return False
 
@@ -121,7 +124,7 @@ def test_homework_mode_journey():
                 "helper.test",
             )
             # After blocking, should return box IP
-            return "10.99.0.4" in result.stdout
+            return "10.99.0.4" in result.stdout.split()
         except Exception:  # noqa: BLE001 - lab probe: any failure means not yet
             return False
 
