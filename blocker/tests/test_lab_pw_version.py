@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -87,3 +88,17 @@ def test_bump_needs_no_compose_edit(tmp_path):
     )
     assert images.returncode == 0, images.stderr
     assert "mcr.microsoft.com/playwright:v1.65.0-jammy" in images.stdout.split()
+
+
+def test_suite_collects_without_jq(tmp_path):
+    """The default (non-docker) suite must not need jq just to import the lab conftest."""
+    (tmp_path / "bash").symlink_to(shutil.which("bash"))  # PATH holds bash but no jq
+    r = subprocess.run(
+        [sys.executable, "-m", "pytest", "tests/lab", "--collect-only", "-q"],
+        check=False,
+        cwd=ROOT / "blocker",
+        env={**os.environ, "PATH": str(tmp_path), "PYTHONPATH": str(ROOT)},
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode in (0, 5), r.stdout + r.stderr  # 5 = all deselected
