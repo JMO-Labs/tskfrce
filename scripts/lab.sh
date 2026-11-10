@@ -3,6 +3,15 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export INTERNAL_TOKEN=labtoken
+# e2e image tag = @playwright/test version (range prefix stripped), so a bump cannot drift
+_pw_version() {
+  local v
+  v=$(jq -r '.devDependencies["@playwright/test"] // empty' "${LAB_PKG_JSON:-frontend/package.json}")
+  v=${v#[~^]}
+  [[ $v =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "bad @playwright/test version: '$v'" >&2; return 1; }
+  echo "$v"
+}
+PW_VERSION=$(_pw_version); export PW_VERSION
 COMPOSE="docker compose -f lab/docker-compose.lab.yml"
 API=http://10.99.0.3:8000
 BLK=http://10.99.0.4:7777
@@ -117,6 +126,7 @@ case "$cmd" in
   up) _up ;;
   down) rm -f "$TOKEN_FILE"; _bridges -D 2>/dev/null || true; $COMPOSE --profile e2e down -v ;;  # profile: also remove frontend
   e2e) _e2e ;;
+  pw-version) echo "$PW_VERSION" ;;
   token) _token ;;
   device-id) _need_id "$1" ;;
   block) _post "/api/v1/devices/$(_need_id "$1")/override" '{"action":"lock"}' >/dev/null ;;
@@ -135,5 +145,5 @@ case "$cmd" in
     _devices | jq -r --arg m "$mac" '[.[] | select((.mac|ascii_downcase)==$m)][0].resisting // false' ;;
   test-block) _post "/api/v1/devices/$(_need_id "$1")/test-block" '{}' ;;
   dig) $COMPOSE exec -T "$1" dig +short "$2" @203.0.113.1 2>/dev/null || echo "error" ;;
-  *) echo "usage: $0 {up|down|e2e|token|device-id|block|unblock|check|check6|portal|resist|reset|resisting|test-block|dig} [host] [name]" >&2; exit 2 ;;
+  *) echo "usage: $0 {up|down|e2e|pw-version|token|device-id|block|unblock|check|check6|portal|resist|reset|resisting|test-block|dig} [host] [name]" >&2; exit 2 ;;
 esac
