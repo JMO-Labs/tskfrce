@@ -12,6 +12,7 @@ import { Icon } from '@/v2/parent/Icon'
 import { FocusArea, SummaryRow } from '@/v2/parent/SummaryRow'
 import { useFocusParam } from '@/v2/parent/useFocusParam'
 import { useSaveQueue } from '@/v2/hooks/useSaveQueue'
+import { PenaltiesBody, penaltiesLine } from './PenaltiesBody'
 import { BedtimeBody, bedtimeLine, HouseholdBody, householdLine, PointsBody, pointsLine, type SaveFamily } from './FamilyRows'
 
 type Fields = Family & { giphy_api_key?: string }
@@ -70,7 +71,7 @@ const Switchy = ({ label, checked, onChange }: { label: string; checked: boolean
   </div>
 )
 
-const ROWS = ['hh', 'bed', 'pts']
+const ROWS = ['hh', 'bed', 'pts', 'pen']
 const ico = (name: string) => <Icon name={name} size={18} />
 
 /** Settings › Family: calm rows; every change saves as it is made (pairs once complete). */
@@ -93,6 +94,9 @@ export function FamilyCard({ fam }: { fam: Family }) {
         </SummaryRow>
         <SummaryRow id="pts" icon={ico('star')} title="Points rules" summary="" line2={line("pts", pointsLine(fam))} focus={focus}>
           <PointsBody fam={fam} save={save} />
+        </SummaryRow>
+        <SummaryRow id="pen" icon={ico('gavel')} title="Penalties" summary="" line2={line('pen', penaltiesLine(fam))} focus={focus}>
+          <PenaltiesBody fam={fam} save={save} />
         </SummaryRow>
       </FocusArea>
     </section>

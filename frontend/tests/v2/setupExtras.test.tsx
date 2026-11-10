@@ -123,6 +123,16 @@ describe('optional extras step', () => {
     expect(apiMock).toHaveBeenCalledWith('/goals/settings', { method: 'PATCH', body: { on: false } })
   })
 
+  test('Finish enables penalties when switched on', async () => {
+    const user = userEvent.setup()
+    resume(8)
+    wrap()
+    await user.click(await screen.findByRole('switch', { name: 'Penalties' }))
+    await user.click(screen.getByRole('button', { name: 'Finish' }))
+    await screen.findByText("You're all set")
+    expect(apiMock).toHaveBeenCalledWith('/family', { method: 'PATCH', body: { penalties_enabled: true } })
+  })
+
   test('Finish with all off patches nothing', async () => {
     const user = userEvent.setup()
     resume(8)
