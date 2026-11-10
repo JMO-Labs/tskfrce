@@ -51,6 +51,10 @@ jobs:
 
   test:
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
+    strategy:
+      fail-fast: false
+      matrix:
+        db: [sqlite, postgres]
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
     - name: Set up Python
@@ -58,9 +62,24 @@ jobs:
       with:
         python-version: '3.11'
     - name: Install dependencies
-      run: pip install -r backend/requirements.txt
+      run: pip install -r backend/requirements.txt pytest-xdist
+    - name: Start Postgres
+      if: matrix.db == 'postgres'
+      run: |
+        docker run -d --name ci-pg-${{ github.run_id }} -p 127.0.0.1:55432:5432 \
+          -e POSTGRES_PASSWORD=pg -e POSTGRES_DB=task4ce postgres:16-alpine
+        for _ in $(seq 60); do
+          docker exec ci-pg-${{ github.run_id }} pg_isready -U postgres -d task4ce && exit 0
+          sleep 1
+        done
+        exit 1
     - name: Run test suite
-      run: cd backend && python -m pytest tests -q
+      env:
+        TEST_DATABASE_URL: ${{ matrix.db == 'postgres' && 'postgresql+psycopg://postgres:pg@127.0.0.1:55432/task4ce' || '' }}
+      run: cd backend && python -m pytest tests -q -n auto
+    - name: Stop Postgres
+      if: always() && matrix.db == 'postgres'
+      run: docker rm -f ci-pg-${{ github.run_id }}
 
   # Next 16 needs Node >= 20.9, so the jest suites and the production build run on 22.
   frontend-test:
