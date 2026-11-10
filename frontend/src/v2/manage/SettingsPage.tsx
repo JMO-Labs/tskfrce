@@ -35,13 +35,17 @@ function SettingsBody() {
   }, [want, replace])
   const small = useMediaQuery('(max-width: 767px)')
   const valid = SETTINGS_SECTIONS.some((s) => s.id === want)
+  // Phone: MorePage's grouped list is the only settings list (audit 10)
+  useEffect(() => {
+    if (small && !valid && want !== 'screen') replace('/more')
+  }, [small, valid, want, replace])
   const section: S = valid ? (want as S) : 'family'
   const current = SETTINGS_SECTIONS.find((x) => x.id === section)!
   return (
     <ParentShell
       title="Settings"
       list={<SettingsList sections={sections} section={small && !valid ? undefined : section} bare={small} />}
-      phone={valid ? <BackLink href="/settings">Settings</BackLink> : undefined}
+      phone={valid ? <BackLink href={small ? '/more' : '/settings'}>{small ? 'More' : 'Settings'}</BackLink> : undefined}
     >
       <div className="ps-detail">
         {family.isError && ['family', 'look', 'gifs'].includes(section) && (
