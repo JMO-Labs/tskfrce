@@ -12,7 +12,7 @@ from .chores import Chore, ChoreAssignment, ChoreRun, ChoreSeen, ChoreStep, RunS
 from .device_activity import DeviceEvent, DevicePresence
 from .family import FamilySettings, get_family
 from .flair import KidFlair
-from .game import GamePlay, GameProgress
+from .game import GamePlay, GamePowerUp, GameProgress
 from .goal import Goal, GoalAuto, GoalContribution, GoalParty
 from .happy_hour import HappyHour
 from .hours import HourRule, HourRuleTarget, HourRuleTime
@@ -44,6 +44,7 @@ __all__ = [
     "GoalContribution",
     "GoalParty",
     "GamePlay",
+    "GamePowerUp",
     "GameProgress",
     "HappyHour",
     "CustomBadge",

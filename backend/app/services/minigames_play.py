@@ -17,10 +17,18 @@ from app.schemas.lock import utc_z
 from app.services import badges, economy, minigames
 from app.services import chores as svc
 from app.services import games_catalog as gc
+from app.services import minigames_power as power
 
 
-def started_out(play: GamePlay, age: str = "kid") -> dict:
-    return {
+def _have(db: Session, kid_id: int, game: str) -> int:
+    p = db.get(GameProgress, (kid_id, game))
+    if p is None:
+        return 0
+    return p.clears if game.startswith("qf:") else p.stars_total
+
+
+def started_out(db: Session, play: GamePlay, age: str = "kid") -> dict:
+    out = {
         "play_id": play.id,
         "token": play.token,
         "game": play.game,
@@ -28,7 +36,13 @@ def started_out(play: GamePlay, age: str = "kid") -> dict:
         "level": play.level,
         "slots": gc.wheel_slots(gc.eligible_think(age), play.game),
         "slot": play.slot,
+        "upgrades": gc.upgrades_for(play.game, _have(db, play.kid_id, play.game)),
+        "power_ups": power.held(db, play.kid_id, play.game),
     }
+    if play.game == "quickfire":
+        micro = {m: gc.upgrades_for(f"qf:{m}", _have(db, play.kid_id, f"qf:{m}")) for m in gc.MICRO}
+        out["micro_upgrades"] = {m: u for m, u in micro.items() if u}
+    return out
 
 
 def _clock(fam, end_utc: datetime) -> str:
@@ -46,7 +60,7 @@ def start(db: Session, fam, kid: User, now_utc: datetime, rng=random) -> dict:
         raise HTTPException(403, "Games are off.")
     cur = _started(db, kid.id)
     if cur:
-        return started_out(cur, kid.age_group)
+        return started_out(db, cur, kid.age_group)
     wake = minigames.asleep_until(db, fam, kid, now_utc)
     if wake:
         raise HTTPException(409, f"Games are asleep until {_clock(fam, wake)}.")
@@ -71,7 +85,7 @@ def start(db: Session, fam, kid: User, now_utc: datetime, rng=random) -> dict:
         if won:
             db.commit()
             db.refresh(play)
-            return started_out(play, kid.age_group)
+            return started_out(db, play, kid.age_group)
     raise HTTPException(409, "No saved games. Finish a chore to earn one.")
 
 
@@ -86,10 +100,22 @@ def _progress(db: Session, kid_id: int, game: str) -> GameProgress:
 
 
 def finish(
-    db: Session, fam, kid: User, token: str, score: int, parts: list[dict] | None, now_utc: datetime
+    db: Session,
+    fam,
+    kid: User,
+    token: str,
+    score: int,
+    parts: list[dict] | None,
+    now_utc: datetime,
+    power_up: str | None = None,
+    rng=random,
 ) -> dict:
     """Close a started play once, pay it, record progress. Commits."""
     now = now_utc.replace(tzinfo=None)
+    if power_up:  # reject before the play is closed, so a bad request keeps it
+        cur = db.query(GamePlay).filter_by(token=token, kid_id=kid.id, status="started").first()
+        if cur and power_up not in {h["key"] for h in power.held(db, kid.id, cur.game)}:
+            raise HTTPException(422, "You don't have that power-up.")
     won = (  # compare-and-set: a replay or a racing tab gets 404
         db.query(GamePlay)
         .filter(GamePlay.token == token, GamePlay.kid_id == kid.id, GamePlay.status == "started")
@@ -127,8 +153,12 @@ def finish(
                 description=f"Game: {gc.GAMES[play.game].name}",
             )
         )
+    if power_up and not power.use(db, kid.id, play.game, power_up):
+        db.rollback()
+        raise HTTPException(422, "You don't have that power-up.")
     prog = _progress(db, kid.id, play.game)
     db.flush()
+    had = prog.stars_total
     new_best = score > prog.best
     prog.rounds += 1
     prog.best = max(prog.best, score)
@@ -141,6 +171,8 @@ def finish(
             micro.clears += bool(part["ok"])
             db.flush()  # autoflush is off: make this row visible to the next part
     db.flush()
+    unlocked = gc.upgrades_for(play.game, prog.stars_total)[len(gc.upgrades_for(play.game, had)) :]
+    bonus = power.maybe_award(db, kid.id, play.game, rng)
     economy.level_check(db, kid.id, before)
     won_badges = [a for a in badges.check_badges(db, kid, fam) if a.badge_key in gc.BADGE_KEYS]
     out = {
@@ -161,6 +193,9 @@ def finish(
             for a in won_badges
         ],
         "saved": minigames.saved_count(db, kid.id),
+        "upgrade": gc.next_upgrade(play.game, prog.stars_total),
+        "unlocked": gc.UPGRADE_NAMES[unlocked[-1]] if unlocked else None,
+        "bonus": bonus,
     }
     db.commit()
     return out
@@ -215,7 +250,7 @@ def shelf(db: Session, fam, kid: User, now_utc: datetime) -> dict:
         "on": minigames.enabled(fam, kid),
         "saved": len(saved),
         "fresh": sum(not p.seen for p in saved),
-        "started": started_out(cur, kid.age_group) if cur else None,
+        "started": started_out(db, cur, kid.age_group) if cur else None,
         "asleep_until": utc_z(wake) if wake else None,
         "games": [
             {
@@ -226,6 +261,9 @@ def shelf(db: Session, fam, kid: User, now_utc: datetime) -> dict:
                 "stars": prog[g.key].best_stars if g.key in prog else 0,
                 "rounds": prog[g.key].rounds if g.key in prog else 0,
                 "best": prog[g.key].best if g.key in prog else 0,
+                "upgrades": len(gc.upgrades_for(g.key, prog[g.key].stars_total))
+                if g.key in prog
+                else 0,
             }
             for g in gc.GAMES.values()
         ],

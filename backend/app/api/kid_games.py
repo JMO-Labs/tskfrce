@@ -26,6 +26,7 @@ class Part(BaseModel):
 class FinishIn(BaseModel):
     token: str = Field(max_length=64)
     score: int = 0
+    power_up: str | None = Field(default=None, max_length=16)
     parts: list[Part] | None = Field(default=None, max_length=60)
 
 
@@ -45,7 +46,7 @@ def finish(body: FinishIn, db: Session = Depends(get_db), kid: User = Depends(re
     with economy.SPEND_LOCK:  # cap read + payout must not interleave with another finish
         db.commit()  # fresh snapshot: see a racing finish's payout
         return play.finish(
-            db, get_family(db), kid, body.token, body.score, parts, datetime.now(UTC)
+            db, get_family(db), kid, body.token, body.score, parts, datetime.now(UTC), body.power_up
         )
 
 
