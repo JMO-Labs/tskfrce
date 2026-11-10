@@ -55,7 +55,13 @@ up() {
     sleep 0.5
   done
   echo $((SECONDS - t0)) >"$P/results/.startup-s"
+  # the seed is a second Python process: lift the cap while it runs so it cannot OOM the backend
+  local cid mem
+  cid=$(dc ps -q backend)
+  mem=$(docker inspect -f '{{.HostConfig.Memory}}' "$cid")
+  docker update --memory 1g --memory-swap 1g "$cid" >/dev/null
   dc exec -T backend python -W ignore - <"$P/seed.py" | tail -n1 >"$P/results/.seed.json"
+  docker update --memory "$mem" --memory-swap "$mem" "$cid" >/dev/null
 }
 
 bench() {
