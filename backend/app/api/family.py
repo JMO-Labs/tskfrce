@@ -24,7 +24,7 @@ from app.models.points import Points
 from app.models.reward import Redemption, Reward
 from app.models.user import User, UserRole
 from app.schemas.lock import FamilyPatch, utc_z
-from app.services import bedtime, boost, inbox, progression, push, trust
+from app.services import bedtime, boost, goals_out, inbox, progression, push, trust
 from app.services import chores as svc
 
 router = APIRouter(prefix="/api/v1", tags=["family"], dependencies=[Depends(require_parent)])
@@ -181,6 +181,7 @@ def _needs_you(
         for r in reds
     ]
     items.sort(key=lambda x: x["submitted_at"] or "")
+    items += goals_out.needs(db, names)
     for r in runs:
         if inbox.is_pending_note(r):
             kid_id = (svc.run_kid_ids(r) or [None])[0]
