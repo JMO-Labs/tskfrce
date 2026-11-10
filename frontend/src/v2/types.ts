@@ -344,6 +344,8 @@ export interface KidChore extends TodayChore {
 
 export interface KidToday {
   locked: boolean
+  /** minigames: on for this kid, unplayed plays, plays not yet announced */
+  games?: { on: boolean; saved: number; fresh: number }
   chores: KidChore[]
   points_balance: number
   /** points tied up in requests a parent has not answered yet */

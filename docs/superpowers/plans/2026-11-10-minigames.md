@@ -190,8 +190,8 @@ export const microLevel = (start: number, i: number) => Math.min(5, start + Math
 export const RUN_MS = 60_000; export const HEARTS = 3
 // rng.ts
 export const seeded = (seed: number) => () => number   // mulberry32
-// useElapsed.ts — ms since mount (or since `key` changes), ticking via setInterval(16) + Date.now(); works with jest fake timers
-export function useElapsed(running = true, key?: unknown): number
+// useElapsed.ts — ms since mount, ticking via setInterval(16) + Date.now(); works with jest fake timers
+export function useElapsed(running = true): number  // remount with a React key to restart
 // useGames.ts
 export const useGamesShelf = (enabled = true) // useQuery ['kid','games', as] → api<GamesShelf>('/kid/games', kidInit(as)), refetchInterval 15_000
 export const useStartGame = () // mutation POST /kid/games/start → StartedPlay; invalidates ['kid','games']
