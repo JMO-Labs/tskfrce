@@ -192,7 +192,7 @@ Cards on **Today** introduce each of these features, at most one new card a day.
 
 ## Less tapping
 
-Two optional ways to approve less by hand, and a weekly summary. Trust mode and bedtime auto-approve are off until you switch them on. You can offer them in setup (step 8) or later. A card on **Today** suggests each one when it fits.
+Two optional ways to approve less by hand, and a weekly summary. Trust mode and bedtime auto-approve are off until you switch them on. You can offer them in setup (under Tweak, in Optional extras) or later. A card on **Today** suggests each one when it fits.
 
 ### Trust mode
 
