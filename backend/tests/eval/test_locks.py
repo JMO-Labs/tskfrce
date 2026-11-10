@@ -34,7 +34,7 @@ CASES = [
     ({"status": "unassigned", "new_devices_blocked": False}, None),
     ({"status": "unassigned", "override": "unlock"}, None),
     ({"allowed_sets": ((OUTSIDE,),)}, "hours"),
-    ({"allowed_sets": ((OUTSIDE,),), "override": "unlock"}, "hours"),
+    ({"allowed_sets": ((OUTSIDE,),), "override": "unlock"}, None),  # unlock beats hours
     ({"allowed_sets": ((INSIDE,),), "owners": PENDING}, "chores"),
     ({"owners": PENDING, "free": (INSIDE,)}, None),
     ({"owners": PENDING, "free": (OUTSIDE,)}, "chores"),
@@ -99,6 +99,7 @@ def test_hooks_never_raise(db, monkeypatch, eval_on, fresh):
     def boom(*a, **k):
         raise RuntimeError("boom")
 
+    get_family(db).new_devices_blocked = True  # strict mode: the new device stays blocked
     db.add(Device(mac="aa:bb:cc:dd:ee:02", name="Old", status="unassigned"))
     db.commit()
     monkeypatch.setattr(store, "bump", boom)
@@ -107,7 +108,7 @@ def test_hooks_never_raise(db, monkeypatch, eval_on, fresh):
     assert hooks.after_tick(db) is None
     pushed = []
     monkeypatch.setattr(loop, "SessionLocal", lambda: db)
-    monkeypatch.setattr(loop, "push_blocked", pushed.append)
+    monkeypatch.setattr(loop, "push_state", lambda blocked, homework: pushed.append(blocked))
     monkeypatch.setattr(db, "close", lambda: None)
     loop._run_once()
     assert pushed == [["aa:bb:cc:dd:ee:02"]]

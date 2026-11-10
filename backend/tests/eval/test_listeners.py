@@ -5,11 +5,11 @@ from app.core.config import settings
 from app.eval import listeners, store
 from app.models.chores import ChoreRun
 from app.models.family import get_family
-from app.models.lock import Device, TimeWindow
+from app.models.lock import Device
 from app.models.user import UserRole
 
 from tests.conftest import _headers, _make_user
-from tests.factories import api_chore, make_run
+from tests.factories import api_chore, make_rule, make_run
 
 DAY = date(2026, 10, 20)
 
@@ -77,18 +77,14 @@ def test_rule_off_kinds(client, db, eval_on, parent, parent_headers, kid):
     def kinds():
         return [e["data"]["kind"] for e in _umami("rule_off")]
 
-    ws = [
-        TimeWindow(kind=k, days="0123456", start="08:00", end="20:00", kid_id=kid.id)
-        for k in ("allowed", "free")
-    ]
-    d = Device(mac="aa:bb:cc:dd:ee:01", name="Tab", status="assigned")
-    db.add_all([*ws, d])
-    db.commit()
-    assert client.delete(f"/api/v1/windows/{ws[1].id}", headers=parent_headers).is_success
+    allowed, free = (make_rule(db, kind=k, kid_ids=[kid.id]) for k in ("allowed", "free"))
+    assert client.delete(f"/api/v1/hours/{free.id}", headers=parent_headers).is_success
     assert kinds() == []
-    assert client.delete(f"/api/v1/windows/{ws[0].id}", headers=parent_headers).is_success
+    assert client.delete(f"/api/v1/hours/{allowed.id}", headers=parent_headers).is_success
     assert kinds() == ["hours"]
-    r = client.patch(f"/api/v1/devices/{d.id}", json={"status": "guest"}, headers=parent_headers)
+    r = client.patch("/api/v1/family", json={"chores_lock": True}, headers=parent_headers)
+    assert r.is_success and kinds() == ["hours"]  # already on: not a loosening
+    r = client.patch("/api/v1/family", json={"chores_lock": False}, headers=parent_headers)
     assert r.is_success
     assert kinds() == ["hours", "chore_lock"]
     run = make_run(db, parent, kid)
