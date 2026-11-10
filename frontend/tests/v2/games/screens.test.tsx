@@ -163,6 +163,27 @@ describe('flow', () => {
     expect(screen.getByText('→ +3 pts toward screen time')).toBeInTheDocument()
   })
 
+  test('a failed finish drops to the shelf, and the next round still submits', async () => {
+    welcomed()
+    const { ApiError } = jest.requireActual('@/v2/api') as typeof import('@/v2/api')
+    let fails = 1
+    apiMock.mockImplementation(async (p, i) => {
+      const k = `${i?.method ?? 'GET'} ${p}`
+      if (k === 'POST /kid/games/finish' && fails-- > 0) throw new ApiError(422, "That score isn't possible.")
+      if (k === 'POST /kid/games/start') return { ...started, game: 'hungry-cat', kind: 'think' }
+      if (k === 'POST /kid/games/finish') return { ...result, capped: false, new_best: false, badges: [] }
+      return routes[k]
+    })
+    page()
+    for (let round = 0; round < 2; round++) {
+      await userEvent.click(await screen.findByRole('button', { name: 'Play' }))
+      await userEvent.click(await screen.findByRole('button', { name: 'SPIN!' }))
+      await userEvent.click(await screen.findByRole('button', { name: 'end cat' }, { timeout: 3000 }))
+      if (round === 0) expect(await screen.findByText("That score isn't possible.")).toBeInTheDocument()
+    }
+    expect(await screen.findByText('Nice catching!')).toBeInTheDocument()
+  })
+
   test('capped with no points', async () => {
     welcomed()
     routes['POST /kid/games/start'] = started

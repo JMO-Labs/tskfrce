@@ -57,7 +57,7 @@ function GamesFlow({ mode, celebrate, preview, autoStart = false, name = 'your k
     setResult(null)
     finish.mutate({ token: play.token, score, parts }, {
       onSuccess: setResult,
-      onError: (e) => { setHint(msg(e)); setPhase('shelf') },
+      onError: (e) => { sent.current = false; setPlay(null); setHint(msg(e)); setPhase('shelf') },
     })
   }
   const done = () => { sent.current = false; setPlay(null); setResult(null); setPhase('shelf') }
