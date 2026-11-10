@@ -83,7 +83,7 @@ const editor = async (query: Record<string, string> = {}, c: LibChore | null = l
   fakeRouter.reset('/kids', { section: 'chores', item: String(c?.id ?? 'new'), ...query })
   const view = render(wrapUi(<ChoreDetail kids={kids} chore={c ?? undefined} onSelect={jest.fn()} />))
   await screen.findAllByText(/pts/)
-  if (c) await screen.findAllByRole('button', { name: /School type, notes kids can send/ }) // the type chip: types have landed
+  if (c) await screen.findAllByRole('button', { name: /School type, notes kids can send/ }) // the type tile: types have landed
   return view
 }
 const head = (id: string) => document.querySelector<HTMLElement>(`[data-focus-head="${id}"]`)!
@@ -133,7 +133,7 @@ describe('calm, then focus', () => {
     expect(screen.getByText('must go in order')).toBeInTheDocument()
   })
 
-  test('type chip pop-over holds the notes kids can send', async () => {
+  test('type tile pop-over holds the notes kids can send', async () => {
     await editor()
     await userEvent.click(await screen.findByRole('button', { name: /School type, notes kids can send/ }))
     expect(await screen.findByText('Notes kids can send')).toBeInTheDocument()
@@ -165,13 +165,13 @@ describe('calm, then focus', () => {
     expect(calls('PATCH').map(([p]) => p)).toEqual(['/chores/404', '/assignments/504'])
   })
 
-  test('the type chip announces a pop-over', async () => {
+  test('the type tile announces a pop-over', async () => {
     await editor()
-    const chip = await screen.findByRole('button', { name: 'School type, notes kids can send' })
-    expect(chip).toHaveAttribute('aria-haspopup', 'dialog')
-    expect(chip).toHaveAttribute('aria-expanded', 'false')
-    await userEvent.click(chip)
-    expect(chip).toHaveAttribute('aria-expanded', 'true')
+    const tile = await screen.findByRole('button', { name: 'School type, notes kids can send' })
+    expect(tile).toHaveAttribute('aria-haspopup', 'dialog')
+    expect(tile).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(tile)
+    expect(tile).toHaveAttribute('aria-expanded', 'true')
   })
 
   test('an unfinished Who & when form in a closed row says why Save is off', async () => {
