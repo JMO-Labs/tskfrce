@@ -129,15 +129,15 @@ Rule worth knowing: the "chore day" is computed in the family time zone (`lock/r
 | Layer | How to run | Notes |
 |---|---|---|
 | Backend unit and API | `cd backend && python -m pytest tests -q` | Includes migrations, integrity (every CHECK), flair CSS coverage. |
-| Python style | `ruff format --check backend blocker && ruff check backend blocker` | Run from the repo root; config in `ruff.toml`. Same as CI lint. |
-| Frontend | `cd frontend && npm test`, `npm run lint`, `npm run type-check` | Jest tests live in `frontend/tests/v2`. |
+| Python style | `ruff format --check backend blocker examples && ruff check backend blocker examples` | Run from the repo root; config in `ruff.toml`. Same as CI lint. |
+| Frontend | `cd frontend && npm test -- --ci`, `npm run lint`, `npm run type-check` | Jest tests live in `frontend/tests/v2`. |
 | Blocker unit | `python -m pytest blocker/tests -q` | Firewall rules, ARP, portal, identity. |
 | Lab journeys | `cd blocker && RUN_INTEGRATION=1 python -m pytest tests/lab -v` | Real ARP, nftables and portal in Docker; needs Linux Docker. |
 | Browser e2e | `bash scripts/lab.sh up && bash scripts/lab.sh e2e` | Playwright against the lab; screenshots in `frontend/e2e-artifacts`. |
 
 `scripts/lab.sh` also has helper commands (`block`, `unblock`, `check`, `check6`, `portal`, `resist`, `reset`, `resisting`, `test-block`, `token`, `device-id`). Run it without arguments for the usage line. Lab details: [lab/README.md](../lab/README.md).
 
-CI (`.github/workflows/ci-cd.yml`): `lint` (ruff on backend and blocker, eslint, tsc), `test` (backend pytest), `installer` (shellcheck, install smoke test), `lab` (journeys + browser e2e, uploads screenshots), `security-scan` (Trivy), and image build and push on `main`.
+CI (`.github/workflows/ci-cd.yml`): `lint` (ruff on backend, blocker and examples, eslint, tsc, registry typecheck and tests), `test` (backend pytest), `installer` (shellcheck, install smoke test), `lab` (journeys + browser e2e, uploads screenshots), `security-scan` (Trivy), and image build and push on `main`. It runs on PRs into `main`, pushes to `main`/`develop` and `v*` tags, not on PRs into `dev`, so run the checks locally first. Branch flow, exact local commands and commit rules: [CONTRIBUTING.md](../CONTRIBUTING.md). `backend/tests/test_contributing_doc.py` fails if CONTRIBUTING.md drifts from `ci-cd.yml`.
 
 `.github/workflows/pages.yml` deploys the website. When `site/`, `docs/guide/`, `docs/remote-access.md` or the build scripts change on `main`, it runs `python scripts/build_site.py` (markdown to HTML through `scripts/site_templates.py`) and publishes `site/`. After editing those docs, rebuild locally and commit the output. `node site/check.mjs` checks every page (usage is in its header).
 
