@@ -33,6 +33,8 @@ class HourRule(Base):
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
     everyone = Column(Boolean, nullable=False, default=False, server_default="0")
+    # a kid style bedtime: for its kids it replaces Everyone rules of the same category
+    replaces_everyone = Column(Boolean, nullable=False, default=False, server_default="0")
 
     times = relationship(
         "HourRuleTime",

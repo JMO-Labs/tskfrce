@@ -145,7 +145,7 @@ describe('setup wizard', () => {
     const user = userEvent.setup()
     wrap()
     await finishAccount(user)
-    for (let i = 0; i < 3; i++) await user.click(screen.getByRole('button', { name: 'Skip' })) // 3 → 4 → 5 → 6, no kids yet
+    for (let i = 0; i < 2; i++) await user.click(screen.getByRole('button', { name: 'Skip' })) // 3 → 4 → 6, no kids yet
     expect(await screen.findByText('Add a kid first, or tap Next to go on.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull()
     for (let i = 0; i < 3; i++) await user.click(screen.getByRole('button', { name: 'Back' }))
@@ -154,11 +154,17 @@ describe('setup wizard', () => {
     await screen.findByText(/^Ava$/)
     await user.click(screen.getByRole('button', { name: 'Next' })) // 3 → 4 with a kid
     await screen.findByRole('heading', { name: 'How strict should it be?' })
-    await user.click(screen.getByRole('button', { name: 'Skip' })) // 4 → 5
-    await screen.findByRole('heading', { name: "Here's your plan" })
-    await user.click(screen.getByRole('button', { name: 'Skip' })) // 5 → 6 without applying
+    await user.click(screen.getByRole('button', { name: 'Skip' })) // 4 → 6: skipping the question uses Balanced
     await screen.findByRole('button', { name: 'Show code for Ava' })
-    expect(posts('/presets/apply')).toHaveLength(0)
+    expect(posts('/presets/apply').map((c) => c[1])).toEqual([
+      { method: 'POST', body: { style: 'balanced', kids: {} } }, // the first Skip, before Ava
+      { method: 'POST', body: { style: 'balanced', kids: { 7: null } } },
+    ])
+    await user.click(screen.getByRole('button', { name: 'Back' })) // 6 → 5
+    await screen.findByRole('heading', { name: "Here's your plan" })
+    await user.click(screen.getByRole('button', { name: 'Skip' })) // 5 → 6, Balanced again: already applied
+    await screen.findByRole('button', { name: 'Show code for Ava' })
+    expect(posts('/presets/apply')).toHaveLength(2)
     for (let step = 6; step <= 7; step++) {
       expect(screen.getByRole('button', { name: 'Skip' })).toBeInTheDocument()
       await skipStep(user)
@@ -172,8 +178,9 @@ describe('setup wizard', () => {
     await toFamily(user)
     await user.click(screen.getByRole('button', { name: 'Next' }))
     await waitFor(() => expect(loginWithToken).toHaveBeenCalledWith('t', 'r', 1800))
-    for (let i = 0; i < 3; i++) await skipStep(user) // 3 → 4 → 5 → 6
+    for (let i = 0; i < 2; i++) await skipStep(user) // 3 → 4 → 6 (Balanced for the family)
     await nextNoSkip(user) // 6 → 7, no kids
+    expect(posts('/presets/apply').map((c) => c[1])).toEqual([{ method: 'POST', body: { style: 'balanced', kids: {} } }])
     await skipStep(user) // 7 → finish
     expect(await screen.findByText('Hours start now.')).toBeInTheDocument() // no kids, no chores
     expect(screen.queryByText(/next daily reset/)).toBeNull()
@@ -426,9 +433,8 @@ describe('setup wizard', () => {
     await finishAccount(user)
     const puts = () => apiMock.mock.calls.filter((c) => c[0] === '/setup/step').map((c) => (c[1] as { body: unknown }).body)
     await skipStep(user) // 3 → 4
-    await skipStep(user) // 4 → 5
-    await waitFor(() => expect(puts()).toEqual([{ step: 4 }, { step: 5 }]))
-    await skipStep(user) // 5 → 6
+    await skipStep(user) // 4 → 6 (Balanced)
+    await waitFor(() => expect(puts()).toEqual([{ step: 4 }, { step: 6 }]))
     await nextNoSkip(user) // 6 → 7, no kids
     await skipStep(user) // → finish
     await waitFor(() => expect(puts().at(-1)).toEqual({ step: null }))

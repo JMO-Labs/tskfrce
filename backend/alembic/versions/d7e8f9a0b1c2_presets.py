@@ -24,10 +24,16 @@ def upgrade() -> None:
     with op.batch_alter_table("users") as b:
         b.add_column(sa.Column("preset_style", sa.String(8), nullable=True))
         b.add_column(sa.Column("chores_lock", sa.Boolean(), nullable=False, server_default="1"))
+    with op.batch_alter_table("hour_rules") as b:
+        b.add_column(
+            sa.Column("replaces_everyone", sa.Boolean(), nullable=False, server_default="0")
+        )
     op.execute("UPDATE family_settings SET setup_step = 4 WHERE setup_step BETWEEN 4 AND 8")
 
 
 def downgrade() -> None:
+    with op.batch_alter_table("hour_rules") as b:
+        b.drop_column("replaces_everyone")
     with op.batch_alter_table("users") as b:
         b.drop_column("chores_lock")
         b.drop_column("preset_style")

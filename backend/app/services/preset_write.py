@@ -107,12 +107,9 @@ def _active_kids(db: Session) -> list[User]:
 
 
 def _leave(db: Session, rule: HourRule, kid: User) -> None:
-    """Take the kid off a shared rule; a rule left with nobody is deleted."""
-    if rule.everyone:
-        rule.everyone = False
-        rule.targets = [HourRuleTarget(kid_id=k.id) for k in _active_kids(db) if k.id != kid.id]
-    else:
-        rule.targets = [t for t in rule.targets if t.kid_id != kid.id]
+    """Take the kid off a shared named list; a rule left with nobody is deleted.
+    Everyone rules are never touched: the kid's own rule replaces them for that kid."""
+    rule.targets = [t for t in rule.targets if t.kid_id != kid.id]
     if not rule.targets:
         db.delete(rule)
 
@@ -123,38 +120,42 @@ def _bedtime_one(db: Session, kid: User, cat: str, end: str) -> None:
     own = next((r for r in rules if not r.everyone and r.kid_ids == [kid.id]), None)
     if own is not None and own.times:
         own.times[-1].end = end
+        own.replaces_everyone = True
         return
     if rules and rules[0].times:
         start = rules[0].times[-1].start
     for r in rules:
-        _leave(db, r, kid)
-    rule = HourRule(name=f"{label} · {kid.full_name}"[:60], category=cat, kind="allowed", days=days)
+        if not r.everyone:
+            _leave(db, r, kid)
+    name = f"{label} · {kid.full_name or kid.username}"[:60]
+    rule = HourRule(name=name, category=cat, kind="allowed", days=days, replaces_everyone=True)
     rule.times = [HourRuleTime(start=start, end=end)]
     rule.targets = [HourRuleTarget(kid_id=kid.id)]
     db.add(rule)
 
 
-def bedtime_all(db: Session, kids_targets: dict) -> bool:
-    """Fresh family, everyone on the same bedtime: one Everyone rule per category.
-    `kids_targets` maps kid id -> plan. Returns False when it does not apply."""
+def bedtime_all(db: Session, kids_targets: dict) -> set[int]:
+    """Fresh family: one Everyone rule per category at the most common bedtime (ties: the first
+    kid's), so kids added later are covered. Returns the kids it already covers; the others get
+    their own override rule. `kids_targets` maps kid id -> plan. Empty when it does not apply."""
     kids = _active_kids(db)
     plans = [kids_targets.get(k.id) for k in kids]
     if not kids or any(p is None for p in plans):
-        return False
-    if len({(p["bedtime"], p["weekend"]) for p in plans}) != 1:
-        return False
+        return set()
     if (
         db.query(HourRule)
         .filter(HourRule.kind == "allowed", HourRule.category.in_(list(BEDTIME)))
         .first()
     ):
-        return False
-    for cat, (key, days, start, label) in BEDTIME.items():
+        return set()
+    pairs = [(p["bedtime"], p["weekend"]) for p in plans]
+    pick = max(pairs, key=lambda x: (pairs.count(x), -pairs.index(x)))
+    for i, (cat, (_key, days, start, label)) in enumerate(BEDTIME.items()):
         rule = HourRule(name=label, category=cat, kind="allowed", days=days, everyone=True)
-        rule.times = [HourRuleTime(start=start, end=plans[0][key])]
+        rule.times = [HourRuleTime(start=start, end=pick[i])]
         db.add(rule)
     db.flush()
-    return True
+    return {k.id for k, pair in zip(kids, pairs, strict=True) if pair == pick}
 
 
 def _bedtime(db: Session, kid: User, plan: dict) -> None:

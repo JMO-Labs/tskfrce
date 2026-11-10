@@ -115,7 +115,7 @@ export function HoursSection() {
             <span className="sq pt pt-kid" aria-hidden="true" />
             <span className="sq pt pt-group" aria-hidden="true" />
             <span className="sq pt pt-week" aria-hidden="true" />
-            Hours for a child, their groups and Everyone all apply together.
+            Hours for a child, their groups and Everyone all apply together, except a bedtime set by a kid&apos;s style: that one replaces Everyone for the kid.
           </span>
         </div>
       </div>

@@ -140,7 +140,7 @@ export default function SetupPage() {
 
   /** POST each not-yet-applied request; remember successes so Back/Next never duplicates. */
   const apply = useMutation({
-    mutationFn: async (jobs: Job[]) => {
+    mutationFn: async ({ jobs }: { jobs: Job[]; to?: number }) => {
       for (const j of jobs) {
         if (applied.current.has(j.key)) continue
         await j.run()
@@ -148,7 +148,7 @@ export default function SetupPage() {
         setSchedules(Array.from(applied.current).filter((k) => k.startsWith('rule:')).length)
       }
     },
-    onSuccess: () => go(step + 1),
+    onSuccess: (_d, v) => go(v.to ?? step + 1),
   })
 
   const go = (n: number) => {
@@ -161,9 +161,8 @@ export default function SetupPage() {
   }
 
   // one request per click even on a double-click; failures show via apply.error
-  // one request per click even on a double-click; failures show via apply.error
-  const run = (jobs: Job[]) =>
-    void once(() => apply.mutateAsync(jobs).catch(() => {}))
+  const run = (jobs: Job[], to?: number) =>
+    void once(() => apply.mutateAsync({ jobs, to }).catch(() => {}))
 
   const sub = (t: typeof tweak) => {
     apply.reset()
@@ -172,6 +171,11 @@ export default function SetupPage() {
   const presetJob = (skip?: string[]): Job => {
     const body = applyBody(style, kids, kidStyles, skip)
     return { key: `${skip ? 'preset:tweak' : 'preset'}:${JSON.stringify(body)}`, run: () => applyPreset.mutateAsync(body) }
+  }
+  /** Skipping How strict or Your plan still gives a working setup: Balanced for everyone (turnkey). */
+  const skipToBalanced = () => {
+    const body = applyBody('balanced', kids, null)
+    run([{ key: `preset:${JSON.stringify(body)}`, run: () => applyPreset.mutateAsync(body) }], 6)
   }
   const startTweak = (catalog: PresetCatalog) => {
     const t = tweakStart(presetKids(kids, kidStyles, style), catalog, style)
@@ -263,7 +267,7 @@ export default function SetupPage() {
           onNext={next}
           nextLabel={step === LAST ? 'Finish' : 'Next'}
           hideNext={step === 5 && !tweak}
-          onSkip={step >= 3 && step <= LAST && !tweak && !(step === 6 && kids.length === 0) ? () => go(step + 1) : undefined}
+          onSkip={step >= 3 && step <= LAST && !tweak && !(step === 6 && kids.length === 0) ? (step === 4 || step === 5 ? skipToBalanced : () => go(step + 1)) : undefined}
           onStepClick={(n) => {
             if (n > step && n > step + 1) return // Can't skip ahead multiple steps
             go(n)

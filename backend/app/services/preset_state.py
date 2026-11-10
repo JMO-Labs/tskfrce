@@ -119,11 +119,9 @@ def run(db: Session, parent: User, body: dict, write_it: bool) -> dict:
 
 def _apply(db: Session, parent: User, todo: list, plans: dict, targets: list) -> None:
     by_id = {k.id: k for k, _ in targets}
-    skip_bed = False
     bed = [kid.id for kid, key, _ in todo if key == "bedtime" and kid]
-    if len(bed) == len(kids(db)) and bedtime_all(db, {i: plans[i] for i in bed}):
-        skip_bed = True
+    covered = bedtime_all(db, {i: plans[i] for i in bed}) if len(bed) == len(kids(db)) else set()
     for kid, key, value in todo:
-        if key == "bedtime" and skip_bed:
+        if key == "bedtime" and kid.id in covered:
             continue
         write(db, parent, kid and by_id[kid.id], key, value, plans)

@@ -243,3 +243,16 @@ def test_dated_rule_ended_yesterday_does_not_lock():
     r = resolve([ended], {1}, set(), date(2026, 12, 25))
     assert r.allowed_sets == ()
     assert not blocked_at(r, datetime(2026, 12, 25, 12, 0))
+
+
+def test_a_kid_style_bedtime_replaces_everyone_for_that_kid_only():
+    """Preset bedtimes keep the Everyone rule (later kids stay covered) and override it per kid."""
+    from dataclasses import replace
+
+    every = rule(1, category="school_night", times=(("07:00", "20:00"),), everyone=True)
+    own = replace(
+        rule(2, category="school_night", times=(("07:00", "21:00"),), kids=[1]),
+        replaces_everyone=True,
+    )
+    assert spans(resolve([every, own], {1}, set(), D)) == (t(own),)
+    assert spans(resolve([every, own], {2}, set(), D)) == (t(every),)

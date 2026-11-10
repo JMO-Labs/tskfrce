@@ -94,9 +94,13 @@ Age offsets, data model for edit tracking, API shapes, copy polish within the mo
   switch; a device only waits for the chores of owners whose lock is on.
 - **Photo proof** (Strict): the kid's starter chores need a photo. A starter shared by several kids needs
   one if any of them is Strict.
-- **Per-kid bedtime**: hour rules. A fresh family where everyone shares a bedtime gets Everyone rules.
-  Otherwise each kid gets their own "School nights · Name" / "Weekends · Name" rules. Moving a kid off a
-  shared rule turns an Everyone rule into a list of the other kids.
+- **Per-kid bedtime** (lead decision 2026-11-10): hour rules. A fresh family gets Everyone rules at the
+  most common bedtime (ties: the first kid's), so kids added later stay covered. A kid whose bedtime differs
+  gets their own "School nights · Name" / "Weekends · Name" rule flagged `replaces_everyone`: for that kid
+  it replaces the Everyone rule of the same day type. Everyone rules are never turned into lists. Other
+  kid, group and Everyone rules still all apply together.
+- **Skip** (lead decision): Skip on How strict or Your plan applies Balanced for everyone and goes on to
+  Kids' phones, so doing nothing still gives a working setup.
 - **Edit tracking**: `family_settings.preset_base` (JSON) stores the last applied value per key. A key is
   an edit when it differs from that value. A key with no stored value counts as an edit unless it still
   has the app default (no screen limit, trust off, no photo, lock on, no starter chores, no bedtime
