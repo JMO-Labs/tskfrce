@@ -75,6 +75,14 @@ describe('Shelf', () => {
     expect(screen.getByText('Family: 14 games this week')).toBeInTheDocument()
   })
 
+  test('an empty board invites play instead of ranking zeros', async () => {
+    welcomed()
+    routes['GET /kid/games'] = shelf({ board: { band: 'kid', rows: [{ kid_id: 3, name: 'Leo', avatar: null, stars: 0, me: true }] } })
+    page()
+    expect(await screen.findByText('No stars yet this week. Play to get on the board!')).toBeInTheDocument()
+    expect(screen.queryByText(/You · 0/)).toBeNull()
+  })
+
   test('nothing saved shows the hint and no Play', async () => {
     welcomed()
     routes['GET /kid/games'] = shelf({ saved: 0 })

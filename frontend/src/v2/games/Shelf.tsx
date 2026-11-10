@@ -50,9 +50,11 @@ export function Shelf({ d, name, preview, hint, busy, celebrate, seed, tz, onPla
       {d.board && (
         <div className={s.board}>
           <b>This week, {cap(d.board.band)} group</b>
-          {d.board.rows.map((r, i) => (
-            <div key={r.kid_id}>{`${MEDAL[i] ?? `${i + 1}.`} ${r.me ? 'You' : r.name} · ${r.stars} ⭐`}</div>
-          ))}
+          {d.board.rows.some((r) => r.stars > 0)
+            ? d.board.rows.map((r, i) => (
+                <div key={r.kid_id}>{`${MEDAL[i] ?? `${i + 1}.`} ${r.me ? 'You' : r.name} · ${r.stars} ⭐`}</div>
+              ))
+            : <div>No stars yet this week. Play to get on the board!</div>}
           <small>Family: {plural(d.family_rounds, 'game')} this week</small>
         </div>
       )}
