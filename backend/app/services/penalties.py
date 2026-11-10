@@ -172,7 +172,9 @@ def _give_one(db: Session, kid: User, g: Give, by: User, now: datetime, group: s
     if g.kind != "block":
         num, den = SHARES[g.earn_back]
         p.back_total = p.amount_taken * num // den
-        titles = (g.makeup if g.makeup is not None else makeup_list(fam)[:2]) if p.back_total else []
+        titles = (
+            (g.makeup if g.makeup is not None else makeup_list(fam)[:2]) if p.back_total else []
+        )
         p.makeup_count = len(titles)
         if titles:
             p.ends_at = created + timedelta(days=MAKEUP_DAYS)

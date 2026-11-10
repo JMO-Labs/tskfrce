@@ -12,6 +12,7 @@ from app.models.screen_bank import ScreenBank
 from app.models.user import UserRole
 from app.services import economy, penalties
 from app.services.penalties import Give
+
 from tests.conftest import _make_user
 
 NOW = datetime(2026, 11, 10, 15, 0, tzinfo=UTC)
