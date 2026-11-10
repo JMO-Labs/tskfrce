@@ -20,3 +20,8 @@
 [data-look='parent'] .gl-back { align-self: flex-start; background: none; border: 0; padding: 0; color: var(--p-sub); font: inherit; font-size: 13px; cursor: pointer; }
 [data-look='parent'] .gl-num { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 6px 0; }
 [data-look='parent'] .gl-num .pk-input { width: 90px; }
+[data-look='parent'] .gl-pane .gl-r { display: flex; align-items: center; gap: 6px; flex: none; }
+/* small "…" trigger: keeps the pill and numbers where the mockup has them, also on touch */
+[data-look='parent'] .gl-pane .gl-r .p-ib { width: 28px; height: 28px; margin-right: -6px; color: var(--p-sub); }
+[data-look='parent'] .gl-pane .gl-off { font-size: 13px; color: var(--p-sub); margin: 0 0 12px; }
+[data-look='parent'] .gl-pane .gl-link { background: none; border: 0; padding: 0; font: inherit; color: var(--p-ink); text-decoration: underline; cursor: pointer; }
