@@ -68,6 +68,12 @@ describe('header tools', () => {
     expect(h.querySelector('a[aria-label="Account and settings"]')).toBeInTheDocument()
   })
 
+  test.each([true, false])('list-detail page has exactly one h1 (phone=%s)', (small) => {
+    phone(small)
+    ui(<ParentShell title="Devices" list={<div />}>x</ParentShell>)
+    expect(Array.from(document.querySelectorAll('h1')).map((h) => h.textContent)).toEqual(['Devices'])
+  })
+
   test.each([true, false])('avatar links to /more with the user initial (phone=%s)', (small) => {
     phone(small)
     const { unmount } = ui(<ParentShell title="Today">x</ParentShell>)
