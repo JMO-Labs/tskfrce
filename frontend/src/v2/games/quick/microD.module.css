@@ -1,0 +1,53 @@
+/* shared look for fold, feed, spot, count, cat-dash. Fills the 330px runner stage. */
+.stage { width: 100%; height: 330px; display: grid; place-items: center; align-content: center; gap: 14px; position: relative; touch-action: none; user-select: none; font-family: var(--font-display), 'Space Grotesk', system-ui, sans-serif; color: var(--k-ink); }
+.kb { font: 700 17px var(--font-display), 'Space Grotesk', system-ui, sans-serif; min-width: 56px; min-height: 56px; padding: 8px 16px; border-radius: 16px; border: 2px solid var(--k-ink); background: var(--k-card); color: var(--k-ink); box-shadow: var(--k-shadow); cursor: pointer; }
+.kb:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--k-ink); }
+.sun { background: var(--k-sun); color: #1d2b53; }
+.row { display: flex; gap: 10px; justify-content: center; }
+.hint { font-size: 15px; color: var(--k-sub); margin: 0; }
+
+/* fold */
+.towel { display: flex; gap: 8px; padding: 12px; border-radius: 18px; background: var(--k-soft); border: 2px solid var(--k-line); }
+.step { width: 56px; height: 56px; display: grid; place-items: center; font-size: 30px; border-radius: 14px; border: 2px solid var(--k-ink); background: var(--k-card); }
+.stepDone { background: var(--k-green); color: #1d2b53; }
+.stepNow { background: var(--k-sun); color: #1d2b53; animation: bounce .5s infinite alternate; }
+.pad { display: grid; grid-template-columns: repeat(3, 64px); grid-template-rows: repeat(2, 60px); gap: 8px; }
+.pad .up { grid-column: 2; }
+.pad .left { grid-row: 2; grid-column: 1; }
+.pad .down { grid-row: 2; grid-column: 2; }
+.pad .right { grid-row: 2; grid-column: 3; }
+.pad .kb { width: 100%; height: 100%; padding: 0; font-size: 26px; }
+
+/* feed */
+.bowl { width: 190px; height: 190px; border-radius: 50%; border: 3px solid var(--k-ink); background: radial-gradient(circle at 35% 30%, #bfeaff, #5db8e8); box-shadow: var(--k-shadow); font-size: 80px; display: grid; place-items: center; cursor: pointer; padding: 0; min-height: 56px; }
+.bowl.fed { animation: wob .4s; }
+.flake { position: absolute; font-size: 28px; top: 30px; animation: drop .6s forwards; }
+
+/* spot */
+.grid { display: grid; gap: 8px; }
+.g3 { grid-template-columns: repeat(3, 76px); }
+.g4 { grid-template-columns: repeat(4, 68px); }
+.tile { height: 68px; min-height: 56px; font-size: 32px; border-radius: 14px; border: 2px solid var(--k-line); background: var(--k-card); cursor: pointer; padding: 0; }
+.g3 .tile { height: 76px; }
+.mud { filter: sepia(1) saturate(3) hue-rotate(-20deg) brightness(.55); }
+
+/* count */
+.cookies { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 300px; min-height: 140px; align-content: center; font-size: 56px; }
+.cookie { animation: pop .3s both; }
+.hidden { font-size: 72px; }
+.num { font-size: 30px; width: 80px; height: 64px; }
+
+/* cat-dash */
+.lanes { position: relative; width: 300px; height: 250px; display: grid; grid-template-columns: repeat(3, 1fr); border-radius: 18px; background: var(--k-soft); border: 2px solid var(--k-line); overflow: hidden; }
+.lane { border-left: 2px dashed var(--k-line); position: relative; }
+.lane:first-child { border-left: 0; }
+.treat { position: absolute; top: -50px; left: 50%; margin-left: -24px; font-size: 44px; animation: fall linear forwards; }
+.cat { position: absolute; bottom: 4px; left: 50%; width: 76px; margin-left: -38px; height: 76px; transition: transform .12s; }
+.cat img { width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
+
+@keyframes bounce { to { transform: translateY(-5px); } }
+@keyframes wob { 30% { transform: scale(1.08) rotate(-4deg); } 70% { transform: scale(.97) rotate(3deg); } }
+@keyframes drop { to { transform: translateY(90px); opacity: 0; } }
+@keyframes pop { from { transform: scale(0); } to { transform: scale(1); } }
+@keyframes fall { to { top: 170px; } }
+@media (prefers-reduced-motion: reduce) { .stepNow, .cookie, .bowl.fed { animation: none; } }
