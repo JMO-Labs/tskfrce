@@ -86,6 +86,16 @@ jest.mock('next/link', () => ({
   ),
 }))
 
+// mockReturnValue leaks past clearAllMocks; restore defaults so test order never matters
+beforeEach(() => {
+  const { useThreads } = require('@/v2/hooks/useChat')
+  const { useParents } = require('@/v2/hooks/useFamily')
+  const { useBlocker } = require('@/v2/hooks/useDevices')
+  useThreads.mockImplementation(() => ({ data: { total: 0 } }))
+  useParents.mockImplementation(() => ({ data: [{ id: 1, is_me: true, is_owner: false }] }))
+  useBlocker.mockImplementation(() => ({ data: { online: true } }))
+})
+
 describe('ParentShell', () => {
   beforeEach(() => {
     jest.clearAllMocks()
