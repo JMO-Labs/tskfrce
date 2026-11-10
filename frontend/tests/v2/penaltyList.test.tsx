@@ -56,12 +56,26 @@ describe('PenaltyList', () => {
   test('shows makeup progress; hides when none active', async () => {
     list = [pen({ makeup: [{ run_id: 1, title: 'a', status: 'done' }, { run_id: 2, title: 'b', status: 'open' }] })]
     const { unmount } = render(wrap(<PenaltyList kidId={7} name="Maya" />))
-    expect(await screen.findByText('1 of 2 done')).toBeTruthy()
+    expect(await screen.findByText(/1 of 2 done/)).toBeTruthy()
     unmount()
-    list = [pen({ status: 'ended' })]
+    list = []
     const { container } = render(wrap(<PenaltyList kidId={7} name="Maya" />))
     await new Promise((r) => setTimeout(r, 20))
     expect(container.querySelector('section')).toBeNull()
+  })
+  test('ended row: muted Ended line, Cancel only', async () => {
+    list = [pen({ status: 'ended' })]
+    render(wrap(<PenaltyList kidId={7} name="Maya" />))
+    expect(await screen.findByText('Ended')).toBeTruthy()
+    await userEvent.click(screen.getByText(/No phone, 2 days/))
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy()
+    for (const n of ['1 hour', 'Half', 'Forgive']) expect(screen.queryByRole('button', { name: n })).toBeNull()
+  })
+  test('sub line: until, make-up progress and cause', async () => {
+    const makeup = [{ run_id: 1, title: 'a', status: 'done' }, { run_id: 2, title: 'b', status: 'todo' }]
+    list = [pen({ makeup, cause: 'Dishes' })]
+    render(wrap(<PenaltyList kidId={7} name="Maya" />))
+    expect(await screen.findByText(/until .* · 1 of 2 done · From Dishes/)).toBeTruthy()
   })
   test('halfLeft', () => {
     const now = new Date('2026-01-01T00:00:00Z')

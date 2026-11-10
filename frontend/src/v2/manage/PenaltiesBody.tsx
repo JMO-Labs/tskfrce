@@ -27,6 +27,9 @@ function SizeRow({ name, size, save }: { name: string; size: PenaltySize; save: 
   )
 }
 
+/** Remove a make-up chore, never the last one (the list can't be empty). */
+const drop = (cur: string[], c: string): string[] => (cur.length > 1 ? cur.filter((x) => x !== c) : cur)
+
 /** Settings > Family > Penalties: the switch first; sizes and the make-up list only when on. */
 export function PenaltiesBody({ fam, save }: { fam: Family; save: SaveFamily }) {
   const [text, setText] = useState('')
@@ -58,7 +61,7 @@ export function PenaltiesBody({ fam, save }: { fam: Family; save: SaveFamily }) 
           <b>Make-up chores</b>
           <div className="p-pen-chips">
             {list.map((c) => (
-              <button key={c} type="button" className="p-pen-chip" aria-label={`Remove ${c}`} onClick={() => void save((f) => ({ makeup_chores: (f.makeup_chores ?? []).filter((x) => x !== c) }))}>
+              <button key={c} type="button" className="p-pen-chip" aria-label={`Remove ${c}`} disabled={list.length <= 1} onClick={() => void save((f) => ({ makeup_chores: drop(f.makeup_chores ?? [], c) }))}>
                 {c} ×
               </button>
             ))}

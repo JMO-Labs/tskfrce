@@ -29,11 +29,29 @@ export interface Penalty {
   status: 'active' | 'ended' | 'cancelled' | 'forgiven'
   seen_by_kid: boolean
   summary: string
+  /** what it was for: a chore title or "Security alert" */
+  cause: string | null
   makeup: { run_id: number; title: string; status: string }[]
 }
 
 export interface KidPenalty extends Penalty {
   by_name: string
+}
+
+/** Penalty fields on shared payloads (merged into types.ts interfaces) */
+export interface DevicePenaltyFields {
+  /** active block penalty on this device (only when it is why the device is offline) */
+  penalty?: { id: number; ends_at: string } | null
+}
+
+export interface FamilyPenaltyFields {
+  penalties_enabled: boolean
+  penalty_sizes: Record<SizeKey, PenaltySize>
+  makeup_chores: string[]
+}
+
+export interface KidTodayPenaltyFields {
+  penalties?: KidPenalty[]
 }
 
 /** GET /penalties/options */

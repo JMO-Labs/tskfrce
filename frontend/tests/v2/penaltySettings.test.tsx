@@ -78,9 +78,12 @@ test('make-up list adds and removes, and stops at 12', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Add' }))
   const add = (save.mock.calls[0] as unknown[])[0] as (f: unknown) => { makeup_chores: string[] }
   expect(add(fam).makeup_chores).toEqual(['Dishes', 'Vacuum'])
+  expect(screen.getByRole('button', { name: 'Remove Dishes' })).toBeDisabled()
+  again({ ...fam, makeup_chores: ['Dishes', 'Vacuum'] })
   await userEvent.click(screen.getByRole('button', { name: 'Remove Dishes' }))
   const rm = (save.mock.calls[1] as unknown[])[0] as (f: unknown) => { makeup_chores: string[] }
-  expect(rm(fam).makeup_chores).toEqual([])
+  expect(rm({ makeup_chores: ['Dishes', 'Vacuum'] }).makeup_chores).toEqual(['Vacuum'])
+  expect(rm({ makeup_chores: ['Dishes'] }).makeup_chores).toEqual(['Dishes'])
   again({ ...fam, makeup_chores: Array.from({ length: 12 }, (_, i) => `c${i}`) })
   expect(screen.queryByLabelText('New make-up chore')).toBeNull()
 })

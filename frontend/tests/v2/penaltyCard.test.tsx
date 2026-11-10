@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { api } from '@/v2/api'
 import { PenaltyCards, backText } from '@/v2/kid/PenaltyCard'
+import { PreviewProvider } from '@/v2/hooks/usePreview'
 import type { KidPenalty } from '@/v2/penaltyTypes'
 
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
@@ -58,6 +59,17 @@ describe('PenaltyCards', () => {
     expect(b('block', 1440, 2880)).toBe('1 of 2 days back')
     expect(b('block', 0, 2880)).toBe('0 of 2 days back')
     expect(b('block', 720, 1440)).toBe('12 hours of 1 day back')
+  })
+  test('previewing as the kid: no seen post', async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <PreviewProvider value={7}>
+          <PenaltyCards list={[pen({ back_total: 0, makeup: [] })]} done={{ mutate: jest.fn(), isPending: false }} />
+        </PreviewProvider>
+      </QueryClientProvider>,
+    )
+    await new Promise((r) => setTimeout(r, 20))
+    expect(apiMock.mock.calls.filter((c) => String(c[0]).includes('/seen'))).toHaveLength(0)
   })
   test('empty renders nothing', () => {
     wrap([])

@@ -1,5 +1,5 @@
 import type { CelebrateLevel } from './funTypes'
-import type { KidPenalty, PenaltySize, SizeKey } from './penaltyTypes'
+import type { DevicePenaltyFields, FamilyPenaltyFields, KidTodayPenaltyFields } from './penaltyTypes'
 import type { KidScreen } from './rewardTypes'
 import type { ChoreTrustFields, FamilyExtrasFields, KidTrust, KidTrustFields, RunTrustFields, TodayTryFields } from './trustTypes'
 /** Shapes of the v2 backend responses (backend/app/api/{family,kid,devices,kids,hours,chores,setup}.py). */
@@ -20,7 +20,7 @@ export interface Override {
 }
 
 /** GET /devices item (device_out) */
-export interface Device {
+export interface Device extends DevicePenaltyFields {
   id: number
   name: string
   mac: string
@@ -30,8 +30,6 @@ export interface Device {
   group_ids: number[]
   online: boolean
   override: Override | null
-  /** active block penalty on this device */
-  penalty?: { id: number; ends_at: string } | null
   last_seen: string | null
   /** seen on the network in the last few minutes (not the same as unlocked) */
   seen_now: boolean
@@ -112,7 +110,7 @@ export interface Kid extends KidTrustFields {
 /** GET/PATCH /family */
 export type AccentKey = 'neon' | 'sun' | 'tangerine' | 'bubblegum' | 'lilac' | 'sky' | 'aqua' | 'mint' | 'peach' | 'ice'
 
-export interface Family extends FamilyExtrasFields {
+export interface Family extends FamilyExtrasFields, FamilyPenaltyFields {
   name: string
   timezone: string
   reset_time: string
@@ -132,9 +130,6 @@ export interface Family extends FamilyExtrasFields {
   hh_weekly_surprise: boolean
   hh_auto_boost: boolean
   streak_freeze: boolean
-  penalties_enabled: boolean
-  penalty_sizes: Record<SizeKey, PenaltySize>
-  makeup_chores: string[]
 }
 
 /** GET /chore-types item */
@@ -346,7 +341,7 @@ export interface KidChore extends TodayChore {
   points_now?: number
 }
 
-export interface KidToday {
+export interface KidToday extends KidTodayPenaltyFields {
   locked: boolean
   chores: KidChore[]
   points_balance: number
@@ -364,7 +359,6 @@ export interface KidToday {
   happy_hour?: { ends_at: string; multiplier: number } | null
   /** null = trust mode off */
   trust?: KidTrust | null
-  penalties?: KidPenalty[]
 }
 
 /** GET /kids/{id}/push */

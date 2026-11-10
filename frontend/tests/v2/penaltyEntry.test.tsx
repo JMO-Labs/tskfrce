@@ -196,4 +196,12 @@ describe("payloads", () => {
     await waitFor(() => expect(apiMock.mock.calls.some(([p]) => p === "/chores/9/take-back")).toBe(true));
     expect(posts()).toHaveLength(0);
   });
+  test("Wasn't done waits for the penalty draft while the box is ticked", async () => {
+    enabled = true;
+    const base = apiMock.getMockImplementation()!;
+    apiMock.mockImplementation((p, i) => (p.startsWith("/penalties/options") ? new Promise(() => {}) : base(p, i)));
+    wrap(wasnt);
+    await userEvent.click(await screen.findByLabelText("Give penalty"));
+    expect((screen.getByRole("button", { name: "Wasn't done" }) as HTMLButtonElement).disabled).toBe(true);
+  });
 });

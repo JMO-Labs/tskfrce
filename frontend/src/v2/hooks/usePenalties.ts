@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/v2/api'
+import { useAsKid } from '@/v2/hooks/usePreview'
 import { toastFail, toastOk } from '@/v2/notify'
 import type { Penalty, PenaltyDraft, PenaltyOptions } from '@/v2/penaltyTypes'
 
@@ -37,10 +38,14 @@ export function usePenaltyAction() {
   })
 }
 
+/** Kid saw a no-earn-back penalty card; a parent previewing as the kid doesn't count. */
 export function useSeenPenalty() {
   const qc = useQueryClient()
+  const as = useAsKid()
   return useMutation({
-    mutationFn: (id: number) => api(`/kid/penalties/${id}/seen`, { method: 'POST', kid: true }),
+    mutationFn: async (id: number) => {
+      if (!as) await api(`/kid/penalties/${id}/seen`, { method: 'POST', kid: true })
+    },
     onSettled: () => qc.invalidateQueries({ queryKey: ['kid'] }),
   })
 }

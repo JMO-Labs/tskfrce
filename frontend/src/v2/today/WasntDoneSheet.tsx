@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { Checkbox, Modal } from '@mantine/core'
 import { Icon } from '../parent/Icon'
 import { useFamily } from '../hooks/useFamily'
@@ -26,7 +26,7 @@ export function WasntDoneSheet({ run, today, kidName, kidId, level, trustOn = tr
   const take = useTakeBack()
   const [lower, setLower] = useState(true)
   const [pen, setPen] = useState(false)
-  const draft = useRef<GiveBody | null>(null)
+  const [draft, setDraft] = useState<GiveBody | null>(null)
   const give = useGivePenalty()
   const penalties = !!useFamily().data?.penalties_enabled && !!kidId
   const older = !!today && run.day < today
@@ -44,7 +44,7 @@ export function WasntDoneSheet({ run, today, kidName, kidId, level, trustOn = tr
       { id: run.id, lower_trust: trustOn && !!level && lower },
       {
         onSuccess: () => {
-          if (withPen && draft.current) give.mutate(draft.current)
+          if (withPen && draft) give.mutate(draft)
           close()
         },
       },
@@ -66,18 +66,21 @@ export function WasntDoneSheet({ run, today, kidName, kidId, level, trustOn = tr
           />
         )}
         {penalties && (
-          <Checkbox checked={pen} onChange={(e) => setPen(e.currentTarget.checked)} label="Give penalty" />
+          <Checkbox checked={pen} onChange={(e) => {
+              setPen(e.currentTarget.checked)
+              setDraft(null)
+            }} label="Give penalty" />
         )}
         {penalties && pen && kidId && (
           // no Give button of its own: "Wasn't done" takes the chore back, then gives this penalty
-          <PenaltySheet inline kidIds={[kidId]} from={{ chore_run_id: run.id }} reason={`Said ${run.title} was done`} onClose={() => setPen(false)} onDraft={(b) => (draft.current = b)} />
+          <PenaltySheet inline kidIds={[kidId]} from={{ chore_run_id: run.id }} reason={`Said ${run.title} was done`} onClose={() => setPen(false)} onDraft={setDraft} />
         )}
         <span className="pk-hint">{`${kidName} sees: "${kidMsg}"`}</span>
         <div className="pk-actions v2-end">
           <button type="button" className="p-btn" onClick={close}>
             Keep
           </button>
-          <button type="button" className="p-btn" data-variant="red" disabled={take.isPending || give.isPending || !today} aria-busy={take.isPending} onClick={go}>
+          <button type="button" className="p-btn" data-variant="red" disabled={take.isPending || give.isPending || !today || (withPen && !draft)} aria-busy={take.isPending} onClick={go}>
             <Icon name="undo" size={17} />
             Wasn&apos;t done
           </button>
