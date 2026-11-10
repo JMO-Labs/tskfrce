@@ -155,3 +155,8 @@ Plus the turnkey introductions (owner: "highlight everything to show value"): a 
 - Exact scoring, star thresholds and ticket tables per game.
 - Exact upgrade and power-up names beyond the owner's examples (one theme each).
 - Art and sound for each game, in the existing celebration style.
+
+## Addendum 2026-11-10 (owner)
+- Spec approved: "ship to swarm".
+- **Make-up chores (Penalties feature) earn no game plays and no tickets.** They only reduce a penalty.
+- Built on `feat/declutter` (2.8.0); the parent UI follows declutter calm-then-focus. Ships after Presets (2.12.0).
