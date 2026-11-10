@@ -30,7 +30,12 @@ def catalog(db: Session = Depends(get_db)):
     return {
         "style": get_family(db).preset_style,
         "kids": [
-            {"id": k.id, "name": k.full_name, "age_group": k.age_group, "style": k.preset_style}
+            {
+                "id": k.id,
+                "name": k.full_name or k.username,
+                "age_group": k.age_group,
+                "style": k.preset_style,
+            }
             for k in preset_state.kids(db)
         ],
         **presets.catalog(),

@@ -23,7 +23,7 @@ NO_KID = "That kid doesn't exist. Pick a kid from the list."
 
 
 def kids(db: Session) -> list[User]:
-    return db.query(User).filter(User.role == UserRole.KID).order_by(User.id).all()
+    return db.query(User).filter(User.role == UserRole.KID, User.is_active).order_by(User.id).all()
 
 
 def plan(db: Session, body: dict):
@@ -71,7 +71,10 @@ def run(db: Session, parent: User, body: dict, write_it: bool) -> dict:
     todo = []  # (kid or None, key, value)
 
     def consider(kid, key, now, nxt, b, bucket):
-        row = {"kid_id": kid.id if kid else None, "who": kid.full_name if kid else None}
+        row = {
+            "kid_id": kid.id if kid else None,
+            "who": (kid.full_name or kid.username) if kid else None,
+        }
         row |= {"key": key, "now": now, "next": nxt}
         bucket[key] = nxt
         if key in skip or now == nxt:
@@ -93,7 +96,12 @@ def run(db: Session, parent: User, body: dict, write_it: bool) -> dict:
             nxt = sorted(p[key]) if key == "chores" else p[key]
             consider(kid, key, now[key], nxt, b, nb)
     if write_it:
-        _apply(db, parent, todo, plans, targets)
+        # kids outside the scope still share chores: their saved style decides a shared photo rule
+        fstyle = fam.preset_style or "balanced"
+        others = {
+            k.id: presets.kid_plan(k.age_group or "kid", k.preset_style or fstyle) for k in kids(db)
+        }
+        _apply(db, parent, todo, others | plans, targets)
         _save_styles(db, scope, targets, body)
         fam.preset_base = json.dumps(new_base)
         db.commit()
@@ -101,7 +109,7 @@ def run(db: Session, parent: User, body: dict, write_it: bool) -> dict:
     return {
         "style": scope["style"],
         "kids": [
-            {"id": k.id, "name": k.full_name, "age_group": k.age_group, "style": s}
+            {"id": k.id, "name": k.full_name or k.username, "age_group": k.age_group, "style": s}
             for k, s in targets
         ],
         "changes": changes,

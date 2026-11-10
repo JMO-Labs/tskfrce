@@ -205,3 +205,16 @@ def test_edited_rules():
     assert ps.edited("screen", None, {}) is False  # still the app default
     assert ps.edited("trust", True, {}) is True
     assert ps.edited("lock", True, {}) is False
+
+
+def test_photo_off_keeps_a_shared_chore_photo_for_a_strict_kid_out_of_scope(db, parent):
+    """A kid page switch must not drop the photo a Strict sibling still needs on a shared chore."""
+    from app.models.chores import Chore
+    from app.services import preset_state
+
+    a = _kid(db, "a", "kid")
+    b = _kid(db, "b", "kid")
+    preset_state.run(db, parent, {"style": "strict"}, True)
+    preset_state.run(db, parent, {"kids": {str(a.id): "balanced"}}, True)
+    bed = db.query(Chore).filter(Chore.title == "Make bed").all()
+    assert any(c.needs_photo for c in bed if b in [k for x in c.assignments for k in x.kids])
