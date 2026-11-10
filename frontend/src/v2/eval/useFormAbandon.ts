@@ -8,9 +8,9 @@ export function useFormAbandon(form: Form, dirty: boolean): () => void {
   const was = useRef(false)
   const saved = useRef(false)
   const live = useRef(dirty)
-  live.current = dirty
 
   useEffect(() => {
+    live.current = dirty
     if (dirty && !was.current) saved.current = false
     if (!dirty && was.current && !saved.current) track('form_abandoned', { form })
     was.current = dirty

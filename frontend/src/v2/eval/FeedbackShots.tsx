@@ -23,7 +23,9 @@ export function FeedbackShots({ shots, onChange, onCapture }: Props) {
   const [error, setError] = useState('')
   const input = useRef<HTMLInputElement>(null)
   const latest = useRef(shots)
-  latest.current = shots
+  useEffect(() => {
+    latest.current = shots
+  }, [shots])
   const full = shots.length >= MAX
 
   useEffect(() => () => latest.current.forEach((s) => URL.revokeObjectURL(s.url)), [])

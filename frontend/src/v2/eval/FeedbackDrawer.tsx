@@ -43,9 +43,12 @@ export function FeedbackDrawer() {
   const [busy, setBusy] = useState(false)
   const saved = useFormAbandon('feedback', text.trim() !== '')
 
-  useEffect(() => {
+  const [wasOpen, setWasOpen] = useState(false)
+  if (opened !== wasOpen) {
+    // adjust during render, not in an effect: the screen it was opened on
+    setWasOpen(opened)
     if (opened) setRoute(routePattern(router.pathname))
-  }, [opened, router.pathname])
+  }
 
   const reset = () => {
     shots.forEach((s) => URL.revokeObjectURL(s.url))
