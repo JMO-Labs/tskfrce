@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 
 from fastapi import HTTPException
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.flair.catalog import CATALOG as FLAIR
@@ -13,6 +13,7 @@ from app.lock.reset import current_chore_day
 from app.models.badge import BadgeAward, CustomBadge
 from app.models.chores import ChoreRun
 from app.models.family import FamilySettings
+from app.models.game import GamePlay, GameProgress
 from app.models.points import Points
 from app.models.reward import Redemption
 from app.models.user import User
@@ -59,6 +60,11 @@ CATALOG: dict[str, BadgeDef] = dict(
         _d("patience_pays", "Patience Pays", "🧘", "Big rewards (2000+ points).", "big_rewards", 1, 2, 3, 5, 10),
         _d("time_lord", "Time Lord", "📱", "Screen time earned.", "screen_redemptions", 10, 25, 50, 100, 250),
         _d("drip", "Drip", "💧", "Equip flair from the Locker.", "slots_equipped", 1),
+        _d("arcade_ace", "Arcade Ace", "🕹️", "Games played.", "games_played", 10, 25, 50, 100, 250),
+        _d("triple_star", "Triple Star", "🌟", "3-star game rounds.", "three_star", 1, 5, 10, 25, 50),
+        _d("try_it_all", "Try It All", "🧩", "Quick-fire games tried.", "micro_tried", 5, 10, 15, 20),
+        _d("house_record", "House Record", "🏠", "Family bests held.", "family_bests", 1, 2),
+        _d("cat_snack_champ", "Cat Snack Champ", "🐱", "3-star Hungry Cat rounds.", "hc_three", 1, 5, 10, 25, 50),
     ]
 )
 # fmt: on
@@ -124,6 +130,23 @@ def _task_metrics(db: Session, kid: User, fam: FamilySettings) -> dict[str, int]
     }
 
 
+def _game_metrics(db: Session, kid: User) -> dict[str, int]:
+    done = db.query(GamePlay).filter(GamePlay.kid_id == kid.id, GamePlay.status == "done")
+    prog = {p.game: p for p in db.query(GameProgress).filter(GameProgress.kid_id == kid.id)}
+    bests = 0
+    for g in ("quickfire", "hungry-cat"):
+        mine = prog[g].best if g in prog else 0
+        top = db.query(func.max(GameProgress.best)).filter(GameProgress.game == g).scalar() or 0
+        bests += mine > 0 and mine >= top
+    return {
+        "games_played": done.count(),
+        "three_star": done.filter(GamePlay.stars == 3).count(),
+        "hc_three": done.filter(GamePlay.stars == 3, GamePlay.game == "hungry-cat").count(),
+        "micro_tried": sum(g.startswith("qf:") and p.rounds > 0 for g, p in prog.items()),
+        "family_bests": bests,
+    }
+
+
 def metrics(db: Session, kid: User, fam: FamilySettings) -> dict[str, int]:
     today = current_chore_day(fam, datetime.now(UTC))
     days = progression.chore_days(db, kid.id, today)
@@ -144,6 +167,7 @@ def metrics(db: Session, kid: User, fam: FamilySettings) -> dict[str, int]:
         "big_rewards": sum(1 for r in rewards if r.cost >= BIG_REWARD),
         "screen_redemptions": len(reds) - len(rewards),
         "slots_equipped": sum(v is not None for v in equipped(db, kid.id).values()),
+        **_game_metrics(db, kid),
     }
 
 
