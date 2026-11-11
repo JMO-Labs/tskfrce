@@ -1,0 +1,11 @@
+[Unit]
+Description=Wi-Fi watchdog timer (every 30s)
+After=tskfrce-wifi-helper.service
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=30s
+Unit=tskfrce-watchdog.service
+
+[Install]
+WantedBy=timers.target
