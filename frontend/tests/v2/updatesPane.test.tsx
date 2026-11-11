@@ -95,4 +95,14 @@ describe('UpdatesPane', () => {
     expect(await screen.findByText('Update to 2.13.0 failed, still on 2.12.0')).toBeInTheDocument()
     expect(screen.getByText('Failed')).toBeInTheDocument()
   })
+
+  test('renders no emoji characters', async () => {
+    show(<UpdatesPane />)
+    await screen.findByText('2.13.0') // wait for render
+    const paneElement = screen.getByText(/Nightly checks/).closest('.pn')
+    const text = paneElement?.textContent || ''
+    // Check for emoji using Unicode Extended Pictographic property
+    const emojiRegex = /\p{Extended_Pictographic}/gu
+    expect(text).not.toMatch(emojiRegex)
+  })
 })
