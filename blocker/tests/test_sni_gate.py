@@ -89,3 +89,13 @@ def test_pipe_cuts_a_passed_connection_after_the_cap():
     while chunk := dst_b.recv(65536):
         got += chunk
     assert got == b"x" * 1200
+
+
+def test_budget_reserves_per_connection_and_resets_each_window(monkeypatch):
+    monkeypatch.setattr(sni_gate, "_spent", {})
+    shares = [sni_gate._allowance("10.0.0.9", 100.0) for _ in range(4)]
+    assert shares == [8192, 8192, 8192, 0]  # 24 KB per window, reserved up front
+    sni_gate._refund("10.0.0.9", 8192 - 4700)  # a probe-sized connection gives back the rest
+    assert sni_gate._allowance("10.0.0.9", 101.0) == 8192 - 4700
+    assert sni_gate._allowance("10.0.0.9", 100.0 + sni_gate.BUDGET_WINDOW) == 8192
+    assert sni_gate._allowance("10.0.0.8", 101.0) == 8192  # per device
