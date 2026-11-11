@@ -58,11 +58,19 @@ def test_blocker_protecting_no_network_warns(client, parent_headers, db):
     assert "blocker.down" in _keys(client, parent_headers)
 
 
+def test_blocker_down_action_targets_devices(client, parent_headers, db):
+    _blocker(db, 30)
+    items = client.get(URL, headers=parent_headers).json()["items"]
+    w = next(i for i in items if i["key"] == "blocker.down")
+    assert w["action"]["to"] == "/devices"
+
+
 def test_wifi_down_no_route(client, parent_headers, monkeypatch):
     monkeypatch.setattr(network_wifi, "status", lambda: {"online": False})
     items = client.get(URL, headers=parent_headers).json()["items"]
     w = next(i for i in items if i["key"] == "wifi.down")
-    assert w["title"] and w["body"] and w["action"]["to"]
+    assert w["title"] and w["body"]
+    assert w["action"]["to"] == "/settings?section=wifi"
 
 
 def test_wifi_online_ok(client, parent_headers, monkeypatch):
@@ -74,7 +82,9 @@ def test_unhealthy_rollback(client, parent_headers):
     from app.api import updates
 
     updates._write_state({"last_result": "failed", "rollback_unhealthy": True})
-    assert "update.unhealthy" in _keys(client, parent_headers)
+    items = client.get(URL, headers=parent_headers).json()["items"]
+    w = next(i for i in items if i["key"] == "update.unhealthy")
+    assert w["action"]["to"] == "/settings?section=updates"
     updates._write_state({"last_result": "success"})
     assert "update.unhealthy" not in _keys(client, parent_headers)
 

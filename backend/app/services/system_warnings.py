@@ -35,7 +35,7 @@ def blocker_down(db: Session, now: datetime) -> list[dict]:
         else 'No network is set to "Enforce here", so nothing is being blocked.'
     )
     return [
-        _w("blocker.down", "Kid limits aren't being enforced", why, "Open Networks", "/networks")
+        _w("blocker.down", "Kid limits aren't being enforced", why, "Open Devices", "/devices")
     ]
 
 
@@ -58,7 +58,7 @@ def wifi_down(db: Session, now: datetime) -> list[dict]:
             "Wi-Fi is disconnected and no cable is plugged in, so updates and phone "
             "access won't work.",
             "Fix Wi-Fi",
-            "/settings",
+            "/settings?section=wifi",
         )
     ]
 
@@ -72,7 +72,7 @@ def rollback_unhealthy(db: Session, now: datetime) -> list[dict]:
             "The last update failed and the box isn't healthy",
             "Going back to the old version didn't bring everything back up.",
             "Open Updates",
-            "/settings",
+            "/settings?section=updates",
         )
     ]
 

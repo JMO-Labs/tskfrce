@@ -11,7 +11,7 @@ jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 jest.mock('@mantine/notifications')
 
 const apiMock = api as unknown as Mock<(p: string, o?: unknown) => Promise<unknown>>
-const warn = (key: string, title: string) => ({ key, title, body: `${title} body`, action: { label: 'Fix it', to: '/networks' } })
+const warn = (key: string, title: string) => ({ key, title, body: `${title} body`, action: { label: 'Fix it', to: '/devices' } })
 let warnings: unknown[]
 let sugg: { hidden: boolean; items: unknown[] }
 
@@ -42,7 +42,7 @@ describe('SystemWarnings', () => {
     wrap(<SystemWarnings />)
     expect(await screen.findByText('Kid limits are off')).toBeInTheDocument()
     expect(screen.getByText('Almost out of space body')).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: 'Fix it' })[0]).toHaveAttribute('href', '/networks')
+    expect(screen.getAllByRole('link', { name: 'Fix it' })[0]).toHaveAttribute('href', '/devices')
   })
 
   test('cannot be dismissed or hidden', async () => {
