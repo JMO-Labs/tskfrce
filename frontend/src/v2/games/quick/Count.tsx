@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Micro, MicroProps } from '../types'
 import s from './microD.module.css'
+import { Emo } from '../Emo';
 
 /** three distinct answers (>=1) that include `n`, shuffled by rng */
 const choices = (n: number, rng: () => number, size = 3) => {
@@ -29,7 +30,7 @@ function CountGame({ level, rng, onDone, easier }: MicroProps) {
   return (
     <div className={s.stage}>
       <div className={`${s.cookies} ${shown ? '' : s.hidden}`}>
-        {shown ? Array.from({ length: n }, (_, i) => <span key={i} className={s.cookie} data-testid="cookie">🍪</span>) : <span aria-hidden>🫙</span>}
+        {shown ? Array.from({ length: n }, (_, i) => <img key={i} src="/art/fluent/cookie.png" alt="cookie" className={s.cookie} data-testid="cookie" width={50} height={50} />) : <span aria-hidden><Emo e="📦" /></span>}
       </div>
       <p className={s.hint}>{shown ? 'Count the cookies!' : 'How many were there?'}</p>
       <div className={s.row}>

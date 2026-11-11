@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import type { Micro, MicroProps } from '../types'
 import s from './microC.module.css'
+import { Emo } from '../Emo';
 
 const NAMES = ['small', 'medium', 'large']
 
@@ -24,7 +25,7 @@ function MatchGame({ level, rng, onDone, easier }: MicroProps) {
   return (
     <div className={s.stage}>
       <div className={s.pot} data-testid="pot" data-size={pot} aria-label="Pot">
-        <div className={s.potBody} style={{ width: w(pot) }}>🍲</div>
+        <div className={s.potBody} style={{ width: w(pot) }}><Emo e="🍲" /></div>
       </div>
       <div className={s.row}>
         {lids.map((size) => (

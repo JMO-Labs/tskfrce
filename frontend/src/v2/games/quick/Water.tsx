@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Micro, MicroProps } from '../types'
 import s from './microC.module.css'
+import { Emo } from '../Emo';
 
 function WaterGame({ level, onDone, easier }: MicroProps) {
   const dur = 1400 - level * 120
@@ -40,7 +41,7 @@ function WaterGame({ level, onDone, easier }: MicroProps) {
   return (
     <div className={s.stage}>
       <div className={s.waterWrap}>
-        <span className={s.plant} aria-hidden="true">{fill > hi ? '🌊' : '🌱'}</span>
+        <span className={s.plant} aria-hidden="true"><Emo e={fill > hi ? '🌊' : '🌱'} /></span>
         <div className={s.meter} aria-hidden="true">
           <div className={s.band} style={{ bottom: `${lo}%`, height: `${hi - lo}%` }} />
           <div className={s.fill} style={{ height: `${fill}%` }} />
@@ -56,7 +57,7 @@ function WaterGame({ level, onDone, easier }: MicroProps) {
         onKeyDown={(e) => { if (keyOk(e)) down() }}
         onKeyUp={(e) => { if (e.key === ' ') up() }}
       >
-        🪣 Hold, let go in the green
+        <Emo e="🪣" /> Hold, let go in the green
       </button>
     </div>
   )

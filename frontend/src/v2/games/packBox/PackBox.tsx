@@ -1,9 +1,10 @@
 /** Pack the Box: tap a piece, tap a cell to place it, fill the box. 120 s. */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react'
 import type { AgeGroup } from '../../types'
 import { seeded } from '../rng'
 import { useElapsed } from '../useElapsed'
 import { BOX_MS, EXTRA_MS, isFull, lift, newGame, place, prefill, rotate, shapeOf, shrink, undo, type Game, type Piece } from './logic'
+import { Mascot, type MascotState } from '../Mascot'
 import s from './PackBox.module.css'
 
 const POWER: Record<string, { icon: string; name: string }> = { undo: { icon: '↩️', name: 'Undo' }, shrink: { icon: '🔽', name: 'Shrink' } }
@@ -19,10 +20,13 @@ export interface PackBoxProps {
   age: AgeGroup
   upgrades?: string[]
   powerUp?: string | null
+  held?: number | null
   onEnd: (score: number) => void
 }
 
-export function PackBox({ level, seed, age, upgrades = [], powerUp = null, onEnd }: PackBoxProps) {
+const PixiCanvas = lazy(() => import('./PixiCanvas').then(m => ({ default: m.PixiCanvas })))
+
+export function PackBox({ level, seed, age, upgrades = [], powerUp = null, held, onEnd }: PackBoxProps) {
   const [rng] = useState(() => seeded(seed))
   const deal = (n: number) => {
     const g = newGame(age, Math.max(0, level - 1) + n, rng)
@@ -32,6 +36,8 @@ export function PackBox({ level, seed, age, upgrades = [], powerUp = null, onEnd
   const [g, setG] = useState<Game>(() => deal(0))
   const [sel, setSel] = useState<number | null>(null)
   const [pu, setPu] = useState(powerUp)
+  const [mascotState, setMascotState] = useState<MascotState>('idle')
+  const mascotReactRef = useRef<NodeJS.Timeout | null>(null)
   const total = BOX_MS + (upgrades.includes('extra_time') ? EXTRA_MS : 0)
   const ms = useElapsed()
   const over = ms >= total
@@ -40,6 +46,9 @@ export function PackBox({ level, seed, age, upgrades = [], powerUp = null, onEnd
   useEffect(() => { endCb.current = onEnd })
   useEffect(() => {
     if (over && !ended.current) { ended.current = true; endCb.current(score) }
+    return () => {
+      if (mascotReactRef.current) clearTimeout(mascotReactRef.current)
+    }
   }, [over, score])
 
   const open = g.pieces.filter((p) => !g.cover.includes(p.id))
@@ -47,17 +56,43 @@ export function PackBox({ level, seed, age, upgrades = [], powerUp = null, onEnd
   const next = upgrades.includes('preview') ? open[3] : undefined
 
   const apply = (ng: Game) => {
-    if (isFull(ng)) { setScore((n) => n + 1); setG(deal(score + 1)); setSel(null) } else setG(ng)
+    if (isFull(ng)) {
+      setMascotState('dance')
+      setScore((n) => n + 1)
+      setG(deal(score + 1))
+      setSel(null)
+    } else {
+      setScore((n) => n)
+      setG(ng)
+    }
   }
-  const tapCell = (i: number) => {
+
+  const handlePlacePiece = useCallback((pieceId: number, row: number, col: number) => {
     if (over) return
-    const v = g.cover[i]
-    if (v >= 0) { setG(lift(g, v)); setSel(v); return }
-    if (sel === null) return
-    const ng = place(g, sel, Math.floor(i / g.w), i % g.w)
-    if (ng !== g) { setSel(null); apply(ng) }
-  }
-  const tapPiece = (id: number) => (sel === id ? setG(rotate(g, id)) : setSel(id))
+    const ng = place(g, pieceId, row, col)
+    if (ng !== g) {
+      setSel(null)
+      setMascotState('cheer')
+      if (mascotReactRef.current) clearTimeout(mascotReactRef.current)
+      mascotReactRef.current = setTimeout(() => setMascotState('idle'), 900)
+      apply(ng)
+    }
+  }, [g, over, apply])
+
+  const handleSelectPiece = useCallback((id: number) => {
+    if (sel === id) setG(rotate(g, id))
+    else setSel(id)
+  }, [g, sel])
+
+  const handleLiftPiece = useCallback((id: number) => {
+    setG(lift(g, id))
+    setSel(id)
+  }, [g])
+
+  const handleRotate = useCallback(() => {
+    if (sel !== null) setG(rotate(g, sel))
+  }, [g, sel])
+
   const usePu = () => {
     if (!pu || over) return
     apply(pu === 'undo' ? undo(g, 3) : shrink(g))
@@ -74,13 +109,37 @@ export function PackBox({ level, seed, age, upgrades = [], powerUp = null, onEnd
     )
   }
 
+  // Helper function for DOM cell interaction (for tests)
+  const tapCell = (i: number) => {
+    if (over) return
+    const v = g.cover[i]
+    if (v >= 0) { handleLiftPiece(v); return }
+    if (sel === null) return
+    const ng = place(g, sel, Math.floor(i / g.w), i % g.w)
+    if (ng !== g) { setSel(null); apply(ng) }
+  }
+  const tapPiece = (id: number) => (sel === id ? handleSelectPiece(id) : handleSelectPiece(id))
+
   return (
     <div>
       <div className={s.hud}>
         <span>📦 {score}</span>
+        <Mascot state={mascotState} mascotName="dog-cowboy" />
         <span>⏱ {clock(total - ms)}</span>
       </div>
-      <div className={s.box} style={{ gridTemplateColumns: `repeat(${g.w}, var(--cell))`, ['--cols' as string]: g.w }}>
+      <Suspense fallback={<div style={{ height: '300px' }} />}>
+        <PixiCanvas
+          game={g}
+          selected={sel}
+          disabled={over}
+          onPlacePiece={handlePlacePiece}
+          onSelectPiece={handleSelectPiece}
+          onLiftPiece={handleLiftPiece}
+          onRotate={handleRotate}
+        />
+      </Suspense>
+      {/* Hidden grid for testing */}
+      <div className={s.box} style={{ gridTemplateColumns: `repeat(${g.w}, var(--cell))`, ['--cols' as string]: g.w, display: 'none' }}>
         {g.cover.map((v, i) => (
           <button
             key={i}
@@ -105,11 +164,11 @@ export function PackBox({ level, seed, age, upgrades = [], powerUp = null, onEnd
             aria-label={`Piece of ${p.cells.length}`}
             aria-pressed={sel === p.id}
             className={`${s.piece} ${sel === p.id ? s.sel : ''}`}
-            onClick={() => tapPiece(p.id)}
+            onClick={() => handleSelectPiece(p.id)}
           >{mini(p)}</button>
         ))}
         {next && <span className={s.piece} data-testid="next" aria-label="Next piece">{mini(next, true)}</span>}
-        <button type="button" className={s.rot} aria-label="Rotate piece" disabled={sel === null} onClick={() => sel !== null && setG(rotate(g, sel))}>🔄</button>
+        <button type="button" className={s.rot} aria-label="Rotate piece" disabled={sel === null} onClick={handleRotate}>🔄</button>
       </div>
       <div className={s.pups}>
         {[0, 1, 2].map((i) => i === 0 && pu && POWER[pu]

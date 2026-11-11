@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useElapsed } from '../useElapsed'
 import type { Micro, MicroProps } from '../types'
 import s from './microC.module.css'
+import { Emo } from '../Emo';
 
 function ShhGame({ level, rng, onDone, easier }: MicroProps) {
   const fuse = (900 - level * 80) * (easier ? 1.1 : 1)
@@ -29,7 +30,7 @@ function ShhGame({ level, rng, onDone, easier }: MicroProps) {
             aria-label={i === ringing ? 'Alarm clock, ringing' : 'Alarm clock, quiet'}
             onClick={() => finish(i === ringing)}
           >
-            {i === ringing ? '⏰' : '🕰️'}
+            <Emo e={i === ringing ? '⏰' : '🕰️'} />
           </button>
         ))}
       </div>

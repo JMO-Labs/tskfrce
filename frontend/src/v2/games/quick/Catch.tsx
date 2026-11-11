@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useElapsed } from '../useElapsed'
 import type { Micro, MicroProps } from '../types'
 import s from './microC.module.css'
+import { Emo } from '../Emo';
 
 const H = 200
 
@@ -26,7 +27,7 @@ function CatchGame({ level, onDone, easier }: MicroProps) {
   return (
     <div className={s.stage}>
       <div className={s.sky} aria-hidden="true">
-        <span className={s.key} style={{ top: `${top}px` }}>🔑</span>
+        <span className={s.key} style={{ top: `${top}px` }}><Emo e="🔑" /></span>
         <div className={s.ground} />
       </div>
       <button
