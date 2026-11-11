@@ -33,13 +33,18 @@ export function Mascot({ state, mascotSvg, name, className = '' }: MascotProps) 
 
   // Try to load and initialize Rive
   useEffect(() => {
-    if (riveError || prefersReducedMotion) return
+    if (riveError || prefersReducedMotion || !name) return
 
     const initRive = async () => {
       try {
-        if (!name) throw new Error('No mascot name provided')
-
-        const { Rive, StateMachineInput } = await import('@rive-app/canvas')
+        let Rive: any
+        try {
+          ({ Rive } = await import('@rive-app/canvas'))
+        } catch {
+          console.warn('@rive-app/canvas not installed, using SVG fallback')
+          setRiveError(true)
+          return
+        }
 
         const rivePath = `/celebrate/mascots/${name}.riv`
 

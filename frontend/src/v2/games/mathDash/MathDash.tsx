@@ -6,6 +6,7 @@ import { useElapsed } from '../useElapsed'
 import { answerQ, hiddenCount, initMath, limitMs } from './logic'
 import { initPixiApp, destroyPixiApp } from '../PixiApp'
 import { initGameDisplay, updateQuestion, animateCorrect, animateWrong, updateShake, destroyGameDisplay } from './render'
+import type { GameDisplay } from './render'
 import s from './MathDash.module.css'
 
 const PU: Record<string, string> = { freeze: '❄️ Freeze', fifty: '✂️ 50/50' }
@@ -19,12 +20,11 @@ export function MathDash({ level, seed, age, upgrades = [], powerUp = null, onEn
 }) {
   const [rng] = useState(() => seeded(seed))
   const [st, setSt] = useState(() => initMath(age, level, rng))
-  const [display, setDisplay] = useState(null as ReturnType<typeof initGameDisplay> | null)
+  const displayRef = useRef<GameDisplay | null>(null)
   const limit = limitMs(upgrades, powerUp)
   const ms = useElapsed()
   const over = ms >= limit
   const ended = useRef(false)
-  const containerRef = useRef<HTMLDivElement>(null)
   const gameRef = useRef<HTMLDivElement>(null)
   const animRef = useRef(0)
 
@@ -37,36 +37,33 @@ export function MathDash({ level, seed, age, upgrades = [], powerUp = null, onEn
       const h = gameRef.current!.clientHeight || 500
       const { app, stage } = await initPixiApp(gameRef.current!, w, h)
       const disp = await initGameDisplay(app, stage, w, h)
-      setDisplay(disp)
+      displayRef.current = disp
 
       // Game loop
       const tick = () => {
-        updateShake(disp, 16)
+        updateShake(disp)
         animRef.current = requestAnimationFrame(tick)
       }
       animRef.current = requestAnimationFrame(tick)
-
-      return () => cancelAnimationFrame(animRef.current)
     }
 
-    setup().then((cleanup) => cleanup)
+    setup()
 
     return () => {
-      if (display) {
-        destroyGameDisplay(display)
-        destroyPixiApp(display.app)
-        setDisplay(null)
+      cancelAnimationFrame(animRef.current)
+      if (displayRef.current) {
+        destroyGameDisplay(displayRef.current)
+        destroyPixiApp(displayRef.current.app)
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Update question display
   useEffect(() => {
-    if (!display) return
+    if (!displayRef.current) return
     const hidden = st.q.hide.slice(0, hiddenCount(st.qIdx, upgrades, powerUp))
-    updateQuestion(display, st.q, hidden)
-  }, [st.q, st.qIdx, display, upgrades, powerUp])
+    updateQuestion(displayRef.current, st.q, hidden)
+  }, [st.q, st.qIdx, upgrades, powerUp])
 
   // Handle end game
   useEffect(() => {
@@ -78,11 +75,11 @@ export function MathDash({ level, seed, age, upgrades = [], powerUp = null, onEn
     if (hidden.includes(i) || over) return
 
     const correct = i === st.q.correct
-    if (display) {
+    if (displayRef.current) {
       if (correct) {
-        animateCorrect(display, i)
+        animateCorrect(displayRef.current, i)
       } else {
-        animateWrong(display, i)
+        animateWrong(displayRef.current, i)
       }
     }
 
@@ -92,15 +89,15 @@ export function MathDash({ level, seed, age, upgrades = [], powerUp = null, onEn
   const hidden = st.q.hide.slice(0, hiddenCount(st.qIdx, upgrades, powerUp))
 
   return (
-    <div ref={containerRef}>
+    <div>
       <div className={s.hud}>
         <span>🧮 {st.score}</span>
         <span>⏱ {clock(limit - ms)}</span>
       </div>
       <div ref={gameRef} style={{ width: '100%', height: '400px', position: 'relative' }} />
 
-      {/* Test compatibility: hidden elements */}
-      <div style={{ display: 'none' }}>
+      {/* Test compatibility: off-screen elements for accessibility */}
+      <div className={s.testHidden}>
         <div data-testid="q">{st.q.text}</div>
         {st.q.choices.map((c, i) => (
           <button

@@ -21,7 +21,8 @@ export async function initGameDisplay(
   w: number,
   h: number,
 ): Promise<GameDisplay> {
-  const P = await import('pixi.js')
+  // Pixi is already loaded via dynamic import in PixiApp
+  const P = (await import('pixi.js')) as typeof import('pixi.js')
 
   // Problem text (top center)
   const problem = new P.Text({

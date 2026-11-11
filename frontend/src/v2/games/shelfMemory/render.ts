@@ -1,5 +1,4 @@
 /** Shelf Memory: Pixi rendering and animations for grid, items, and feedback. */
-import { Application, Container, Graphics, Text } from 'pixi.js'
 
 const GRID_COLS = 4
 const CELL_SIZE = 70
@@ -17,8 +16,8 @@ interface RenderState {
 }
 
 export interface Renderer {
-  app: Application
-  stage: Container
+  app: any
+  stage: any
   destroy: () => void
 }
 
@@ -27,6 +26,9 @@ const prefersReducedMotion = () =>
 
 /** Initialize Pixi canvas and return renderer. */
 export async function initRenderer(canvas: HTMLCanvasElement): Promise<Renderer> {
+  // Dynamic import of Pixi to avoid issues in tests
+  const { Application, Container } = await import('pixi.js')
+
   const app = new Application()
   await app.init({
     canvas,
@@ -48,12 +50,10 @@ export async function initRenderer(canvas: HTMLCanvasElement): Promise<Renderer>
 }
 
 /** Render the shelf grid with items and animations. */
-export function render(
-  renderer: Renderer,
-  state: RenderState
-) {
+export async function render(renderer: Renderer, state: RenderState) {
+  const { Graphics, Container, Text, Sprite } = await import('pixi.js')
   const { app, stage } = renderer
-  const { items, placed, selected, looking, onCellTap, onItemTap } = state
+  const { items, placed, selected, looking, onCellTap } = state
 
   // Clear previous children
   stage.removeChildren()
@@ -61,7 +61,6 @@ export function render(
   const gridContainer = new Container()
   stage.addChild(gridContainer)
 
-  const cells: { graphics: Graphics; index: number }[] = []
   const prefersNoMotion = prefersReducedMotion()
 
   // Draw grid cells
@@ -76,27 +75,35 @@ export function render(
     cellGroup.y = y
     gridContainer.addChild(cellGroup)
 
-    // Background rectangle
-    const graphics = new Graphics()
     const isDone = placed[i]
-    const isSelected = selected === i
+    const isSelected = selected === i && !isDone
 
-    // Draw cell background
-    graphics.rect(0, 0, CELL_SIZE, CELL_SIZE)
-    graphics.fill(isDone ? 0x5fff5f : 0xffffff) // Green if done, white otherwise
-    graphics.stroke({
+    // Draw cell background with rounded corners effect
+    const background = new Graphics()
+    background.rect(0, 0, CELL_SIZE, CELL_SIZE)
+    background.fill(isDone ? 0x5fff5f : 0xffffff)
+    background.stroke({
       width: 2,
-      color: isDone ? 0x000000 : isSelected ? 0xffaa00 : 0x000000, // Orange outline if selected
+      color: isDone ? 0x000000 : isSelected ? 0xffaa00 : 0x000000,
     })
+    cellGroup.addChild(background)
 
-    if (isSelected && !isDone) {
-      // Highlight selected items
-      graphics.rect(-4, -4, CELL_SIZE + 8, CELL_SIZE + 8)
-      graphics.stroke({ width: 4, color: 0xffaa00 })
+    // Selection highlight (outer border)
+    if (isSelected) {
+      const highlight = new Graphics()
+      highlight.rect(-4, -4, CELL_SIZE + 8, CELL_SIZE + 8)
+      highlight.stroke({ width: 4, color: 0xffaa00 })
+      cellGroup.addChild(highlight)
     }
 
-    cellGroup.addChild(graphics)
-    cells.push({ graphics, index: i })
+    // Sparkle effect for correct placements
+    if (isDone && !prefersNoMotion) {
+      const sparkle = new Graphics()
+      sparkle.circle(CELL_SIZE * 0.25, CELL_SIZE * 0.25, 3)
+      sparkle.fill(0xffff00)
+      sparkle.alpha = 0.7
+      cellGroup.addChild(sparkle)
+    }
 
     // Draw emoji if visible
     if (looking || placed[i]) {
@@ -116,17 +123,18 @@ export function render(
 
     // Make clickable
     cellGroup.eventMode = 'static'
-    cellGroup.cursor = 'pointer'
+    cellGroup.cursor = isDone ? 'default' : 'pointer'
     cellGroup.on('pointerdown', () => {
       if (!isDone && !looking) {
-        // Tap feedback
+        // Tap feedback animation
         if (!prefersNoMotion) {
-          cellGroup.scale.x = 0.95
-          cellGroup.scale.y = 0.95
+          const originalScale = cellGroup.scale.x
+          cellGroup.scale.x = 0.92
+          cellGroup.scale.y = 0.92
           setTimeout(() => {
-            cellGroup.scale.x = 1
-            cellGroup.scale.y = 1
-          }, 100)
+            cellGroup.scale.x = originalScale
+            cellGroup.scale.y = originalScale
+          }, 120)
         }
         onCellTap(i)
       }

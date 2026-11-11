@@ -1,5 +1,4 @@
 /** Hungry Cat: sprite management and effects. */
-import type { Application, Container, Sprite } from 'pixi.js'
 
 export interface Assets {
   cat: any
@@ -19,24 +18,24 @@ export async function loadAssets(): Promise<Assets> {
 }
 
 export interface SpriteItem {
-  sprite: Sprite
+  sprite: any
   vx: number
   vy: number
   life: number
 }
 
+// pixi is imported lazily in HungryCat.tsx, but we need to pass it here
 export function burst(
+  P: any,
   x: number,
   y: number,
   txt: string,
   col: number,
-  world: Container,
+  world: any,
   assets: Assets,
   still: boolean,
   fxList: SpriteItem[],
 ): void {
-  const P = require('pixi.js') as typeof import('pixi.js')
-
   // sparkle particles
   if (!still) {
     for (let i = 0; i < 7; i++) {
@@ -68,14 +67,13 @@ export function burst(
   t.x = x
   t.y = y - 20
   world.addChild(t)
-  fxList.push({ sprite: t as any, vx: 0, vy: -1.2, life: 40 })
+  fxList.push({ sprite: t, vx: 0, vy: -1.2, life: 40 })
 }
 
 export function updateFx(
   fxList: SpriteItem[],
-  world: Container,
+  world: any,
   dt: number,
-  still: boolean,
 ): void {
   for (let i = fxList.length - 1; i >= 0; i--) {
     const fx = fxList[i]
@@ -84,7 +82,7 @@ export function updateFx(
     s.y += fx.vy * dt
 
     // gravity for sparkles
-    if ((s as any).texture && (s as any).texture.label === 'sparkles') {
+    if (s.texture && s.texture.label === 'sparkles') {
       fx.vy += 0.15 * dt
     }
 
@@ -98,7 +96,7 @@ export function updateFx(
   }
 }
 
-export function applyShake(world: Container, shake: number): void {
+export function applyShake(world: any, shake: number): void {
   if (shake > 0) {
     world.x = (Math.random() - 0.5) * shake
     world.y = (Math.random() - 0.5) * shake
@@ -108,12 +106,12 @@ export function applyShake(world: Container, shake: number): void {
 }
 
 export function mkCat(
+  P: any,
   x: number,
   y: number,
   assets: Assets,
-  world: Container,
-): { body: Sprite; container: Container } {
-  const P = require('pixi.js') as typeof import('pixi.js')
+  world: any,
+): { body: any; container: any; x: number } {
   const c = new P.Container()
   const s = new P.Sprite(assets.cat)
   s.anchor.set(0.5, 1)
@@ -133,17 +131,17 @@ export function mkCat(
   c.x = x
   c.y = y
   world.addChild(c)
-  return { body: s, container: c }
+  return { body: s, container: c, x }
 }
 
 export function mkFood(
+  P: any,
   x: number,
   y: number,
   kind: 'fish' | 'fried_shrimp' | 'cookie' | 'socks',
   assets: Assets,
-  world: Container,
-): Sprite {
-  const P = require('pixi.js') as typeof import('pixi.js')
+  world: any,
+): any {
   const s = new P.Sprite(assets[kind])
   s.anchor.set(0.5)
   s.width = s.height = kind === 'socks' ? 50 : 46

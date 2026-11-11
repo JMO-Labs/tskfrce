@@ -31,5 +31,5 @@ export async function initPixiApp(
 
 export function destroyPixiApp(app: Application) {
   app.canvas.remove()
-  app.destroy({ children: true, texture: true, baseTexture: true })
+  app.destroy()
 }

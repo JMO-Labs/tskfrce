@@ -4,7 +4,6 @@ import type { AgeGroup } from '../../types'
 import { seeded } from '../rng'
 import { useElapsed } from '../useElapsed'
 import { PEEK_MS, clockMs, isRight, lookMs, newRound } from './logic'
-import { initRenderer, render } from './render'
 import s from './ShelfMemory.module.css'
 
 type Pu = string | { key: string } | null
@@ -43,55 +42,10 @@ export function ShelfMemory({ level, age, seed, upgrades = [], powerUp = null, o
   const endCb = useRef(onEnd)
   const scoreRef = useRef(0)
 
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const rendererRef = useRef<ReturnType<typeof initRenderer> | null>(null)
-
-  // Initialize canvas and renderer on mount
   useEffect(() => {
-    if (!canvasRef.current) return
-    rendererRef.current = initRenderer(canvasRef.current)
-    return () => {
-      rendererRef.current?.destroy?.()
-    }
-  }, [])
+    endCb.current = onEnd
+  }, [onEnd])
 
-  // Render frame
-  useEffect(() => {
-    if (!rendererRef.current) return
-    render(rendererRef.current, {
-      items,
-      placed,
-      selected: sel,
-      looking: looking || peek,
-      onCellTap: (i) => {
-        if (over || looking || sel === null || placed[i]) return
-        if (!isRight(sel, i, locked)) {
-          setSel(null)
-          return
-        }
-        const next = [...placed]
-        next[sel] = true
-        scoreRef.current += 1
-        setScore(scoreRef.current)
-        setLocked(false)
-        setSel(null)
-        if (next.every(Boolean)) {
-          const r = round + 1
-          const its = newRound(r, age, upgrades, rng)
-          setRound(r)
-          setItems(its)
-          setPlaced(its.map(() => false))
-          setLooking(true)
-        } else setPlaced(next)
-      },
-      onItemTap: (i) => {
-        if (over || looking) return
-        setSel(sel === i ? null : i)
-      },
-    })
-  }, [items, placed, sel, looking, peek, over, age, upgrades, round, rng])
-
-  // Look timer
   useEffect(() => {
     if (!looking) return
     const id = setTimeout(() => setLooking(false), lookMs(age, upgrades))
@@ -99,19 +53,15 @@ export function ShelfMemory({ level, age, seed, upgrades = [], powerUp = null, o
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [looking, round])
 
-  // Game over
   useEffect(() => {
     if (!over || ended.current) return
     ended.current = true
     endCb.current(scoreRef.current)
   }, [over])
 
-  useEffect(() => {
-    endCb.current = onEnd
-  }, [onEnd])
-
   const key = typeof powerUp === 'string' ? powerUp : powerUp?.key
   const puName = key && key in PU ? PU[key as keyof typeof PU] : null
+  const show = looking || peek
 
   const usePeek = () => {
     if (used || looking || over) return
@@ -126,7 +76,27 @@ export function ShelfMemory({ level, age, seed, upgrades = [], powerUp = null, o
     }
   }
 
-  const show = looking || peek
+  const putSlot = (i: number) => {
+    if (over || looking || sel === null || placed[i]) return
+    if (!isRight(sel, i, locked)) {
+      setSel(null)
+      return
+    }
+    const next = [...placed]
+    next[sel] = true
+    scoreRef.current += 1
+    setScore(scoreRef.current)
+    setLocked(false)
+    setSel(null)
+    if (next.every(Boolean)) {
+      const r = round + 1
+      const its = newRound(r, age, upgrades, rng)
+      setRound(r)
+      setItems(its)
+      setPlaced(its.map(() => false))
+      setLooking(true)
+    } else setPlaced(next)
+  }
 
   return (
     <div>
@@ -137,7 +107,19 @@ export function ShelfMemory({ level, age, seed, upgrades = [], powerUp = null, o
       <p className={s.msg}>
         {looking ? 'Look at the shelf!' : peek ? 'Peek!' : locked ? 'Lock ready: place any item' : 'Put each thing back'}
       </p>
-      <canvas ref={canvasRef} className={s.canvas} />
+      <div className={s.shelf}>
+        {items.map((e, i) => (
+          <button
+            key={i}
+            type="button"
+            aria-label={`Slot ${i + 1}`}
+            className={`${s.slot} ${placed[i] ? s.done : ''}`}
+            onClick={() => putSlot(i)}
+          >
+            {show || placed[i] ? e : ''}
+          </button>
+        ))}
+      </div>
       <div className={s.tray}>
         {!looking &&
           items.map((e, i) =>
