@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { Select, TextInput } from '@mantine/core'
+// @ts-ignore - no types available for qrcode.react
 import QRCode from 'qrcode.react'
 import { api } from '../api'
 import { errorText } from '../errorText'
