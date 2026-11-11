@@ -81,3 +81,31 @@ test('deleteRecord out-of-scope throws without CF call', async () => {
   await expect(deleteRecord(await makeEnv(), cf, 'TXT', 'jmolabs.dev', 'x')).rejects.toThrow()
   expect(cf.calls).toHaveLength(0)
 })
+
+describe('acme SAN challenges', () => {
+  test('own SAN name (_acme-challenge.abc123-2) allowed', async () => {
+    const cf = fakeCf()
+    const sanName = '_acme-challenge.abc123-2.taskfrce.jmolabs.dev.'
+    const res = await handle(req('/api/acme/present', sanName, 'tok'), await makeEnv(), cf)
+    expect(res.status).toBe(200)
+    expect(cf.calls.filter((c) => c.method === 'POST').some((c) => c.body.name === sanName.slice(0, -1))).toBe(true)
+  })
+
+  test('SAN names 2-8 allowed', async () => {
+    for (let i = 2; i <= 8; i++) {
+      const sanName = `_acme-challenge.abc123-${i}.taskfrce.jmolabs.dev.`
+      const cf = fakeCf()
+      const res = await handle(req('/api/acme/present', sanName, 'tok'), await makeEnv(), cf)
+      expect(res.status).toBe(200)
+    }
+  })
+
+  test('box A cannot present for box B SAN', async () => {
+    const cf = fakeCf()
+    // box abc123 tries to present for zzz999-2
+    const badName = '_acme-challenge.zzz999-2.taskfrce.jmolabs.dev.'
+    const res = await handle(req('/api/acme/present', badName, 'tok'), await makeEnv(), cf)
+    expect(res.status).toBe(403)
+    expect(cf.calls).toHaveLength(0)
+  })
+})

@@ -73,14 +73,18 @@ const postIp: Route = async ({ req, env, cf }) => {
   return new Response(null, { status: 204 })
 }
 
-// lego httpreq: body {fqdn, value}; only the caller's own _acme-challenge name is allowed.
+// lego httpreq: body {fqdn, value}; only the caller's own _acme-challenge names are allowed.
+// Allows: _acme-challenge.<id>.<base>, _acme-challenge.<id>-2.<base>, ..., _acme-challenge.<id>-8.<base>
 const acme = (act: typeof createRecord): Route => async ({ req, env, cf }) => {
   const id = await authBox(req, env)
   if (!id) return json({ error: 'unauthorized' }, 401)
   const b = (await req.json().catch(() => null)) as { fqdn?: unknown; value?: unknown } | null
   if (typeof b?.fqdn !== 'string' || typeof b.value !== 'string' || !b.value) return json({ error: 'fqdn and value required' }, 400)
   const name = b.fqdn.trim().toLowerCase().replace(/\.$/, '')
-  if (name !== `_acme-challenge.${id}.${env.BASE_DOMAIN}`) return json({ error: 'forbidden' }, 403)
+  // Check if name is for this box: _acme-challenge.<id>, _acme-challenge.<id>-2, ..., _acme-challenge.<id>-8
+  const baseAcme = `_acme-challenge.${id}.${env.BASE_DOMAIN}`
+  const isOwnAcme = name === baseAcme || /^_acme-challenge\..+-[2-8]\./.test(name) && name.startsWith(`_acme-challenge.${id}-`) && name.endsWith(`.${env.BASE_DOMAIN}`)
+  if (!isOwnAcme) return json({ error: 'forbidden' }, 403)
   await act(env, cf, 'TXT', name, b.value)
   return json({})
 }

@@ -46,6 +46,11 @@ has "--path $T/data/lego" && has "--accept-tos" && has "--email boxes@jmolabs.de
   && has "--server https://acme-v02.api.letsencrypt.org/directory" && has "--dns httpreq" && has "-d abc123.taskfrce.jmolabs.dev" && has " run" \
   && has "ENDPOINT=https://taskfrce.jmolabs.dev/api/acme"; ok "issue runs lego run" $?
 
+: > "$LOG"; run issue_or_renew
+has "-d abc123.taskfrce.jmolabs.dev" && has "-d abc123-2.taskfrce.jmolabs.dev" && has "-d abc123-3.taskfrce.jmolabs.dev" \
+  && has "-d abc123-4.taskfrce.jmolabs.dev" && has "-d abc123-5.taskfrce.jmolabs.dev" && has "-d abc123-6.taskfrce.jmolabs.dev" \
+  && has "-d abc123-7.taskfrce.jmolabs.dev" && has "-d abc123-8.taskfrce.jmolabs.dev"; ok "issue requests all 8 domain SANs" $?
+
 mkdir -p "$T/data/lego/certificates"; echo c > "$T/data/lego/certificates/abc123.taskfrce.jmolabs.dev.crt"
 : > "$LOG"; run issue_or_renew
 has "renew --days 30"; ok "existing cert renews" $?

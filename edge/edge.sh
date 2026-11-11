@@ -87,11 +87,18 @@ report_ip() {
 # Returns 0 if the cert file changed.
 issue_or_renew() {
   before=$(cksum "$CRT" 2>/dev/null)
-  if [ -f "$CRT" ]; then act="renew --days 30"; else act=run; fi
+
+  # Build domain list for all possible networks (1-8): base + suffix -2 through -8
+  # This ensures the cert covers all potential networks with SANs
+  domains="-d $FQDN -d ${BOX_ID}-2.${BASE_DOMAIN} -d ${BOX_ID}-3.${BASE_DOMAIN} -d ${BOX_ID}-4.${BASE_DOMAIN} -d ${BOX_ID}-5.${BASE_DOMAIN} -d ${BOX_ID}-6.${BASE_DOMAIN} -d ${BOX_ID}-7.${BASE_DOMAIN} -d ${BOX_ID}-8.${BASE_DOMAIN}"
+
+  # Determine action: renew if cert exists, else run (issue new)
+  if [ -f "$CRT" ]; then act="renew --days 30"; else act="run"; fi
+
   # shellcheck disable=SC2086
   HTTPREQ_ENDPOINT="$REGISTRY_URL/api/acme" HTTPREQ_USERNAME="$BOX_ID" HTTPREQ_PASSWORD="$BOX_SECRET" \
     lego --path "$DATA_DIR/lego" --dns httpreq --accept-tos --email "$ACME_EMAIL" \
-    --server "$LEGO_SERVER" -d "$FQDN" $act || echo "lego failed" >&2
+    --server "$LEGO_SERVER" $domains $act || echo "lego failed" >&2
   [ "$before" != "$(cksum "$CRT" 2>/dev/null)" ]
 }
 
