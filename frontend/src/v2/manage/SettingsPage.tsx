@@ -15,6 +15,7 @@ import { useSettingsLines } from './useSettingsLines'
 import { SettingsList } from './SettingsList'
 import { SETTINGS_SECTIONS, type S } from './settingsSections'
 import { AppearancePane } from './AppearancePane'
+import { HomeworkPane } from './HomeworkPane'
 import { NotificationsPane } from './NotificationsPane'
 import { accentHex } from '@/v2/parent/accent'
 import { toastFail, toastOk } from '@/v2/notify'
@@ -35,17 +36,13 @@ function SettingsBody() {
   }, [want, replace])
   const small = useMediaQuery('(max-width: 767px)')
   const valid = SETTINGS_SECTIONS.some((s) => s.id === want)
-  // Phone: MorePage's grouped list is the only settings list (audit 10)
-  useEffect(() => {
-    if (small && !valid && want !== 'screen') replace('/more')
-  }, [small, valid, want, replace])
   const section: S = valid ? (want as S) : 'family'
   const current = SETTINGS_SECTIONS.find((x) => x.id === section)!
   return (
     <ParentShell
       title="Settings"
       list={<SettingsList sections={sections} section={small && !valid ? undefined : section} bare={small} />}
-      phone={valid ? <BackLink href={small ? '/more' : '/settings'}>{small ? 'More' : 'Settings'}</BackLink> : undefined}
+      phone={valid ? <BackLink href="/settings">Settings</BackLink> : undefined}
     >
       <div className="ps-detail">
         {family.isError && ['family', 'look', 'gifs'].includes(section) && (
@@ -74,6 +71,7 @@ function SettingsBody() {
         {section === 'gifs' && family.data && <GifsCard fam={family.data} />}
         {section === 'hours' && <HoursSection />}
         {section === 'notifications' && <NotificationsPane />}
+        {section === 'homework' && <HomeworkPane />}
         {section === 'parents' && <ParentsPane />}
         {section === 'integrations' && <IntegrationsPane />}
       </div>

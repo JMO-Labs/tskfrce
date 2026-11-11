@@ -63,15 +63,7 @@
 @media (max-width: 767px) { [data-look='parent'] .kd-page .p-dhead-act { flex-basis: 100%; } }
 [data-look='parent'] .kd-page [hidden] { display: none; } /* Edit hides while editing (mockup [data-edit] #editb) */
 
-/* Kids list: ring and count over the status chip in a fixed right column, so every ring lines up (audit 23) */
-[data-look='parent'] .pk-items .kl-card {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 92px;
-  grid-template-rows: auto auto;
-  column-gap: 12px;
-  row-gap: 4px;
-}
-[data-look='parent'] .kl-card > .pk-av, [data-look='parent'] .kl-card > .pk-card-t { grid-row: 1 / 3; }
-[data-look='parent'] .kl-card > .kl-ring { grid-area: 1 / 3; display: flex; min-height: 30px; }
-[data-look='parent'] .kl-card > .p-chip { grid-area: 2 / 3; justify-self: start; max-width: 100%; }
-[data-look='parent'] .pk-items .kl-card .pk-card-t small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Kids list: the ring sits on the name line so "Level 7 · 240 pts" keeps its own line */
+[data-look='parent'] .pk-items .kl-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+[data-look='parent'] .pk-items .kl-line b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-look='parent'] .pk-items .pk-card-t small { white-space: nowrap; }

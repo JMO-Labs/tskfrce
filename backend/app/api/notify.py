@@ -3,7 +3,6 @@
 import re
 from urllib.parse import urlsplit
 
-import apprise
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
@@ -37,6 +36,8 @@ def _check_url(url: str) -> str:
     if not 1 <= len(url) <= 1000:
         raise HTTPException(422, BAD_URL)
     # apprise logs don't propagate (see services/notify.py), so a failed add stays silent
+    import apprise  # lazy, see services/notify.py
+
     with notify.apprise_lock:
         ok = apprise.Apprise().add(url)
     if not ok:

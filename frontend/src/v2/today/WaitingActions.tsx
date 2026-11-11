@@ -1,12 +1,16 @@
 import { useState } from 'react'
 import { Icon } from '../parent/Icon'
 import { MoreMenu } from '../parent/MoreMenu'
+import { useFamily } from '../hooks/useFamily'
 import type { NeedsItem } from '../types'
 import type { NeedsActions } from './needsActions'
+import { PenaltySheet } from './PenaltySheet'
 
 /** Approve + "…" (Send back, Reply) for a chore row that waits on a parent. A sibling of the row button, never inside it. */
 export function WaitingActions({ item, name, act }: { item: NeedsItem; name: string; act: NeedsActions }) {
   const [sending, setSending] = useState(false)
+  const [pen, setPen] = useState(false)
+  const penalties = !!useFamily().data?.penalties_enabled
   return (
     <>
       <div className="pt-wact">
@@ -29,9 +33,11 @@ export function WaitingActions({ item, name, act }: { item: NeedsItem; name: str
               onClick: () => setSending(true),
             },
             { label: 'Reply', icon: 'chat', onClick: () => act.reply(item) },
+            { label: 'Give penalty', icon: 'gavel', takesFocus: true, hidden: !penalties || !item.kid_id, onClick: () => setPen(true) },
           ]}
         />
       </div>
+      {pen && item.kid_id && <PenaltySheet kidIds={[item.kid_id]} from={{ chore_run_id: item.id }} onClose={() => setPen(false)} />}
       {sending && <SendBackBox item={item} act={act} onClose={() => setSending(false)} />}
     </>
   )

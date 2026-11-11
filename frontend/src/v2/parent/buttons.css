@@ -99,8 +99,6 @@
 [data-look='parent'] .pk-ib:focus-visible { outline-offset: 0; }
 /* safety net: any other parent control still shows the one ring. The whole selector is in :where(), so specificity is 0,1,0 (just :focus-visible) and every rule above wins */
 :where([data-look='parent'] :is(button, a[href], summary, [role='button'], [role='switch'], [role='tab'])):focus-visible { outline: 2px solid var(--p-focus, #292928); outline-offset: 2px; }
-/* links: the ring follows a rounded box, never a square one */
-:where([data-look='parent'] :is(a[href], .p-link)):focus-visible { border-radius: 4px; }
 [data-look='parent'] .p-btn[aria-busy='true'] { cursor: progress; }
 @media (hover: hover) { [data-look='parent'] .pk-pill:hover:not(:disabled) { border-color: var(--p-ink); } }
 [data-look='parent'] .pk-pill:active:not(:disabled),

@@ -5,10 +5,14 @@ import { useNow } from '../today/useClock'
 import { useThreads } from '../hooks/useChat'
 import { useInbox } from '../hooks/useInbox'
 import { useMarkSeen } from '../hooks/useKid'
+import { EarnedToast } from '../games/EarnedToast'
+import { GamesPage } from '../games/GamesPage'
+import { useGamesSeen } from '../games/useGames'
 import { askOnFirstClick, useOsNotify } from '../osNotify'
 import type { KidToday } from '../types'
 import { AlertsMoved } from './AlertsMoved'
 import { CelebrationLayer } from './celebrate/CelebrationLayer'
+import { GoalParty } from './celebrate/GoalParty'
 import { useCelebrationTriggers } from './celebrate/triggers'
 import { useCelebrate } from './celebrate/useCelebrate'
 import { useFreezeNotice } from './freezeNotice'
@@ -17,6 +21,7 @@ import { Locker } from './Locker'
 import { kidSort, tally } from './kidChips'
 import { KidNav, type KidTab } from './KidNav'
 import { HappyHourBanner } from './HappyHourBanner'
+import { PenaltyCards } from './PenaltyCard'
 import { MePage } from './MePage'
 import { KidMode } from './modes/KidMode'
 import { LittleMode } from './modes/LittleMode'
@@ -49,7 +54,11 @@ export interface KidAppProps {
 export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lockerOpen = false, onLockerClose, canSwitch, done, holdCelebrations = false, children }: KidAppProps) {
   const [chosen, setTab] = useState<KidTab>('chores')
   const showLocker = lockerOpen && !!d.progress
-  const tab = showLocker ? 'me' : chosen
+  const gamesOn = !!d.games?.on
+  const tab = showLocker ? 'me' : chosen === 'games' && !gamesOn ? 'chores' : chosen
+  const [auto, setAuto] = useState(false)
+  const [toastGone, setToastGone] = useState(false)
+  const gamesSeen = useGamesSeen()
   const [focusId, setFocusId] = useState<number | null>(null)
   const mode = d.age_group === 'little' || d.age_group === 'teen' ? d.age_group : 'kid'
   const seen = useMarkSeen()
@@ -71,7 +80,8 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
       window.removeEventListener(OPEN_CHAT_LIST_EVENT, show)
     }
   }, [chat])
-  const cel = useCelebrate({ level: d.celebrate ?? (mode === 'teen' ? 'small' : 'full'), mode, kidLevel: d.progress?.level ?? 1, hold: holdCelebrations })
+  const [partyShowing, setPartyShowing] = useState(false)
+  const cel = useCelebrate({ level: d.celebrate ?? (mode === 'teen' ? 'small' : 'full'), mode, kidLevel: d.progress?.level ?? 1, hold: holdCelebrations || partyShowing })
   const submit = useCelebrationTriggers(d, kidId, cel.fire, !preview)
   useFreezeNotice(d.progress?.frozen, kidId, !preview)
   const onDone = (id: number) => {
@@ -80,6 +90,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
     if (c && !submit.tap(c)) return
     done.mutate(id, { onSuccess: () => c && submit.sent(c), onError: () => c && submit.failed(c) })
   }
+  const celebrate = d.celebrate ?? (mode === 'teen' ? 'small' : 'full')
   const Mode = MODES[mode]
   const goChore = () => {
     const first = kidSort(d.chores, now).find((c) => c.state === 'todo')
@@ -90,9 +101,11 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
     chores: tally(d.chores).todo,
     chat: threads.data?.total ?? 0,
     alerts: inbox.data?.unread ?? 0,
+    games: d.games?.saved ?? 0,
   }
   const onTab = (t: KidTab) => {
     setFocusId(null)
+    setAuto(false)
     onLockerClose?.()
     if (t === 'chat' && chat) openChatList() // the event above switches the tab
     else setTab(t)
@@ -105,6 +118,8 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
       onLockerClose?.()
       requestAnimationFrame(() => document.querySelector<HTMLElement>('[data-customize]')?.focus()) // Me re-mounts first
     }} />
+  else if (tab === 'games')
+    body = <GamesPage mode={mode} celebrate={celebrate} preview={preview} autoStart={auto} name={name} kidId={kidId} tz={d.timezone} />
   else if (tab === 'rewards')
     body = (
       <RewardsSection onExpired={onExit} mode={mode} />
@@ -124,7 +139,17 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
     body = (
       <>
         {children}
+        {gamesOn && !preview && !toastGone && (d.games?.fresh ?? 0) > 0 && (
+          <EarnedToast
+            saved={d.games?.saved ?? 0}
+            celebrate={celebrate}
+            seed={kidId ?? 0}
+            onPlay={() => { gamesSeen.mutate({}); setToastGone(true); setAuto(true); setTab('games') }}
+            onSave={() => { gamesSeen.mutate({}); setToastGone(true) }}
+          />
+        )}
         <HappyHourBanner hh={d.happy_hour} onGo={goChore} />
+        <PenaltyCards list={d.penalties} jail={d.jail_cards} done={done} />
         <Mode
           d={d}
           focusId={focusId}
@@ -141,7 +166,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
 
   return (
     <div className="k-app" data-mode={mode}>
-      <KidNav mode={mode} tab={tab} onTab={onTab} badges={badges} avatar={avatar} />
+      <KidNav mode={mode} tab={tab} onTab={onTab} badges={badges} avatar={avatar} gamesOn={gamesOn} />
       <main className="k-main">
         {!preview && <AlertsMoved />}
         <div className="k-inner" hidden={tab === 'chat' && chat}>
@@ -155,6 +180,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
         )}
       </main>
       <CelebrationLayer cel={cel} balance={d.points_balance} />
+      {!preview && <GoalParty onExpired={onExit} celebrate={d.celebrate ?? (mode === 'teen' ? 'small' : 'full')} onShowing={setPartyShowing} />}
     </div>
   )
 }

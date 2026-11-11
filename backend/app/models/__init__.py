@@ -12,7 +12,10 @@ from .chores import Chore, ChoreAssignment, ChoreRun, ChoreSeen, ChoreStep, RunS
 from .device_activity import DeviceEvent, DevicePresence
 from .family import FamilySettings, get_family
 from .flair import KidFlair
+from .game import GamePlay, GamePowerUp, GameProgress
+from .goal import Goal, GoalAuto, GoalContribution, GoalParty
 from .happy_hour import HappyHour
+from .homework import HomeworkActivity, HomeworkRequest, HomeworkSite
 from .hours import HourRule, HourRuleTarget, HourRuleTime
 from .inbox import Notification
 from .integration import (
@@ -26,6 +29,7 @@ from .kid_device import KidDevice, KidEnrollToken
 from .lock import Device, DeviceGroup, DeviceHintRejection, Override, Vlan
 from .notify import NotifyHeld, NotifyPlace
 from .password_reset import PasswordReset
+from .penalty import Penalty
 from .points import Points, PointsType
 from .reward import Redemption, Reward
 from .screen_bank import ScreenBank
@@ -37,6 +41,13 @@ from .user import PendingInvite, UsedInvite, User
 __all__ = [
     "BadgeAward",
     "KidFlair",
+    "Goal",
+    "GoalAuto",
+    "GoalContribution",
+    "GoalParty",
+    "GamePlay",
+    "GamePowerUp",
+    "GameProgress",
     "HappyHour",
     "CustomBadge",
     "ChatPhoto",
@@ -53,6 +64,9 @@ __all__ = [
     "ChoreRun",
     "RunStepTick",
     "ChoreSeen",
+    "HomeworkActivity",
+    "HomeworkRequest",
+    "HomeworkSite",
     "PendingInvite",
     "UsedInvite",
     "User",
@@ -75,6 +89,7 @@ __all__ = [
     "Override",
     "Notification",
     "TrustEvent",
+    "Penalty",
     "IntegrationInstall",
     "IntegrationKid",
     "IntegrationChore",

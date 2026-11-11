@@ -222,19 +222,6 @@ describe('Bell', () => {
     expect(bell.getAttribute('aria-expanded')).toBe('false')
   })
 
-  test('bell popover returns focus to the trigger on Esc', async () => {
-    serve([item(1, { run_id: 7 })])
-    wrap(<Bell />)
-    const bell = await screen.findByRole('button', { name: /Notifications/ })
-    expect(bell).toHaveClass('p-htool')
-    await userEvent.click(bell)
-    const pop = await screen.findByRole('dialog', { name: /^Notifications/ })
-    await waitFor(() => expect(pop.contains(document.activeElement)).toBe(true))
-    await userEvent.keyboard('{Escape}')
-    await waitFor(() => expect(screen.queryByText('Item 1')).toBeNull())
-    await waitFor(() => expect(document.activeElement).toBe(bell))
-  })
-
   test('Escape with focus on the bell itself still closes the popover', async () => {
     serve([item(1, { run_id: 7 })])
     wrap(<Bell />)

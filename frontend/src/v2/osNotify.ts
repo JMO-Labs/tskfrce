@@ -8,7 +8,7 @@ export const dest = (n: InboxItem): string | null =>
     ? `/devices?item=${n.device_id}`
     : n.run_id
       ? `/?chore=${n.run_id}`
-      : n.kind === 'redemption_request'
+      : n.kind === 'redemption_request' || n.kind === 'homework_request'
         ? '/?tab=needs'
         : n.kind === 'box_offline'
           ? '/devices'

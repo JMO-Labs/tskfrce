@@ -40,12 +40,9 @@
 
 /* footer: pinned to the bottom of the screen (sticky), Back outlined, Next in the accent */
 .foot { position: sticky; bottom: 0; z-index: 2; border-top: 1px solid var(--p-line); background: var(--p-card); padding: 10px 16px 14px; flex: none; }
-.footIn { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; } /* full width on desktop, like the mockup */
-.foot :global(.ms) { font-size: 14px; }
+.footIn { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; max-width: 1120px; margin-inline: auto; } /* mockup desktop frame */
 .grow { flex: 1; }
 .foot :global(.f-btn.f-btn) { min-height: 44px; }
-/* setup labels use the light style; beats html[data-look='parent'] .f-label.f-label */
-.page.page :global(.f-label.f-label) { font-weight: 500; color: var(--p-sub); }
 .page .skip.skip { text-decoration: underline; text-underline-offset: 3px; font-weight: 700; }
 .page :global(.mantine-Button-root.f-btn.f-btn[data-variant='filled']) { background: var(--p-acc); border-color: var(--p-acc); color: #292928; }
 @media (hover: hover) { .page :global(.mantine-Button-root.f-btn.f-btn[data-variant='filled']:hover) { background: var(--p-acc); filter: brightness(0.95); } }

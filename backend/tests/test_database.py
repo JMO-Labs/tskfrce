@@ -1,5 +1,6 @@
 """Real file-backed SQLite behavior: pragmas, concurrent setup, error mapping."""
 
+import os
 import threading
 import time
 
@@ -26,6 +27,8 @@ def test_file_sqlite_has_wal_and_fk_on(file_engine):
         assert c.execute(text("PRAGMA journal_mode")).scalar() == "wal"
         assert c.execute(text("PRAGMA foreign_keys")).scalar() == 1
         assert c.execute(text("PRAGMA busy_timeout")).scalar() == 5000
+        # WAL + NORMAL: no fsync per commit (SD cards), never corrupts; a power cut may drop the last commit
+        assert c.execute(text("PRAGMA synchronous")).scalar() == 1
 
 
 def test_two_sessions_setup_yields_one_owner(file_engine):
@@ -59,3 +62,25 @@ def test_two_sessions_setup_yields_one_owner(file_engine):
     with S() as check:
         assert check.get(FamilySettings, 1).owner_id == uid_a
         assert check.query(User).count() == 1
+
+
+@pytest.mark.skipif(not os.environ.get("TEST_DATABASE_URL"), reason="Postgres only")
+def test_postgres_sessions_run_in_utc_whatever_the_server_zone():
+    """Times are naive UTC; a family's own server in local time must not shift them."""
+    from sqlalchemy.engine import make_url
+
+    url = make_url(os.environ["TEST_DATABASE_URL"])
+    admin = make_engine(url.render_as_string(hide_password=False))
+    with admin.connect() as c:
+        c.execute(text(f"ALTER DATABASE \"{url.database}\" SET timezone TO 'America/Denver'"))
+        c.commit()
+    admin.dispose()
+    eng = make_engine(url.render_as_string(hide_password=False))
+    try:
+        with eng.connect() as c:
+            assert c.execute(text("SHOW timezone")).scalar() == "UTC"
+    finally:
+        with eng.connect() as c:
+            c.execute(text(f'ALTER DATABASE "{url.database}" RESET timezone'))
+            c.commit()
+        eng.dispose()

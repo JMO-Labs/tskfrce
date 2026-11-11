@@ -28,6 +28,7 @@ export function StepFinish(started: Started) {
     <>
     <p style={{ marginTop: 14 }}>{finishLine(started)}</p>
     <p style={{ marginTop: 8 }}>Celebrations, Happy Hour and streak freezes are on. Each one introduces itself on Today.</p>
+    <p style={{ marginTop: 8 }}>Minigames are on. Kids earn a quick game for each chore.</p>
     <InstallHint who="parent" />
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: 14 }}>
       <Button variant="filled" leftSection={<span className="ms" aria-hidden="true">home</span>} onClick={() => router.push('/')}>Go to Today</Button>

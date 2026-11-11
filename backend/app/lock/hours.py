@@ -24,6 +24,7 @@ class RuleView:
     kid_ids: frozenset[int]
     group_ids: frozenset[int]
     windows: tuple[Window, ...]
+    replaces_everyone: bool = False  # kid style bedtime: Everyone rules of its category step aside
 
 
 class Resolved(NamedTuple):
@@ -57,6 +58,7 @@ def load(db: Session) -> list[RuleView]:
                     Window(days, time.fromisoformat(t.start), time.fromisoformat(t.end))
                     for t in r.times
                 ),
+                replaces_everyone=bool(r.replaces_everyone),
             )
         )
     return out
@@ -125,7 +127,22 @@ def resolve(rules, owner_ids: set[int], group_ids: set[int], d: date) -> Resolve
     free: list[Window] = []
     off: list[Window] = []
     for p in principals:
-        mine = [(r, k) for r in rules if (k := _keys(r, p, group_ids))]
+        # a kid style bedtime replaces Everyone rules of its category, for that kid only
+        own = {
+            r.category for r in rules if r.replaces_everyone and p[0] == "kid" and p[1] in r.kid_ids
+        }
+        mine = [
+            (r, k)
+            for r in rules
+            if (
+                k := _keys(r, p, group_ids)
+                - (
+                    {("all", 0)}
+                    if r.everyone and r.kind == "allowed" and r.category in own
+                    else set()
+                )
+            )
+        ]
         for r, _ in mine:
             if r.kind in ("free", "off"):
                 out = free if r.kind == "free" else off
@@ -171,6 +188,31 @@ def locks_at(allowed_sets, off, now_local: datetime) -> datetime | None:
         t += timedelta(minutes=1)
         if not _allowing(allowed_sets, off, t):
             return t
+    return None
+
+
+def next_transition(allowed_sets, off, now_local: datetime) -> datetime | None:
+    """First whole minute within 24 h where the state changes, else None.
+
+    State changes when either _allowing() or in_off() value changes.
+    """
+    # ponytail: minute scan (1440 steps); window edges are whole minutes
+    if not allowed_sets and not off:
+        return None
+
+    t = now_local.replace(second=0, microsecond=0)
+    current_allowing = _allowing(allowed_sets, off, t)
+    current_in_off = any(in_window(w, t) for w in off)
+    current_state = (current_allowing, current_in_off)
+
+    for _ in range(24 * 60):
+        t += timedelta(minutes=1)
+        new_allowing = _allowing(allowed_sets, off, t)
+        new_in_off = any(in_window(w, t) for w in off)
+        new_state = (new_allowing, new_in_off)
+        if new_state != current_state:
+            return t
+
     return None
 
 

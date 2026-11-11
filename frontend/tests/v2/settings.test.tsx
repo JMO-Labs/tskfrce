@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, test } from '@jest/globals'
+import { beforeAll, beforeEach, describe, expect, test } from '@jest/globals'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -11,20 +11,9 @@ import type { Family, Kid, Group, HoursPayload } from '@/v2/types'
 
 jest.mock('@/v2/api')
 const mockQuery: Record<string, string> = {}
-const mockReplace = jest.fn()
-let mockSmall = false
-jest.mock('next/router', () => ({ useRouter: () => ({ query: mockQuery, pathname: '/settings', replace: mockReplace }) }))
-jest.mock('@mantine/hooks', () => ({ ...jest.requireActual('@mantine/hooks'), useMediaQuery: () => mockSmall }))
+jest.mock('next/router', () => ({ useRouter: () => ({ query: mockQuery, pathname: '/settings' }) }))
 jest.mock('@/v2/components/RequireParent', () => ({ RequireParent: ({ children }: any) => children }))
-jest.mock('@/v2/parent/ParentShell', () => ({
-  ParentShell: ({ children, list, phone }: any) => (
-    <div>
-      {phone}
-      {list}
-      {children}
-    </div>
-  ),
-}))
+jest.mock('@/v2/parent/ParentShell', () => ({ ParentShell: ({ children, title }: any) => <div>{children}</div> }))
 jest.mock('@/v2/components/States', () => ({
   LoadError: () => <div>Error loading</div>,
   LoadingCards: () => <div>Loading...</div>,
@@ -151,7 +140,7 @@ describe('Hours pane', () => {
     wrap(<SettingsPage />)
     expect(await screen.findByText((_, el) => el?.textContent === 'Today: School night' && el.tagName === 'SPAN')).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'When rules overlap' }).textContent).toContain(
-      'Holiday and Summer replace everyday hours. Hours for a child, their groups and Everyone all apply together.',
+      "Holiday and Summer replace everyday hours. Hours for a child, their groups and Everyone all apply together, except a bedtime set by a kid's style: that one replaces Everyone for the kid.",
     )
   })
 
@@ -171,51 +160,5 @@ describe('Appearance via SettingsPage', () => {
     expect(mockPatch).toHaveBeenCalled()
     expect(document.documentElement.style.getPropertyValue('--p-acc')).toBe(ACCENTS.neon.hex)
     mockPatch.mockReset()
-  })
-})
-
-describe('Phone settings list is the More page (audit 10)', () => {
-  beforeEach(() => {
-    for (const k of Object.keys(mockQuery)) delete mockQuery[k]
-    mockReplace.mockReset()
-    jest.mocked(api).mockImplementation((async () => []) as never)
-  })
-  afterEach(() => {
-    mockSmall = false
-  })
-
-  test('phone /settings without section redirects to /more', () => {
-    mockSmall = true
-    wrap(<SettingsPage />)
-    expect(mockReplace).toHaveBeenCalledWith('/more')
-  })
-
-  test('phone /settings with bogus section redirects to /more', () => {
-    mockSmall = true
-    mockQuery.section = 'nope'
-    wrap(<SettingsPage />)
-    expect(mockReplace).toHaveBeenCalledWith('/more')
-  })
-
-  test('phone section back link points to /more', () => {
-    mockSmall = true
-    mockQuery.section = 'family'
-    wrap(<SettingsPage />)
-    expect(screen.getByRole('link', { name: 'More' })).toHaveAttribute('href', '/more')
-    expect(mockReplace).not.toHaveBeenCalled()
-  })
-
-  test('desktop /settings does not redirect', () => {
-    wrap(<SettingsPage />)
-    expect(mockReplace).not.toHaveBeenCalledWith('/more')
-    expect(screen.getByRole('link', { name: /Hours/ })).toBeInTheDocument()
-  })
-
-  test('phone /settings?section=screen still redirects to kids rewards', () => {
-    mockSmall = true
-    mockQuery.section = 'screen'
-    wrap(<SettingsPage />)
-    expect(mockReplace).toHaveBeenCalledWith('/kids?section=rewards&item=screen')
-    expect(mockReplace).not.toHaveBeenCalledWith('/more')
   })
 })

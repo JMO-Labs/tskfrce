@@ -42,16 +42,17 @@
 [data-look='parent'] textarea,
 [data-look='parent'] select {
   transition: border-color var(--dur-1) var(--ease-out),
+              box-shadow var(--dur-1) var(--ease-out),
               background-color var(--dur-1) var(--ease-out);
 }
 
-/* Focus state for input fields: the one parent ring (text fields match :focus-visible on mouse focus too) */
-[data-look='parent'] input:focus-visible,
-[data-look='parent'] textarea:focus-visible,
-[data-look='parent'] select:focus-visible {
-  outline: 2px solid var(--p-focus);
-  outline-offset: 2px;
+/* Focus state for input fields with accent highlight at 60% opacity */
+[data-look='parent'] input:focus,
+[data-look='parent'] textarea:focus,
+[data-look='parent'] select:focus {
+  outline: none;
   border-color: var(--p-ink);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--p-acc) 60%, transparent);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */

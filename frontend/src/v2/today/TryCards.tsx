@@ -1,5 +1,8 @@
+import Link from 'next/link'
 import { useEffect, useState, type ReactNode } from 'react'
+import { useRouter } from 'next/router'
 import { useFamily, usePatchFamily } from '@/v2/hooks/useFamily'
+import { useGoals } from '@/v2/hooks/useGoals'
 import { useHappyHours } from '@/v2/hooks/useHappyHour'
 import { useKids, usePatchKid } from '@/v2/hooks/useKids'
 import { useToday } from '@/v2/hooks/useToday'
@@ -13,7 +16,7 @@ import { bedtimeAt, bedtimePossible } from '@/v2/trustTypes'
 import { TipLine } from './TipLine'
 import styles from '../components/QuickTip.module.css'
 
-const TEXT: Record<Exclude<(typeof TRY_ORDER)[number], 'try.trust' | 'try.bedtime'>, { icon: string; text: string }> = {
+const TEXT: Record<Exclude<(typeof TRY_ORDER)[number], 'try.trust' | 'try.bedtime' | 'try.goals' | 'try.games' | 'try.penalties'>, { icon: string; text: string }> = {
   'try.celebrate': { icon: 'auto_awesome', text: 'Kids now get a comic-book cheer when they finish a chore.' },
   'try.happyhour': { icon: 'bolt', text: 'Double points for an hour gets chores moving.' },
   'try.autoboost': { icon: 'auto_awesome', text: 'If a kid goes quiet for 2 days, we start a Happy Hour for them and let you know.' },
@@ -39,6 +42,7 @@ function useTryPick() {
   const kids = useKids().data
   const hh = useHappyHours().data
   const today = useToday().data
+  const goals = useGoals().data
 
   const quietKid = !fam?.hh_auto_boost ? today?.kids.find((k) => k.quiet && !nudgeSnoozed(k.id)) : undefined
   const trustKid = kids?.find((k) => k.id === today?.try_trust_kid)
@@ -46,11 +50,14 @@ function useTryPick() {
   const seen = new Set(tips?.dismissed)
   const on: Record<string, boolean> = {
     'try.celebrate': !!kids?.some((k) => k.celebrate !== 'off'),
+    'try.games': !!fam?.games_on && fam.games_rounds === 0,
     'try.happyhour': !hh?.active.length,
     'try.autoboost': !!fam?.hh_auto_boost,
     'try.streakfreeze': !!fam?.streak_freeze,
     'try.trust': !!trustKid,
+    'try.penalties': !fam?.penalties_enabled,
     'try.bedtime': (today?.waiting_at_reset_days ?? 0) >= 3 && !fam?.bedtime_auto && bedtimePossible(fam?.reset_time),
+    'try.goals': !!goals?.settings?.on && !goals.waiting?.length && !goals.family?.length && !goals.kids?.length && !goals.done?.length,
   }
   const eligible = ready ? [...TRY_ORDER.filter((k) => on[k] && !seen.has(k)), ...(quietKid ? [nudgeKey(quietKid.id)] : [])] : []
   const key = ready ? pickCard(eligible) : null
@@ -64,6 +71,7 @@ export const useTryCardKey = (): string | null => useTryPick().key
 /** `compact`: the one-line tip (Today's slot) with the actions under More; otherwise the full card. */
 export function TryCards({ compact = false }: { compact?: boolean } = {}) {
   const { key, fam, kids, today, quietKid, trustKid } = useTryPick()
+  const router = useRouter()
   const dismiss = useDismissTip()
   const patchFam = usePatchFamily()
   const patchKid = usePatchKid()
@@ -78,7 +86,7 @@ export function TryCards({ compact = false }: { compact?: boolean } = {}) {
     requestAnimationFrame(() => document.querySelector<HTMLElement>('.pt-krow')?.focus())
   }
   const off = (turnOff: () => void) => () => (turnOff(), done())
-  const setFam = (body: { hh_auto_boost?: boolean; streak_freeze?: boolean; bedtime_auto?: boolean; bedtime_auto_at?: string }, onSuccess?: () => void) =>
+  const setFam = (body: { penalties_enabled?: boolean; hh_auto_boost?: boolean; streak_freeze?: boolean; bedtime_auto?: boolean; bedtime_auto_at?: string }, onSuccess?: () => void) =>
     patchFam.mutate(body, { onSuccess, onError: toastFail })
   const gotIt = <Btn onClick={done}>Got it</Btn>
   let icon: string, text: string, actions: ReactNode
@@ -88,6 +96,15 @@ export function TryCards({ compact = false }: { compact?: boolean } = {}) {
       <>
         <CelebratePreview mode={kids?.[0]?.age_group ?? 'kid'} level="full" label="Preview" />
         <Btn onClick={off(() => kids?.forEach((k) => patchKid.mutate({ id: k.id, body: { celebrate: 'off' } }, { onError: toastFail })))}>Turn off for all kids</Btn>
+        {gotIt}
+      </>
+    )
+  } else if (key === 'try.games') {
+    icon = 'sports_esports'
+    text = 'Each approved chore earns a short game that pays a few points.'
+    actions = (
+      <>
+        <Btn onClick={() => router.push('/settings?section=family&open=games')}>See settings</Btn>
         {gotIt}
       </>
     )
@@ -119,12 +136,30 @@ export function TryCards({ compact = false }: { compact?: boolean } = {}) {
         {gotIt}
       </>
     )
+  } else if (key === 'try.penalties') {
+    icon = 'gavel'
+    text = 'Penalties: take something away, say why, and let them earn part back.'
+    actions = (
+      <>
+        <Btn busy={patchFam.isPending} onClick={() => setFam({ penalties_enabled: true }, done)}>Turn on</Btn>
+        {gotIt}
+      </>
+    )
   } else if (key === 'try.bedtime') {
     icon = 'bedtime'
     text = `Chores were still waiting at reset on ${today!.waiting_at_reset_days} days. Bedtime auto-approve can clear them at ${wallClock(bedtimeAt(fam!.bedtime_auto_at, fam!.reset_time))} each night.`
     actions = (
       <>
         <Btn busy={patchFam.isPending} onClick={() => setFam({ bedtime_auto: true, bedtime_auto_at: bedtimeAt(fam!.bedtime_auto_at, fam!.reset_time) }, done)}>Turn on</Btn>
+        {gotIt}
+      </>
+    )
+  } else if (key === 'try.goals') {
+    icon = 'flag'
+    text = 'Kids can save up for something big, like a bike or a family trip.'
+    actions = (
+      <>
+        <Link href="/kids?section=rewards&item=goals" className="p-btn" onClick={done}>Add a goal</Link>
         {gotIt}
       </>
     )

@@ -1,0 +1,74 @@
+import { useEffect } from 'react'
+import { useSeenPenalty } from '../hooks/usePenalties'
+import { usePlayJail } from '../hooks/useKidGoals'
+import { duration, kidTitle } from '../penaltyTypes'
+import type { KidPenalty } from '../penaltyTypes'
+
+/** Right-hand label: how much of the earn-back is back so far (mockup "1 of 2 days back"). */
+export function backText(p: Pick<KidPenalty, 'kind' | 'amount_returned' | 'back_total'>): string {
+  const { amount_returned: got, back_total: all } = p
+  if (p.kind === 'points') return `${got} of ${all} points back`
+  if (p.kind === 'screen') return `${got} of ${all} min back`
+  if (all % 1440 === 0 && got % 1440 === 0) return `${got / 1440} of ${all / 1440} days back`
+  return `${duration(got)} of ${duration(all)} back`
+}
+
+type Done = { mutate: (id: number) => void; isPending: boolean }
+
+function Card({ p, done, jail }: { p: KidPenalty; done: Done; jail: boolean }) {
+  const seen = useSeenPenalty()
+  const play = usePlayJail(() => {})
+  const none = p.back_total === 0
+  useEffect(() => {
+    if (none && !p.seen_by_kid) seen.mutate(p.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.id, none])
+  const n = p.makeup.length
+  const pct = none ? 0 : Math.min(100, Math.round((p.amount_returned / p.back_total) * 100))
+  return (
+    <section className="k-pen" data-testid="penalty-card" aria-label="Penalty">
+      <h3>{kidTitle(p, new Date())}</h3>
+      <div className="k-pen-by">{p.reason ? `“${p.reason}”, ${p.by_name}` : p.by_name}</div>
+      {!none && (
+        <div className="k-pen-meter" role="progressbar" aria-valuemin={0} aria-valuemax={p.back_total} aria-valuenow={p.amount_returned} aria-label="Earned back">
+          <i style={{ width: `${pct}%` }} />
+        </div>
+      )}
+      {n > 0 && (
+        <div className="k-pen-line">
+          <span>
+            {p.makeup.map((m) =>
+              m.status === 'done' ? (
+                <span key={m.run_id}>✓ {m.title}</span>
+              ) : m.status === 'submitted' ? (
+                <span key={m.run_id}>… {m.title}</span>
+              ) : (
+                <button key={m.run_id} type="button" className="k-pen-todo" aria-label={`Mark ${m.title} done`} disabled={done.isPending} onClick={() => done.mutate(m.run_id)}>
+                  ○ {m.title}
+                </button>
+              ),
+            )}
+          </span>
+          {!none && <span className="k-pen-back">{backText(p)}</span>}
+        </div>
+      )}
+      {jail && (
+        <button type="button" className="k-pen-jail" disabled={play.isPending} onClick={() => play.mutate(p.id)}>
+          Use Get out of jail free
+        </button>
+      )}
+    </section>
+  )
+}
+
+/** Active penalties on the kid's chores tab: what was lost, why, how to earn it back (penalties-v2 mockup, Ivy's view). */
+export function PenaltyCards({ list, done, jail = 0 }: { list?: KidPenalty[]; done: Done; jail?: number }) {
+  if (!list?.length) return null
+  return (
+    <>
+      {list.map((p) => (
+        <Card key={p.id} p={p} done={done} jail={jail > 0} />
+      ))}
+    </>
+  )
+}

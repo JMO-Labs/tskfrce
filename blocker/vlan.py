@@ -26,7 +26,7 @@ REPORT_INTERVAL = 60.0
 def vlan_of(pkt: Any) -> tuple[int, str, str | None] | None:
     """(vid, src mac, ARP sender ip) of a tagged frame; None if untagged or unparsable."""
     try:
-        from scapy.layers.l2 import ARP, Dot1Q, Ether
+        from blocker.scapy_lite import ARP, Dot1Q, Ether
 
         if not pkt.haslayer(Dot1Q) or not pkt.haslayer(Ether):
             return None
@@ -94,7 +94,7 @@ class VlanTally:
 
 
 def _real_sniffer(*, iface: str, prn: Callable) -> Any:
-    from scapy.all import AsyncSniffer
+    from blocker.scapy_lite import AsyncSniffer
 
     s = AsyncSniffer(iface=iface, filter="vlan", prn=prn, store=False)
     s.start()

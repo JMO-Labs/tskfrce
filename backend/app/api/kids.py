@@ -41,8 +41,11 @@ def _out(k: User) -> dict:
         "age_group": k.age_group,
         "celebrate": k.celebrate,  # raw: null = mode default
         "trust_mode": k.trust_mode,
+        "games_on": k.games_on,
         "trust_level": k.trust_level,
         "trust_clean": k.trust_clean,
+        "chores_lock": k.chores_lock,
+        "preset_style": k.preset_style,
         "trust_goal": trust.UP_AT.get(k.trust_level),  # None at Proven
     }
 
@@ -109,12 +112,16 @@ def patch_kid(
         kid.age_group = body.age_group
     if "celebrate" in body.model_fields_set:  # explicit null: back to the mode default
         kid.celebrate = body.celebrate
+    if body.chores_lock is not None:
+        kid.chores_lock = body.chores_lock
     if body.trust_mode is not None:
         if body.trust_mode and not kid.trust_mode:
             kid.trust_clean = 0  # opting in always starts a fresh count
         kid.trust_mode = body.trust_mode
     if body.trust_level is not None and body.trust_level != kid.trust_level:
         trust.set_level(db, kid, body.trust_level, parent.id)
+    if body.games_on is not None:
+        kid.games_on = body.games_on
     if body.clear_pin:
         kid.pin_hash = None
     db.commit()
@@ -216,6 +223,7 @@ _REASON_LABEL = {
     "bonus": "Bonus",
     "adjustment": "Adjustment",
     "deduction": "Points taken",
+    "penalty": "Penalty",
 }
 
 

@@ -60,7 +60,7 @@ def test_put_rule_updates_every_target(client, db, parent, kid, parent_headers):
     db.commit()
     r = make_rule(db, kid_ids=[kid.id, b2.id])
     now = datetime(2026, 10, 20, 12, 0, tzinfo=UTC)
-    assert not set(macs) & set(tick(db, now))
+    assert not set(macs) & set(tick(db, now)[0])
     hh = 2
     t = {"start": f"{hh:02d}:00", "end": f"{hh:02d}:30"}
     put = client.put(
@@ -69,7 +69,7 @@ def test_put_rule_updates_every_target(client, db, parent, kid, parent_headers):
         headers=parent_headers,
     )
     assert put.status_code == 200, put.text
-    assert set(macs) <= set(tick(db, now))
+    assert set(macs) <= set(tick(db, now)[0])
 
 
 DATES = {"start_date": "2026-12-20", "end_date": "2027-01-03"}
@@ -167,3 +167,16 @@ def test_delete_target_keeps_rule(client, db, kid, parent_headers):
 def test_kid_cannot_edit_hours(client, kid_headers):
     assert client.get(URL, headers=kid_headers).status_code == 403
     assert client.post(URL, json=body(everyone=True), headers=kid_headers).status_code == 403
+
+
+def test_a_kid_bedtime_rule_can_replace_everyone(client, kid, parent_headers):
+    b = body(kind="allowed", category="school_night", kid_ids=[kid.id], replaces_everyone=True)
+    r = client.post(URL, json=b, headers=parent_headers)
+    assert r.status_code == 200, r.text
+    assert r.json()["replaces_everyone"] is True
+    # an edit that leaves it out keeps it (the rule editor doesn't know about it)
+    put = body(kind="allowed", category="school_night", kid_ids=[kid.id], name="Renamed")
+    r2 = client.put(f"{URL}/{r.json()['id']}", json=put, headers=parent_headers)
+    assert r2.json()["replaces_everyone"] is True
+    plain = client.post(URL, json=body(kid_ids=[kid.id]), headers=parent_headers).json()
+    assert plain["replaces_everyone"] is False

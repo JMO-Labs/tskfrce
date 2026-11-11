@@ -144,7 +144,7 @@ def test_ambiguous_or_stale_ip_maps_to_nothing(monkeypatch):
 
 
 def test_query_mdns_sends_ptr_for_each_type(monkeypatch):
-    import scapy.all as sa
+    from blocker import scapy_lite as sa
     from blocker import signals as sig
 
     sent = []

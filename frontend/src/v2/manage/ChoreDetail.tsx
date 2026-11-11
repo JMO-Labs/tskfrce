@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { useDisclosure } from '@mantine/hooks'
 import type { AssignmentBody } from '@/v2/hooks/useChores'
 import { useCopyChore, useDeleteChore, useSaveAssignment, useSaveChore } from '@/v2/hooks/useChores'
+import { useFamily } from '@/v2/hooks/useFamily'
 import { useChoreTypes } from '@/v2/hooks/useChoreTypes'
 import { Icon } from '@/v2/parent/Icon'
 import { SaveBar, useDiscardGuard } from '@/v2/parent/SaveBar'
@@ -30,7 +31,7 @@ interface Props {
   onGuard?: (g: ((go: () => void) => void) | null) => void
 }
 
-interface Draft { title: string; points: string; typeId?: number; steps: Step[]; next: string; photo: boolean; check: boolean }
+interface Draft { title: string; points: string; typeId?: number; steps: Step[]; next: string; photo: boolean; check: boolean; gives: boolean }
 /** Unsaved edits per chore id ('new' for a chore not saved yet), kept while the editor is unmounted. */
 const drafts = new Map<string, Draft>()
 /** Forget all kept drafts (tests). */
@@ -72,6 +73,8 @@ export function ChoreDetail({ kids, chore, onSelect, onGuard }: Props) {
   const [next, setNext] = useState(kept?.next ?? '')
   const [photo, setPhoto] = useState(kept?.photo ?? chore?.needs_photo ?? false)
   const [check, setCheck] = useState(kept?.check ?? chore?.always_check ?? false)
+  const [gives, setGives] = useState(kept?.gives ?? chore?.gives_game ?? false)
+  const gamesCustom = useFamily().data?.games_earn === 'custom'
   const pointsErr = intError(points, 0)
   // Who & when forms report their pending changes here so one Save sends everything
   const [pending, setPending] = useState<Record<string, PendingAssignment>>({})
@@ -110,6 +113,7 @@ export function ChoreDetail({ kids, chore, onSelect, onGuard }: Props) {
     setNext('')
     setPhoto(chore?.needs_photo ?? false)
     setCheck(chore?.always_check ?? false)
+    setGives(chore?.gives_game ?? false)
   }
 
   // the first step has nothing above it to wait for
@@ -123,7 +127,7 @@ export function ChoreDetail({ kids, chore, onSelect, onGuard }: Props) {
     try {
       const c = await save.mutateAsync({
         id: chore?.id,
-        body: { title: title.trim(), points: Number(points), needs_photo: photo, always_check: check, type_id: typeId, steps: stepBody },
+        body: { title: title.trim(), points: Number(points), needs_photo: photo, always_check: check, ...(gamesCustom || chore?.gives_game ? { gives_game: gives } : {}), type_id: typeId, steps: stepBody },
       })
       // Due by is the chore's own field: it overrides a closed form's stale copy, and reaches assignments no form changed
       const dirtyForms = forms.filter((f) => f.dirty)
@@ -148,6 +152,7 @@ export function ChoreDetail({ kids, chore, onSelect, onGuard }: Props) {
       !!pointsErr || Number(points) !== chore.points ||
       photo !== chore.needs_photo ||
       check !== (chore.always_check ?? false) ||
+      gives !== (chore.gives_game ?? false) ||
       (picked !== undefined && picked !== chore.type_id) ||
       !sameSteps(steps, stepsOf(chore))
     : !!(title.trim() || steps.length || picked !== undefined)))
@@ -159,9 +164,9 @@ export function ChoreDetail({ kids, chore, onSelect, onGuard }: Props) {
 
   // Switching tabs or chores unmounts this editor: keep what was typed so it isn't lost silently.
   useEffect(() => {
-    if (dirty) drafts.set(key, { title, points, typeId: picked, steps, next, photo, check })
+    if (dirty) drafts.set(key, { title, points, typeId: picked, steps, next, photo, check, gives })
     else drafts.delete(key)
-  }, [dirty, key, gen, title, points, picked, steps, next, photo, check])
+  }, [dirty, key, gen, title, points, picked, steps, next, photo, check, gives])
 
   const duplicate = () =>
     guard(() => {
@@ -219,8 +224,8 @@ export function ChoreDetail({ kids, chore, onSelect, onGuard }: Props) {
             <p className="pk-hint">Save the chore first, then choose who does it and when.</p>
           )}
         </SummaryRow>
-        <SummaryRow id="opts" icon={ico('tune')} title="Options" summary={`${optionsOn({ due, photo, check })} on`} focus={rows}>
-          <OptionsBody isNew={!chore} due={due} differs={dueEdit === undefined && dueTimes.size > 1} onDue={setDue} photo={photo} onPhoto={setPhoto} check={check} onCheck={setCheck} />
+        <SummaryRow id="opts" icon={ico('tune')} title="Options" summary={`${optionsOn({ due, photo, check, gives: gamesCustom && gives })} on`} focus={rows}>
+          <OptionsBody isNew={!chore} due={due} differs={dueEdit === undefined && dueTimes.size > 1} onDue={setDue} photo={photo} onPhoto={setPhoto} check={check} onCheck={setCheck} gamesCustom={gamesCustom} gives={gives} onGives={setGives} />
         </SummaryRow>
       </FocusArea>
 

@@ -291,8 +291,8 @@ def test_overview_tiers(client, db, kid, parent_headers, kid_headers):
         f"/api/v1/custom-badges/{bid}/award", json={"kid_id": kid.id}, headers=parent_headers
     )
     rows = client.get("/api/v1/badges/overview", headers=parent_headers).json()
-    assert len(rows) == len(bd.CATALOG) + 1 == 19
-    assert [r["key"] for r in rows[:18]] == list(bd.CATALOG)
+    assert len(rows) == len(bd.CATALOG) + 1 == 24
+    assert [r["key"] for r in rows[:23]] == list(bd.CATALOG)
     assert rows[0]["icon"] == "🩸" and not rows[0]["custom"] and rows[0]["tiers"] == {}
     last = rows[-1]
     assert (

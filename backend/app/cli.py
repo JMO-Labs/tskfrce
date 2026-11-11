@@ -25,10 +25,24 @@ def reset_password(username: str) -> int:
     return 0
 
 
+def migrate_to(url: str) -> int:
+    from app.services.db_move import move
+
+    try:
+        counts = move(settings.DATABASE_URL or "", url)
+    except Exception as e:
+        print(f"Migration failed: {e}\nYour SQLite database is untouched.")
+        return 1
+    print(f"Moved {sum(counts.values())} rows in {len(counts)} tables. SQLite is untouched.")
+    return 0
+
+
 def main(argv: list[str]) -> int:
     if len(argv) == 2 and argv[0] == "reset-password":
         return reset_password(argv[1])
-    print("Usage: python -m app.cli reset-password <parent-username>")
+    if len(argv) == 2 and argv[0] == "migrate-to":
+        return migrate_to(argv[1])
+    print("Usage: python -m app.cli reset-password <parent-username> | migrate-to <postgres-url>")
     return 2
 
 

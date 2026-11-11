@@ -32,15 +32,10 @@ html[data-look='parent'] .f-input.f-input {
   color: var(--p-ink);
   font-family: inherit;
 }
-/* the kid look's sun shadow (../controls.css) must not stack on the parent ring */
 html[data-look='parent'] .f-input.f-input:focus,
 html[data-look='parent'] .f-input.f-input:focus-within {
-  box-shadow: none;
-}
-html[data-look='parent'] .f-input.f-input:focus-visible {
   border-color: var(--p-ink);
-  outline: 2px solid var(--p-focus);
-  outline-offset: 2px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--p-acc) 45%, transparent);
 }
 
 html[data-look='parent'] .f-label.f-label {

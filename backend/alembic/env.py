@@ -1,7 +1,7 @@
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, inspect, pool
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -72,7 +72,19 @@ def run_migrations_online() -> None:
         )
 
         with context.begin_transaction():
-            context.run_migrations()
+            if _fresh_server_db(connection):
+                # The historic chain is SQLite-shaped; a new server DB starts at head instead.
+                target_metadata.create_all(connection)
+                context.get_context().stamp(context.script, "heads")
+            else:
+                context.run_migrations()
+
+
+def _fresh_server_db(connection) -> bool:
+    """True for an empty non-SQLite database (no alembic_version yet)."""
+    return connection.dialect.name != "sqlite" and not inspect(connection).has_table(
+        "alembic_version"
+    )
 
 
 if context.is_offline_mode():

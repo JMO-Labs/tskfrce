@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Penalties mockup</title>
+<style>
+:root{--pg-bg:#ececea;--p-bg:#f8f8f8;--p-card:#fff;--p-ink:#292928;--p-sub:#5f5f5c;--p-line:#e4e4e1;--p-soft:#f3f3f3;--p-acc:#c3f832;--p-red:#8f1d13;--p-redbg:#fde3e0;--p-amb:#ffefcc;--p-ambink:#5c3a00;--p-lav:#e3d4fb;--p-lav-ink:#4a2f8a}
+@media (prefers-color-scheme:dark){:root{--pg-bg:#111110;--p-bg:#1c1c1b;--p-card:#292928;--p-ink:#f4f4f2;--p-sub:#a8a8a4;--p-line:#3d3d3b;--p-soft:#323230;--p-red:#ff9b8f;--p-redbg:#3e2422;--p-amb:#3b2f17;--p-ambink:#ffd38a;--p-lav:#3d3354;--p-lav-ink:#d8c8fb}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--pg-bg);color:var(--p-ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;padding:24px 16px 48px}
+.wrap{max-width:1080px;margin:0 auto}
+h1{font-size:22px;margin:0 0 4px}
+.lead{color:var(--p-sub);margin:0 0 24px;max-width:70ch}
+.row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.col{flex:1 1 320px;max-width:360px}
+.col h2{font-size:17px;margin:0 0 2px}
+.col .why{color:var(--p-sub);font-size:13px;margin:0 0 12px;min-height:38px}
+.phone{background:var(--p-bg);border:1px solid var(--p-line);border-radius:28px;padding:18px 14px 20px;box-shadow:0 1px 0 var(--p-line)}
+.top{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.av{width:36px;height:36px;border-radius:50%;background:var(--p-lav);color:var(--p-lav-ink);display:grid;place-items:center;font-weight:700}
+.top b{font-size:16px}.top small{display:block;color:var(--p-sub);font-size:12px}
+.sheet{background:var(--p-card);border:1px solid var(--p-line);border-radius:12px;padding:14px}
+.sheet h3{font-size:15px;margin:0 0 10px}
+.lbl{font-size:12px;color:var(--p-sub);margin:12px 0 6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--p-line);background:var(--p-soft);border-radius:999px;padding:6px 11px;font-size:13px}
+.chip.on{background:var(--p-ink);color:var(--p-card);border-color:var(--p-ink)}
+.step{display:flex;align-items:center;gap:8px}
+.step span{border:1px solid var(--p-line);border-radius:8px;width:30px;height:30px;display:grid;place-items:center}
+.step b{min-width:70px;text-align:center}
+.inp{border:1px solid var(--p-line);border-radius:8px;padding:8px 10px;color:var(--p-sub);font-size:13px;background:var(--p-bg)}
+.tog{display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-top:12px}
+.sw{width:36px;height:20px;border-radius:999px;background:var(--p-ink);position:relative}.sw:after{content:"";position:absolute;right:3px;top:3px;width:14px;height:14px;border-radius:50%;background:var(--p-card)}
+.sub{color:var(--p-sub);font-size:12px;margin-top:4px}
+.btn{display:block;width:100%;margin-top:14px;padding:11px;border-radius:8px;border:0;background:var(--p-ink);color:var(--p-card);font:600 14px system-ui}
+.size{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--p-line);border-radius:12px;padding:12px;margin-bottom:8px;background:var(--p-soft)}
+.size.on{border:2px solid var(--p-ink);background:var(--p-card)}
+.size b{font-size:14px}.size small{display:block;color:var(--p-sub);font-size:12px}
+.size .tag{font-size:12px;color:var(--p-sub)}
+.kid{background:#fffaf0;border-radius:18px;padding:16px;color:#2b2416;border:2px solid #f0dfb8}
+@media (prefers-color-scheme:dark){.kid{background:#2a2418;color:#f6ead2;border-color:#4a3d22}}
+.kid h3{margin:0 0 4px;font-size:17px}
+.kid .reason{background:rgba(0,0,0,.05);border-radius:8px;padding:8px 10px;font-size:13px;margin:8px 0}
+.meter{height:10px;border-radius:999px;background:rgba(0,0,0,.1);overflow:hidden;margin:6px 0 2px}.meter i{display:block;height:100%;width:33%;background:#7cb518}
+.task{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-top:1px dashed rgba(0,0,0,.15)}
+.choose{margin-top:12px;font-size:13px;color:var(--p-sub)}
+.note{margin-top:28px;background:var(--p-card);border:1px solid var(--p-line);border-radius:12px;padding:14px 16px;max-width:760px}
+.note h2{font-size:16px;margin:0 0 6px}.note ul{margin:0;padding-left:18px}.note li{margin:3px 0}
+
+.seg{display:flex;border:1px solid var(--p-line);border-radius:999px;padding:3px;background:var(--p-soft)}
+.seg span{flex:1;text-align:center;padding:7px 0;border-radius:999px;font-size:13px}
+.seg span.on{background:var(--p-ink);color:var(--p-card);font-weight:600}
+.sum{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:10px 0;border-bottom:1px solid var(--p-line)}
+.sum:last-of-type{border-bottom:0}
+.sum em{font-style:normal;color:var(--p-sub)}
+.sum a{color:var(--p-sub);text-decoration:underline;font-size:12px}
+.mini{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.kid .line{display:flex;justify-content:space-between;font-size:13px;margin-top:8px}
+</style></head><body><div class="wrap">
+<h1>Giving a penalty, compact</h1>
+<p class="lead">A and B merged into one small sheet. Tap a size and send. Change any line in place if you need to, so the full controls only show up when they're used.</p>
+<div class="row">
+
+<div class="col"><h2>Most of the time</h2><p class="why">Two taps: pick a size, then Give.</p>
+<div class="phone"><div class="top"><div class="av">I</div><div><b>Ivy</b><small>Give a penalty</small></div></div>
+<div class="sheet">
+ <div class="seg"><span>Small</span><span class="on">Medium</span><span>Big</span><span>Custom</span></div>
+ <div style="margin-top:6px">
+  <div class="sum"><span>No Nintendo, 1 day</span><a>change</a></div>
+  <div class="sum"><span>Earn back half</span><a>change</a></div>
+  <div class="sum"><em>+ Add a reason Ivy sees</em></div>
+ </div>
+ <button class="btn">Give penalty</button>
+</div></div></div>
+
+<div class="col"><h2>Changing one line</h2><p class="why">Tap "change" and only that line opens. Custom opens the first line.</p>
+<div class="phone"><div class="top"><div class="av">I</div><div><b>Ivy</b><small>Give a penalty</small></div></div>
+<div class="sheet">
+ <div class="seg"><span>Small</span><span>Medium</span><span>Big</span><span class="on">Custom</span></div>
+ <div style="margin-top:6px">
+  <div style="padding:10px 0;border-bottom:1px solid var(--p-line)">
+   <div class="chips"><span class="chip">Points</span><span class="chip">Screen time</span><span class="chip on">Nintendo</span><span class="chip">Tablet</span></div>
+   <div class="step" style="margin-top:8px"><span>−</span><b>3 days</b><span>+</span></div>
+  </div>
+  <div class="sum"><span>Earn back half</span><a>change</a></div>
+  <div class="sum"><span>“Said dishes were done”</span><a>edit</a></div>
+ </div>
+ <button class="btn">Give penalty</button>
+</div></div></div>
+
+<div class="col"><h2>Ivy's view</h2><p class="why">One card: what was lost, why, and how to earn it back.</p>
+<div class="kid">
+ <h3>No Nintendo until Friday</h3>
+ <div style="font-size:13px;opacity:.8">“Said dishes were done”, Mom</div>
+ <div class="meter"><i style="width:50%"></i></div>
+ <div class="line"><span>✓ Wipe counters &nbsp; ○ Sweep kitchen</span><span>1 of 2 days back</span></div>
+</div></div>
+
+</div>
+<div class="note"><h2>Still included, not on screen</h2><ul>
+<li>Sizes come with defaults and can be edited in Settings.</li>
+<li>The spot-check screen "Checked, wasn't done" opens this same sheet.</li>
+<li>Cancel, shorten, or forgive any penalty from the kid's page.</li>
+<li>Siblings never see each other's penalties. Off until a parent turns it on.</li>
+</ul></div>
+<p class="choose">Reply in the terminal.</p>
+</div></body></html>

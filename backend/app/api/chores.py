@@ -1,6 +1,6 @@
 """Parent API: today's chore runs, approve and send back."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,7 +13,7 @@ from app.models.family import get_family
 from app.models.points import Points
 from app.models.user import User
 from app.schemas.lock import utc_z
-from app.services import chat, economy
+from app.services import chat, economy, minigames, penalty_earnback
 from app.services import chore_actions as actions
 from app.services import chores as svc
 
@@ -127,6 +127,8 @@ def mark_not_done(run_id: int, db: Session = Depends(get_db), _: User = Depends(
     if r.status != "done":
         raise HTTPException(409, "This chore isn't done.")
     # ponytail: spent points can leave the balance below 0; badges already earned stay
+    if r.penalty_id:
+        penalty_earnback.on_reverted(db, r, datetime.now(UTC))
     db.query(Points).filter(Points.run_id == r.id, Points.amount > 0).delete()
     r.ticks.clear()
     r.status = "todo"
@@ -134,6 +136,7 @@ def mark_not_done(run_id: int, db: Session = Depends(get_db), _: User = Depends(
     r.spot_check = False
     r.submitted_at = r.submitted_by_id = r.hh_mult_x10 = None
     chat.system(db, r, "Marked not done")
+    minigames.revoke(db, r)
     db.commit()
     return svc.chore_out(r, get_family(db))
 

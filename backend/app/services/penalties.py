@@ -1,0 +1,273 @@
+"""Penalties: points taken, saved screen time docked, or devices blocked (give side)."""
+
+import json
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from uuid import uuid4
+
+from fastapi import HTTPException
+from sqlalchemy import func
+from sqlalchemy.orm import Session, joinedload
+
+from app.models.chores import Chore, ChoreAssignment, ChoreRun
+from app.models.family import FamilySettings, get_family
+from app.models.lock import Device, DeviceGroup, Override
+from app.models.penalty import Penalty
+from app.models.user import User
+from app.schemas.lock import utc_z
+from app.services import chore_types, chores, economy, inbox, screen_bank
+
+DEFAULT_SIZES = {
+    "small": {"kind": "points", "amount": 20, "earn_back": "all"},
+    "medium": {"kind": "block", "amount": 1440, "earn_back": "half"},
+    "big": {"kind": "block", "amount": 4320, "earn_back": "half"},
+}
+DEFAULT_MAKEUP = [
+    "Wipe the kitchen counters",
+    "Sweep the kitchen",
+    "Fold a load of laundry",
+    "Tidy the living room",
+]
+SHARES = {"none": (0, 1), "half": (1, 2), "all": (1, 1)}
+MAKEUP_DAYS = 7
+
+
+def sizes(fam: FamilySettings) -> dict:
+    return json.loads(fam.penalty_sizes) if fam.penalty_sizes else DEFAULT_SIZES
+
+
+def makeup_list(fam: FamilySettings) -> list[str]:
+    return json.loads(fam.makeup_chores) if fam.makeup_chores else list(DEFAULT_MAKEUP)
+
+
+@dataclass
+class Give:
+    kind: str
+    amount: int
+    earn_back: str
+    reason: str | None = None
+    device_id: int | None = None
+    group_id: int | None = None
+    makeup: list[str] | None = None
+    chore_run_id: int | None = None
+    notification_id: int | None = None
+
+
+def _naive(now: datetime) -> datetime:
+    return now.astimezone(UTC).replace(tzinfo=None) if now.tzinfo else now
+
+
+def _aware(now: datetime) -> datetime:
+    return now if now.tzinfo else now.replace(tzinfo=UTC)
+
+
+def target_devices(db: Session, kid: User, g: Give) -> tuple[list[Device], str]:
+    """Devices a block hits, plus its label. Neither device nor group: the kid's non-exempt devices."""
+    if g.device_id is not None:
+        d = db.get(Device, g.device_id)
+        if d is None:
+            raise HTTPException(404, "Device not found.")
+        if kid not in d.owners:
+            raise HTTPException(404, "That device isn't this kid's.")
+        return [d], d.name
+    if g.group_id is not None:
+        grp = db.get(DeviceGroup, g.group_id)
+        if grp is None:
+            raise HTTPException(404, "Group not found.")
+        devs = [d for d in grp.devices if kid in d.owners]
+        if not devs:
+            raise HTTPException(422, f"None of {kid.full_name}'s devices are in that group.")
+        return devs, grp.name
+    return [d for d in kid.devices if not d.exempt], "devices"
+
+
+def recent_counts(db: Session, now: datetime) -> dict[int, int]:
+    """kid id -> penalties (not cancelled) in the last 7 days, for every kid, in one query."""
+    since = _naive(now) - timedelta(days=7)
+    rows = (
+        db.query(Penalty.kid_id, func.count(Penalty.id))
+        .filter(Penalty.created_at >= since, Penalty.status != "cancelled")
+        .group_by(Penalty.kid_id)
+    )
+    return dict(rows)
+
+
+def _plural(n: int, word: str) -> str:
+    return f"{n} {word}" + ("" if n == 1 else "s")
+
+
+def _duration(minutes: int) -> str:
+    days, rest = divmod(minutes, 1440)
+    hours, mins = divmod(rest, 60)
+    parts = [_plural(days, "day")] if days else []
+    if hours:
+        parts.append(_plural(hours, "hour"))
+    if mins or not parts:
+        parts.append(f"{mins} min")
+    return " ".join(parts)
+
+
+def summary(p: Penalty) -> str:
+    if p.kind == "points":
+        return f"{p.amount_taken} points"
+    if p.kind == "screen":
+        return f"{p.amount_taken} min of saved screen time"
+    return f"No {p.label or 'devices'}, {_duration(p.amount)}"
+
+
+def _makeup_runs(db: Session, kid: User, p: Penalty, titles: list[str], by: User, now) -> None:
+    day = chores.today(db, now)
+    type_id = chore_types.other_id(db)
+    for title in titles:
+        chore = Chore(
+            title=title,
+            points=0,
+            makeup=True,
+            created_by_id=by.id,
+            type_id=type_id,
+        )
+        a = ChoreAssignment(chore=chore, mode="each", repeat="once", on_date=day)
+        a.kids = [kid]
+        db.add_all([chore, a])
+        db.flush()
+        db.add(ChoreRun(assignment_id=a.id, day=day, kid_id=kid.id, penalty_id=p.id))
+
+
+def _give_one(db: Session, kid: User, g: Give, by: User, now: datetime, group: str | None):
+    fam = get_family(db)
+    created = _naive(now)
+    p = Penalty(
+        kid_id=kid.id,
+        group_id=group,
+        kind=g.kind,
+        amount=g.amount,
+        earn_back=g.earn_back,
+        reason=g.reason,
+        chore_run_id=g.chore_run_id,
+        notification_id=g.notification_id,
+        given_by_id=by.id,
+        created_at=created,
+    )
+    db.add(p)
+    db.flush()
+    if g.kind == "points":
+        note = f"Penalty: {g.reason}" if g.reason else "Penalty"
+        p.amount_taken = economy.deduct(
+            db,
+            kid.id,
+            g.amount,
+            note,
+            by.id,
+            reason="penalty",
+            penalty_id=p.id,
+            notify=False,
+            commit=False,
+        )
+    elif g.kind == "screen":
+        p.amount_taken = screen_bank.take(db, fam, kid.id, g.amount)
+    else:
+        devs, p.label = target_devices(db, kid, g)
+        p.ends_at = created + timedelta(minutes=g.amount)
+        p.amount_taken = g.amount if devs else 0
+        if g.device_id is None and g.group_id is None:
+            p.all_devices = True  # the lock covers any non-exempt device, now or later
+        else:
+            p.device_ids = json.dumps([d.id for d in devs])
+            for d in devs:
+                db.add(
+                    Override(
+                        device_id=d.id,
+                        action="lock",
+                        source="penalty",
+                        expires_at=p.ends_at,
+                        created_by_id=by.id,
+                        penalty_id=p.id,
+                    )
+                )
+    num, den = SHARES[g.earn_back]
+    p.back_total = p.amount_taken * num // den  # points, minutes, or block minutes
+    titles = (g.makeup if g.makeup is not None else makeup_list(fam)[:2]) if p.back_total else []
+    if not titles:
+        p.back_total = 0  # nothing to make up: nothing to earn back
+    p.makeup_count = len(titles)
+    if titles:
+        if g.kind != "block":
+            p.ends_at = created + timedelta(days=MAKEUP_DAYS)
+        _makeup_runs(db, kid, p, titles, by, _aware(now))
+    elif g.kind != "block":
+        p.status, p.ended_at = "ended", created
+    body = summary(p) + (f" · {g.reason}" if g.reason else "")
+    inbox.notify(db, [kid.id], "points_taken", f"{by.full_name} gave you a penalty", body)
+    return p
+
+
+def give(db: Session, kid_ids: list[int], g: Give, by: User, now: datetime) -> list[Penalty]:
+    """One penalty per kid (shared group_id when several). Commits."""
+    group = uuid4().hex if len(kid_ids) > 1 else None
+    with economy.SPEND_LOCK:
+        db.commit()  # fresh snapshot for the balance and bank reads
+        try:
+            kids = [db.get(User, k) for k in kid_ids]
+            out_rows = [_give_one(db, k, g, by, now, group) for k in kids]
+            db.commit()  # one commit: all kids' penalties, ledger rows and bank changes land together
+        except BaseException:
+            db.rollback()
+            raise
+    return out_rows
+
+
+def out_many(db: Session, ps: list[Penalty]) -> list[dict]:
+    """Penalty dicts in a fixed number of queries (givers, make-up runs)."""
+    if not ps:
+        return []
+    ids = [p.id for p in ps]
+    by = {
+        u.id: u.full_name
+        for u in db.query(User).filter(User.id.in_({p.given_by_id for p in ps} - {None}))
+    }
+    runs: dict[int, list[ChoreRun]] = {}
+    for r in (
+        db.query(ChoreRun)
+        .options(joinedload(ChoreRun.assignment).joinedload(ChoreAssignment.chore))
+        .filter(ChoreRun.penalty_id.in_(ids))
+        .order_by(ChoreRun.id)
+    ):
+        runs.setdefault(r.penalty_id, []).append(r)
+    causes = {
+        r.id: r.assignment.chore.title
+        for r in db.query(ChoreRun)
+        .options(joinedload(ChoreRun.assignment).joinedload(ChoreAssignment.chore))
+        .filter(ChoreRun.id.in_({p.chore_run_id for p in ps} - {None}))
+    }
+    return [
+        {
+            "id": p.id,
+            "kid_id": p.kid_id,
+            "group_id": p.group_id,
+            "kind": p.kind,
+            "amount": p.amount,
+            "amount_taken": p.amount_taken,
+            "amount_returned": p.amount_returned,
+            "back_total": p.back_total,
+            "label": p.label,
+            "earn_back": p.earn_back,
+            "reason": p.reason,
+            "given_by": by.get(p.given_by_id),
+            "created_at": utc_z(p.created_at),
+            "ends_at": utc_z(p.ends_at),
+            "status": p.status,
+            "seen_by_kid": p.seen_by_kid,
+            "summary": summary(p),
+            "cause": causes.get(p.chore_run_id)
+            or ("Security alert" if p.notification_id else None),
+            "makeup": [
+                {"run_id": r.id, "title": r.assignment.chore.title, "status": r.status}
+                for r in runs.get(p.id, [])
+            ],
+        }
+        for p in ps
+    ]
+
+
+def out(db: Session, p: Penalty) -> dict:
+    return out_many(db, [p])[0]

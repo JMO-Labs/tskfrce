@@ -147,7 +147,7 @@
 [data-look='parent'] .pk-input { transition: border-color var(--dur-1) var(--ease-out); }
 @media (hover: hover) { [data-look='parent'] .pk-input:hover { border-color: var(--p-sub); } }
 [data-look='parent'] .pk-input::placeholder { color: var(--p-sub); }
-[data-look='parent'] .pk-input:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
+[data-look='parent'] .pk-input:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 1px; }
 
 [data-look='parent'] .pk-switch { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--p-line); font-size: 13.5px; color: var(--p-ink); }
 /* mockup 02 .sw: 38x22 line track + card knob; on = ink track + accent knob (one switch app-wide) */
@@ -207,8 +207,7 @@
 [data-look='parent'] .pk-add[data-disabled='true'] { opacity: 0.6; cursor: default; }
 [data-look='parent'] .pk-add input { flex: 1; min-width: 0; padding: 9px 0; border: 0; outline: 0; background: transparent; color: var(--p-ink); font: 500 13.5px var(--font-parent), system-ui, sans-serif; }
 [data-look='parent'] .pk-add input::placeholder { color: var(--p-sub); }
-[data-look='parent'] .pk-add input:focus-visible { outline: none; border-color: transparent; } /* the dashed row shows the ring */
-[data-look='parent'] .pk-add:focus-within { outline: 2px solid var(--p-focus); outline-offset: 2px; }
+[data-look='parent'] .pk-add input:focus { box-shadow: none; border-color: transparent; } /* the dashed row shows focus */
 
 /* chore type chips (selected = accent with a pencil) and the notes a kid can send */
 [data-look='parent'] .pk-types { display: flex; flex-wrap: wrap; gap: 6px; }

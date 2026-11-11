@@ -115,6 +115,23 @@
   flex-shrink: 0;
 }
 
+/* Group stacked icons */
+[data-look='parent'] .p-group-stack {
+  display: flex;
+  gap: 0;
+  align-items: center;
+  margin-left: auto;
+}
+
+[data-look='parent'] .p-group-stack .ms {
+  font-size: 16px;
+  margin-left: -8px;
+}
+
+[data-look='parent'] .p-group-stack .ms:first-child {
+  margin-left: 0;
+}
+
 /* Tabs styling for device list - handled inline in component for now */
 
 /* Empty state */
