@@ -79,10 +79,12 @@ out=$(EDGE_TOKEN=x run next_backoff 30 2>&1)
 r=0; echo "$out" | grep -q "EDGE_TOKEN" && r=1; ok "no warning with EDGE_TOKEN" $r
 r=0; ! grep -q 2443 "$HERE/Caddyfile" || r=1; ok "Caddyfile has no public ntfy port" $r
 
-r=0; grep -q '{$BOX_ID}\.{$BASE_DOMAIN}' "$HERE/Caddyfile" || r=1
-grep -q '{$BOX_ID}-2\.{$BASE_DOMAIN}' "$HERE/Caddyfile" || r=1
-grep -q '{$BOX_ID}-3\.{$BASE_DOMAIN}' "$HERE/Caddyfile" || r=1
-grep -q '{$BOX_ID}-8\.{$BASE_DOMAIN}' "$HERE/Caddyfile" || r=1
+# Caddyfile serves every network hostname the cert covers (literal Caddy placeholders, not shell vars)
+r=0
+# shellcheck disable=SC2016
+for host in '{$BOX_ID}' '{$BOX_ID}-2' '{$BOX_ID}-3' '{$BOX_ID}-4' '{$BOX_ID}-5' '{$BOX_ID}-6' '{$BOX_ID}-7' '{$BOX_ID}-8'; do
+  grep -qF "https://$host.{\$BASE_DOMAIN}:443" "$HERE/Caddyfile" || r=1
+done
 ok "Caddyfile lists all 8 hostnames" $r
 
 # Test collect_networks
