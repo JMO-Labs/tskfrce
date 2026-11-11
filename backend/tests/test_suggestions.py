@@ -68,8 +68,11 @@ def test_chore_skipped_names_subject_and_reappears_on_new_fingerprint(
     s = next(i for i in items if i["rule"] == "chore.skipped")
     assert "Dishes" in s["body"] and "Timmy" in s["body"]
     assert s["title"] and s["action"]["kind"] and s["fingerprint"]
-    r = client.post(U + "/dismiss", json={"key": s["key"], "fingerprint": s["fingerprint"]},
-                    headers=parent_headers)
+    r = client.post(
+        U + "/dismiss",
+        json={"key": s["key"], "fingerprint": s["fingerprint"]},
+        headers=parent_headers,
+    )
     assert r.status_code == 200
     assert s["key"] not in _keys(client, parent_headers)
     # same facts: still quiet; a new skipped day: back
@@ -109,8 +112,15 @@ def test_goal_close(db, client, parent, kid, parent_headers):
     g = Goal(name="Lego", kid_id=kid.id, target=100, status="active", created_by_id=parent.id)
     db.add(g)
     db.commit()
-    db.add(GoalContribution(goal_id=g.id, kid_id=kid.id, amount=70, kind="save",
-                            created_at=datetime.utcnow() - timedelta(days=1)))
+    db.add(
+        GoalContribution(
+            goal_id=g.id,
+            kid_id=kid.id,
+            amount=70,
+            kind="save",
+            created_at=datetime.utcnow() - timedelta(days=1),
+        )
+    )
     db.commit()  # 70 in 7 days = 10/day, 30 left = 3 days
     s = next(i for i in _get(client, parent_headers)["items"] if i["rule"] == "goal.close")
     assert "Lego" in s["body"] and "Timmy" in s["body"]
@@ -125,8 +135,14 @@ def test_goal_missing_none(db, client, parent, kid, parent_headers):
 
 def test_goal_missing_stalled(db, client, parent, kid, parent_headers):
     _old(db, parent, kid)
-    g = Goal(name="Bike", kid_id=kid.id, target=500, status="active", created_by_id=parent.id,
-             created_at=datetime.utcnow() - timedelta(days=20))
+    g = Goal(
+        name="Bike",
+        kid_id=kid.id,
+        target=500,
+        status="active",
+        created_by_id=parent.id,
+        created_at=datetime.utcnow() - timedelta(days=20),
+    )
     db.add(g)
     db.commit()
     s = next(i for i in _get(client, parent_headers)["items"] if i["rule"] == "goal.missing")

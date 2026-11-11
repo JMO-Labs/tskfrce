@@ -197,10 +197,16 @@ def goal_missing(db: Session, now: datetime) -> list[dict]:
         if not goals:
             out.append(
                 _s(
-                    "goal.missing", kid.id, KID, "none", kid.created_at + timedelta(days=7),
+                    "goal.missing",
+                    kid.id,
+                    KID,
+                    "none",
+                    kid.created_at + timedelta(days=7),
                     f"{_name(kid)} has no goal",
                     f"{_name(kid)} isn't saving for anything yet. A goal makes chores matter.",
-                    "link", "Add goal", f"/goals?kid={kid.id}",
+                    "link",
+                    "Add goal",
+                    f"/goals?kid={kid.id}",
                 )
             )
             continue
@@ -216,12 +222,17 @@ def goal_missing(db: Session, now: datetime) -> list[dict]:
             g = stalled[0]
             out.append(
                 _s(
-                    "goal.missing", kid.id, KID, f"stalled:{g.id}",
+                    "goal.missing",
+                    kid.id,
+                    KID,
+                    f"stalled:{g.id}",
                     g.created_at + timedelta(days=GOAL_IDLE_DAYS),
                     f"{g.name} has stalled",
                     f"{_name(kid)} hasn't added to {g.name} in {GOAL_IDLE_DAYS} days. "
                     "Refresh it or set a new goal.",
-                    "link", "Add goal", f"/goals?kid={kid.id}",
+                    "link",
+                    "Add goal",
+                    f"/goals?kid={kid.id}",
                 )
             )
     return out
@@ -236,11 +247,17 @@ def family_parent(db: Session, now: datetime) -> list[dict]:
         return []
     return [
         _s(
-            "family.parent", None, GROWTH, "1", since + timedelta(days=SETUP_DAYS),
+            "family.parent",
+            None,
+            GROWTH,
+            "1",
+            since + timedelta(days=SETUP_DAYS),
             "Invite another parent",
             "Only one parent can approve chores right now. Invite a second so "
             "approvals don't wait on one phone.",
-            "link", "Invite parent", "/settings",
+            "link",
+            "Invite parent",
+            "/settings",
         )
     ]
 
@@ -253,12 +270,18 @@ def devices_unknown(db: Session, now: datetime) -> list[dict]:
     names = ", ".join(d.name for d in devs[:2]) + more
     return [
         _s(
-            "devices.unknown", None, SYSTEM, f"{len(devs)}:{devs[-1].id}",
+            "devices.unknown",
+            None,
+            SYSTEM,
+            f"{len(devs)}:{devs[-1].id}",
             max(d.first_seen or now for d in devs),
             "New devices on your network",
-            f"{names} joined and isn't assigned to anyone yet." if len(devs) == 1
+            f"{names} joined and isn't assigned to anyone yet."
+            if len(devs) == 1
             else f"{names} joined and aren't assigned to anyone yet.",
-            "link", "Who's this?", "/devices",
+            "link",
+            "Who's this?",
+            "/devices",
         )
     ]
 
@@ -276,11 +299,17 @@ def feature_homework(db: Session, now: datetime) -> list[dict]:
         if titles:
             out.append(
                 _s(
-                    "feature.homework", kid.id, GROWTH, "unused", now,
+                    "feature.homework",
+                    kid.id,
+                    GROWTH,
+                    "unused",
+                    now,
                     "Try homework mode",
                     f"{_name(kid)} has {titles[0]} on the list. Homework mode opens only "
                     "the sites school needs, for tonight.",
-                    "link", "Open homework", "/homework",
+                    "link",
+                    "Open homework",
+                    "/homework",
                 )
             )
     return out

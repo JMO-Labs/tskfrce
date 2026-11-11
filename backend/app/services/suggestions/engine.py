@@ -43,9 +43,7 @@ def suggestions(db: Session, now: datetime | None = None) -> dict:
     for rule, fn in RULES.items():
         if rule in muted:
             continue
-        found += [
-            s for s in fn(db, now) if dismissed.get(s["key"], None) != s["fingerprint"]
-        ]
+        found += [s for s in fn(db, now) if dismissed.get(s["key"], None) != s["fingerprint"]]
     found.sort(key=lambda s: s["at"], reverse=True)
     found.sort(key=lambda s: s["tier"])
     items = [{**s, "at": s["at"].isoformat() + "Z"} for s in found[:MAX_SHOWN]]
