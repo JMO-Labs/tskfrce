@@ -22,12 +22,18 @@ log = logging.getLogger(__name__)
 
 
 def detect_iface_gateway(iface: str) -> LanFacts:
-    """Detect gateway for a specific interface using ARP."""
+    """Detect IPv4 and IPv6 gateways for a specific interface."""
     import subprocess
 
     from blocker.scapy_lite import ARP, Ether, get_if_hwaddr, srp
 
-    # Get default gateway IP for this interface
+    box_mac = get_if_hwaddr(iface)
+    gateway_ip = None
+    gateway_mac = None
+    gateway_ip6 = None
+    gateway_mac6 = None
+
+    # IPv4: Get default gateway IP for this interface
     try:
         result = subprocess.run(
             ["ip", "-4", "route", "show", "default", "dev", iface],
@@ -36,29 +42,63 @@ def detect_iface_gateway(iface: str) -> LanFacts:
             timeout=5,
         )
         lines = result.stdout.strip().split("\n")
-        if not lines or not lines[0]:
-            log.warning("no default route on %s", iface)
-            return LanFacts(gateway_ip=None, gateway_mac=None, box_mac=get_if_hwaddr(iface))
-        gateway_ip = lines[0].split()[2]  # "default via <ip> dev <iface>"
+        if lines and lines[0]:
+            gateway_ip = lines[0].split()[2]  # "default via <ip> dev <iface>"
     except Exception:
-        log.exception("failed to detect gateway on %s", iface)
-        return LanFacts(gateway_ip=None, gateway_mac=None, box_mac=get_if_hwaddr(iface))
+        log.exception("failed to detect IPv4 gateway on %s", iface)
 
-    # Resolve gateway MAC via ARP
+    # IPv4: Resolve gateway MAC via ARP
+    if gateway_ip:
+        try:
+            ans, _ = srp(
+                Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=gateway_ip),
+                iface=iface,
+                timeout=2,
+                retry=1,
+                verbose=0,
+            )
+            gateway_mac = ans[0][1][ARP].hwsrc.lower() if ans else None
+        except Exception:
+            log.exception("ARP failed on %s for %s", iface, gateway_ip)
+
+    # IPv6: Get default gateway IP for this interface
     try:
-        ans, _ = srp(
-            Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=gateway_ip),
-            iface=iface,
-            timeout=2,
-            retry=1,
-            verbose=0,
+        result = subprocess.run(
+            ["ip", "-6", "route", "show", "default", "dev", iface],
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
-        gw_mac = ans[0][1][ARP].hwsrc.lower() if ans else None
+        lines = result.stdout.strip().split("\n")
+        if lines and lines[0]:
+            gateway_ip6 = lines[0].split()[2]  # "default via <ip6> dev <iface>"
     except Exception:
-        log.exception("ARP failed on %s for %s", iface, gateway_ip)
-        gw_mac = None
+        log.exception("failed to detect IPv6 gateway on %s", iface)
 
-    return LanFacts(gateway_ip=gateway_ip, gateway_mac=gw_mac, box_mac=get_if_hwaddr(iface))
+    # IPv6: Resolve gateway MAC via Neighbor Discovery (ICMPv6)
+    if gateway_ip6:
+        try:
+            from blocker.scapy_lite import IPv6, ICMPv6ND_NS, ICMPv6NDOptSrcLLAddr
+
+            ans, _ = srp(
+                Ether(dst="ff:ff:ff:ff:ff:ff") / IPv6(dst=gateway_ip6) / ICMPv6ND_NS(tgt=gateway_ip6),
+                iface=iface,
+                timeout=2,
+                retry=1,
+                verbose=0,
+            )
+            if ans:
+                gateway_mac6 = ans[0][1][Ether].src.lower()
+        except Exception:
+            log.exception("IPv6 ND failed on %s for %s", iface, gateway_ip6)
+
+    return LanFacts(
+        gateway_ip=gateway_ip,
+        gateway_mac=gateway_mac,
+        box_mac=box_mac,
+        gateway_ip6=gateway_ip6,
+        gateway_mac6=gateway_mac6,
+    )
 
 
 class InterfaceManager:
@@ -193,3 +233,20 @@ class InterfaceManager:
                 except Exception:
                     log.exception("infra check failed on interface")
             return macs, ips
+
+    def networks(self) -> list[dict]:
+        """Return detected networks: [{"iface": str, "gateway_ip": str, "auto_label": str}]."""
+        with self._lock:
+            nets = []
+            for iface, (_, redir, _) in self._managers.items():
+                try:
+                    lan = redir._lanfacts()
+                    if lan.gateway_ip:
+                        nets.append({
+                            "iface": iface,
+                            "gateway_ip": lan.gateway_ip,
+                            "auto_label": f"Network on {iface}",
+                        })
+                except Exception:
+                    log.exception("network collection failed on interface")
+            return nets

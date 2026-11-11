@@ -21,6 +21,7 @@ from blocker.backend import (
     fetch_state,
     report_hits,
     report_homework_activity,
+    report_networks,
     report_resisting,
     report_workarounds,
 )
@@ -226,18 +227,21 @@ class Service:
         return base, by_vid
 
     def _by_iface(self, devs: dict[str, TargetAddrs], unsafe: set[str]):
-        """Split targets per interface. Like _by_segment but for interfaces (multi-interface mode)."""
+        """Split targets per interface."""
         now = self._clock()
         by_iface: dict[str, dict[str, TargetAddrs]] = {}
         for m, latest in devs.items():
             last_iface = self._iface_of.get(m)
-            ifaces = {
-                iface: a
-                for (mac, iface), (a, at) in self._iface_seen.items()
-                if mac == m and iface is not None and now - at <= ADDR_TTL
-            }
+            ifaces = {iface: a for (mac, iface), (a, at) in self._iface_seen.items()
+                     if mac == m and iface is not None and now - at <= ADDR_TTL}
             if last_iface is not None:
                 ifaces[last_iface] = latest
+            elif not ifaces:
+                try:
+                    for iface in {i for i, _ in lan_addrs()}:
+                        ifaces[iface] = latest
+                except Exception:
+                    pass
             for iface, a in ifaces.items():
                 if iface != last_iface:
                     a = self._strip_unsafe({m: a}, unsafe)[0][m]
@@ -365,6 +369,8 @@ class Service:
         w = self.workarounds.drain()
         if w:
             self._report_workarounds(self.cfg, w)
+        if not self.cfg.lan_iface and (nets := self._multinet.networks()):
+            report_networks(self.cfg, nets)
 
     def _resist_loop(self) -> None:
         while not self._stop.wait(self.cfg.resist_interval):
