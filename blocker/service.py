@@ -14,7 +14,7 @@ from collections.abc import Callable
 from dataclasses import replace
 
 from blocker import firewall as fw
-from blocker.api import make_api, make_api_multi
+from blocker.api import make_api
 from blocker.arp import RedirectionManager, TargetAddrs
 from blocker.backend import (
     Seen,
@@ -396,53 +396,62 @@ class Service:
     def _start_api_multi(self, hosts: list[str], port: int) -> None:
         """Start API servers for multiple bind hosts with retry logic for non-loopback addresses.
 
-        Retries binding to non-loopback addresses with exponential backoff if they fail
-        (e.g., waiting for the bridge interface to be created), but other addresses
-        start immediately without retry.
+        Loopback addresses start immediately; non-loopback addresses retry with exponential
+        backoff if they fail (e.g., waiting for the bridge interface). Each host gets its
+        own retry thread and is never rebound once listening.
+        """
+        loopback_hosts = [h for h in hosts if h in ("127.0.0.1", "::1")]
+        bridge_hosts = [h for h in hosts if h not in ("127.0.0.1", "::1")]
+
+        # Start loopback immediately (must work or fail fast)
+        for host in loopback_hosts:
+            try:
+                server = make_api(
+                    self.store,
+                    self.cfg.internal_token,
+                    self.test_block,
+                    host,
+                    port,
+                )
+                self._api_servers.append(server)
+                self._spawn(server.serve_forever)
+                log.info("API server started on loopback %s:%d", host, server.server_address[1])
+            except OSError:
+                log.exception("failed to bind API to loopback %s; stopping service", host)
+                self._stop.set()
+                return
+
+        # Retry non-loopback hosts with individual backoff threads
+        for host in bridge_hosts:
+            self._spawn(lambda h=host, p=port: self._retry_api_bind(h, p))
+
+    def _retry_api_bind(self, host: str, port: int) -> None:
+        """Retry binding to a single non-loopback host with exponential backoff.
+
+        Runs in a daemon thread; gives up if service stops.
         """
         backoff = 0.1  # start with 100ms
         max_backoff = 30.0  # cap at 30s between retries
 
         while True:
-            servers = []
-            failed_hosts = []
-
-            for host in hosts:
-                try:
-                    server = make_api(
-                        self.store,
-                        self.cfg.internal_token,
-                        self.test_block,
-                        host,
-                        port,
-                    )
-                    servers.append(server)
-                    if host != "127.0.0.1" and host != "::1":
-                        log.info("bound API to %s:%d", host, server.server_address[1])
-                except OSError as e:
-                    if host in ("127.0.0.1", "::1"):
-                        # Loopback must work; don't retry
-                        log.exception("failed to bind API to loopback %s:%d", host, port)
-                        raise
-                    # Non-loopback: might not exist yet (bridge IP before bridge is up)
-                    failed_hosts.append(host)
-                    log.warning("failed to bind API to %s (will retry): %s", host, e)
-
-            if not failed_hosts:
-                # All hosts bound successfully
-                self._api_servers = servers
-                for server in servers:
-                    self._spawn(server.serve_forever)
-                log.info("API servers started on %d listeners", len(servers))
+            try:
+                server = make_api(
+                    self.store,
+                    self.cfg.internal_token,
+                    self.test_block,
+                    host,
+                    port,
+                )
+                self._api_servers.append(server)
+                self._spawn(server.serve_forever)
+                log.info("API server started on bridge %s:%d (after retry)", host, server.server_address[1])
                 return
-
-            # Some non-loopback hosts failed; sleep and retry
-            log.info("retrying failed hosts %s in %.1fs", failed_hosts, backoff)
-            if self._stop.wait(backoff):
-                # Service is stopping; don't retry
-                log.info("service stopping, abandoning API startup")
-                return
-            backoff = min(backoff * 1.5, max_backoff)
+            except OSError as e:
+                log.warning("failed to bind API to %s (will retry in %.1fs): %s", host, backoff, e)
+                if self._stop.wait(backoff):
+                    log.info("service stopping, giving up on %s", host)
+                    return
+                backoff = min(backoff * 1.5, max_backoff)
 
     def run(self) -> None:
         self.start()

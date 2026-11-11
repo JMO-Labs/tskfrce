@@ -86,35 +86,35 @@ def test_no_service_has_ntfy_upstream():
         assert "NTFY_UPSTREAM" not in (svc.get("environment") or {}), name
 
 
-def test_prod_backend_blocker_url_uses_bridge_gateway():
-    """Backend BLOCKER_URL must point to the bridge gateway, not 127.0.0.1."""
+def test_prod_backend_blocker_url_uses_bridge_not_loopback():
+    """Backend BLOCKER_URL must use the bridge gateway, never loopback or 0.0.0.0."""
     env = yaml.safe_load(PROD.read_text())["services"]["backend"]["environment"]
     assert "BLOCKER_URL" in env
     blocker_url = env["BLOCKER_URL"]
-    # Should use the bridge gateway variable, not hardcoded loopback
-    assert "172.29.50.1" in blocker_url or "TASK4CE_BRIDGE_GW" in blocker_url
-    assert "127.0.0.1" not in blocker_url
+    # Should derive the bridge gateway from TASK4CE_BRIDGE_GW or default to 172.29.50.1
+    assert "127.0.0.1" not in blocker_url and "0.0.0.0" not in blocker_url
+    assert "TASK4CE_BRIDGE_GW" in blocker_url or "172.29.50.1" in blocker_url
 
 
-def test_prod_blocker_bind_includes_both_loopback_and_bridge():
+def test_prod_blocker_bind_includes_loopback_and_bridge():
     """Blocker BLOCKER_BIND must listen on both loopback and the bridge gateway."""
     env = yaml.safe_load(PROD.read_text())["services"]["blocker"]["environment"]
     assert "BLOCKER_BIND" in env
     blocker_bind = env["BLOCKER_BIND"]
-    # Should include both 127.0.0.1 and the bridge gateway
+    # Should include both 127.0.0.1 and the bridge gateway (via TASK4CE_BRIDGE_GW)
     assert "127.0.0.1" in blocker_bind
-    assert ("172.29.50.1" in blocker_bind or "TASK4CE_BRIDGE_GW" in blocker_bind)
+    assert "TASK4CE_BRIDGE_GW" in blocker_bind or "172.29.50.1" in blocker_bind
 
 
-def test_prod_network_pins_gateway():
-    """The task4ce network should pin the gateway IP in IPAM config."""
-    networks = yaml.safe_load(PROD.read_text())["networks"]
-    assert "task4ce" in networks
-    task4ce_net = networks["task4ce"]
-    assert "ipam" in task4ce_net
-    assert "config" in task4ce_net["ipam"]
-    ipam_config = task4ce_net["ipam"]["config"][0]
-    assert "gateway" in ipam_config
-    gateway = ipam_config["gateway"]
-    # Gateway should be set to the bridge gateway
-    assert "172.29.50.1" in gateway or "TASK4CE_BRIDGE_GW" in gateway
+def test_prod_blocker_url_and_bind_match():
+    """The backend BLOCKER_URL host must be in the blocker's BLOCKER_BIND list."""
+    svcs = yaml.safe_load(PROD.read_text())["services"]
+    blocker_url = svcs["backend"]["environment"]["BLOCKER_URL"]
+    blocker_bind = svcs["blocker"]["environment"]["BLOCKER_BIND"]
+    # Both should use the same variable or value for the bridge IP
+    # blocker_bind should contain all hosts that blocker_url might use
+    assert "127.0.0.1" in blocker_bind  # Always have loopback
+    # Bridge IP should be in both (same var or same value)
+    assert ("TASK4CE_BRIDGE_GW" in blocker_url and "TASK4CE_BRIDGE_GW" in blocker_bind) or (
+        "172.29.50.1" in blocker_url and "172.29.50.1" in blocker_bind
+    )

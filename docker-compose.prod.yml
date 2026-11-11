@@ -153,4 +153,3 @@ networks:
     ipam:
       config:
         - subnet: ${TASK4CE_SUBNET:-172.29.50.0/24}
-          gateway: ${TASK4CE_BRIDGE_GW:-172.29.50.1}
