@@ -13,6 +13,7 @@ export interface KidBody {
   celebrate?: CelebrateLevel | null
   trust_mode?: boolean
   trust_level?: 0 | 1 | 2
+  chores_lock?: boolean
 }
 
 export const useKids = (enabled = true) => useQuery({ queryKey: ['kids'], queryFn: () => api<Kid[]>('/kids'), enabled })

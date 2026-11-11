@@ -12,6 +12,10 @@ import { Icon } from '@/v2/parent/Icon'
 import { FocusArea, SummaryRow } from '@/v2/parent/SummaryRow'
 import { useFocusParam } from '@/v2/parent/useFocusParam'
 import { useSaveQueue } from '@/v2/hooks/useSaveQueue'
+import { STYLE_LABEL } from '@/v2/presets/format'
+import { PresetSwitch } from '@/v2/presets/PresetSwitch'
+import { usePresets } from '@/v2/presets/usePresets'
+import { PenaltiesBody, penaltiesLine } from './PenaltiesBody'
 import { BedtimeBody, bedtimeLine, HouseholdBody, householdLine, PointsBody, pointsLine, type SaveFamily } from './FamilyRows'
 
 type Fields = Family & { giphy_api_key?: string }
@@ -70,7 +74,7 @@ const Switchy = ({ label, checked, onChange }: { label: string; checked: boolean
   </div>
 )
 
-const ROWS = ['hh', 'bed', 'pts']
+const ROWS = ['style', 'hh', 'bed', 'pts', 'pen']
 const ico = (name: string) => <Icon name={name} size={18} />
 
 /** Settings › Family: calm rows; every change saves as it is made (pairs once complete). */
@@ -80,11 +84,15 @@ export function FamilyCard({ fam }: { fam: Family }) {
   const queue = useSaveQueue()
   const qc = useQueryClient()
   const save: SaveFamily = (p) => queue(() => patch.mutateAsync(typeof p === 'function' ? p(qc.getQueryData<Family>(['family']) ?? fam) : p))
+  const style = usePresets().data?.style
   const line = (id: string, t: string) => (focus.isOpen(id) ? undefined : t) // the open row shows its form instead
   return (
     <section aria-label="Family" className="pn fam-rows">
       <DetailHeader media={<span className="pk-tile pk-tile-lg"><Icon name="home" size={26} /></span>} title="Family" sub="The basics for your household." />
       <FocusArea focus={focus} label="Family settings" grouped>
+        <SummaryRow id="style" icon={ico('tune')} title="Style" summary="" line2={line('style', STYLE_LABEL[style ?? 'balanced'])} focus={focus}>
+          <PresetSwitch />
+        </SummaryRow>
         <SummaryRow id="hh" icon={ico('home')} title="Household" summary="" line2={line("hh", householdLine(fam))} focus={focus}>
           <HouseholdBody fam={fam} save={save} />
         </SummaryRow>
@@ -93,6 +101,9 @@ export function FamilyCard({ fam }: { fam: Family }) {
         </SummaryRow>
         <SummaryRow id="pts" icon={ico('stars')} title="Points rules" summary="" line2={line("pts", pointsLine(fam))} focus={focus}>
           <PointsBody fam={fam} save={save} />
+        </SummaryRow>
+        <SummaryRow id="pen" icon={ico('warning')} title="Penalties" summary="" line2={line("pen", penaltiesLine(fam))} focus={focus}>
+          <PenaltiesBody fam={fam} save={save} />
         </SummaryRow>
       </FocusArea>
     </section>

@@ -9,11 +9,10 @@ const STEPS = [
   { num: 1, title: 'Welcome' },
   { num: 2, title: 'Family' },
   { num: 3, title: 'Kids' },
-  { num: 4, title: "Kids' phones", short: 'Phones', opt: true },
-  { num: 5, title: 'Chores' },
-  { num: 6, title: 'Devices' },
-  { num: 7, title: 'Hours' },
-  { num: 8, title: 'Optional extras', short: 'Extras', opt: true },
+  { num: 4, title: 'How strict', short: 'Style' },
+  { num: 5, title: 'Your plan', short: 'Plan' },
+  { num: 6, title: "Kids' phones", short: 'Phones', opt: true },
+  { num: 7, title: 'Devices' },
 ]
 
 interface Props {
@@ -31,10 +30,12 @@ interface Props {
   note?: string
   /** the finished screen: accent icon tile above the title, and no Back/Next row (its own buttons lead on) */
   done?: boolean
+  /** the step body has its own submit button */
+  hideNext?: boolean
 }
 
 export function WizardFrame({
-  step, children, title, subtitle, onBack, onNext, nextLabel = 'Next', onSkip, onStepClick, busy, done, note
+  step, children, title, subtitle, onBack, onNext, nextLabel = 'Next', onSkip, onStepClick, busy, done, note, hideNext
 }: Props) {
   useLook('parent')
   const phone = useMediaQuery('(max-width: 767px)') // phone: dots and ticks, plus the current label only
@@ -44,7 +45,7 @@ export function WizardFrame({
 
   return (
     <div className={styles.page}>
-      {/* top bar: wordmark and the 8 steps (mockup declutter-v2 .wiz) */}
+      {/* top bar: wordmark and the 7 steps (mockup declutter-v2 .wiz) */}
       <header className={styles.wiz}>
         <div className={styles.wm}>
           <i>@</i>
@@ -123,9 +124,9 @@ export function WizardFrame({
                   Skip
                 </Button>
               )}
-              <Button type="submit" variant="filled" loading={busy} rightSection={<span className="ms" aria-hidden="true">{nextLabel === 'Finish' ? 'check' : 'chevron_right'}</span>}>
+              {!hideNext && <Button type="submit" variant="filled" loading={busy} rightSection={<span className="ms" aria-hidden="true">{nextLabel === 'Finish' ? 'check' : 'chevron_right'}</span>}>
                 {nextLabel}
-              </Button>
+              </Button>}
             </div>
           </div>
         )}

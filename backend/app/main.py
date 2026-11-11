@@ -53,6 +53,8 @@ from app.api.kids import router as kids_router
 from app.api.network import router as network_router
 from app.api.notify import router as notify_router
 from app.api.password_reset import router as password_reset_router
+from app.api.penalties import router as penalties_router
+from app.api.presets import router as presets_router
 from app.api.recap import router as recap_router
 from app.api.rewards import redemptions_router
 from app.api.rewards import router as rewards_router
@@ -180,6 +182,7 @@ fastapi_app.include_router(notify_router)
 fastapi_app.include_router(rewards_router)
 fastapi_app.include_router(goals_router)
 fastapi_app.include_router(screen_time_router)
+fastapi_app.include_router(presets_router)
 fastapi_app.include_router(happy_hour_router)
 fastapi_app.include_router(badges_router)
 fastapi_app.include_router(badges_overview_router)
@@ -191,6 +194,7 @@ fastapi_app.include_router(integrations_router)
 fastapi_app.include_router(integration_widgets_router)
 fastapi_app.include_router(integration_local_router)
 fastapi_app.include_router(homework_router)
+fastapi_app.include_router(penalties_router)
 
 # Create the final app with ASGI middleware
 app = MetricsMiddleware(fastapi_app)
