@@ -7,7 +7,7 @@ import { WeekCard } from './WeekCard'
 export function TodayInsights() {
   const { data } = useInsights()
   const kids = useKids().data
-  if (!data) return null
+  if (!data || !Array.isArray(data.goals) || !data.week) return null
   const list = (Array.isArray(kids) ? kids : []).map((k) => ({ id: k.id, name: k.full_name ?? k.username ?? null }))
   return (
     <div className="pi-band">

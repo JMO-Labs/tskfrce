@@ -1,4 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { TodayInsights } from '../../src/v2/today/TodayInsights'
 import { GoalsCard } from '../../src/v2/today/GoalsCard'
 import { WeekCard } from '../../src/v2/today/WeekCard'
 import type { InsightGoal, InsightWeek } from '../../src/v2/today/insightsTypes'
@@ -89,5 +91,18 @@ describe('WeekCard', () => {
   it('omits the delta when there is no previous week', () => {
     render(<WeekCard week={{ ...week, delta: null }} />)
     expect(screen.queryByText(/vs last week/)).not.toBeInTheDocument()
+  })
+})
+
+describe('TodayInsights', () => {
+  it('renders nothing when the insights payload is malformed', () => {
+    const qc = new QueryClient()
+    qc.setQueryData(['today-insights'], {})
+    const { container } = render(
+      <QueryClientProvider client={qc}>
+        <TodayInsights />
+      </QueryClientProvider>,
+    )
+    expect(container).toBeEmptyDOMElement()
   })
 })
