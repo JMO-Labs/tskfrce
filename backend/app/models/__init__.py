@@ -14,6 +14,7 @@ from .family import FamilySettings, get_family
 from .flair import KidFlair
 from .goal import Goal, GoalAuto, GoalContribution, GoalParty
 from .happy_hour import HappyHour
+from .homework import HomeworkActivity, HomeworkRequest, HomeworkSite
 from .hours import HourRule, HourRuleTarget, HourRuleTime
 from .inbox import Notification
 from .integration import (
@@ -59,6 +60,9 @@ __all__ = [
     "ChoreRun",
     "RunStepTick",
     "ChoreSeen",
+    "HomeworkActivity",
+    "HomeworkRequest",
+    "HomeworkSite",
     "PendingInvite",
     "UsedInvite",
     "User",

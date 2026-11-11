@@ -8,13 +8,50 @@ the LAN.
 
 from __future__ import annotations
 
+import ipaddress
 import logging
+import re
 import subprocess
+from collections.abc import Iterable, Mapping
 
 log = logging.getLogger(__name__)
 
 TABLE = "task4ce"
 DNS_PORT = 53
+
+
+_MAC = re.compile(r"^([0-9a-f]{2}:){5}[0-9a-f]{2}$")
+HW_DEFAULT_SECS = 300  # element timeout when a caller passes bare pairs
+
+
+def _ip4(ip: str) -> bool:
+    try:
+        return str(ipaddress.IPv4Address(ip)) == ip
+    except ValueError:
+        return False
+
+
+def _hw_elems(pairs: Mapping | Iterable, out: bool) -> list[str]:
+    """`a . b timeout Ns` elements for validated pairs; anything malformed is dropped.
+
+    pairs: {(a, b): seconds} or bare (a, b) tuples. The timeout makes nft expire an
+    element on its own, so a pair never outlives the gate even if no re-render happens.
+    """
+    items = pairs.items() if isinstance(pairs, Mapping) else ((p, None) for p in pairs)
+    elems = []
+    for (a, b), secs in items:
+        ok = (_MAC.match(a) if out else _ip4(a)) and _ip4(b)
+        if not ok:
+            log.warning("dropping malformed homework pair %r", (a, b))
+            continue
+        t = max(1, int(secs)) if secs is not None else HW_DEFAULT_SECS
+        elems.append(f"{a} . {b} timeout {t}s")
+    return sorted(elems)
+
+
+def _hw_set_decl(name: str, typ: str, elems: list[str]) -> str:
+    body = f" elements = {{ {', '.join(elems)} }}" if elems else ""
+    return f"  set {name} {{ type {typ}; flags timeout;{body} }}"
 
 
 def _set_decl(name: str, typ: str, elements: set[str]) -> str:
@@ -32,6 +69,8 @@ def render_ruleset(
     lan_cidrs: list[str],
     portal_ip: str,
     portal_port: int,
+    hw_out: Mapping | Iterable = frozenset(),
+    hw_back: Mapping | Iterable = frozenset(),
 ) -> str:
     """Build the `table inet task4ce` text. Empty sets => matches nothing (noop-safe).
 
@@ -41,10 +80,15 @@ def render_ruleset(
     """
     v4_lan = [c for c in lan_cidrs if ":" not in c]
     v6_lan = [c for c in lan_cidrs if ":" in c]
-    lines = [f"add table inet {TABLE}", f"flush table inet {TABLE}", f"table inet {TABLE} {{"]
+    # delete (not flush) inside the same atomic batch: a set whose declaration changed
+    # (e.g. gained `flags timeout`) would otherwise fail the WHOLE load with EEXIST.
+    lines = [f"add table inet {TABLE}", f"delete table inet {TABLE}", f"table inet {TABLE} {{"]
     lines.append(_set_decl("blocked_v4", "ipv4_addr", blocked_v4))
     lines.append(_set_decl("blocked_v6", "ipv6_addr", blocked_v6))
     lines.append(_set_decl("blocked_mac", "ether_addr", blocked_mac))
+    # Homework mode pairs: (MAC, remote IP) and (remote IP, device IP)
+    lines.append(_hw_set_decl("hw_out", "ether_addr . ipv4_addr", _hw_elems(hw_out, out=True)))
+    lines.append(_hw_set_decl("hw_back", "ipv4_addr . ipv4_addr", _hw_elems(hw_back, out=False)))
     # Redirect blocked HTTP/DNS to the captive portal; HTTPS can't be portal-ed, so drop it.
     # Portal redirect needs a valid box IP. Without one, omit the dnat rules
     # entirely (an invalid target would make `nft -f` reject the WHOLE ruleset,
@@ -55,10 +99,15 @@ def render_ruleset(
     if portal_ip:
         lines.append(f"    ip saddr @blocked_v4 udp dport 53 dnat ip to {portal_ip}:{DNS_PORT}")
         lines.append(f"    ip saddr @blocked_v4 tcp dport 53 dnat ip to {portal_ip}:{DNS_PORT}")
+        # Homework: HTTP to an allowed IP goes through (DNS stays on the portal resolver)
+        lines.append("    ether saddr . ip daddr @hw_out tcp dport 80 return")
         lines.append(f"    ip saddr @blocked_v4 tcp dport 80 dnat ip to {portal_ip}:{portal_port}")
     lines.append("  }")
     lines.append("  chain forward {")
     lines.append("    type filter hook forward priority 0; policy accept;")
+    # Homework mode accepts: these must come BEFORE the drop rules
+    lines.append("    ether saddr . ip daddr @hw_out accept")
+    lines.append("    ip saddr . ip daddr @hw_back accept")
     if v4_lan:
         lines.append(f"    ether saddr @blocked_mac ip daddr {{ {', '.join(v4_lan)} }} accept")
         lines.append(f"    ip saddr @blocked_v4 ip daddr {{ {', '.join(v4_lan)} }} accept")
@@ -108,3 +157,55 @@ def enable_forwarding() -> None:
                 f.write("1\n")
         except OSError as e:
             log.warning("could not enable forwarding at %s: %s", path, e)
+
+
+def add_pairs(out: Mapping | Iterable, back: Mapping | Iterable) -> None:
+    """Add or refresh homework pairs ({pair: seconds} or bare pairs) in one nft batch.
+
+    `add; delete; add timeout` per element replaces an existing element's timeout
+    atomically (a plain add would keep the old, shorter one). Raises on nft failure.
+    """
+    lines = []
+    for name, elems in (
+        ("hw_out", _hw_elems(out, out=True)),
+        ("hw_back", _hw_elems(back, out=False)),
+    ):
+        for e in elems:
+            key = e.rsplit(" timeout ", 1)[0]
+            lines.append(f"add element inet {TABLE} {name} {{ {key} }}")
+            lines.append(f"delete element inet {TABLE} {name} {{ {key} }}")
+            lines.append(f"add element inet {TABLE} {name} {{ {e} }}")
+    if lines:
+        subprocess.run(["nft", "-f", "-"], input="\n".join(lines).encode(), check=True)
+
+
+def _conntrack_delete(*args: str) -> None:
+    try:
+        subprocess.run(["conntrack", "-D", *args], check=True, capture_output=True)
+    except subprocess.CalledProcessError as e:
+        if e.returncode != 1:  # 1 = no matching flows
+            raise
+
+
+def kill_conntrack(ips: set[str], device_ip: str | None = None) -> None:
+    """Drop a device's tracked flows: to/from `ips` only, or all of them if `ips` is empty.
+
+    Every deletion is scoped to the device so other LAN hosts' flows to a shared remote IP
+    survive. Unknown or invalid device IP -> nothing is deleted.
+    """
+    if not device_ip or not _ip4(device_ip):
+        if ips:
+            log.warning("homework cut skipped: device IP unknown")
+        return
+    try:
+        if not ips:
+            _conntrack_delete("-s", device_ip)
+            return
+        for ip in sorted(ips):
+            if not _ip4(ip):
+                log.warning("skipping invalid conntrack IP %r", ip)
+                continue
+            _conntrack_delete("-s", device_ip, "-d", ip)
+            _conntrack_delete("-s", ip, "-d", device_ip)
+    except FileNotFoundError:
+        log.warning("conntrack binary not found")

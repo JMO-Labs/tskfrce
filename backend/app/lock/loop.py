@@ -8,7 +8,7 @@ from sqlalchemy.exc import OperationalError
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.logging import get_logger
-from app.lock.blocker_client import push_blocked
+from app.lock.blocker_client import push_state
 from app.lock.state import tick
 from app.services import kid_alerts, notify_jobs
 
@@ -34,8 +34,8 @@ def _run_once() -> None:
     db = SessionLocal()
     try:
         now = datetime.now(UTC)
-        blocked = tick(db, now)
-        push_blocked(blocked)
+        blocked, homework = tick(db, now)
+        push_state(blocked, homework)
         try:
             kid_alerts.scan(db, now)
         except Exception as exc:

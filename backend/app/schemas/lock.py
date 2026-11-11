@@ -30,7 +30,7 @@ def _pin(v: str | None) -> str | None:
 
 
 class OverrideIn(BaseModel):
-    action: Literal["lock", "unlock"]
+    action: Literal["lock", "unlock", "homework"]
     minutes: int | None = Field(default=None, ge=1, le=1440)
 
 

@@ -243,3 +243,37 @@ def test_dated_rule_ended_yesterday_does_not_lock():
     r = resolve([ended], {1}, set(), date(2026, 12, 25))
     assert r.allowed_sets == ()
     assert not blocked_at(r, datetime(2026, 12, 25, 12, 0))
+
+
+def test_next_transition_bedtime():
+    """Test next_transition finds bedtime (transition from allowed to off window)."""
+    # Allowed 15:00-20:00, now 19:30 -> should transition at 20:00
+    allowed_sets = ((w("15:00", "20:00", ALL),),)
+    off = ()
+    now = datetime(2026, 12, 25, 19, 30, 0)
+    result = hours.next_transition(allowed_sets, off, now)
+    assert result is not None
+    assert result == datetime(2026, 12, 25, 20, 0, 0)
+
+
+def test_next_transition_off_window_start():
+    """Test next_transition finds off window start."""
+    # Off window 21:00-07:00, now 20:30 -> should transition at 21:00
+    allowed_sets = ((w("08:00", "21:00", ALL),),)
+    off = (w("21:00", "07:00", ALL),)
+    now = datetime(2026, 12, 25, 20, 30, 0)
+    result = hours.next_transition(allowed_sets, off, now)
+    assert result is not None
+    assert result == datetime(2026, 12, 25, 21, 0, 0)
+
+
+def test_next_transition_none_within_24h():
+    """Test next_transition returns None when no transition within 24h."""
+    # Allowed all day (00:00 to 24:00 effectively), off never, always allowed
+    # This is represented as an empty allowed_sets (unrestricted) or a 00:00-00:00 window
+    # For the test, we use empty allowed_sets and empty off
+    allowed_sets = ()
+    off = ()
+    now = datetime(2026, 12, 25, 12, 0, 0)
+    result = hours.next_transition(allowed_sets, off, now)
+    assert result is None

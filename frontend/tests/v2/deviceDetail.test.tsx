@@ -89,14 +89,18 @@ describe('device detail, calm', () => {
     expect(fakeRouter.query.open).toBe('activity')
   })
 
-  test('the menu has Test block, Rename, Delete; Back to schedule only with an override', async () => {
+  test('the menu has Test block, Rename, Delete; Back to schedule and homework only when locked', async () => {
     const { unmount } = show(dev())
     await userEvent.click(screen.getByRole('button', { name: 'More' }))
     expect(await labels()).toEqual(['Test block', 'Rename', 'Delete'])
     unmount()
     show(dev({ override: { action: 'lock', expires_at: null } as Device['override'] }))
     await userEvent.click(screen.getByRole('button', { name: 'More' }))
-    expect(await labels()).toEqual(['Test block', 'Rename', 'Back to schedule', 'Delete'])
+    expect(await labels()).toEqual([
+      'Test block', 'Rename', 'Back to schedule',
+      'Homework 30 min', 'Homework 1 hour', 'Homework 90 min', 'Homework 2 hours',
+      'Delete',
+    ])
   })
 
   test('Rename opens Details and focuses Name', async () => {

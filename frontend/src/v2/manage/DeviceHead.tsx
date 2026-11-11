@@ -8,6 +8,7 @@ import { Icon } from '@/v2/parent/Icon'
 import type { Device, Override } from '@/v2/types'
 import { ActionButton } from './ActionButton'
 import { DEVICE_TYPE_ICON, getDeviceType } from './deviceMeta'
+import { homeworkItems } from './homeworkMenu'
 import { toastFail, toastOk } from '../notify'
 
 interface Props {
@@ -19,7 +20,7 @@ interface Props {
   /** a new device stays online until assigned, unless strict mode is on */
   blockNew: boolean
   pendingAction: string | null
-  onOverride: (action: string) => void
+  onOverride: (action: string, minutes?: number) => void
   onActivity: () => void
   onRename: () => void
   onDelete: () => void
@@ -29,12 +30,22 @@ const popBtn = (icon: string, label: string, onClick: () => void) => (
   <button type="button" className="p-mi ch-edit" onClick={onClick}><Icon name={icon} size={16} />{label}</button>
 )
 
-/** The "…" menu: Test block (says Testing… and is off while it runs), Rename, Back to schedule (override only), Delete. */
-export function deviceMenu(o: { testing: boolean; hasOverride: boolean; onTest: () => void; onRename: () => void; onSchedule: () => void; onDelete: () => void }): MenuItem[] {
+/** The "…" menu: Test block (says Testing… and is off while it runs), Rename, Back to schedule (override only),
+ *  homework lengths (locked only), Delete. */
+export function deviceMenu(o: {
+  testing: boolean
+  hasOverride: boolean
+  onTest: () => void
+  onRename: () => void
+  onSchedule: () => void
+  onDelete: () => void
+  homework?: { hidden: boolean; disabled: boolean; onStart: (minutes: number) => void }
+}): MenuItem[] {
   return [
     { label: o.testing ? 'Testing…' : 'Test block', icon: 'shield', disabled: o.testing, onClick: o.onTest },
     { label: 'Rename', icon: 'edit', takesFocus: true, onClick: o.onRename },
     { label: 'Back to schedule', icon: 'event_repeat', hidden: !o.hasOverride, onClick: o.onSchedule },
+    ...(o.homework ? homeworkItems(o.homework) : []),
     { label: 'Delete', icon: 'delete', tone: 'red', divider: true, onClick: o.onDelete },
   ]
 }
@@ -66,6 +77,16 @@ export function DeviceHead({ device, locked, ov, timeZone, blockNew, pendingActi
           </>
         ),
       }
+    : ov?.action === 'homework'
+      ? {
+          tone: 'lav', icon: 'menu_book', label: 'Homework',
+          pop: (
+            <>
+              <p className="ch-pop-p">{unlocksAt ? `Homework mode until ${unlocksAt}.` : 'Homework mode.'} Homework sites stay on; the rest stays locked.</p>
+              {popBtn('event_repeat', 'Back to schedule', () => onOverride('schedule'))}
+            </>
+          ),
+        }
     : locked
       ? {
           tone: 'grey', icon: 'lock', label: 'Locked',
@@ -98,7 +119,15 @@ export function DeviceHead({ device, locked, ov, timeZone, blockNew, pendingActi
       ) : (
         <ActionButton icon="lock" variant="red" busy={busy('lock')} disabled={!!pendingAction} onClick={() => onOverride('lock')}>Lock now</ActionButton>
       )}
-      menu={deviceMenu({ testing: test.isPending, hasOverride: !!ov, onTest: runTest, onRename, onSchedule: () => onOverride('schedule'), onDelete })}
+      menu={deviceMenu({
+        testing: test.isPending,
+        hasOverride: !!ov,
+        onTest: runTest,
+        onRename,
+        onSchedule: () => onOverride('schedule'),
+        onDelete,
+        homework: { hidden: !locked || ov?.action === 'homework', disabled: !!pendingAction, onStart: (m) => onOverride('homework', m) },
+      })}
     />
   )
 }
