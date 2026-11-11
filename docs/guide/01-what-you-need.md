@@ -11,6 +11,20 @@ Good choices:
 - **A Raspberry Pi 3B+, 4 or 5** (best). Small, cheap and uses very little power. 1 GB of memory is enough; 2 GB gives more room. Get a power supply, a network cable, and a memory card (32 GB or more) or, better, a small USB SSD, which lasts longer than a memory card.
 - **An old computer that runs Linux** and can stay on all day.
 
+### Which box is big enough?
+
+| Box | Memory | Works? |
+|---|---|---|
+| Raspberry Pi 4 or 5, or an old laptop | 2 GB or more | Yes, comfortable. |
+| Raspberry Pi 3B+ | 1 GB | Yes. A bit slower, but every feature works. |
+| Raspberry Pi Zero 2 W | 512 MB | Possible, but tight. Pages open in about a second or three and the first start takes about 20 seconds. |
+
+We measured all of these (see the [performance notes](https://github.com/JMO-Labs/tskfrce/blob/main/docs/perf/2026-11-profile.md)). The app and its helpers use roughly 230 MB when idle, so even the smallest box has room. There is no separate "lite" version: small boxes run the same app.
+
+Small boxes **download** t@sk4ce ready-made, which is quick. If the download fails, the installer builds it on the box instead. That needs about 4 GB of memory, so on a small box fix the download problem and run the installer again.
+
+**Memory card or SSD?** A memory card (SD card) is cheap but wears out, and t@sk4ce saves changes in a way that is gentle on the card. The trade-off: **if the power is cut suddenly, the last change or two (for example a chore you ticked a second ago) can be lost.** Your older data stays safe. A small USB SSD avoids this worry and lasts longer, so use one if you can.
+
 The box must run **Linux** to pause the internet. A Windows PC or a Mac can show you the app, but it cannot pause anything.
 
 **Plug the box into your router with a network cable.** Wi-Fi works less well for this job.
