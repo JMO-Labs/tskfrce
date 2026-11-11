@@ -1,5 +1,14 @@
 """Updates API tests."""
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _own_state_file(tmp_path, monkeypatch):
+    """Every test gets its own update-state.json (parallel CI shared one and leaked 'off')."""
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.delenv("UPDATE_CHANNEL", raising=False)
+
 
 def test_get_updates_returns_status(client, parent_headers, tmp_path, monkeypatch):
     """GET /api/v1/updates returns current status (requires parent auth)."""
