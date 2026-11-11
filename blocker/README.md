@@ -10,7 +10,7 @@ Overview: [docs/engineering.md](../docs/engineering.md). Operator view: [docs/bl
 |---|---|---|
 | `BACKEND_URL` | `http://backend:8000` | The app. Compose sets `http://127.0.0.1:8000` (host network) |
 | `INTERNAL_TOKEN` | from `{DATA_DIR}/secrets.json` | Shared secret with the app. Required |
-| `LAN_IFACE` | auto | Network interface to use, for example `eth0` |
+| `LAN_IFACE` | empty (all LAN interfaces) | Set only to restrict the box to one interface, for example `eth0` |
 | `DATA_DIR` | `/data` | State and `secrets.json` |
 | `BLOCKER_PORT` / `BLOCKER_BIND` | `7777` / `127.0.0.1` | Local API the app pushes to |
 | `BLOCKER_URL_HOST` | `blocker` | Host name used for the blocker's own URL |
