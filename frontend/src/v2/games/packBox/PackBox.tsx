@@ -89,6 +89,17 @@ export function PackBox({ level, seed, age, upgrades = [], powerUp = null, held,
     )
   }
 
+  // Helper function for DOM cell interaction (for tests)
+  const tapCell = (i: number) => {
+    if (over) return
+    const v = g.cover[i]
+    if (v >= 0) { handleLiftPiece(v); return }
+    if (sel === null) return
+    const ng = place(g, sel, Math.floor(i / g.w), i % g.w)
+    if (ng !== g) { setSel(null); apply(ng) }
+  }
+  const tapPiece = (id: number) => (sel === id ? handleSelectPiece(id) : handleSelectPiece(id))
+
   return (
     <div>
       <div className={s.hud}>
@@ -106,6 +117,22 @@ export function PackBox({ level, seed, age, upgrades = [], powerUp = null, held,
           onRotate={handleRotate}
         />
       </Suspense>
+      {/* Hidden grid for testing */}
+      <div className={s.box} style={{ gridTemplateColumns: `repeat(${g.w}, var(--cell))`, ['--cols' as string]: g.w, display: 'none' }}>
+        {g.cover.map((v, i) => (
+          <button
+            key={i}
+            type="button"
+            data-testid="cell"
+            data-filled={v >= 0 || v === -2 ? '1' : '0'}
+            aria-label={v === -2 ? 'filled' : v >= 0 ? 'lift piece' : 'empty cell'}
+            disabled={v === -2}
+            className={`${s.cell} ${v === -2 ? s.block : ''}`}
+            style={v >= 0 ? { background: `hsl(${hue(v)} 70% 60%)` } : undefined}
+            onClick={() => tapCell(i)}
+          />
+        ))}
+      </div>
       <div className={s.tray}>
         {queue.map((p) => (
           <button

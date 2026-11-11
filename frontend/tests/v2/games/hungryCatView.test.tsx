@@ -1,5 +1,48 @@
 import { afterEach, beforeEach, expect, jest, test } from '@jest/globals'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+
+// Mock pixi.js before importing the component
+jest.mock('pixi.js', () => ({
+  Application: jest.fn(() => ({
+    init: jest.fn(() => Promise.resolve()),
+    canvas: document.createElement('canvas'),
+    stage: { addChild: jest.fn() },
+    destroy: jest.fn(),
+    ticker: { add: jest.fn(), stop: jest.fn() },
+  })),
+  Container: jest.fn(function() {
+    this.addChild = jest.fn()
+    this.removeChild = jest.fn()
+    this.x = 0
+    this.y = 0
+  }),
+  Sprite: jest.fn(function() {
+    this.anchor = { set: jest.fn() }
+    this.width = 0
+    this.height = 0
+    this.x = 0
+    this.y = 0
+    this.alpha = 1
+    this.scale = { x: 1, y: 1 }
+  }),
+  Graphics: jest.fn(function() {
+    this.rect = jest.fn(() => this)
+    this.fill = jest.fn(() => this)
+    this.stroke = jest.fn(() => this)
+    this.roundRect = jest.fn(() => this)
+    this.ellipse = jest.fn(() => this)
+    this.x = 0
+    this.y = 0
+  }),
+  Text: jest.fn(function() {
+    this.anchor = { set: jest.fn() }
+    this.x = 0
+    this.y = 0
+    this.alpha = 1
+  }),
+  Assets: { load: jest.fn(() => Promise.resolve({})) },
+}))
+
 import { HungryCat } from '@/v2/games/hungryCat/HungryCat'
 
 beforeEach(() => {
@@ -37,12 +80,21 @@ test('arrow keys trigger game updates', () => {
 test('onEnd fires exactly once after the 60 s clock', async () => {
   const onEnd = jest.fn()
   render(<HungryCat level={1} seed={1} onEnd={onEnd} />)
+  // Wait for canvas to be added and setup to start
+  await waitFor(() => {
+    expect(screen.getByTestId('cat')).toBeTruthy()
+  })
+  // Advance enough for setup async to complete
+  act(() => {
+    jest.advanceTimersByTime(100)
+  })
+  // Now advance for the full game duration
   act(() => {
     jest.advanceTimersByTime(62_000)
   })
   await waitFor(() => {
     expect(onEnd).toHaveBeenCalledTimes(1)
-  })
+  }, { timeout: 100 })
   act(() => {
     jest.advanceTimersByTime(5_000)
   })
