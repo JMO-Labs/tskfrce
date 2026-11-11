@@ -49,18 +49,31 @@ def status() -> dict:
     return _call("status")
 
 
-def join(ssid: str, password: str) -> dict:
+SECURITY = ("wpa", "sae", "open")  # WPA2/WPA3 personal, WPA3 only, open
+
+
+def _join_args(ssid: str, password: str, security: str, hidden: bool) -> dict:
+    validate_ssid(ssid)
+    if security not in SECURITY:
+        raise ValueError("Unknown Wi-Fi security type")
+    if security != "open":
+        validate_password(password)
+    return {
+        "ssid": ssid,
+        "password": "" if security == "open" else password,
+        "security": security,
+        "hidden": hidden,
+    }
+
+
+def join(ssid: str, password: str, security: str = "wpa", hidden: bool = False) -> dict:
     """Settings join: the daemon rolls back to the previous network on failure."""
-    validate_ssid(ssid)
-    validate_password(password)
-    return _call("join", timeout=120, ssid=ssid, password=password)
+    return _call("join", timeout=120, **_join_args(ssid, password, security, hidden))
 
 
-def setup_join(ssid: str, password: str) -> dict:
+def setup_join(ssid: str, password: str, security: str = "wpa", hidden: bool = False) -> dict:
     """Captive-page join: returns at once; poll status()['setup'] for the result."""
-    validate_ssid(ssid)
-    validate_password(password)
-    return _call("setup_join", ssid=ssid, password=password)
+    return _call("setup_join", **_join_args(ssid, password, security, hidden))
 
 
 def forget(ssid: str) -> dict:

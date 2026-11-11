@@ -162,7 +162,10 @@ def kf_escape(v):
     return "\\s" + v[1:] if v.startswith(" ") else v
 
 
-def write_profile(name, ssid, psk, dev, ap=False):
+SECURITY = {"wpa": "wpa-psk", "sae": "sae", "open": None}  # WPA2/WPA3 personal, WPA3 only, open
+
+
+def write_profile(name, ssid, psk, dev, ap=False, security="wpa", hidden=False):
     """Write a 0600 keyfile and load it. Secrets never touch argv."""
     path = KEYFILES / f"{name}.nmconnection"
     lines = [
@@ -179,12 +182,12 @@ def write_profile(name, ssid, psk, dev, ap=False):
     ]
     if ap:
         lines += ["band=bg", "channel=6"]
+    if hidden:
+        lines.append("hidden=true")
     # ponytail: an SSID like "1;2;" reads as a byte list in keyfiles; real SSIDs never look like that
+    if SECURITY[security]:
+        lines += ["", "[wifi-security]", f"key-mgmt={SECURITY[security]}", f"psk={kf_escape(psk)}"]
     lines += [
-        "",
-        "[wifi-security]",
-        "key-mgmt=wpa-psk",
-        f"psk={kf_escape(psk)}",
         "",
         "[ipv4]",
         f"method={'shared' if ap else 'auto'}",
@@ -217,14 +220,14 @@ def try_up(name, wait=60):
 
 
 # --- actions ---
-def join(ssid, psk, rollback=True):
+def join(ssid, psk, rollback=True, security="wpa", hidden=False):
     """Join from Settings: keep the previous network and return to it on failure."""
     dev = wifi_device()
     if not dev:
         return {"success": False, "error": "no_wifi_device"}
     prev = next((n for n, t, _ in active() if "wireless" in t and n != HOTSPOT), None)
     name = wifi_name(ssid)
-    write_profile(name, ssid, psk, dev)
+    write_profile(name, ssid, psk, dev, security=security, hidden=hidden)
     err = try_up(name)
     if err is None:
         return {"success": True}
@@ -265,12 +268,12 @@ def hotspot_down(keep_antispoof=False):
     return {"success": True}
 
 
-def setup_join(ssid, psk):
+def setup_join(ssid, psk, security="wpa", hidden=False):
     """Captive-page join. Single radio: drop the hotspot, try, bring it back on failure."""
     # ponytail: drop-and-retry only; concurrent AP+managed needs a second virtual iface, add if the UX needs it
     setup.update(phase="connecting", error=None)
     hotspot_down(keep_antispoof=True)  # the setup flow isn't over until we know the result
-    res = join(ssid, psk, rollback=False)
+    res = join(ssid, psk, rollback=False, security=security, hidden=hidden)
     if res["success"]:
         antispoof_off()
         setup.update(phase="connected", error=None)
@@ -365,17 +368,25 @@ def handle(req):
     if cmd == "scan":
         return scan()
     ssid, psk = req.get("ssid"), req.get("password")
+    security, hidden = req.get("security", "wpa"), req.get("hidden", False)
     if cmd in ("join", "setup_join", "forget") and not valid_ssid(ssid):
         return {"error": "bad_ssid"}
-    if cmd in ("join", "setup_join") and not valid_psk(psk):
-        return {"error": "bad_password"}
+    if cmd in ("join", "setup_join"):
+        if security not in SECURITY or not isinstance(hidden, bool):
+            return {"error": "bad_security"}
+        if security == "open":
+            psk = ""
+        elif not valid_psk(psk):
+            return {"error": "bad_password"}
     with lock:
         if cmd == "join":
-            return join(ssid, psk)
+            return join(ssid, psk, security=security, hidden=hidden)
         if cmd == "setup_join":
             if not hotspot_active():
                 return {"error": "not_in_setup_mode"}
-            threading.Thread(target=locked, args=(setup_join, ssid, psk), daemon=True).start()
+            threading.Thread(
+                target=locked, args=(setup_join, ssid, psk, security, hidden), daemon=True
+            ).start()
             return {"success": True, "status": "connecting"}  # page polls status.setup
         if cmd == "forget":
             delete(wifi_name(ssid))
