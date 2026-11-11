@@ -18,6 +18,7 @@ import { Locker } from './Locker'
 import { kidSort, tally } from './kidChips'
 import { KidNav, type KidTab } from './KidNav'
 import { HappyHourBanner } from './HappyHourBanner'
+import { PenaltyCards } from './PenaltyCard'
 import { MePage } from './MePage'
 import { KidMode } from './modes/KidMode'
 import { LittleMode } from './modes/LittleMode'
@@ -127,6 +128,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
       <>
         {children}
         <HappyHourBanner hh={d.happy_hour} onGo={goChore} />
+        <PenaltyCards list={d.penalties} done={done} />
         <Mode
           d={d}
           focusId={focusId}

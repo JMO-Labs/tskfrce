@@ -13,7 +13,7 @@ from app.lock.loop import trigger
 from app.lock.overrides import clear_override, set_override
 from app.lock.rules import block_reason, open_reason
 from app.lock.schedule import local_now
-from app.lock.state import Prefetch, device_facts
+from app.lock.state import Prefetch, device_facts, device_penalty
 from app.models.device_activity import DeviceEvent, DevicePresence
 from app.models.family import FamilySettings, get_family
 from app.models.hours import HourRuleTarget
@@ -65,6 +65,22 @@ def device_out(
     f = device_facts(db, d, fam, now, pre)
     now_local = local_now(fam.timezone, now)
     reason = block_reason(f, now_local)
+    pen = None
+    if reason == "penalty":
+        naive = now.replace(tzinfo=None)
+        q = pre.overrides[d.id] if pre else db.query(Override).filter(Override.device_id == d.id)
+        po = next(
+            (
+                o
+                for o in sorted(q, key=lambda o: (o.created_at, o.id), reverse=True)
+                if o.source == "penalty" and (o.expires_at is None or o.expires_at > naive)
+            ),
+            None,
+        )
+        pen = {"id": po.penalty_id, "ends_at": utc_z(po.expires_at)} if po else None
+        wk = device_penalty(db, d, now, pre)
+        if wk and (po is None or wk.id > (po.penalty_id or 0)):
+            pen = {"id": wk.id, "ends_at": utc_z(wk.ends_at)}
     online = reason is None
     alerts, changes = (stats or {}).get(d.id, (0, 0))
     lock_at = None
@@ -100,6 +116,7 @@ def device_out(
         "chores_done": sum(o.approved for o in f.owners),
         "chores_total": sum(o.total for o in f.owners),
         "locks_at": utc_z(lock_at),
+        "penalty": pen,
         "alerts": alerts,
     }
     if addresses:

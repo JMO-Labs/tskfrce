@@ -199,6 +199,7 @@ def _import_all_models():
             Notification,
             Override,
             PasswordReset,
+            Penalty,
             Points,
             Thread,
             ThreadMessage,

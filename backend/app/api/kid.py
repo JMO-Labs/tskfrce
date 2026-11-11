@@ -5,6 +5,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
 from pydantic import BaseModel, Field
+from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -21,6 +22,7 @@ from app.models.badge import BadgeAward
 from app.models.chores import ChoreRun, ChoreSeen
 from app.models.family import get_family
 from app.models.lock import Device, DeviceIPv6
+from app.models.penalty import Penalty
 from app.models.points import Points
 from app.models.reward import Redemption
 from app.models.user import User, UserRole
@@ -33,6 +35,7 @@ from app.services import (
     happy_hour,
     inbox,
     kid_view,
+    penalties,
     progression,
     trust,
 )
@@ -209,7 +212,39 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
         "happy_hour": (
             {"ends_at": utc_z(hh.ends_at), "multiplier": hh.mult_x10 / 10} if hh else None
         ),
+        "penalties": _penalty_cards(db, kid.id),
     }
+
+
+def _penalty_cards(db: Session, kid_id: int) -> list[dict]:
+    """Active penalties, plus ended ones not yet seen that took nothing back to earn."""
+    rows = (
+        db.query(Penalty)
+        .filter(
+            Penalty.kid_id == kid_id,
+            or_(
+                Penalty.status == "active",
+                and_(
+                    Penalty.status == "ended",
+                    Penalty.seen_by_kid.is_(False),
+                    Penalty.back_total == 0,
+                ),
+            ),
+        )
+        .order_by(Penalty.created_at.desc(), Penalty.id.desc())
+        .all()
+    )
+    return [o | {"by_name": o["given_by"]} for o in penalties.out_many(db, rows)]
+
+
+@router.post("/penalties/{penalty_id}/seen", status_code=204)
+def penalty_seen(penalty_id: int, db: Session = Depends(get_db), kid: User = Depends(require_kid)):
+    p = db.get(Penalty, penalty_id)
+    if p is None or p.kid_id != kid.id:
+        raise HTTPException(404, "That penalty isn't yours.")
+    p.seen_by_kid = True
+    db.commit()
+    return Response(status_code=204)
 
 
 @router.patch("/me")

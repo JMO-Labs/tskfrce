@@ -26,6 +26,7 @@ class DeviceFacts:
     chores_apply: bool = True  # False: family or a group switched the chore check off
     exempt: bool = False  # never locked by hours or chores
     bonus_any_hours: bool = False  # bonus also opens outside hours (never off windows)
+    penalty: bool = False  # a live penalty block; only a parent's unlock beats it
 
 
 def _in_any(ws: tuple[Window, ...], now_local: datetime) -> bool:
@@ -47,9 +48,11 @@ def _chores_ok(f: DeviceFacts) -> bool:
 
 
 def block_reason(f: DeviceFacts, now_local: datetime) -> str | None:
-    """Why the device is offline: manual | new_device | schedule | chores; None when online."""
+    """Why the device is offline: manual | penalty | new_device | schedule | chores; None when online."""
     if f.override == "lock":
         return "manual"
+    if f.penalty and f.override != "unlock":
+        return "penalty"
     if f.status == "guest":
         return None
     if f.status == "unassigned":
