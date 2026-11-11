@@ -1,5 +1,5 @@
 /** Pack the Box: tap a piece, tap a cell to place it, fill the box. 120 s. */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback, lazy, Suspense } from 'react'
 import type { AgeGroup } from '../../types'
 import { seeded } from '../rng'
 import { useElapsed } from '../useElapsed'
@@ -19,10 +19,13 @@ export interface PackBoxProps {
   age: AgeGroup
   upgrades?: string[]
   powerUp?: string | null
+  held?: number | null
   onEnd: (score: number) => void
 }
 
-export function PackBox({ level, seed, age, upgrades = [], powerUp = null, onEnd }: PackBoxProps) {
+const PixiCanvas = lazy(() => import('./PixiCanvas').then(m => ({ default: m.PixiCanvas })))
+
+export function PackBox({ level, seed, age, upgrades = [], powerUp = null, held, onEnd }: PackBoxProps) {
   const [rng] = useState(() => seeded(seed))
   const deal = (n: number) => {
     const g = newGame(age, Math.max(0, level - 1) + n, rng)
@@ -49,15 +52,27 @@ export function PackBox({ level, seed, age, upgrades = [], powerUp = null, onEnd
   const apply = (ng: Game) => {
     if (isFull(ng)) { setScore((n) => n + 1); setG(deal(score + 1)); setSel(null) } else setG(ng)
   }
-  const tapCell = (i: number) => {
+
+  const handlePlacePiece = useCallback((pieceId: number, row: number, col: number) => {
     if (over) return
-    const v = g.cover[i]
-    if (v >= 0) { setG(lift(g, v)); setSel(v); return }
-    if (sel === null) return
-    const ng = place(g, sel, Math.floor(i / g.w), i % g.w)
+    const ng = place(g, pieceId, row, col)
     if (ng !== g) { setSel(null); apply(ng) }
-  }
-  const tapPiece = (id: number) => (sel === id ? setG(rotate(g, id)) : setSel(id))
+  }, [g, over, apply])
+
+  const handleSelectPiece = useCallback((id: number) => {
+    if (sel === id) setG(rotate(g, id))
+    else setSel(id)
+  }, [g, sel])
+
+  const handleLiftPiece = useCallback((id: number) => {
+    setG(lift(g, id))
+    setSel(id)
+  }, [g])
+
+  const handleRotate = useCallback(() => {
+    if (sel !== null) setG(rotate(g, sel))
+  }, [g, sel])
+
   const usePu = () => {
     if (!pu || over) return
     apply(pu === 'undo' ? undo(g, 3) : shrink(g))
@@ -80,21 +95,17 @@ export function PackBox({ level, seed, age, upgrades = [], powerUp = null, onEnd
         <span>📦 {score}</span>
         <span>⏱ {clock(total - ms)}</span>
       </div>
-      <div className={s.box} style={{ gridTemplateColumns: `repeat(${g.w}, var(--cell))`, ['--cols' as string]: g.w }}>
-        {g.cover.map((v, i) => (
-          <button
-            key={i}
-            type="button"
-            data-testid="cell"
-            data-filled={v >= 0 || v === -2 ? '1' : '0'}
-            aria-label={v === -2 ? 'filled' : v >= 0 ? 'lift piece' : 'empty cell'}
-            disabled={v === -2}
-            className={`${s.cell} ${v === -2 ? s.block : ''}`}
-            style={v >= 0 ? { background: `hsl(${hue(v)} 70% 60%)` } : undefined}
-            onClick={() => tapCell(i)}
-          />
-        ))}
-      </div>
+      <Suspense fallback={<div style={{ height: '300px' }} />}>
+        <PixiCanvas
+          game={g}
+          selected={sel}
+          disabled={over}
+          onPlacePiece={handlePlacePiece}
+          onSelectPiece={handleSelectPiece}
+          onLiftPiece={handleLiftPiece}
+          onRotate={handleRotate}
+        />
+      </Suspense>
       <div className={s.tray}>
         {queue.map((p) => (
           <button
@@ -105,11 +116,11 @@ export function PackBox({ level, seed, age, upgrades = [], powerUp = null, onEnd
             aria-label={`Piece of ${p.cells.length}`}
             aria-pressed={sel === p.id}
             className={`${s.piece} ${sel === p.id ? s.sel : ''}`}
-            onClick={() => tapPiece(p.id)}
+            onClick={() => handleSelectPiece(p.id)}
           >{mini(p)}</button>
         ))}
         {next && <span className={s.piece} data-testid="next" aria-label="Next piece">{mini(next, true)}</span>}
-        <button type="button" className={s.rot} aria-label="Rotate piece" disabled={sel === null} onClick={() => sel !== null && setG(rotate(g, sel))}>🔄</button>
+        <button type="button" className={s.rot} aria-label="Rotate piece" disabled={sel === null} onClick={handleRotate}>🔄</button>
       </div>
       <div className={s.pups}>
         {[0, 1, 2].map((i) => i === 0 && pu && POWER[pu]
