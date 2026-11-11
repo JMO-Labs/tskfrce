@@ -27,12 +27,12 @@ def resolve_hostname(ip: str) -> str | None:
         return None
 
 
-def _scapy_send(kind: str, cfg: Config):
+def _scapy_send(kind: str, cfg: Config, iface: str | None = None):
     """Real scapy I/O. Returns (answered, unanswered) where answered holds
-    (sent, rcv) pairs and rcv exposes `.ip` and `.mac`."""
+    (sent, rcv) pairs and rcv exposes `.ip` and `.mac`. iface overrides cfg.lan_iface."""
     from blocker.scapy_lite import ARP, Ether, ICMPv6EchoRequest, IPv6, get_if_addr, srp
 
-    iface = cfg.lan_iface or None
+    iface = iface or cfg.lan_iface or None
     if kind == "arp":
         net = ".".join(get_if_addr(iface or "eth0").split(".")[:3]) + ".0/24"
         pkt = Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=net)
@@ -52,14 +52,15 @@ def scan_once(
     send: Callable = _scapy_send,
     resolve: Callable[[str], str | None] = resolve_hostname,
     vid: int | None = None,
+    iface: str | None = None,
     enrich: Callable[[Seen], Seen] = lambda s: s,
 ) -> list[Seen]:
     v4: dict[str, str] = {}
-    for _, rcv in send("arp", cfg)[0]:
+    for _, rcv in send("arp", cfg, iface)[0]:
         v4[_norm(rcv.mac)] = rcv.ip
     v6: dict[str, list[str]] = {}
     try:
-        for _, rcv in send("ndp", cfg)[0]:
+        for _, rcv in send("ndp", cfg, iface)[0]:
             addrs = v6.setdefault(_norm(rcv.mac), [])
             if rcv.ip not in addrs:
                 addrs.append(rcv.ip)
@@ -77,6 +78,7 @@ def scan_once(
                 hostname=hostname[:MAX_STR] if hostname else hostname,
                 vendor=vendor[:MAX_STR] if vendor else vendor,
                 vid=vid,
+                iface=iface,
             )
         )
         report_seen(cfg, seen)
@@ -89,13 +91,15 @@ def run_discovery(
     stop: threading.Event,
     on_seen: Callable[[Seen], None] | None = None,
     vid: int | None = None,
+    iface: str | None = None,
     enrich: Callable[[Seen], Seen] = lambda s: s,
 ) -> None:
+    """Run periodic ARP/NDP discovery. Pass iface to override cfg.lan_iface."""
     while not stop.is_set():
         try:
-            for seen in scan_once(cfg, vid=vid, enrich=enrich):
+            for seen in scan_once(cfg, vid=vid, iface=iface, enrich=enrich):
                 if on_seen:
                     on_seen(seen)
         except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
-            log.warning("scan failed: %s", e)
+            log.warning("scan on %s failed: %s", iface or cfg.lan_iface, e)
         stop.wait(cfg.scan_interval + random.uniform(0, min(2.0, cfg.scan_interval * 0.1)))

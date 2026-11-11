@@ -23,7 +23,7 @@ def _pair(ip, mac):
 
 
 def _send(arp=(), ndp=()):
-    def send(kind, cfg):
+    def send(kind, cfg, iface=None):
         return ([_pair(*r) for r in (arp if kind == "arp" else ndp)], [])
 
     return send
