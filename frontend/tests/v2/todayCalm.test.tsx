@@ -29,7 +29,7 @@ const need = (id: number): NeedsItem => ({ type: 'chore', id, kid_id: 3, kid_nam
 const base = (o: Partial<Today> = {}): Today => ({ day: '2026-10-24', pending_approvals: 0, new_devices: [], kids: [maya, leo], needs_you: [1, 2, 3, 4, 5, 6, 7].map(need), ...o })
 const dev = (id: number, seen: boolean) => ({ id, name: `Dev${id}`, mac: 'm', vendor: null, status: 'assigned', owner_ids: [3], group_ids: [], online: seen, override: null, last_seen: null, seen_now: seen, resisting: false, exempt: false })
 
-const NEEDS = /^Needs you/
+const NEEDS = /^Review/
 const MAYA = /^Maya(?! details)/
 const LEO = /^Leo(?! details)/
 let state: { fam: Record<string, unknown>; today: Today | Promise<never>; devices: unknown[]; widgets: unknown[]; hh: unknown[]; dismissed: string[] }
@@ -126,7 +126,7 @@ describe('calm Today', () => {
     expect(await screen.findByText('Streak')).toBeInTheDocument()
     expect(screen.getByText('Last active')).toBeInTheDocument()
     expect(screen.getByText(/Earned today: 35/)).toBeInTheDocument()
-    expect(screen.queryByText('Points')).toBeNull()
+    expect(within(screen.getByText('Streak').closest('.p-kid-facts') as HTMLElement).queryByText('Points')).toBeNull() // the card facts show Points; the pop-over does not
     expect(screen.getByRole('link', { name: "Open Maya's page" })).toHaveAttribute('href', '/kids?section=kids&item=3')
     await userEvent.keyboard('{Escape}')
     await userEvent.click(screen.getByRole('button', { name: MAYA }))

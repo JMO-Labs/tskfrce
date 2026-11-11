@@ -114,7 +114,8 @@ describe('TodayPage', () => {
       return undefined
     })
     wrap(<TodayPage />)
-    expect(await screen.findByRole('button', { name: /^needs you · 1/i })).toBeInTheDocument()
+    expect(await screen.findByText('1 waiting on you')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Review/ })).toBeInTheDocument()
     expect(screen.queryByRole('tab')).toBeNull()
   })
 
@@ -276,7 +277,8 @@ describe('TodayPage', () => {
       return undefined
     })
     wrap(<TodayPage />)
-    await userEvent.click(await screen.findByRole('button', { name: /^needs you · 2/i }))
+    expect(await screen.findByText('2 waiting on you')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /^Review/ }))
     const dishesItems = screen.getAllByText(/dishes/i)
     expect(dishesItems.length).toBeGreaterThan(0)
     expect(await screen.findByText(/laundry/i)).toBeInTheDocument()
