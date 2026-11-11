@@ -138,7 +138,7 @@ def test_on_query_sees_portal_answers_for_claimed_and_unclaimed_clients():
             stop,
             handle=lambda ip, data: None,  # homework gate refuses the name
             claims=lambda ip, c=claimed: c,
-            on_query=lambda ip, name: seen.append((claimed, name)),
+            on_query=lambda ip, name, c=claimed: seen.append((c, name)),
         )
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as c:
             c.settimeout(2)
