@@ -164,7 +164,6 @@ install_updater() {
   fi
   say "Installing unattended update service..."
   $root install -m 0755 "$DIR/install/update-check.sh" /usr/local/bin/update-check.sh
-  $root install -m 0755 "$DIR/install/pre-reboot-hook.sh" /usr/local/bin/pre-reboot-hook.sh
   $root install -m 0644 "$DIR/install/update-check.timer" /etc/systemd/system/update-check.timer
   # The service runs as root, so tell it where this install lives.
   sed "s|^ExecStart=.*|Environment=TASK4CE_DIR=$DIR\nExecStart=/usr/local/bin/update-check.sh|" \
