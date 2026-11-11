@@ -19,6 +19,8 @@ import type { NeedsItem, Today, TodayKid } from '@/v2/types'
 
 const apiMock = api as unknown as Mock<(p: string, init?: { method?: string; body?: unknown }) => Promise<unknown>>
 
+// The card button's name starts with the kid's name; the avatar bubble (KidAv) is 'Maya details'.
+const CARD = /^Maya(?! details$)/
 const ago = (min: number) => new Date(Date.now() - min * 60000).toISOString()
 const need = (id: number, type: NeedsItem['type'], min?: number): NeedsItem => ({ type, id, kid_id: 3, kid_name: 'Maya', title: `Item ${id}`, submitted_at: min == null ? null : ago(min) })
 const done = new Date()
@@ -85,7 +87,7 @@ describe('waiting banner', () => {
   })
   test('hidden at 0', async () => {
     wrap()
-    await screen.findByRole('button', { name: /^Maya/ })
+    await screen.findByRole('button', { name: CARD })
     expect(screen.queryByText(/waiting on you/)).toBeNull()
     expect(screen.queryByRole('button', { name: 'Review' })).toBeNull()
   })
@@ -94,7 +96,7 @@ describe('waiting banner', () => {
 describe('kid card', () => {
   test('facts say Online, never screen time; ring has both arcs; lock pill shows why', async () => {
     wrap()
-    const card = await screen.findByRole('button', { name: /^Maya/ })
+    const card = await screen.findByRole('button', { name: CARD })
     expect(within(card).getByText('3/4')).toBeInTheDocument()
     expect(within(card).getByText('55m of 90m allowed')).toBeInTheDocument()
     expect(within(card).getByText('40 pts')).toBeInTheDocument()
@@ -106,13 +108,13 @@ describe('kid card', () => {
   test('open kid shows an Open pill and no lock', async () => {
     today.kids = [{ ...maya, lock_reason: null, devices: [{ id: 1, name: 'Pad', vendor: null, online: true }] }]
     wrap()
-    const card = await screen.findByRole('button', { name: /^Maya/ })
+    const card = await screen.findByRole('button', { name: CARD })
     expect(within(card).getByText('Open')).toHaveClass('pt-lockpill')
     expect(card.querySelector('[data-locked]')).toBeNull()
   })
   test('timeline has allowed windows and a chore dot, each with a tooltip', async () => {
     wrap()
-    const card = await screen.findByRole('button', { name: /^Maya/ })
+    const card = await screen.findByRole('button', { name: CARD })
     const tips = [...card.querySelectorAll('[data-tip]')].map((e) => e.getAttribute('data-tip'))
     expect(tips).toContain('Online allowed 7:00 AM–8:00 AM')
     expect(tips).toContain('Online allowed 3:00 PM–7:00 PM')
@@ -124,13 +126,13 @@ describe('kid card', () => {
   test('without day data the card still renders the old facts, no timeline', async () => {
     today.kids = [{ ...maya, allowed: undefined, allowed_minutes: undefined, online_minutes: undefined }]
     wrap()
-    const card = await screen.findByRole('button', { name: /^Maya/ })
+    const card = await screen.findByRole('button', { name: CARD })
     expect(within(card).getByRole('img', { name: '3 of 4 done' })).toBeInTheDocument()
     expect(card.querySelector('.pt-tl')).toBeNull()
   })
   test('tapping the card opens the kid focus', async () => {
     wrap()
-    await userEvent.click(await screen.findByRole('button', { name: /^Maya/ }))
+    await userEvent.click(await screen.findByRole('button', { name: CARD }))
     expect(fakeRouter.query.kid).toBe('3')
     expect(await screen.findByRole('region', { name: /Maya.*s day/ })).toBeInTheDocument()
   })
