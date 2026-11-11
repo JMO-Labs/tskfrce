@@ -20,12 +20,15 @@ from blocker.backend import (
     Seen,
     fetch_state,
     report_hits,
+    report_homework_activity,
     report_resisting,
     report_workarounds,
 )
 from blocker.config import Config
 from blocker.discovery import run_discovery
 from blocker.hits import HitCounter
+from blocker.homework import HomeworkGate
+from blocker.hw_wiring import HomeworkWiring
 from blocker.portal import run_dns, run_http
 from blocker.resist import ResistanceCounter, ResistanceWatch, Tally
 from blocker.signals import Signals
@@ -119,10 +122,20 @@ class Service:
         self._lock = threading.Lock()
         self._probing: set[str] = set()  # MACs overlaid by test_block; guarded by _lock
         self._stop = threading.Event()
+        self.failed = False  # set when the control API cannot start; main exits non-zero
         self._api = None
+        self._api_servers: list = []  # For multi-bind API servers
         self.signals = Signals(cfg)
         self._vlan = VlanDetector(cfg)
-        self.store.on_change(self._apply)
+        # Homework mode: gate and wiring
+        self._gate = HomeworkGate()
+        self._wiring = HomeworkWiring(
+            self._gate, firewall, self._mac_for_ip, self._ip_for_mac, cfg, self._gateway_ip
+        )
+        # One callback: gate first, then render, then conntrack (see HomeworkWiring).
+        self.store.on_change(
+            lambda _: self._wiring.on_state(self.store.homework(), rerender=self._apply)
+        )
 
     # --- policy application -------------------------------------------------
 
@@ -155,8 +168,12 @@ class Service:
             v4 = {t.ip for t in devs.values() if t.ip}
             v6 = {ip for t in devs.values() for ip in t.ip6}
             macs = set(blocked)  # authoritative block key
+            # device IPs from the state we already hold the lock for (no re-entry)
+            hw_out, hw_back = self._wiring.pairs_for_render(
+                {m: t.ip for m, t in devs.items() if t.ip}
+            )
             ruleset = fw.render_ruleset(
-                v4, v6, macs, self._lan_cidrs, self._portal_ip or "", PORTAL_PORT
+                v4, v6, macs, self._lan_cidrs, self._portal_ip or "", PORTAL_PORT, hw_out, hw_back
             )
             try:
                 self._fw.apply(ruleset)
@@ -192,6 +209,16 @@ class Service:
 
     def _mac_for_ip(self, ip: str) -> str | None:
         return self._ip_mac.get(ip)
+
+    def _ip_for_mac(self, mac: str) -> str | None:
+        """Return the IP of a device by its MAC (from current _devices)."""
+        with self._lock:
+            dev = self._devices.get(mac)
+        return dev.ip if dev else None
+
+    def _gateway_ip(self) -> str | None:
+        lan = self._lan()
+        return lan.gateway_ip if lan else None
 
     def _lan(self):
         try:
@@ -269,7 +296,8 @@ class Service:
             return
         self._listen_only = bool(state.get("listen_only", False))
         self._sites.sync({int(v) for v in state.get("covered_vlans", [])})
-        self.store.set_blocked(state["blocked"])  # always re-applies (listen_only too)
+        # always re-applies (listen_only too); keep homework when the source has none
+        self.store.set_state(state["blocked"], state.get("homework", self.store.homework()))
 
     def _reconcile_loop(self) -> None:
         while not self._stop.wait(self.cfg.reconcile_interval):
@@ -281,11 +309,14 @@ class Service:
     # --- resistance report --------------------------------------------------
 
     def _resist_once(self) -> None:
+        # Local `until` first: must not depend on the backend reports below succeeding.
+        self._wiring.tick(rerender=self._apply)
         # Always report the full set (even empty) so the backend can clear.
         self._report(self.cfg, self._watch.counter.resisting() | self._sites.resisting())
         h = self.hits.drain()
         if h:
             self._report_hits(self.cfg, h)
+        self._wiring.flush_activity(lambda items: report_homework_activity(self.cfg, items))
         w = self.workarounds.drain()
         if w:
             self._report_workarounds(self.cfg, w)
@@ -368,21 +399,98 @@ class Service:
         self._spawn(lambda: self.signals.run_mdns(self._stop))
         self._spawn(
             lambda: run_dns(
-                self.cfg, self._portal_ip or "", self._stop, on_query=self.workarounds.add
+                self.cfg,
+                self._portal_ip or "",
+                self._stop,
+                handle=self._wiring.dns_handle,
+                claims=self._wiring.claims,
+                client_key=self._mac_for_ip,
+                on_query=self.workarounds.add,
             )
         )
         self._spawn(lambda: run_http(self.cfg, self._stop, on_hit=self.hits.add))
-        self._api = make_api(
-            self.store,
-            self.cfg.internal_token,
-            self.test_block,
-            self.cfg.bind_host,
-            self.cfg.blocker_port,
-        )
-        self._spawn(self._api.serve_forever)
+        # Create API servers for each bind host. If bind_hosts is set, use multi-bind with retry.
+        if self.cfg.bind_hosts:
+            self._spawn(
+                lambda: self._start_api_multi(list(self.cfg.bind_hosts), self.cfg.blocker_port)
+            )
+        else:
+            self._api = make_api(
+                self.store,
+                self.cfg.internal_token,
+                self.test_block,
+                self.cfg.bind_host,
+                self.cfg.blocker_port,
+            )
+            self._spawn(self._api.serve_forever)
 
     def _spawn(self, target: Callable[[], None]) -> None:
         threading.Thread(target=target, daemon=True).start()
+
+    def _start_api_multi(self, hosts: list[str], port: int) -> None:
+        """Start API servers for multiple bind hosts with retry logic for non-loopback addresses.
+
+        Loopback addresses start immediately; non-loopback addresses retry with exponential
+        backoff if they fail (e.g., waiting for the bridge interface). Each host gets its
+        own retry thread and is never rebound once listening.
+        """
+        loopback_hosts = [h for h in hosts if h in ("127.0.0.1", "::1")]
+        bridge_hosts = [h for h in hosts if h not in ("127.0.0.1", "::1")]
+
+        # Start loopback immediately (must work or fail fast)
+        for host in loopback_hosts:
+            try:
+                server = make_api(
+                    self.store,
+                    self.cfg.internal_token,
+                    self.test_block,
+                    host,
+                    port,
+                )
+                self._api_servers.append(server)
+                self._spawn(server.serve_forever)
+                log.info("API server started on loopback %s:%d", host, server.server_address[1])
+            except OSError:
+                log.exception("failed to bind API to loopback %s; stopping service", host)
+                self.failed = True
+                self.stop()  # heal + delete table, then main exits non-zero so Docker restarts us
+                return
+
+        # Retry non-loopback hosts with individual backoff threads
+        for host in bridge_hosts:
+            self._spawn(lambda h=host, p=port: self._retry_api_bind(h, p))
+
+    def _retry_api_bind(self, host: str, port: int) -> None:
+        """Retry binding to a single non-loopback host with exponential backoff.
+
+        Runs in a daemon thread; gives up if service stops.
+        """
+        backoff = 0.1  # start with 100ms
+        max_backoff = 30.0  # cap at 30s between retries
+
+        while True:
+            try:
+                server = make_api(
+                    self.store,
+                    self.cfg.internal_token,
+                    self.test_block,
+                    host,
+                    port,
+                )
+                self._api_servers.append(server)
+                self._spawn(server.serve_forever)
+                log.info(
+                    "API server started on bridge %s:%d (after retry)",
+                    host,
+                    server.server_address[1],
+                )
+                return
+            except OSError as e:
+                log.warning("failed to bind API to %s (will retry in %.1fs): %s", host, backoff, e)
+                if self._stop.wait(backoff):
+                    log.info("service stopping, giving up on %s", host)
+                    return
+                backoff = min(backoff * 1.5, max_backoff)
 
     def run(self) -> None:
         self.start()
@@ -413,6 +521,11 @@ class Service:
                 self._api.shutdown()
             except Exception:  # noqa: BLE001, S110 - best effort shutdown
                 pass
+        for server in self._api_servers:
+            try:
+                server.shutdown()
+            except Exception:  # noqa: BLE001, S110 - best effort shutdown
+                pass
 
 
 def main() -> None:
@@ -424,3 +537,5 @@ def main() -> None:
     for sig in (signal.SIGTERM, signal.SIGINT):
         signal.signal(sig, lambda *_: svc.stop())
     svc.run()
+    if svc.failed:
+        raise SystemExit(1)

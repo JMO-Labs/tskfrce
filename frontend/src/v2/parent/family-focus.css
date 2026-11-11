@@ -12,3 +12,7 @@
 @media (max-width: 767px) {
   [data-look='parent'] .fam-rows .pk-input { min-height: 44px; }
 }
+/* Minigames row: the frequency control takes its own line; the cap select fits "50% of chore points" */
+[data-look='parent'] .fam-setr:has(> .gm-seg) { flex-wrap: wrap; }
+[data-look='parent'] .fam-setr > .gm-seg { flex: 1 1 100%; margin-left: 0; }
+[data-look='parent'] .fam-setr > .gm-cap { width: auto; }

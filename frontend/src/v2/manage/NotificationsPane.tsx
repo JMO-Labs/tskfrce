@@ -112,7 +112,7 @@ export function NotificationsPane() {
               <SummaryRow
                 key={p.id}
                 id={`place-${p.id}`}
-                icon={ico('forum')}
+                icon={ico('chat_bubble')}
                 title={<span className="p-kn">{p.name}</span>}
                 summary={`${p.events.length} of ${s.events.length} events`}
                 line2={p.readable ? undefined : <span className="pn-warnline"><Icon name="warning" size={16} />Re-enter this address</span>}

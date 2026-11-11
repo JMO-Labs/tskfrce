@@ -14,16 +14,17 @@ interface Props {
   onEditType: () => void
 }
 
-/** Chore header: type tile, name, one summary line, the type chip (its pop-over holds the notes kids can send) and the "…" menu. */
+/** Chore header: type tile, name, one summary line and the "…" menu. With a type, the tile is a button whose pop-over holds the notes kids can send and "Edit <type> type" (tskfrce#9, mockup option A). */
 export function ChoreHead({ title, sub, type, onDuplicate, onDelete, onEditType }: Props) {
-  const chip = type && (
+  const glyph = <Icon name={type?.glyph ?? 'task_alt'} size={26} />
+  const media = type ? (
     <InfoPop
       label={`Notes kids can send, ${type.name}`}
       width={280}
       target={
-        <button type="button" className="kd-pill" aria-label={`${type.name} type, notes kids can send`}>
-          <Icon name={type.glyph} size={16} />
-          {type.name}
+        <button type="button" className="pk-tile pk-tile-lg ch-tile-btn" aria-label={`${type.name} type, notes kids can send`} title="Notes kids can send">
+          {glyph}
+          <span className="ch-tile-badge"><Icon name="chat_bubble" size={12} /></span>
         </button>
       }
     >
@@ -35,13 +36,12 @@ export function ChoreHead({ title, sub, type, onDuplicate, onDelete, onEditType 
       <hr className="p-pk-div" />
       <button type="button" className="p-mi ch-edit" onClick={onEditType}><Icon name="edit" size={16} />{`Edit ${type.name} type`}</button>
     </InfoPop>
-  )
+  ) : <span className="pk-tile pk-tile-lg">{glyph}</span>
   return (
     <DetailHeader
-      media={<span className="pk-tile pk-tile-lg"><Icon name={type?.glyph ?? 'task_alt'} size={26} /></span>}
+      media={media}
       title={title}
       sub={sub}
-      chips={chip}
       menu={onDuplicate && onDelete ? [
         { label: 'Duplicate', icon: 'content_copy', onClick: onDuplicate },
         { label: 'Delete chore', icon: 'delete', tone: 'red', divider: true, onClick: onDelete },

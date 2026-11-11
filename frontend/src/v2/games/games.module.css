@@ -1,0 +1,74 @@
+/* Kid games screens (mockup sections 1, 5, 6). Kid tokens only; decorative motion keyed off [data-decor]. */
+.root { --disp: var(--font-display), 'Space Grotesk', system-ui, sans-serif; }
+.disp { font-family: var(--disp); }
+
+.kb { font: 700 17px var(--disp); padding: 12px 18px; min-height: 48px; border-radius: 16px; border: 2px solid var(--k-ink); background: var(--k-card); color: var(--k-ink); box-shadow: var(--k-shadow); cursor: pointer; }
+.kb:disabled { opacity: 0.5; cursor: default; }
+.sun { background: var(--k-sun); color: #1d2b53; }
+.wide { display: block; width: 100%; margin-top: 16px; }
+.sm { padding: 6px 12px; font-size: 14px; min-height: 44px; margin-left: auto; }
+
+@keyframes pop { 0% { transform: scale(0.3) rotate(-8deg); opacity: 0; } 70% { transform: scale(1.08) rotate(2deg); opacity: 1; } 100% { transform: none; } }
+@keyframes bob { to { transform: translateY(-8px) rotate(3deg); } }
+@keyframes wave { from { transform: rotate(-6deg); } to { transform: rotate(6deg); } }
+[data-decor='full'] .pop { animation: pop 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+[data-decor='full'] .pop2 { animation: pop 0.6s 0.35s cubic-bezier(0.3, 1.6, 0.5, 1) both; }
+[data-decor='small'] .pop { animation: pop 0.3s ease-out both; }
+[data-decor='small'] .pop2 { animation: pop 0.3s 0.15s ease-out both; }
+[data-decor='full'] .bob { animation: bob 2.4s ease-in-out infinite alternate; }
+[data-decor='full'] .wave { animation: wave 1s ease-in-out infinite alternate; transform-origin: bottom center; }
+[data-decor='small'] .wave { animation: wave 1s ease-in-out 2 alternate; transform-origin: bottom center; }
+
+/* 1 earned toast */
+.toast { display: flex; gap: 12px; align-items: center; margin-top: 12px; background: var(--k-card); border: 2px solid var(--k-ink); box-shadow: var(--k-shadow); border-radius: 20px; padding: 14px; }
+.toast b { display: block; font: 700 20px var(--disp); }
+.toast small { color: var(--k-sub); }
+.toastm { width: 84px; }
+.btns { display: flex; gap: 12px; margin-top: 18px; }
+.btns .kb { flex: 1; }
+
+/* 6 shelf */
+.h { font: 700 28px var(--disp); margin: 0 0 12px; }
+.saved { display: flex; align-items: center; gap: 8px; background: var(--k-card); border: 2px solid var(--k-ink); box-shadow: var(--k-shadow); border-radius: 18px; padding: 12px 14px; font-size: 17px; }
+.hint { color: var(--k-sub); font-size: 15px; margin: 10px 2px 0; }
+.err { color: var(--k-coral); font-weight: 600; font-size: 15px; margin: 10px 2px 0; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(160px, 40%), 1fr)); gap: 10px; margin-top: 16px; }
+.tile { background: var(--k-card); border: 2px solid var(--k-line); border-radius: 18px; padding: 12px; display: grid; gap: 2px; }
+.ge { font-size: 34px; }
+.tile b { font: 700 16px var(--disp); }
+.tile small { color: var(--k-sub); }
+.board { margin-top: 14px; background: var(--k-card); border: 2px solid var(--k-line); border-radius: 18px; padding: 12px 14px; display: grid; gap: 4px; font-size: 15px; }
+.board small { color: var(--k-sub); }
+.sleep { text-align: center; margin-top: 60px; display: grid; justify-items: center; gap: 8px; }
+.sleepm { width: 150px; filter: saturate(0.6); }
+.sleep b { font: 700 24px var(--disp); }
+.sleep small { color: var(--k-sub); font-size: 15px; line-height: 1.5; }
+
+/* welcome */
+.welcome { text-align: center; margin-top: 24px; display: grid; justify-items: center; gap: 12px; }
+.welcome img { width: 130px; }
+.welcome p { font: 700 20px var(--disp); margin: 0; max-width: 300px; }
+
+/* 5 results */
+.res { text-align: center; }
+.resm { width: 130px; }
+.res h2 { font: 700 28px var(--disp); margin: 4px 0; }
+.stars { font-size: 52px; letter-spacing: 6px; }
+.s { display: inline-block; }
+[data-decor='full'] .s { animation: pop 0.5s both; }
+[data-decor='small'] .s { animation: pop 0.25s both; }
+[data-decor='full'] .s1 { animation-delay: 0.2s; } [data-decor='full'] .s2 { animation-delay: 0.6s; } [data-decor='full'] .s3 { animation-delay: 1s; }
+[data-decor='small'] .s1 { animation-delay: 0.1s; } [data-decor='small'] .s2 { animation-delay: 0.3s; } [data-decor='small'] .s3 { animation-delay: 0.5s; }
+.off { filter: grayscale(1); opacity: 0.3; }
+.tick { font: 700 20px var(--disp); margin: 8px 0; }
+.tick small { display: block; font: 500 13px var(--font-body), Inter, system-ui, sans-serif; color: var(--k-sub); }
+.chip { display: inline-block; background: var(--k-sun); color: #1d2b53; border: 2px solid var(--k-ink); border-radius: 99px; padding: 2px 12px; font: 700 14px var(--disp); }
+.badge { margin-top: 10px; padding: 10px; border-radius: 14px; border: 2px solid var(--k-ink); background: var(--k-sun); color: #1d2b53; font-weight: 600; }
+
+/* upgrade card + wheel bonus (mockup 5), shelf upgrade count */
+.up { background: var(--k-card); border: 2px solid var(--k-line); border-radius: 16px; padding: 10px 14px; text-align: left; margin-top: 8px; }
+.up small { color: var(--k-sub); }
+.bar { height: 12px; border-radius: 99px; background: var(--k-soft); margin: 6px 0; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--k-sun); }
+.got { margin-top: 10px; padding: 10px; border-radius: 14px; border: 2px dashed var(--k-ink); font-weight: 600; }
+.ups { font-size: 12px; }

@@ -140,7 +140,7 @@ describe('Hours pane', () => {
     wrap(<SettingsPage />)
     expect(await screen.findByText((_, el) => el?.textContent === 'Today: School night' && el.tagName === 'SPAN')).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'When rules overlap' }).textContent).toContain(
-      'Holiday and Summer replace everyday hours. Hours for a child, their groups and Everyone all apply together.',
+      "Holiday and Summer replace everyday hours. Hours for a child, their groups and Everyone all apply together, except a bedtime set by a kid's style: that one replaces Everyone for the kid.",
     )
   })
 

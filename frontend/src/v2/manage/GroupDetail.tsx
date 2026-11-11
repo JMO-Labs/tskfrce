@@ -25,7 +25,7 @@ interface Props {
   rules?: HourRule[]
   /** Select a group, or null to close the detail. */
   onSelect: (id: number | null) => void
-  onRequestOverride: (req: { kind: string; id: number; action: string }) => void
+  onRequestOverride: (req: { kind: string; id: number; action: string; minutes?: number }) => void
   /** Family time zone for the next-lock time. */
   timeZone?: string
   /** Override action in flight (lock / unlock / clear), if any. */
@@ -72,7 +72,7 @@ function Existing({ group, devices, kids, groups, rules, onSelect, onRequestOver
         owners={owners}
         timeZone={timeZone}
         pendingAction={pendingAction}
-        onOverride={(action) => onRequestOverride({ kind: 'group', id: group.id, action })}
+        onOverride={(action, minutes) => onRequestOverride({ kind: 'group', id: group.id, action, minutes })}
         onRename={rename}
         onDelete={open}
       />
@@ -80,7 +80,7 @@ function Existing({ group, devices, kids, groups, rules, onSelect, onRequestOver
       <FocusArea focus={rows} label="Group">
         <SummaryRow
           id="gdev"
-          icon={ico('devices_other')}
+          icon={ico('devices')}
           title="Devices"
           summary={`${members.length} of ${devices.length} ${devices.length === 1 ? 'device' : 'devices'}`}
           line2={<span className="p-kn">{members.length ? members.map((d) => d.name).join(', ') : 'No devices in this group yet'}</span>}

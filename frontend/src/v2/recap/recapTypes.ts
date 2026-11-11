@@ -22,6 +22,9 @@ export interface RecapKid {
   screen_minutes_bought: number
   streak: number
   enough_history: boolean
+  /** minigame rounds finished and badges earned this week (backend may omit) */
+  games?: number
+  game_badges?: number
 }
 
 export interface Recap {

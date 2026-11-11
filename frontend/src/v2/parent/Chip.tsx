@@ -5,19 +5,20 @@ export type ChipTone = 'acc' | 'lav' | 'grey' | 'amb' | 'red' | 'ink';
 
 interface ChipProps {
   tone: ChipTone;
-  icon: string;
+  /** Omit for a text-only chip. */
+  icon?: string;
   children: ReactNode;
   className?: string;
 }
 
 /**
- * Parent chip: always icon + text with a tonal background.
+ * Parent chip: optional icon + text with a tonal background.
  * Used in headers, lists, and status indicators.
  */
 export function Chip({ tone, icon, children, className = '' }: ChipProps) {
   return (
     <span className={`p-chip ${className}`} data-tone={tone}>
-      <Icon name={icon} size={12} />
+      {icon && <Icon name={icon} size={12} />}
       {children}
     </span>
   );

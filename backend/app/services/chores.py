@@ -82,7 +82,9 @@ def can_move(run: ChoreRun, tmrw: date) -> bool:
 def day_runs(db: Session, day: date, skipped: bool = False):
     """Query: the day's runs, cancelled/missed (and, unless asked for, skipped) ones excluded."""
     gone = ["cancelled", "missed"] + ([] if skipped else ["skipped"])
-    return db.query(ChoreRun).filter(ChoreRun.day == day, ChoreRun.status.notin_(gone))
+    return db.query(ChoreRun).filter(
+        ChoreRun.day == day, ChoreRun.status.notin_(gone), ChoreRun.penalty_id.is_(None)
+    )
 
 
 def day_or_waiting(db: Session, day: date, skipped: bool = False):
@@ -90,7 +92,11 @@ def day_or_waiting(db: Session, day: date, skipped: bool = False):
     gone = ["cancelled"] if skipped else ["cancelled", "skipped"]
     return db.query(ChoreRun).filter(
         or_(
-            and_(ChoreRun.day == day, ChoreRun.status.notin_(gone)),
+            and_(
+                ChoreRun.day == day,
+                ChoreRun.status.notin_(gone),
+                ChoreRun.penalty_id.is_(None),
+            ),
             ChoreRun.status == "submitted",
         )
     )
@@ -292,7 +298,13 @@ def run_reset(db: Session, day: date) -> int:
     one-time assignments.
     No new runs while the setup wizard is open: nothing pauses a device during setup."""
     fam = get_family(db)
-    for r in db.query(ChoreRun).filter(ChoreRun.day < day, ChoreRun.status == "todo"):
+    # make-up runs never go missed: roll them to today so the kid can still finish them
+    db.query(ChoreRun).filter(
+        ChoreRun.day < day, ChoreRun.status == "todo", ChoreRun.penalty_id.isnot(None)
+    ).update({"day": day}, synchronize_session=False)
+    for r in db.query(ChoreRun).filter(
+        ChoreRun.day < day, ChoreRun.status == "todo", ChoreRun.penalty_id.is_(None)
+    ):
         r.status = "missed"  # counts against streaks and boost; cancelled doesn't
     if fam.setup_step is None and any(
         not r.spot_check and not chore_of(r).always_check and not trust.was_caught(db, r.id)

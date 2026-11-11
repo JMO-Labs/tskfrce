@@ -5,7 +5,9 @@ import { useRouter } from 'next/router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext'
 import { api, ApiError } from '@/v2/api'
-import type { Device, Family, HourRule, HoursPayload, Kid, LibChore, RuleBody, SetupStatus } from '@/v2/types'
+import type { Device, Family, HoursPayload, Kid, LibChore, RuleBody, SetupStatus } from '@/v2/types'
+import type { PresetCatalog, Style } from '@/v2/presets/types'
+import { useApplyPreset } from '@/v2/presets/usePresets'
 import { markSetupDone, STEP_KEY } from '@/v2/components/RequireParent'
 import { SetupResuming } from '@/v2/parent/states'
 import { LAST, saveStep } from '@/v2/setup/setupStep'
@@ -22,7 +24,10 @@ import { StepDevices } from '@/v2/setup/StepDevices'
 import { StepChores } from '@/v2/setup/StepChores'
 import { starter } from '@/v2/setup/starterChores'
 import { StepExtras } from '@/v2/setup/StepExtras'
-import { DEFAULT_DRAFTS, StepHours } from '@/v2/setup/StepHours'
+import { StepHours } from '@/v2/setup/StepHours'
+import { StepStyle } from '@/v2/setup/StepStyle'
+import { StepPlan } from '@/v2/setup/StepPlan'
+import { applyBody, choreJobs, DEFAULT_DRAFTS, extrasJobs, hoursJobs, newChoreCache, presetKids, tweakStart, type Job } from '@/v2/setup/setupJobs'
 import { ClaimGate } from '@/v2/setup/ClaimGate'
 import { clearClaim, settleClaim } from '@/v2/setup/claim'
 import { finishSummary, StepFinish } from '@/v2/setup/StepFinish'
@@ -51,10 +56,17 @@ export default function SetupPage() {
   const [hours, setHours] = useState<RuleBody[]>(DEFAULT_DRAFTS)
   const [trustKids, setTrustKids] = useState<number[]>([])
   const [bedtimeAuto, setBedtimeAuto] = useState(false)
+  const [goalsOn, setGoalsOn] = useState(true)
+  const [penalties, setPenalties] = useState(false)
   const [choresLock, setChoresLock] = useState(true)
+  const [style, setStyle] = useState<Style>('balanced')
+  const [kidStyles, setKidStyles] = useState<Record<number, Style> | null>(null) // set = "Different for each kid"
+  const [tweak, setTweak] = useState<'chores' | 'hours' | 'extras' | null>(null) // sub-steps of step 5
+  const [assign, setAssign] = useState<Record<string, number[]>>({}) // chore title -> the kids whose plan has it
+  const applyPreset = useApplyPreset()
   const applied = useRef(new Set<string>())
   const [schedules, setSchedules] = useState(0) // applied schedule rules, mirrored for render
-  const choreIds = useRef(new Map<string, number>()) // created chores, so a retry only redoes the assignment
+  const choreCache = useRef(newChoreCache()) // created chores, so a retry only redoes the assignment
 
   // Already set up (and not by us a moment ago): a parent who never reached Finish resumes; anyone else logs in.
   const status = useQuery({ queryKey: ['setup'], queryFn: () => api<SetupStatus>('/setup'), staleTime: Infinity })
@@ -129,7 +141,7 @@ export default function SetupPage() {
 
   /** POST each not-yet-applied request; remember successes so Back/Next never duplicates. */
   const apply = useMutation({
-    mutationFn: async (jobs: { key: string; run: () => Promise<unknown> }[]) => {
+    mutationFn: async ({ jobs }: { jobs: Job[]; to?: number }) => {
       for (const j of jobs) {
         if (applied.current.has(j.key)) continue
         await j.run()
@@ -137,27 +149,58 @@ export default function SetupPage() {
         setSchedules(Array.from(applied.current).filter((k) => k.startsWith('rule:')).length)
       }
     },
-    onSuccess: () => go(step + 1),
+    onSuccess: (_d, v) => go(v.to ?? step + 1),
   })
 
   const go = (n: number) => {
     setTried(false)
     create.reset()
     apply.reset()
+    setTweak(null)
     setStep(n)
     if (justCreated || accountDone) saveStep(qc, n)
   }
 
   // one request per click even on a double-click; failures show via apply.error
-  // built-in chore types, fetched once when the first starter chore is created
-  const typesRef = useRef<Promise<{ id: number; name: string }[]> | null>(null)
-  const choreTypes = () =>
-    (typesRef.current ??= api<unknown>('/chore-types')
-      .then((r) => (Array.isArray(r) ? (r as { id: number; name: string }[]) : []))
-      .catch(() => []))
+  const run = (jobs: Job[], to?: number) =>
+    void once(() => apply.mutateAsync({ jobs, to }).catch(() => {}))
 
-  const run = (jobs: { key: string; run: () => Promise<unknown> }[]) =>
-    void once(() => apply.mutateAsync(jobs).catch(() => {}))
+  const sub = (t: typeof tweak) => {
+    apply.reset()
+    setTweak(t)
+  }
+  const presetJob = (skip?: string[]): Job => {
+    const body = applyBody(style, kids, kidStyles, skip)
+    return { key: `${skip ? 'preset:tweak' : 'preset'}:${JSON.stringify(body)}`, run: () => applyPreset.mutateAsync(body) }
+  }
+  /** Skipping How strict or Your plan still gives a working setup: Balanced for everyone (turnkey). */
+  const skipToBalanced = () => {
+    const body = applyBody('balanced', kids, null)
+    run([{ key: `preset:${JSON.stringify(body)}`, run: () => applyPreset.mutateAsync(body) }], 6)
+  }
+  const startTweak = (catalog: PresetCatalog) => {
+    const t = tweakStart(presetKids(kids, kidStyles, style), catalog, style)
+    setChores(t.chores.filter((c) => !addedStarters.includes(c)))
+    setAssign(t.assign)
+    if (t.hours.length) setHours(t.hours)
+    setChoresLock(t.lock)
+    setTrustKids(t.trust)
+    setPenalties(t.penalties)
+    sub('chores')
+  }
+  /** Looks good applies the plan; Tweak walks Chores, Hours, Extras, then applies it with those three skipped. */
+  const nextPlan = () => {
+    if (tweak === 'chores') return sub('hours')
+    if (tweak === 'hours') return sub('extras')
+    if (tweak === null) return run([presetJob()])
+    run([
+      ...(kids.length === 0 ? [] : choreJobs(chores, (t) => assign[t] ?? kids.map((k) => k.id), choreCache.current)),
+      ...hoursJobs(hours, choresLock),
+      ...extrasJobs(trustKids, bedtimeAuto, goalsOn, penalties),
+      presetJob(['chores', 'bedtime', 'trust', 'goals', 'penalties']),
+    ])
+  }
+  const back = () => (tweak === 'extras' ? sub('hours') : tweak === 'hours' ? sub('chores') : tweak === 'chores' ? sub(null) : go(step - 1))
 
   const next = () => {
     if (step === 1) {
@@ -173,62 +216,7 @@ export default function SetupPage() {
       setConflict(false)
       return void once(() => create.mutateAsync().catch(() => {})) // errors show via create.error
     }
-    if (step === 5) {
-      return run(
-        kids.length === 0
-          ? []
-          : chores.map((title) => ({
-              key: `chore:${title}`,
-              run: async () => {
-                let id = choreIds.current.get(title)
-                if (id === undefined) {
-                  // made before a reload? then it is already assigned: don't make it twice
-                  const have = await api<LibChore[]>('/chores/')
-                  if (Array.isArray(have) && have.some((c) => c.title === title)) return
-                  const st = starter(title)
-                  const types = await choreTypes()
-                  const typeId = types.find((t) => t.name === st?.type)?.id
-                  const c = await api<{ id: number }>('/chores/', {
-                    method: 'POST',
-                    body: { title, points: st?.points ?? 10, needs_photo: false, steps: [], ...(typeId ? { type_id: typeId } : {}) },
-                  })
-                  id = c.id
-                  choreIds.current.set(title, id)
-                }
-                const days = starter(title)?.days
-                await api(`/chores/${id}/assignments`, {
-                  method: 'POST',
-                  body: {
-                    kid_ids: kids.map((k) => k.id),
-                    mode: 'each',
-                    repeat: days ? { type: 'weekly', days } : { type: 'daily', days: [] },
-                    on_date: null,
-                    due_time: null,
-                  },
-                })
-              },
-            })),
-      )
-    }
-    if (step === 7) {
-      return run([
-        ...hours.map((body, i) => ({
-          key: `rule:${i}`,
-          run: async () => {
-            const have = await api<HoursPayload>('/hours') // an earlier try must not duplicate an identical rule
-            const same = (r: HourRule) => r.name === body.name && r.category === body.category && r.kind === body.kind && r.days === body.days && r.everyone === body.everyone && r.start_date === body.start_date && r.end_date === body.end_date && JSON.stringify(r.times.map((t) => [t.start, t.end])) === JSON.stringify(body.times.map((t) => [t.start, t.end]))
-            if (!have?.rules?.some(same)) await api('/hours', { method: 'POST', body })
-          },
-        })),
-        { key: `chores_lock:${choresLock}`, run: () => api('/family', { method: 'PATCH', body: { chores_lock: choresLock } }) },
-      ])
-    }
-    if (step === 8) {
-      return run([
-        ...trustKids.map((id) => ({ key: `trust:${id}`, run: () => api(`/kids/${id}`, { method: 'PATCH', body: { trust_mode: true } }) })),
-        ...(bedtimeAuto ? [{ key: 'bedtime', run: () => api('/family', { method: 'PATCH', body: { bedtime_auto: true } }) }] : []),
-      ])
-    }
+    if (step === 5) return nextPlan()
     if (step > LAST) return
     if (step === 3 && kidDraft.trim()) return setTried(true)
     go(step + 1)
@@ -240,12 +228,17 @@ export default function SetupPage() {
     1: { title: 'Make your parent account', sub: "You'll use this to log in. You can invite another parent later." },
     2: { title: 'Your family', sub: 'Shown on the kids\' screens and in notifications.' },
     3: { title: 'Who are your kids?', sub: 'Add each kid, one at a time. You can add more later.' },
-    4: { title: "Kids' phones", sub: "Each kid scans their code with their phone's camera. No phone? Skip it. You can do this later from the kid's page." },
-    5: { title: 'Pick some starter chores', sub: 'Tap to choose. Everything can be changed later.' },
-    6: { title: 'Whose devices are these?', sub: 'Give each one an owner, or mark it Guest so it\'s never blocked.' },
-    7: { title: 'When can devices be online?', sub: 'Devices are on during these hours and off at bedtime. Add school hours, holidays and per-kid hours later in Settings.' },
-    8: { title: 'Optional extras', sub: 'Two ways to do less tapping. All off unless you switch them on.' },
+    4: { title: 'How strict should it be?', sub: 'You can change anything later.' },
+    5: { title: "Here's your plan", sub: "Set for each kid's age and style." },
+    6: { title: "Kids' phones", sub: "Each kid scans their code with their phone's camera. No phone? Skip it. You can do this later from the kid's page." },
+    7: { title: 'Whose devices are these?', sub: 'Give each one an owner, or mark it Guest so it\'s never blocked.' },
   } as const
+  const tweakTitles = {
+    chores: { title: 'Pick some starter chores', sub: 'Tap to choose. Everything can be changed later.' },
+    hours: { title: 'When can devices be online?', sub: 'Devices are on during these hours and off at bedtime. Add school hours, holidays and per-kid hours later in Settings.' },
+    extras: { title: 'Optional extras', sub: 'Two ways to do less tapping. All off unless you switch them on.' },
+  } as const
+  const head = tweak ? tweakTitles[tweak] : stepTitles[step as keyof typeof stepTitles]
 
   // what really exists (a resumed wizard forgot what it made)
   const made = useQuery({
@@ -270,19 +263,20 @@ export default function SetupPage() {
       <div className="f-shell" style={{ minHeight: '100vh' }}>
         <WizardFrame
           step={step}
-          title={step > LAST ? 'You\'re all set' : stepTitles[step as keyof typeof stepTitles].title}
-          subtitle={step > LAST ? finishSummary(kids.length, made.data?.chores ?? chores.length, devices, made.data?.rules ?? schedules) : stepTitles[step as keyof typeof stepTitles].sub}
-          onBack={step > 2 || (step === 2 && !accountDone) ? () => go(step - 1) : undefined}
+          title={step > LAST ? 'You\'re all set' : head.title}
+          subtitle={step > LAST ? finishSummary(kids.length, made.data?.chores ?? chores.length, devices, made.data?.rules ?? schedules) : head.sub}
+          onBack={step > 2 || (step === 2 && !accountDone) ? back : undefined}
           onNext={next}
           nextLabel={step === LAST ? 'Finish' : 'Next'}
-          onSkip={step >= 3 && step <= LAST && !(step === 4 && kids.length === 0) ? () => go(step + 1) : undefined}
+          hideNext={step === 5 && !tweak}
+          onSkip={step >= 3 && step <= LAST && !tweak && !(step === 6 && kids.length === 0) ? (step === 4 || step === 5 ? skipToBalanced : () => go(step + 1)) : undefined}
           onStepClick={(n) => {
             if (n > step && n > step + 1) return // Can't skip ahead multiple steps
             go(n)
           }}
           busy={create.isPending || apply.isPending}
           done={step > LAST}
-          note={step === 5 ? `${chores.length} picked` : undefined}
+          note={step === 5 && tweak === 'chores' ? `${chores.length} picked` : undefined}
         >
           {step === 1 && <StepParent value={parent} showError={tried} onChange={setParent} />}
           {step === 2 && (
@@ -297,11 +291,13 @@ export default function SetupPage() {
           )}
           {step === 3 && <StepKids kids={kids} name={kidDraft} onName={setKidDraft} onAdd={(k) => setKids([...kids, k])}
               draftError={tried && kidDraft.trim() ? `Add ${kidDraft.trim()} first or clear the field.` : undefined} />}
-          {step === 4 && <StepPhones kids={kids} />}
-          {step === 5 && <StepChores selected={chores} made={addedStarters} hasKids={kids.length > 0} onChange={setChores} />}
-          {step === 6 && <StepDevices kids={kids} />}
-          {step === 7 && <StepHours drafts={hours} onChange={setHours} choresLock={choresLock} onChoresLock={setChoresLock} />}
-          {step === 8 && <StepExtras kids={kids} trust={trustKids} bedtime={bedtimeAuto} onTrust={setTrustKids} onBedtime={setBedtimeAuto} />}
+          {step === 4 && <StepStyle kids={kids} style={style} onStyle={setStyle} styles={kidStyles} onStyles={setKidStyles} />}
+          {step === 5 && !tweak && <StepPlan kids={presetKids(kids, kidStyles, style)} style={style} onTweak={startTweak} busy={apply.isPending} />}
+          {step === 5 && tweak === 'chores' && <StepChores selected={chores} made={addedStarters} hasKids={kids.length > 0} onChange={setChores} />}
+          {step === 5 && tweak === 'hours' && <StepHours drafts={hours} onChange={setHours} choresLock={choresLock} onChoresLock={setChoresLock} />}
+          {step === 5 && tweak === 'extras' && <StepExtras kids={kids} trust={trustKids} bedtime={bedtimeAuto} goals={goalsOn} onTrust={setTrustKids} onBedtime={setBedtimeAuto} onGoals={setGoalsOn} penalties={penalties} onPenalties={setPenalties} />}
+          {step === 6 && <StepPhones kids={kids} />}
+          {step === 7 && <StepDevices kids={kids} />}
           {step > LAST && (
             <StepFinish resetTime={fam.data?.reset_time} chores={made.data?.chores ?? chores.length} kids={kids.length} lock={fam.data?.chores_lock ?? choresLock} />
           )}

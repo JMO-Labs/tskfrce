@@ -55,7 +55,7 @@
 
 /* bottom bar < 768px (Kid/Teen) */
 .k-nav[data-kind='bar'] {
-  order: 2; position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
+  order: 2; position: sticky; bottom: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px;
   padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); background: var(--k-card); border-top: 2px solid var(--k-line);
 }
 .k-nav[data-kind='bar'] .k-nb { height: 58px; border-radius: 12px; font-size: 12px; gap: 2px; }
@@ -67,7 +67,7 @@
 
 /* Little bottom nav, every width (09 .nav) */
 .k-nav[data-kind='little'] {
-  order: 2; position: sticky; bottom: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+  order: 2; position: sticky; bottom: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 16px;
   padding: 14px 28px 22px; background: var(--k-bg);
 }
 .k-nav[data-kind='little'] .k-nb {

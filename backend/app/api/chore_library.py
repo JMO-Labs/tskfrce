@@ -51,6 +51,7 @@ def chore_out(c: Chore) -> dict:
         points=c.points,
         needs_photo=c.needs_photo,
         always_check=c.always_check,
+        gives_game=c.gives_game,
         type_id=c.type_id,
         steps=[
             {
@@ -131,6 +132,7 @@ def list_chores(kid_id: int | None = None, db: Session = Depends(get_db)):
             selectinload(Chore.steps),
             selectinload(Chore.assignments).selectinload(ChoreAssignment.kids),
         )
+        .filter(Chore.makeup.is_(False))
         .order_by(Chore.id)
     )
     out = []
@@ -151,6 +153,7 @@ def create_chore(
         points=body.points,
         needs_photo=body.needs_photo,
         always_check=body.always_check,
+        gives_game=body.gives_game,
         created_by_id=parent.id,
         type_id=_type_id(db, body.type_id),
     )
@@ -166,7 +169,7 @@ def create_chore(
 def patch_chore(chore_id: int, body: ChorePatch, db: Session = Depends(get_db)):
     c = _chore(db, chore_id)
     ch = body.model_dump(exclude_unset=True)
-    for k in ("title", "points", "needs_photo", "always_check"):
+    for k in ("title", "points", "needs_photo", "always_check", "gives_game"):
         if ch.get(k) is not None:
             setattr(c, k, ch[k])
     if ch.get("type_id") is not None:
@@ -189,6 +192,7 @@ def copy_chore(
         points=c.points,
         needs_photo=c.needs_photo,
         always_check=c.always_check,
+        gives_game=c.gives_game,
         created_by_id=parent.id,
         type_id=c.type_id,
     )

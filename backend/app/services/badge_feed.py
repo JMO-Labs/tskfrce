@@ -73,6 +73,11 @@ _REASONS = {
     "goal_getter": ("{n} reward earned", "{n} rewards earned"),
     "patience_pays": ("{n} big reward (2000+ points)", "{n} big rewards (2000+ points)"),
     "time_lord": ("{n} screen-time request approved", "{n} screen-time requests approved"),
+    "arcade_ace": ("{n} game played", "{n} games played"),
+    "triple_star": ("{n} 3-star game round", "{n} 3-star game rounds"),
+    "try_it_all": ("{n} quick-fire game tried", "{n} quick-fire games tried"),
+    "house_record": ("{n} family best held", "{n} family bests held"),
+    "cat_snack_champ": ("{n} 3-star Hungry Cat round", "{n} 3-star Hungry Cat rounds"),
 }
 
 

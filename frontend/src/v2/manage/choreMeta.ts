@@ -71,7 +71,7 @@ export function stepsSummary(steps: Step[]): string {
 }
 
 /** How many of Due by, Needs a photo and Always check are set (the Options row). */
-export const optionsOn = (o: { due: string; photo: boolean; check: boolean }) => [o.due !== '', o.photo, o.check].filter(Boolean).length
+export const optionsOn = (o: { due: string; photo: boolean; check: boolean; gives?: boolean }) => [o.due !== '', o.photo, o.check, !!o.gives].filter(Boolean).length
 
 /** "School · 30 pts · daily · Maya, Leo" */
 export const choreHeadLine = (typeName: string | undefined, points: number, when: string, doers: string) =>
