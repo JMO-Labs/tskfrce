@@ -17,6 +17,8 @@ from collections.abc import Iterable, Mapping
 log = logging.getLogger(__name__)
 
 TABLE = "task4ce"
+from blocker.sni_gate import GATE_PORT
+
 DNS_PORT = 53
 
 
@@ -102,6 +104,11 @@ def render_ruleset(
     # Homework: HTTP to an allowed IP goes through (DNS stays on the portal resolver)
     lines.append("    ether saddr . ip daddr @hw_out tcp dport 80 return")
     lines.append(f"    ip saddr @blocked_v4 tcp dport 80 {web_to}")
+    # HTTPS leaving the box (not to its own pages) goes through the SNI gate (sni_gate.py)
+    lines.append("    ether saddr . ip daddr @hw_out tcp dport 443 return")
+    lines.append(
+        f"    ip saddr @blocked_v4 fib daddr type != local tcp dport 443 redirect to :{GATE_PORT}"
+    )
     lines.append("  }")
     lines.append("  chain forward {")
     lines.append("    type filter hook forward priority 0; policy accept;")

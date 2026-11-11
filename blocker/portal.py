@@ -12,6 +12,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 log = logging.getLogger(__name__)
 
 
+from blocker.sni_gate import PASS_NAMES, real_ip
+
+
 def dns_response(query_wire: bytes, answer_ip: str) -> bytes | None:
     """Answer a genuine A query with answer_ip; AAAA/others get NOERROR with no answer.
 
@@ -60,6 +63,11 @@ def handle_query(
     """Per-packet work: report the qname to on_query (errors swallowed), return the reply."""
     if addr[1] == 53:
         return None
+    name = qname_of(data)
+    if name and name.rstrip(".").lower() in PASS_NAMES:  # real address; sni_gate vets the TLS
+        ip = real_ip(name.rstrip(".").lower())
+        if ip:
+            return dns_response(data, ip)
     out = dns_response(data, box_ip)
     if out is not None and on_query is not None:
         try:
