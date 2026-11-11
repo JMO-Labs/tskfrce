@@ -26,7 +26,6 @@ export function TodayPage() {
   const { data, isError, error, refetch } = useToday()
   const router = useRouter()
   const [hhOpen, setHhOpen] = useState(false)
-  const [penAll, setPenAll] = useState(false)
   const kidFocus = useFocusParam('kid', { group: ['focus'], clears: ['chore'], valid: data ? (id) => data.kids.some((k) => String(k.id) === id) : undefined })
   const areaFocus = useFocusParam('focus', { group: ['kid'], clears: ['chore'], valid: (id) => ['needs', 'devices', 'addons'].includes(id) })
   // Closing Needs: useFocusParam hands focus back to the opener. If that is gone (last item cleared, strip removed), land on a calm anchor, never <body>.
@@ -52,6 +51,7 @@ export function TodayPage() {
   const runId = Number(router.query.chore) || null
   const run = useRunDetail(runId)
   const kidList = useKids(!!runId)
+  const [penAll, setPenAll] = useState(false)
   const penalties = !!useFamily().data?.penalties_enabled
   if (runId && !data && !isError)
     return (

@@ -45,7 +45,6 @@ export function StepDevices({ kids }: { kids: Kid[] }) {
 
   const deviceRow = (d: Device) => {
     const value = d.status === 'guest' ? [GUEST] : d.owner_ids.map(String)
-    const sub = [d.vendor || 'Unknown maker', d.ip].filter(Boolean).join(' · ')
     return (
       <div key={d.id} className={styles.dv} data-owned={value.length ? '' : undefined}>
         <div className={styles.ic}>
@@ -53,7 +52,7 @@ export function StepDevices({ kids }: { kids: Kid[] }) {
         </div>
         <div className={styles.t2}>
           <b className="p-kn" title={d.name}>{d.name}</b>
-          <small title={sub}>{sub}</small>
+          <small>{[d.vendor || 'Unknown maker', d.ip].filter(Boolean).join(' · ')}</small>
         </div>
         <KidPicker variant="pop" single kids={kids} extras={EXTRAS} value={value} label={`Owner for ${d.name}`} onChange={(v) => change(d, v)} />
       </div>

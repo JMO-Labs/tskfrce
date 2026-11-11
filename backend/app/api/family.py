@@ -25,7 +25,7 @@ from app.models.points import Points
 from app.models.reward import Redemption, Reward
 from app.models.user import User, UserRole
 from app.schemas.lock import FamilyPatch, utc_z
-from app.services import bedtime, boost, inbox, progression, push, trust
+from app.services import bedtime, boost, goals_out, inbox, penalties, progression, push, trust
 from app.services import chores as svc
 
 router = APIRouter(prefix="/api/v1", tags=["family"], dependencies=[Depends(require_parent)])
@@ -68,6 +68,9 @@ def _fam_out(fam) -> dict:
         "bedtime_auto": fam.bedtime_auto,
         "bedtime_auto_at": fam.bedtime_auto_at,
         "recap_weekly": fam.recap_weekly,
+        "penalties_enabled": fam.penalties_enabled,
+        "penalty_sizes": penalties.sizes(fam),
+        "makeup_chores": penalties.makeup_list(fam),
     }
 
 

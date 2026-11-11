@@ -75,6 +75,23 @@ class FamilySettings(Base):
     recap_weekly = Column(Boolean, nullable=False, default=True, server_default="1")
     recap_date = Column(Date, nullable=True)  # local day the weekly recap last went out
     waiting_reset_days = Column(Integer, nullable=False, default=0, server_default="0")
+    goals_on = Column(Boolean, nullable=False, default=True, server_default="1")
+    goal_suggest = Column(Boolean, nullable=False, default=True, server_default="1")
+    goal_withdraw = Column(Boolean, nullable=False, default=True, server_default="1")
+    goal_siblings = Column(Boolean, nullable=False, default=False, server_default="0")
+    goal_auto = Column(Boolean, nullable=False, default=False, server_default="0")  # 0 = by hand
+    goal_auto_pct = Column(Integer, nullable=False, default=25, server_default="25")
+    goal_max_little = Column(Integer, nullable=False, default=1, server_default="1")
+    goal_max_kid = Column(Integer, nullable=False, default=2, server_default="2")
+    goal_max_teen = Column(Integer, nullable=False, default=3, server_default="3")
+    goal_screen_on = Column(Boolean, nullable=False, default=False, server_default="0")
+    goal_screen_price = Column(Integer, nullable=False, default=200, server_default="200")
+    goal_screen_minutes = Column(Integer, nullable=False, default=60, server_default="60")
+    goal_jail_on = Column(Boolean, nullable=False, default=False, server_default="0")
+    goal_jail_price = Column(Integer, nullable=False, default=500, server_default="500")
+    penalties_enabled = Column(Boolean, nullable=False, default=False, server_default="0")
+    penalty_sizes = Column(Text, nullable=True)  # JSON; NULL = defaults
+    makeup_chores = Column(Text, nullable=True)  # JSON; NULL = defaults
 
 
 def get_family(db: Session) -> FamilySettings:

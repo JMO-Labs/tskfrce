@@ -6,8 +6,9 @@
   [data-look='parent'] .p-back-link { min-height: 44px; }
   [data-look='parent'] :is(.pk-input, .rw-note) { min-height: 44px; }
   html[data-look='parent'] :is(.f-btn.f-btn, .f-input.f-input) { min-height: 44px; } /* Mantine buttons and fields (setup wizard, forms) */
-  [data-look='parent'] button.p-arow-ty { position: relative; }
+  [data-look='parent'] :is(button.p-arow-ty, .p-head-me) { position: relative; }
   [data-look='parent'] button.p-arow-ty::after { content: ''; position: absolute; inset: -7px; }
+  [data-look='parent'] .p-head-me::after { content: ''; position: absolute; inset: -4px; }
   /* the last card clears the tab bar (and the home indicator); scrollIntoView honours it too */
   [data-look='parent'] .p-tabbar { padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
   [data-look='parent'] :is(.p-main, .p-detail-panel, .p-detail-column, .p-list-only) {

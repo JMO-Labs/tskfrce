@@ -85,12 +85,10 @@ export function HouseholdBody({ fam, save }: Props) {
           {zones(fam.timezone).map((z) => <option key={z}>{z}</option>)}
         </select>
       </label>
-      <div className="fam-field-i">
-        <label className="pk-field">
-          <span className="pk-label">Day resets at</span>
-          <input className="pk-input" type="time" value={reset} onChange={(e) => setReset(e.currentTarget.value)} onBlur={commitReset} onKeyDown={commitOnEnter} />
-        </label>
-        <Info label="About the day reset">Chores start fresh at this time each day.</Info>
+      <div className="ch-setl">
+        <Setr label="Day resets at" info={<Info label="About the day reset">Chores start fresh at this time each day.</Info>}>
+          <input className="pk-input ch-w" type="time" aria-label="Day resets at" value={reset} onChange={(e) => setReset(e.currentTarget.value)} onBlur={commitReset} onKeyDown={commitOnEnter} />
+        </Setr>
       </div>
     </>
   )

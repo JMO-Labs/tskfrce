@@ -4,7 +4,6 @@ import { Drawer, Tooltip } from '@mantine/core'
 import type { TodayKid, TodayChore } from '../types'
 import { useRunDetail } from '../hooks/useChores'
 import { useApproveChore, useMarkDone, useMarkNotDone, useSendBack, useToday } from '../hooks/useToday'
-import { useFamily } from '../hooks/useFamily'
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext'
 import { Icon } from '../parent/Icon'
 import { Skeleton } from '../parent/states'
@@ -20,6 +19,7 @@ import { useKids } from '../hooks/useKids'
 import { ownApproved } from '../trustTypes'
 import { WasntDoneSheet } from './WasntDoneSheet'
 import { PenaltySheet } from './PenaltySheet'
+import { useFamily } from '../hooks/useFamily'
 import { useClock, useNow } from './useClock'
 
 function AuthImg({ path, alt }: { path: string; alt: string }) {
@@ -44,6 +44,8 @@ export function ChoreOpen({ chore, kid }: { chore: TodayChore; kid: TodayKid }) 
   const [ded, setDed] = useState(false)
   const [back, setBack] = useState(false)
   const [taking, setTaking] = useState(false)
+  const [pen, setPen] = useState(false)
+  const penalties = !!useFamily().data?.penalties_enabled
   const own = ownApproved(chore.approved_via)
   const todayDay = useToday().data?.day
   const kidList = useKids().data
@@ -51,8 +53,6 @@ export function ChoreOpen({ chore, kid }: { chore: TodayChore; kid: TodayKid }) 
   const [note, setNote] = useState('')
   const [photo, setPhoto] = useState<number | null>(null) // index of the enlarged proof photo
   const [approving, setApproving] = useState(false)
-  const [pen, setPen] = useState(false)
-  const penalties = !!useFamily().data?.penalties_enabled
   const backBtn = useRef<HTMLButtonElement>(null)
   const dedBtn = useRef<HTMLButtonElement>(null)
   const sending = useRef(false) // synchronous guard: a double click or Enter-mash fires before React re-renders
@@ -306,18 +306,19 @@ export function ChoreOpen({ chore, kid }: { chore: TodayChore; kid: TodayKid }) 
           </div>
         )
       )}
+      {pen && <PenaltySheet kidIds={[kid.id]} from={{ chore_run_id: chore.id }} onClose={() => setPen(false)} />}
       {taking && (
         <WasntDoneSheet
           // team: earned_pts is one kid's share but take-back removes everyone's, so drop the number
           run={{ id: chore.id, title: chore.title, day: chore.day ?? '', points: chore.mode === 'team' ? null : chore.earned_pts ?? null }}
           today={todayDay ?? ''}
           kidName={kid.name ?? 'the kid'}
+          kidId={kid.id}
           level={trustKid?.trust_level}
           trustOn={!!trustKid?.trust_mode}
           onClose={() => setTaking(false)}
         />
       )}
-      {pen && <PenaltySheet kidIds={[kid.id]} from={{ chore_run_id: chore.id }} onClose={() => setPen(false)} />}
       <PhotoViewer
         item={photo === null ? null : { type: 'chore', id: chore.id, kid_id: kid.id, kid_name: kid.name, title: chore.title }}
         photos={run.photos}

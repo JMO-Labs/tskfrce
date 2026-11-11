@@ -14,6 +14,7 @@ import { DeviceHead } from './DeviceHead'
 import { DeviceNetwork } from './DeviceNetwork'
 import { DeviceRightNow } from './DeviceRightNow'
 import { ActivityLine, DetailsBody } from './DeviceRows'
+import { HomeworkActivity } from './HomeworkActivity'
 import { nameOf } from './choreMeta'
 import { toastFail } from '../notify'
 
@@ -66,7 +67,7 @@ export function DeviceDetail({ device, kids, groups = [], onDeleted, onRequestOv
         timeZone={tz}
         blockNew={family?.new_devices_blocked ?? false}
         pendingAction={pendingAction}
-        onOverride={(action) => onRequestOverride({ kind: 'device', id: device.id, action })}
+        onOverride={(action, minutes) => onRequestOverride({ kind: 'device', id: device.id, action, minutes })}
         onActivity={() => rows.openTo('activity')}
         onRename={rename}
         onDelete={open}
@@ -85,6 +86,11 @@ export function DeviceDetail({ device, kids, groups = [], onDeleted, onRequestOv
         <SummaryRow id="activity" icon={ico('trending_up')} title="Activity" summary={alerts} line2={guest ? undefined : <ActivityLine device={device} />} focus={rows}>
           <DeviceActivity device={device} kids={kids} timeZone={tz} />
         </SummaryRow>
+        {ov?.action === 'homework' && (
+          <SummaryRow id="homework" icon={ico('menu_book')} title="Homework activity" summary="Sites used during homework mode" focus={rows}>
+            <HomeworkActivity deviceId={device.id} />
+          </SummaryRow>
+        )}
       </FocusArea>
 
       <ConfirmDelete

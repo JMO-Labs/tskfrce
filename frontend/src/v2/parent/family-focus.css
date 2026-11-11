@@ -9,13 +9,6 @@
 [data-look='parent'] .fam-setr > .p-info-btn { order: 1; margin: -4px 0 -4px -6px; }
 [data-look='parent'] .fam-setr > :not(.ch-lb):not(.p-info-btn) { order: 2; margin-left: auto; }
 [data-look='parent'] .fam-setr > .ch-w { width: 104px; }
-/* label-above field with an (i) on the label line; the (i) stays after the input in the DOM (audit 22) */
-[data-look='parent'] .fam-field-i { display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 2px; row-gap: 6px; }
-[data-look='parent'] .fam-field-i > .pk-field { display: contents; }
-[data-look='parent'] .fam-field-i .pk-label { grid-area: 1 / 1; }
-[data-look='parent'] .fam-field-i > .p-info-btn { grid-area: 1 / 2; justify-self: start; margin: -4px 0; }
-[data-look='parent'] .fam-field-i .pk-input { grid-area: 2 / 1 / 3 / -1; }
 @media (max-width: 767px) {
-  [data-look='parent'] .fam-field-i > .p-info-btn { margin: -14px 0 -14px -10px; }
   [data-look='parent'] .fam-rows .pk-input { min-height: 44px; }
 }

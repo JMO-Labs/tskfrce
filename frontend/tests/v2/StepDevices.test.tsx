@@ -56,22 +56,6 @@ describe('StepDevices', () => {
     expect(await screen.findByText('All devices have an owner')).toBeInTheDocument()
   })
 
-  test('device sub keeps the full maker and IP in a title', async () => {
-    apiMock.mockResolvedValue(three)
-    openNeed()
-    view()
-    expect(await screen.findByText('Apple · 192.168.1.42')).toHaveAttribute('title', 'Apple · 192.168.1.42')
-  })
-
-  test('device sub title: Unknown maker with no vendor or IP; long vendor kept whole', async () => {
-    const long = 'A'.repeat(80)
-    apiMock.mockResolvedValue([dev({ vendor: null, ip: null }), dev({ id: 2, name: 'Long', vendor: long, ip: '10.0.0.9', mac: '3c:22:fb:00:00:02' })])
-    openNeed()
-    view()
-    expect(await screen.findByText('Unknown maker')).toHaveAttribute('title', 'Unknown maker')
-    expect(screen.getByText(`${long} · 10.0.0.9`)).toHaveAttribute('title', `${long} · 10.0.0.9`)
-  })
-
   test('one owner pop-over per device: kids, Guest, Not sure yet', async () => {
     apiMock.mockResolvedValue(three)
     openNeed()

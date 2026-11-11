@@ -102,7 +102,7 @@ export function FamilyCard({ fam }: { fam: Family }) {
         <SummaryRow id="pts" icon={ico('stars')} title="Points rules" summary="" line2={line("pts", pointsLine(fam))} focus={focus}>
           <PointsBody fam={fam} save={save} />
         </SummaryRow>
-        <SummaryRow id="pen" icon={ico('warning')} title="Penalties" summary="" line2={line("pen", penaltiesLine(fam))} focus={focus}>
+        <SummaryRow id="pen" icon={ico('gavel')} title="Penalties" summary="" line2={line('pen', penaltiesLine(fam))} focus={focus}>
           <PenaltiesBody fam={fam} save={save} />
         </SummaryRow>
       </FocusArea>

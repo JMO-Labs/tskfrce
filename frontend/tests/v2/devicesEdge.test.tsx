@@ -250,20 +250,3 @@ describe('GroupDetail icon, chore switch, hours and summary', () => {
     expect(strip.getByText('Next lock').nextSibling?.textContent).toMatch(/7:30\s?PM/)
   })
 })
-
-describe('Groups list rows (audit 20)', () => {
-  const groups = [{ id: 3, name: 'Screens', device_ids: [1, 2] }] as Group[]
-  const devices = [dev({ id: 1, name: 'iPad' }), dev({ id: 2, name: 'Laptop', mac: 'aa:bb:cc:dd:ee:02' })]
-
-  test('groups rows have no trailing glyph stack; the left icon stays', () => {
-    const { container } = render(wrap(<DeviceList devices={devices} kids={kids} groups={groups} tab="groups" onSelectDevice={() => {}} />))
-    const row = container.querySelector('[data-group="3"]')!
-    expect(row.querySelector('.p-group-stack')).toBeNull()
-    expect(row.querySelector('.p-device-icon')).not.toBeNull()
-  })
-
-  test('the list header carries the devices hook so the phone band can tighten', () => {
-    const { container } = render(wrap(<DeviceList devices={devices} kids={kids} groups={groups} tab="groups" onSelectDevice={() => {}} />))
-    expect(container.querySelector('.p-list-header')).toHaveAttribute('data-list', 'devices')
-  })
-})

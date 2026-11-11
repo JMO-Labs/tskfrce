@@ -31,6 +31,7 @@ class Config:
         token = environ.get("INTERNAL_TOKEN") or _token_from_file(data_dir)
         if not token:
             raise RuntimeError("INTERNAL_TOKEN not set in env or secrets.json")
+        upstream_dns = environ.get("UPSTREAM_DNS", "") or _read_resolv_conf() or ""
         bind_str = environ.get("BLOCKER_BIND", "127.0.0.1")
         # Parse comma-separated bind addresses; if multiple, store in bind_hosts
         bind_hosts = tuple(h.strip() for h in bind_str.split(",") if h.strip())

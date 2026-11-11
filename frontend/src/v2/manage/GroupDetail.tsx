@@ -72,7 +72,7 @@ function Existing({ group, devices, kids, groups, rules, onSelect, onRequestOver
         owners={owners}
         timeZone={timeZone}
         pendingAction={pendingAction}
-        onOverride={(action) => onRequestOverride({ kind: 'group', id: group.id, action })}
+        onOverride={(action, minutes) => onRequestOverride({ kind: 'group', id: group.id, action, minutes })}
         onRename={rename}
         onDelete={open}
       />

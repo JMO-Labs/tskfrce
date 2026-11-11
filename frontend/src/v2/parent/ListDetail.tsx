@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { ReactNode } from 'react'
 import { useMediaQuery } from '@mantine/hooks'
+import { VisuallyHidden } from '@mantine/core'
 import { Icon } from './Icon'
 import { withoutFocus } from './useFocusParam'
 
@@ -58,6 +59,7 @@ export function ListDetail({
 
   return (
     <main className="p-list-detail">
+      <VisuallyHidden component="h1">{listTitle}</VisuallyHidden>
       <div className="p-list-column">{list}</div>
       <div className="p-detail-column p-grid">{detail}</div>
     </main>

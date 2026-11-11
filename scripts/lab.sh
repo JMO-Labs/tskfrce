@@ -144,5 +144,6 @@ case "$cmd" in
     mac=$(_mac_of "$1")
     _devices | jq -r --arg m "$mac" '[.[] | select((.mac|ascii_downcase)==$m)][0].resisting // false' ;;
   test-block) _post "/api/v1/devices/$(_need_id "$1")/test-block" '{}' ;;
-  *) echo "usage: $0 {up|down|e2e|pw-version|token|device-id|block|unblock|check|check6|portal|resist|reset|resisting|test-block} [host]" >&2; exit 2 ;;
+  dig) $COMPOSE exec -T "$1" dig +short "$2" @203.0.113.1 2>/dev/null || echo "error" ;;
+  *) echo "usage: $0 {up|down|e2e|pw-version|token|device-id|block|unblock|check|check6|portal|resist|reset|resisting|test-block|dig} [host] [name]" >&2; exit 2 ;;
 esac

@@ -56,11 +56,10 @@ export function ParentShell({
   // chat panel/sheet for openChat; the desktop Chat page shows threads itself
   const dock = !small && router.pathname === '/chat' ? null : <ChatDock meId={user ? Number(user.id) : null} meName={user?.username} />
   const initial = (user?.username ?? '?').charAt(0).toUpperCase()
-  // bell and account initial: top right on every page and breakpoint
-  const tools = (
+  const phoneTools = (
     <>
-      <Bell />
-      <Link href="/more" className="p-head-me p-htool" aria-label="Account and settings">
+      <Bell placement="header" />
+      <Link href="/more" className="p-head-me" aria-label="Account and settings">
         {initial}
       </Link>
     </>
@@ -78,10 +77,12 @@ export function ParentShell({
         {head}
         {!small && <Rail onLogout={logOut} />}
         <div className="p-content">
-          <header className="p-header">
-            <h1 tabIndex={-1}>{title}</h1>
-            {tools}
-          </header>
+          {small && (
+            <header className="p-header">
+              <h1 tabIndex={-1}>{title}</h1>
+              {phoneTools}
+            </header>
+          )}
           <BlockerBanner />
           <Freshness />
           <ListDetail list={list} detail={children} listTitle={title} back={back} phone={phone} />
@@ -100,7 +101,7 @@ export function ParentShell({
         <header className="p-header">
           <h1 tabIndex={-1}>{title}</h1>
           {actions}
-          {tools}
+          {small && phoneTools}
         </header>
         <BlockerBanner />
         <Freshness />

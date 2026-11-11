@@ -85,6 +85,7 @@ __all__ = [
     "Override",
     "Notification",
     "TrustEvent",
+    "Penalty",
     "IntegrationInstall",
     "IntegrationKid",
     "IntegrationChore",

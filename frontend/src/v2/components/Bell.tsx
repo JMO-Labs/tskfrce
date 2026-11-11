@@ -13,7 +13,7 @@ import { Icon } from '../parent/Icon'
 import { toastFail, toastOk } from '../notify'
 import { api } from '../api'
 import { isAlert, isNeedsYou, isToday } from './bellRules'
-import { InboxRow } from './InboxRow'
+import { InboxPenaltyRow } from './InboxPenaltyRow'
 import { useEscClose, useInboxLock } from './useInboxLock'
 import { MenuPortalContext } from '../parent/MoreMenu'
 
@@ -119,7 +119,7 @@ export function List({ onGo, sheet, page }: { onGo: () => void; sheet?: boolean;
     return to ? router.push(to) : Promise.resolve()
   }
   const row = (n: InboxItem, today: boolean) => (
-    <InboxRow
+    <InboxPenaltyRow
       key={n.id}
       n={n}
       live={today || n.pending}
@@ -218,7 +218,7 @@ export function List({ onGo, sheet, page }: { onGo: () => void; sheet?: boolean;
 }
 
 /** Parent notification bell: popover on desktop, full sheet under 768 px. */
-export function Bell() {
+export function Bell({ placement = 'header' }: { placement?: 'rail' | 'header' }) {
   const [opened, setOpened] = useState(false)
   const [dropdown, setDropdown] = useState<HTMLElement | null>(null)
   const small = useMediaQuery('(max-width: 767px)')
@@ -235,10 +235,15 @@ export function Bell() {
   const close = useCallback(() => setOpened(false), [])
   useEscClose(opened, close)
 
+  // On mobile, don't render bell for rail placement (header only)
+  if (placement === 'rail' && small) {
+    return null
+  }
+
   const btn = (
     <button
       type="button"
-      className="p-bell p-htool"
+      className="p-bell"
       aria-label={unread ? `Notifications, ${unread > 9 ? '9+' : unread} unread` : 'Notifications'}
       onClick={() => setOpened((o) => !o)}
     >
@@ -267,7 +272,7 @@ export function Bell() {
     <Popover
       opened={opened}
       onChange={setOpened}
-      position="bottom-end"
+      position={placement === 'rail' ? 'right-start' : 'bottom-end'}
       width={400}
       trapFocus
       closeOnEscape={false} // useEscClose handles Esc so a row menu can take it first

@@ -10,7 +10,7 @@ import { SendBackBox } from './WaitingActions'
 import { groupNeeds } from './needsGroups'
 import { initial } from './KidFacts'
 import { useClock } from './useClock'
-import { isChore, useNeedsActions } from './needsActions'
+import { isChore, isGoal, useNeedsActions } from './needsActions'
 
 type Kind = { label: string; icon: string; tone: ChipTone; help: string }
 const KIND: Record<NeedsItem['type'], Kind> = {
@@ -20,8 +20,14 @@ const KIND: Record<NeedsItem['type'], Kind> = {
   reward: { label: 'Reward', icon: 'redeem', tone: 'lav', help: 'Reward request: spends points' },
   note: { label: 'Note', icon: 'flag', tone: 'lav', help: 'Note from a kid' },
   integration: { label: 'From an integration', icon: 'extension', tone: 'lav', help: 'From an integration' },
+  homework: { label: 'Homework time', icon: 'menu_book', tone: 'lav', help: 'Homework time: wants the internet on for homework' },
+  goal_full: { label: 'Goal full', icon: 'flag', tone: 'lav', help: 'Goal full: mark it fulfilled' },
+  goal_suggested: { label: 'Goal idea', icon: 'lightbulb', tone: 'lav', help: 'Goal idea: set a price' },
 }
 const SPOT: Kind = { label: 'Spot check', icon: 'visibility', tone: 'lav', help: 'Spot check: take a look before it counts' }
+/** Approve gives 60 min; the menu offers the other lengths. */
+const HW_MINUTES = [30, 90, 120]
+const minLabel = (m: number) => (m % 60 ? `${m} min` : `${m / 60} hours`)
 const ordinal = (n: number) => (n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`)
 
 function Thumb({ item, onOpen }: { item: NeedsItem; onOpen: () => void }) {
@@ -46,17 +52,21 @@ export function NeedsYouList({ items, today }: { items: NeedsItem[]; today?: str
     return <EmptyState icon="celebration" tone="acc" title="All caught up" body="Nothing needs your OK right now. Nice." />
   }
 
-  const approvable = items.filter((i) => i.type !== 'note')
+  const approvable = items.filter((i) => i.type !== 'note' && !isGoal(i))
   const sub = (i: NeedsItem) => {
     if (i.type === 'note') return i.note ?? ''
+    if (i.type === 'homework') return [i.submitted_at ? `Asked ${clock(i.submitted_at)}` : '', 'wants the internet on for homework'].filter(Boolean).join(' · ')
+    if (isGoal(i)) {
+      if (i.type === 'goal_suggested') return 'Needs a price'
+      const pts = `${(i.cost ?? 0).toLocaleString()} pts`
+      return i.no_devices ? `${pts} · ${i.kid_name} has no devices yet — the minutes can't be used.` : pts
+    }
     const via = i.integration ? `via ${i.integration.name}` : ''
     const parts = isChore(i)
       ? [i.attempt && i.attempt > 1 ? `${ordinal(i.attempt)} try` : '', i.subtasks_total ? `${i.subtasks_done}/${i.subtasks_total} steps` : '', i.submitted_at ? `Done ${clock(i.submitted_at)}` : '']
-      : [i.submitted_at ? `Asked ${clock(i.submitted_at)}` : '', `${i.cost} pts`]
+      : [i.submitted_at ? `Asked ${clock(i.submitted_at)}` : '', i.device_name ? `from ${i.device_name}` : '', `${i.cost} pts`, `has ${i.kid_balance}`]
     return [...parts, via].filter(Boolean).join(' · ')
   }
-  /** Request rows: device and balance live in the "…" menu as plain lines, so the sub stays short. */
-  const info = (i: NeedsItem) => [i.device_name ? `From ${i.device_name}` : '', typeof i.kid_balance === 'number' ? `Has ${i.kid_balance} pts` : ''].filter(Boolean)
 
   return (
     <div className="pt-needs-list">
@@ -80,6 +90,7 @@ export function NeedsYouList({ items, today }: { items: NeedsItem[]; today?: str
             const older = today && i.day && i.day < today && isChore(i) ? dayName(i.day, today) : null
             const note = i.type === 'note'
             const chore = isChore(i)
+            const goal = isGoal(i)
             const key = `${i.type}-${i.id}`
             return (
               <ActionRow
@@ -96,11 +107,21 @@ export function NeedsYouList({ items, today }: { items: NeedsItem[]; today?: str
                   </span>
                 }
                 sub={sub(i)}
-                main={note ? { label: 'Reply', onClick: () => act.reply(i) } : { label: 'Approve', onClick: () => act.approve(i), busy: act.busy === `a${i.type}${i.id}`, disabled: !!act.busy }}
-                menu={note ? undefined : chore
+                main={
+                  note
+                    ? { label: 'Reply', onClick: () => act.reply(i) }
+                    : i.type === 'goal_full'
+                      ? { label: 'Fulfilled', onClick: () => act.fulfill(i), busy: act.busy === `f${i.id}`, disabled: !!act.busy }
+                      : i.type === 'goal_suggested'
+                        ? { label: 'Set price', onClick: () => act.setPrice() }
+                        : { label: 'Approve', onClick: () => act.approve(i), busy: act.busy === `a${i.type}${i.id}`, disabled: !!act.busy }
+                }
+                menu={note || goal ? undefined : chore
                   ? [{ label: 'Send back', icon: 'undo', onClick: () => setSending(i.id) }, { label: 'Reply', icon: 'chat', onClick: () => act.reply(i) }]
-                  : [{ label: 'Decline', icon: 'close', tone: 'red', onClick: () => act.decline(i) }]}
-                menuInfo={note || chore ? undefined : info(i)}
+                  : [
+                      ...(i.type === 'homework' ? HW_MINUTES.map((m) => ({ label: `Approve ${minLabel(m)}`, icon: 'schedule', onClick: () => act.approve(i, m) })) : []),
+                      { label: 'Decline', icon: 'close', tone: 'red' as const, onClick: () => act.decline(i) },
+                    ]}
                 menuLabel={`More for ${i.title}`}
               >
                 {sending === i.id && chore && <SendBackBox item={i} act={act} onClose={() => setSending(null)} />}
