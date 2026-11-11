@@ -17,8 +17,35 @@ log = logging.getLogger(__name__)
 
 PASS_NAMES = frozenset({"www.google.com"})
 # Android's probe (TLS 1.3 handshake + "204 No Content") is ~4.7 KB down; a search page or an AMP
-# article via www.google.com is hundreds of KB. Cut each passed connection after this much.
-DOWN_CAP = 16 * 1024
+# article via www.google.com is far more. Per connection: DOWN_CAP. Per device: BUDGET bytes per
+# BUDGET_WINDOW seconds across all its connections, so refreshing can't add pages up piece by piece.
+DOWN_CAP = 8 * 1024
+BUDGET = 24 * 1024
+BUDGET_WINDOW = 60.0
+_spent: dict[str, tuple[float, int]] = {}  # client ip -> (window start, bytes passed)
+_spent_lock = threading.Lock()
+
+
+def _allowance(client: str, now: float) -> int:
+    """Reserve this connection's share of the client's window budget (0 = refuse). Reserving up
+    front stops parallel connections from each taking a full share."""
+    with _spent_lock:
+        start, used = _spent.get(client, (now, 0))
+        if now - start >= BUDGET_WINDOW:
+            start, used = now, 0
+        share = max(0, min(DOWN_CAP, BUDGET - used))
+        _spent[client] = (start, used + share)
+        return share
+
+
+def _refund(client: str, n: int) -> None:
+    """Give back the unused part of a reservation."""
+    with _spent_lock:
+        if client in _spent and n > 0:
+            start, used = _spent[client]
+            _spent[client] = (start, max(0, used - n))
+
+
 GATE_PORT = 8443
 _HELLO_MAX = 16384
 
@@ -66,13 +93,14 @@ def real_ip(name: str, ttl: float = 60) -> str | None:
     return ip
 
 
-def _pipe(src: socket.socket, dst: socket.socket, cap: int | None = None) -> None:
-    """Copy src -> dst until EOF, or until cap bytes (then cut both ways)."""
+def _pipe(src: socket.socket, dst: socket.socket, cap: int | None = None) -> int:
+    """Copy src -> dst until EOF, or until cap bytes (then cut both ways). Returns bytes sent."""
     sent = 0
     try:
         while chunk := src.recv(65536):
             if cap is not None and sent + len(chunk) > cap:
                 dst.sendall(chunk[: cap - sent])
+                sent = cap
                 break
             dst.sendall(chunk)
             sent += len(chunk)
@@ -84,6 +112,7 @@ def _pipe(src: socket.socket, dst: socket.socket, cap: int | None = None) -> Non
                 s.shutdown(socket.SHUT_RDWR)
             except OSError:
                 pass
+    return sent
 
 
 def _serve(conn: socket.socket, connect=socket.create_connection) -> None:
@@ -97,16 +126,25 @@ def _serve(conn: socket.socket, connect=socket.create_connection) -> None:
         if name not in PASS_NAMES:
             return  # closing is the block
         try:
+            client = conn.getpeername()[0]
+        except (OSError, IndexError):
+            client = "?"
+        cap = _allowance(client, time.monotonic())
+        if not cap:
+            return  # this device used its budget for this window
+        try:
             up = connect((name, 443), timeout=5)  # dial by name: a spoofed dest IP can't steer us
         except OSError:
             return
         with up:
             conn.settimeout(None)
             up.sendall(hello)
-            t = threading.Thread(target=_pipe, args=(up, conn, DOWN_CAP), daemon=True)
+            got: list[int] = []
+            t = threading.Thread(target=lambda: got.append(_pipe(up, conn, cap)), daemon=True)
             t.start()
             _pipe(conn, up)
             t.join(60)
+            _refund(client, cap - (got[0] if got else cap))
 
 
 def run_gate(stop: threading.Event, host: str = "0.0.0.0", port: int = GATE_PORT) -> None:
