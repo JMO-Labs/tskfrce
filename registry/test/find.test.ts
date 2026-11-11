@@ -119,3 +119,102 @@ describe('GET /find', () => {
     expect(body).toContain('was found on this network')
   })
 })
+
+describe('GET /find multiple networks', () => {
+  test('single network redirects to https://<id>.<base>/', async () => {
+    const { res, body } = await get('?id=abc123', '203.0.113.9', JSON.stringify({
+      networks: [{ ip: '192.168.1.40', label: 'Wired' }],
+      publicIp4: '203.0.113.9', seenAt4: NOW - 1000,
+    }))
+    expect(res.status).toBe(302)
+    expect(res.headers.get('Location')).toBe('https://abc123.taskfrce.jmolabs.dev/')
+  })
+
+  test('multiple networks show buttons and QR codes', async () => {
+    const { res, body } = await get('?id=abc123', '203.0.113.9', JSON.stringify({
+      networks: [
+        { ip: '192.168.1.40', label: 'Wired' },
+        { ip: '10.0.0.5', label: 'Wi-Fi' },
+      ],
+      publicIp4: '203.0.113.9', seenAt4: NOW - 1000,
+    }))
+    expect(res.status).toBe(200)
+    expect(body).toContain('abc123')
+    expect(body).toContain('Wired')
+    expect(body).toContain('Wi-Fi')
+    expect(body).toContain('<canvas')
+    expect(body).not.toContain('192.168.1.40')
+  })
+
+  test('multiple networks offline shows setup help', async () => {
+    const { body } = await get('?id=abc123', '203.0.113.9', JSON.stringify({
+      networks: [
+        { ip: '192.168.1.40', label: 'Wired' },
+        { ip: '10.0.0.5', label: 'Wi-Fi' },
+      ],
+      publicIp4: '203.0.113.9', seenAt4: NOW - 16 * 60 * 1000,
+    }))
+    expect(body).toContain('cable')
+    expect(body).not.toContain('192.168.1')
+    expect(body).not.toContain('10.0.0')
+  })
+
+  test('unknown and offline look identical', async () => {
+    const unknown = (await get('?id=zzzzzz', '203.0.113.9')).body
+    const offline = (await get('?id=abc123', '203.0.113.9', JSON.stringify({
+      networks: [{ ip: '192.168.1.40', label: 'Wired' }],
+      publicIp4: '203.0.113.9', seenAt4: NOW - 16 * 60 * 1000,
+    }))).body
+    expect(unknown).toBe(offline)
+  })
+})
+
+describe('rate limiting', () => {
+  test('20 lookups per hour allowed', async () => {
+    const env = await makeEnv(), cf = fakeCf()
+    let res
+    for (let i = 0; i < 20; i++) {
+      res = await handle(new Request('https://x/find?id=abc123', { headers: { 'CF-Connecting-IP': '203.0.113.9' } }), env, cf)
+      expect(res.status).not.toBe(429)
+    }
+  })
+
+  test('21st lookup in same hour rejected', async () => {
+    const env = await makeEnv(), cf = fakeCf()
+    for (let i = 0; i < 20; i++) {
+      await handle(new Request('https://x/find?id=abc123', { headers: { 'CF-Connecting-IP': '203.0.113.9' } }), env, cf)
+    }
+    const res = await handle(new Request('https://x/find?id=abc123', { headers: { 'CF-Connecting-IP': '203.0.113.9' } }), env, cf)
+    expect(res.status).toBe(429)
+  })
+
+  test('different IP has separate limit', async () => {
+    const env = await makeEnv(), cf = fakeCf()
+    for (let i = 0; i < 20; i++) {
+      await handle(new Request('https://x/find?id=abc123', { headers: { 'CF-Connecting-IP': '203.0.113.9' } }), env, cf)
+    }
+    const res = await handle(new Request('https://x/find?id=abc123', { headers: { 'CF-Connecting-IP': '203.0.113.10' } }), env, cf)
+    expect(res.status).not.toBe(429)
+  })
+
+  test('ipv6 /64 prefix shares rate limit', async () => {
+    const env = await makeEnv(), cf = fakeCf()
+    // Different hosts in same /64: 2001:db8:1:2::1 and 2001:db8:1:2::2
+    for (let i = 0; i < 20; i++) {
+      await handle(new Request('https://x/find?id=abc123', { headers: { 'CF-Connecting-IP': '2001:db8:1:2::1' } }), env, cf)
+    }
+    // Same /64, different host should be rate limited
+    const res = await handle(new Request('https://x/find?id=abc123', { headers: { 'CF-Connecting-IP': '2001:db8:1:2::2' } }), env, cf)
+    expect(res.status).toBe(429)
+  })
+
+  test('ipv6 different /64 has separate limit', async () => {
+    const env = await makeEnv(), cf = fakeCf()
+    for (let i = 0; i < 20; i++) {
+      await handle(new Request('https://x/find?id=abc123', { headers: { 'CF-Connecting-IP': '2001:db8:1:2::1' } }), env, cf)
+    }
+    // Different /64 should not be limited
+    const res = await handle(new Request('https://x/find?id=abc123', { headers: { 'CF-Connecting-IP': '2001:db8:1:3::1' } }), env, cf)
+    expect(res.status).not.toBe(429)
+  })
+})
