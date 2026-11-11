@@ -142,37 +142,56 @@ def test_username_available_no_claim_check(client):
     assert r.status_code == 200  # Never returns 403 for missing claim
 
 
-def test_username_taken_during_setup(client, db):
-    """Username check detects taken usernames."""
+def test_username_check_requires_auth_during_setup(client, db):
+    """Anonymous username check fails once setup has started (returns 401)."""
+    r = client.post("/api/v1/setup", json=BODY)
+    assert r.status_code == 201
+    # Try anonymous check after setup started
+    r = client.get("/api/v1/setup/username-available?u=bob")
+    assert r.status_code == 401
+
+
+def test_username_check_auth_endpoint_works(client, db):
+    """Authenticated endpoint works during setup."""
     r = client.post("/api/v1/setup", json=BODY)
     assert r.status_code == 201
     token = r.json()["access_token"]
     h = {"Authorization": f"Bearer {token}"}
-    r = client.get("/api/v1/setup/username-available?u=rich", headers=h)
+    r = client.get("/api/v1/setup/username-available-auth?u=bob", headers=h)
+    assert r.status_code == 200
+
+
+def test_username_taken_during_setup(client, db):
+    """Username check detects taken usernames (authenticated endpoint)."""
+    r = client.post("/api/v1/setup", json=BODY)
+    assert r.status_code == 201
+    token = r.json()["access_token"]
+    h = {"Authorization": f"Bearer {token}"}
+    r = client.get("/api/v1/setup/username-available-auth?u=rich", headers=h)
     assert r.status_code == 200
     assert r.json() == {"available": False}
 
 
 def test_username_available_new_one_during_setup(client, db):
-    """Username check works for new usernames after setup (requires parent auth)."""
+    """Username check works for new usernames after setup (authenticated)."""
     r = client.post("/api/v1/setup", json=BODY)
     assert r.status_code == 201
     token = r.json()["access_token"]
     h = {"Authorization": f"Bearer {token}"}
-    r = client.get("/api/v1/setup/username-available?u=alice", headers=h)
+    r = client.get("/api/v1/setup/username-available-auth?u=alice", headers=h)
     assert r.status_code == 200
     assert r.json() == {"available": True}
 
 
 def test_username_check_after_setup_done(client, db):
-    """Username check blocked after setup is completely done."""
+    """Username check blocked after setup is completely done (authenticated)."""
     r = client.post("/api/v1/setup", json=BODY)
     assert r.status_code == 201
     token = r.json()["access_token"]
     h = {"Authorization": f"Bearer {token}"}
     get_family(db).setup_step = None
     db.commit()
-    r = client.get("/api/v1/setup/username-available?u=bob", headers=h)
+    r = client.get("/api/v1/setup/username-available-auth?u=bob", headers=h)
     assert r.status_code == 409
 
 
