@@ -1,0 +1,23 @@
+[Unit]
+Description=t@sk4ce Wi-Fi privileged helper
+After=network.target
+Before=docker.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/tskfrce-wifi-helper.sh
+Restart=always
+RestartSec=5
+User=root
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tskfrce-wifi
+
+# Security
+NoNewPrivileges=false
+PrivateTmp=false
+ProtectSystem=no
+ProtectHome=no
+
+[Install]
+WantedBy=multi-user.target
