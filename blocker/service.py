@@ -37,6 +37,7 @@ from blocker.portal import run_dns, run_http
 from blocker.resist import ResistanceCounter, ResistanceWatch, Tally
 from blocker.signals import Signals
 from blocker.sites import SiteManager
+from blocker.sni_gate import run_gate
 from blocker.state_store import MAC_RE, StateStore
 from blocker.vlan import VlanDetector
 from blocker.workaround import WorkaroundCounter
@@ -454,6 +455,7 @@ class Service:
     def start(self) -> None:
         if self._portal_ip is None:
             self._portal_ip = _detect_box_ip(self.cfg)
+        self._spawn(lambda: run_gate(self._stop))
         try:
             self._fw.enable_forwarding()
         except Exception:
