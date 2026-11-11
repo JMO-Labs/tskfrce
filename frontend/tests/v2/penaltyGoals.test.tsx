@@ -77,7 +77,7 @@ describe("PenaltySheet family goal options", () => {
     const u = userEvent.setup();
     show([1, 2]);
     await openWhat(u);
-    await u.click(screen.getByRole("button", { name: "Take from a goal" }));
+    await u.click(screen.getByRole("button", { name: "Take from goal" }));
     await u.click(screen.getByRole("button", { name: "More" }));
     await u.click(screen.getByRole("button", { name: /Add a reason/ }));
     expect(screen.getByText("−25 points from Disney trip")).toBeTruthy();
@@ -100,7 +100,7 @@ describe("PenaltySheet family goal options", () => {
     const u = userEvent.setup();
     show([1, 2]);
     await openWhat(u);
-    await u.click(screen.getByRole("button", { name: "Raise a goal's target" }));
+    await u.click(screen.getByRole("button", { name: "Raise goal target" }));
     await u.click(screen.getByRole("button", { name: "Bike" }));
     await u.click(screen.getByRole("button", { name: /Add a reason/ }));
     expect(screen.getByText("Raise Bike by 20 points")).toBeTruthy();
@@ -114,7 +114,7 @@ describe("PenaltySheet family goal options", () => {
     const u = userEvent.setup();
     show([1, 2]);
     await openWhat(u);
-    await u.click(screen.getByRole("button", { name: "Take from a goal" }));
+    await u.click(screen.getByRole("button", { name: "Take from goal" }));
     await u.click(screen.getByRole("button", { name: "Medium" }));
     await u.click(screen.getByRole("button", { name: "Give penalty" }));
     await waitFor(() => expect(posted("/penalties")).toBeTruthy());
@@ -125,11 +125,11 @@ describe("PenaltySheet family goal options", () => {
     const u = userEvent.setup();
     const { unmount } = show([1]);
     await openWhat(u);
-    expect(screen.queryByRole("button", { name: "Take from a goal" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Take from goal" })).toBeNull();
     unmount();
     goals = [];
     show([1, 2]);
     await openWhat(u);
-    expect(screen.queryByRole("button", { name: "Take from a goal" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Take from goal" })).toBeNull();
   });
 });

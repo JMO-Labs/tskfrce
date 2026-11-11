@@ -129,7 +129,7 @@ def goal_penalty(
     if body.mode == "take":
         g = goals_hook.take(db, body.goal_id, parent, body.amount, body.reason)
     else:
-        g = goals_hook.raise_target(db, body.goal_id, body.amount)
+        g = goals_hook.raise_target(db, body.goal_id, parent, body.amount, body.reason)
     return goal_out(db, g, parent, fam)
 
 

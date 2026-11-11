@@ -60,9 +60,11 @@ def test_take_from_full_goal_reopens(client, db, parent, parent_headers):
 def test_raise_target_reopens_full(client, db, parent, parent_headers):
     _on(db)
     g = _fam_goal(db, parent, saved=300, status="full")
-    r = _post(client, parent_headers, goal_id=g.id, mode="raise", amount=100)
+    r = _post(client, parent_headers, goal_id=g.id, mode="raise", amount=100, reason="rude")
     j = r.json()
-    assert j["target"] == 400 and j["status"] == "active"
+    assert j["target"] == 400 and j["status"] == "active" and j["saved"] == 300
+    c = db.query(GoalContribution).filter_by(kind="take").one()
+    assert c.amount == 0 and c.note == "Target +100: rude" and c.by_id == parent.id
 
 
 def test_only_family_live_goals(client, db, parent, kid, parent_headers):

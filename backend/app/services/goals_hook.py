@@ -27,7 +27,11 @@ def take(db: Session, goal_id: int, parent: User, amount: int, reason: str | Non
             raise HTTPException(409, "That goal has nothing saved to take.")
         db.add(
             GoalContribution(
-                goal_id=goal.id, by_id=parent.id, amount=-n, kind="take", note=reason or "Penalty"
+                goal_id=goal.id,
+                by_id=parent.id,
+                amount=-n,
+                kind="take",
+                note=(reason or "Penalty")[:120],
             )
         )
         db.flush()
@@ -36,11 +40,20 @@ def take(db: Session, goal_id: int, parent: User, amount: int, reason: str | Non
         return goal
 
 
-def raise_target(db: Session, goal_id: int, amount: int) -> Goal:
-    """Raise the price by `amount`; a full goal that is no longer full goes back to active. Commits."""
+def raise_target(db: Session, goal_id: int, parent: User, amount: int, reason: str | None) -> Goal:
+    """Raise the price by `amount`; a full goal that is no longer full goes back to active.
+
+    Audited as a zero-point `take` row (the saved total is untouched). Commits.
+    """
     with economy.SPEND_LOCK:
         db.commit()
         goal = _family_goal(db, goal_id)
+        note = f"Target +{amount}" + (f": {reason}" if reason else "")
+        db.add(
+            GoalContribution(
+                goal_id=goal.id, by_id=parent.id, amount=0, kind="take", note=note[:120]
+            )
+        )
         goals.set_target(db, goal, goal.target + amount)
         db.commit()
         return goal

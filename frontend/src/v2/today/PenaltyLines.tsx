@@ -135,10 +135,10 @@ export function WhatLine({ draft, kid, open, onOpen, onChange, goals = [] }: Wha
         {goals.length > 0 && (
           <>
             <Chip on={mode === "take"} onClick={() => setGoal("take")}>
-              Take from a goal
+              Take from goal
             </Chip>
             <Chip on={mode === "raise"} onClick={() => setGoal("raise")}>
-              Raise a goal&apos;s target
+              Raise goal target
             </Chip>
           </>
         )}
