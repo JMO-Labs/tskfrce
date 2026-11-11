@@ -4,7 +4,25 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [2.13.0] - 2026-11-11
+
+Everything built on `feat/declutter` since 2.6.0 (2.7.0 to 2.12.0 were branch versions, never released).
+
+### Added
+
+- Less parent work: trust mode, bedtime auto-approve and a weekly recap.
+- Parent declutter: calm screens and shared widgets.
+- Goals: kids save toward parent-priced goals (own or family), with suggestions, chip-ins, a mascot party on fulfilment, an extra-screen-time goal that grants free minutes, and a "Get out of jail free" card that cancels a penalty.
+- Penalties with earn-back: small/medium/big or custom, make-up chores that shrink a penalty, family penalties that take from or raise a family goal.
+- Homework mode: study-site allow lists while internet is otherwise paused.
+- Setup presets: one "How strict?" choice (per kid if wanted) sets chores, hours and extras by age; switch later without overwriting a parent's edits.
+- Minigames: chores earn quick games; 20 quick-fire games plus Hungry Cat, Math Dash, Pack the Box and Shelf Memory, upgrades, power-ups and a weekly board. Games sleep at each kid's bedtime and in family quiet hours. New look: Fluent 3D art and "living sticker" mascots (PixiJS, loaded only when a game opens).
+- Constrained devices: optional Postgres (`DATABASE_URL`), one-command SQLite→Postgres move, tier harness and CI perf gate; CI runs the backend on SQLite and Postgres.
+
 ### Fixed
+
+- The backend could not reach the blocker in the production compose (wrong loopback), so blocks waited for the 30s reconcile and Test block failed. The blocker now also listens on the Docker bridge gateway.
+
 
 - Parent UI matches the declutter mocks (tskfrce#9): the chore header drops the type chip. The type tile, with a small bubble badge, now opens "Notes kids can send" and "Edit <type> type". `Chip`'s `icon` is optional, and the rewards history Declined chip has no ×. Glyph swaps: notification place rows `chat_bubble`, Points rules `stars`, Trust level chip `check`, teen Chat tab `chat`, group Devices row `devices`.
 - Lab browser e2e no longer breaks when Dependabot bumps `@playwright/test`: the Playwright image tag in `lab/docker-compose.lab.yml` now comes from `frontend/package.json` (`bash scripts/lab.sh pw-version`, exported as `PW_VERSION`). The `lab` CI job runs on Node 22 and runs the static lab tests. (tskfrce#11, fixes the #71 `lab` failure)
