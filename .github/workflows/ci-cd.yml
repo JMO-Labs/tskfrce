@@ -77,17 +77,11 @@ jobs:
       env:
         TEST_DATABASE_URL: ${{ matrix.db == 'postgres' && 'postgresql+psycopg://postgres:pg@127.0.0.1:55432/task4ce' || '' }}
       run: cd backend && python -m pytest tests -q -n auto
-<<<<<<< HEAD
     - name: Run blocker test suite
       if: matrix.db == 'sqlite'
       run: |
         pip install "scapy>=2.6" pytest pyyaml
         python -m pytest blocker -q
-=======
-    - name: Blocker unit tests
-      if: matrix.db == 'sqlite'
-      run: pip install "scapy>=2.6" && python -m pytest blocker/tests -q
->>>>>>> 2c206d66 (ci: run blocker unit tests)
     - name: Stop Postgres
       if: always() && matrix.db == 'postgres'
       run: docker rm -f ci-pg-${{ github.run_id }}
