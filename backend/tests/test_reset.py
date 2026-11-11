@@ -56,7 +56,7 @@ class TestResetAppData:
         fam, parent, kids = setup_family
         assert db.query(User).filter(User.role == UserRole.KID).count() == 2
 
-        reset_app_data(db, unblock=False)
+        token = reset_app_data(db, unblock=False)
 
         # Verify kids are wiped
         assert db.query(User).filter(User.role == UserRole.KID).count() == 0
@@ -66,7 +66,7 @@ class TestResetAppData:
         fam, parent, kids = setup_family
         parent_id = parent.id
 
-        reset_app_data(db, unblock=False)
+        token = reset_app_data(db, unblock=False)
 
         # Verify parent is deleted
         assert db.query(User).filter(User.id == parent_id).first() is None
@@ -77,7 +77,7 @@ class TestResetAppData:
         fam, parent, kids = setup_family
         assert fam.owner_id is not None
 
-        reset_app_data(db, unblock=False)
+        token = reset_app_data(db, unblock=False)
 
         # Verify owner is cleared
         fam_after = db.query(FamilySettings).first()
@@ -88,7 +88,7 @@ class TestResetAppData:
         fam, parent, kids = setup_family
         orig_name = fam.name
 
-        reset_app_data(db, unblock=False)
+        token = reset_app_data(db, unblock=False)
 
         # Verify family_settings still exists (now with owner_id=None)
         fam_after = db.query(FamilySettings).first()
@@ -100,7 +100,7 @@ class TestResetAppData:
         fam, parent, kids = setup_family
         fam.setup_step = 3  # Simulate mid-wizard
 
-        reset_app_data(db, unblock=False)
+        token = reset_app_data(db, unblock=False)
 
         fam_after = db.query(FamilySettings).first()
         assert fam_after.setup_step is None
@@ -108,7 +108,7 @@ class TestResetAppData:
     @patch("app.services.reset.push_state")
     def test_reset_calls_blocker_unblock(self, mock_push, db: Session, setup_family):
         """reset_app_data calls push_state([], {}) to unblock all devices."""
-        reset_app_data(db, unblock=True)
+        token = reset_app_data(db, unblock=True)
 
         # Verify blocker was called with empty blocked list and empty homework
         mock_push.assert_called_once_with([], {})
@@ -119,7 +119,7 @@ class TestResetAppData:
         mock_push.return_value = False  # Blocker didn't respond
 
         # Should not raise
-        reset_app_data(db, unblock=True)
+        token = reset_app_data(db, unblock=True)
 
         # Data is still wiped
         assert db.query(User).count() == 0

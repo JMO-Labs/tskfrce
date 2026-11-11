@@ -61,7 +61,9 @@ def reset_app_data(db: Session, unblock: bool = True) -> str | None:
             fam.setup_step = None  # Wizard starts fresh
 
             # Bump token_epoch to invalidate all old JWTs (security)
-            fam.token_epoch = (fam.token_epoch or 0) + 1
+            # (defensive: column added in migration a0b1c2d3e4f5)
+            if hasattr(fam, 'token_epoch'):
+                fam.token_epoch = (fam.token_epoch or 0) + 1
 
             # For unclaimed boxes (no CLAIM_CODE), generate setup token
             from app.core.config import settings

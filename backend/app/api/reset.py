@@ -173,7 +173,9 @@ def forgot_pin(
         owner.hashed_password = auth.hash_password(body.new_password)
 
         # Bump token_epoch to invalidate all existing JWTs (session invalidation)
-        fam.token_epoch = (fam.token_epoch or 0) + 1
+        # (defensive: column added in migration a0b1c2d3e4f5)
+        if hasattr(fam, 'token_epoch'):
+            fam.token_epoch = (fam.token_epoch or 0) + 1
 
         db.commit()
 
@@ -235,7 +237,9 @@ def set_pin(
         owner.hashed_password = auth.hash_password(body.new_password)
 
         # Bump token_epoch to invalidate old sessions
-        fam.token_epoch = (fam.token_epoch or 0) + 1
+        # (defensive: column added in migration a0b1c2d3e4f5)
+        if hasattr(fam, 'token_epoch'):
+            fam.token_epoch = (fam.token_epoch or 0) + 1
 
         db.commit()
 
