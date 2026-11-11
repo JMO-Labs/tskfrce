@@ -41,6 +41,11 @@ test('goal rows show their kind, cost and own main action', () => {
   expect(within(card('Lego set')).getByRole('button', { name: 'Set price' })).toBeInTheDocument()
 })
 
+test('screen goal for a kid with no devices warns on the row', () => {
+  show([{ ...full, no_devices: true }])
+  expect(within(card('Bike')).getByText(/Mia has no devices yet/)).toBeInTheDocument()
+})
+
 test('Fulfilled posts the fulfill action', async () => {
   show([full])
   await userEvent.click(within(card('Bike')).getByRole('button', { name: 'Fulfilled' }))

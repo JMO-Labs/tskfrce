@@ -44,7 +44,7 @@ function Row({ r }: { r: HistoryRow }) {
         <button type="button" className="rh-row">
           <span className="pk-av" aria-hidden="true">{initial(kid)}</span>
           <span className="rh-t">{r.name}<small>{kid} · {whenAt(r.decided_at ?? r.created_at)}</small></span>
-          {r.auto ? <Chip tone="lav" icon="bolt">Auto</Chip> : denied ? <Chip tone="grey" icon="close">Declined</Chip> : null}
+          {r.auto ? <Chip tone="lav" icon="bolt">Auto</Chip> : denied ? <Chip tone="grey">Declined</Chip> : null}
           <b className={denied ? 'rh-amt rh-amt-off' : 'rh-amt'}>{denied ? '0' : `−${r.cost}`}</b>
         </button>
       }>{pop}</InfoPop>

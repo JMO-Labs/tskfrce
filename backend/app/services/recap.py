@@ -56,6 +56,7 @@ def _buckets(db, fam, kid_ids, start: date, end: date, now: datetime) -> dict[in
             ChoreRun.day >= start,
             ChoreRun.day <= end,
             ChoreRun.status.notin_(["cancelled", "skipped"]),
+            ChoreRun.penalty_id.is_(None),
         )
         .all()
     )

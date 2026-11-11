@@ -4,6 +4,7 @@ import { HoursTimeline } from '@/v2/manage/HoursTimeline'
 import { RuleEditor } from '@/v2/manage/RuleEditor'
 import type { HourRule, RuleBody, RuleCategory } from '@/v2/types'
 import styles from './wizard.module.css'
+import { keepWho } from './setupJobs'
 
 const CATEGORIES: RuleCategory[] = ['school_night', 'weekend']
 const EVERYONE_LABEL: Partial<Record<RuleCategory, string>> = { school_night: 'Bedtime on school nights', weekend: 'Bedtime on weekends' }
@@ -23,7 +24,7 @@ export function StepHours({ drafts, onChange, choresLock, onChoresLock }: Props)
   const current = typeof editing === 'number' ? asRules[editing] : undefined
 
   const save = (body: RuleBody) =>
-    onChange(typeof editing === 'number' ? drafts.map((d, i) => (i === editing ? body : d)) : [...drafts, body])
+    onChange(typeof editing === 'number' ? drafts.map((d, i) => (i === editing ? keepWho(body, d) : d)) : [...drafts, body])
   const setEnd = (index: number, end: string) =>
     onChange(drafts.map((d, i) => (i === index ? { ...d, times: d.times.map((t, j) => (j === d.times.length - 1 ? { ...t, end } : t)) } : d)))
 

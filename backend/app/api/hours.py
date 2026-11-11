@@ -28,6 +28,7 @@ def _out(r: HourRule) -> dict:
         "start_date": r.start_date.isoformat() if r.start_date else None,
         "end_date": r.end_date.isoformat() if r.end_date else None,
         "everyone": bool(r.everyone),
+        "replaces_everyone": bool(r.replaces_everyone),
         "kid_ids": sorted(r.kid_ids),
         "group_ids": sorted(r.group_ids),
         "times": [{"start": t.start, "end": t.end} for t in r.times],
@@ -60,6 +61,8 @@ def _check(db: Session, b: RuleIn) -> None:
 def _fill(r: HourRule, b: RuleIn) -> None:
     r.name, r.category, r.kind, r.days = b.name, b.category, b.kind, b.days
     r.start_date, r.end_date, r.everyone = b.start_date, b.end_date, b.everyone
+    if b.replaces_everyone is not None:
+        r.replaces_everyone = b.replaces_everyone
     r.times = [HourRuleTime(start=t.start, end=t.end) for t in b.times]
     # dedupe: SQLite UNIQUE treats the NULL group_id of two identical kid targets as distinct
     r.targets = [HourRuleTarget(kid_id=k) for k in dict.fromkeys(b.kid_ids)] + [

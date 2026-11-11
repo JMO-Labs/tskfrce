@@ -32,7 +32,8 @@ def decide(
 ) -> Literal["auto", "spot", "wait"]:
     """Whether a submitted run approves itself. One roll per run; lowest level rules."""
     kids = [db.get(User, k) for k in kid_ids]
-    if run.assignment.chore.always_check or not kids or not all(k.trust_mode for k in kids):
+    chore = run.assignment.chore
+    if chore.always_check or chore.makeup or not kids or not all(k.trust_mode for k in kids):
         return "wait"
     if was_caught(db, run.id):
         return "wait"

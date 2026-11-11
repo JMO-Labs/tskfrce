@@ -1,0 +1,47 @@
+# Built-in homework sites. One domain per line; each also covers its subdomains.
+# YouTube is deliberately absent: session follow covers embeds, families can add it.
+# No whole user-content zones (storage.googleapis.com, googleusercontent.com,
+# sharepoint.com): anyone can host anything there. List specific hosts instead;
+# session follow covers the rest while a listed site is in use.
+
+# Google Classroom, Docs, Drive, Forms, sign-in and static hosts
+accounts.google.com
+classroom.google.com
+docs.google.com
+drive.google.com
+forms.gle
+apis.google.com
+gstatic.com
+www.googleapis.com
+fonts.googleapis.com
+ajax.googleapis.com
+content.googleapis.com
+classroom.googleapis.com
+lh3.googleusercontent.com
+
+# Microsoft 365, Teams for Education and sign-in
+login.microsoftonline.com
+login.live.com
+office.com
+microsoft365.com
+teams.microsoft.com
+onedrive.live.com
+
+# Learning platforms
+instructure.com
+schoology.com
+clever.com
+powerschool.com
+seesaw.me
+
+# Learning sites
+khanacademy.org
+kastatic.org
+quizlet.com
+ixl.com
+desmos.com
+
+# Reference
+wikipedia.org
+wikimedia.org
+britannica.com

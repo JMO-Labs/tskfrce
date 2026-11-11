@@ -48,7 +48,7 @@ def auto_share(db: Session, kid_id: int, earned: int) -> None:
 def builtin_ok(fam: FamilySettings, kind: str) -> bool:
     if kind == "screen":
         return bool(fam.goal_screen_on and fam.points_unlock_early and fam.screen_rollover)
-    return bool(kind == "jail" and fam.goal_jail_on)
+    return bool(kind == "jail" and fam.goal_jail_on and fam.penalties_enabled)
 
 
 def builtins(fam: FamilySettings) -> list[dict]:

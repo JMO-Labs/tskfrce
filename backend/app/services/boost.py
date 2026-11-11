@@ -41,6 +41,7 @@ def quiet_kids(db: Session, today: date) -> list[int]:
             ChoreRun.day >= today - timedelta(days=LOOKBACK),
             ChoreRun.day <= today,
             ChoreRun.status.notin_(["cancelled", "skipped"]),
+            ChoreRun.penalty_id.is_(None),
             User.role == UserRole.KID,
             User.is_active,
         )

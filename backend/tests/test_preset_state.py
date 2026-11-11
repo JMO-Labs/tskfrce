@@ -126,8 +126,9 @@ def test_two_kids_get_own_bedtimes_and_later_switch_updates_unedited(db, parent)
     a, b = _kid(db, "ana", "little"), _kid(db, "bo", "teen")
     ps.run(db, parent, {"style": "balanced"}, True)
     assert (ps.current(db, a)["bedtime"], ps.current(db, b)["bedtime"]) == ("19:30", "21:30")
-    names = sorted(r.name for r in _rules(db, "school_night"))
-    assert names == ["School nights · Ana", "School nights · Bo"]
+    # fresh family: an Everyone rule (covers kids added later) plus an override for Bo
+    names = [(r.name, r.everyone) for r in _rules(db, "school_night")]
+    assert names == [("School nights", True), ("School nights · Bo", False)]
     # parent edits Bo's bedtime; a family switch updates only Ana
     next(r for r in _rules(db, "school_night") if r.kid_ids == [b.id]).times[-1].end = "23:00"
     db.commit()
@@ -136,7 +137,7 @@ def test_two_kids_get_own_bedtimes_and_later_switch_updates_unedited(db, parent)
     assert [k["key"] for k in res["kept"] if k["kid_id"] == b.id] == ["bedtime"]
 
 
-def test_everyone_rule_is_split(db, parent):
+def test_everyone_rule_stays_and_the_kid_gets_an_override(db, parent):
     from tests.factories import make_rule
 
     a, b = _kid(db, "ana"), _kid(db, "bo")
@@ -147,13 +148,15 @@ def test_everyone_rule_is_split(db, parent):
     ps.write(db, parent, a, "bedtime", plan["bedtime"], {a.id: plan})
     db.commit()
     db.refresh(r)
-    assert r.everyone is False and r.kid_ids == [b.id]
+    assert r.everyone is True and r.times[-1].end == "21:00"  # later kids stay covered
     mine = next(x for x in _rules(db, "school_night") if x.kid_ids == [a.id])
+    assert mine.replaces_everyone is True
     assert (mine.times[-1].start, mine.times[-1].end) == ("06:00", "20:00")
     assert ps.current(db, a)["bedtime"] == "20:00" and ps.current(db, b)["bedtime"] == "21:00"
     ps.write(db, parent, b, "bedtime", plan["bedtime"], {b.id: plan})
     db.commit()
-    assert db.get(HourRule, r.id).times[-1].end == "20:00"  # now Bo's own rule
+    assert db.get(HourRule, r.id).everyone is True
+    assert ps.current(db, b)["bedtime"] == "20:00"
 
 
 def test_chores_add_and_remove(db, parent):
@@ -232,3 +235,22 @@ def test_goals_follow_the_family_pick_unless_edited(db, parent):
     db.commit()
     out = ps.run(db, parent, {"style": "relaxed"}, False)
     assert "goals" not in [c["key"] for c in out["changes"] + out["kept"]]
+
+
+def test_penalties_follow_the_family_pick_unless_edited(db, parent):
+    fam = get_family(db)
+    out = ps.run(db, parent, {"style": "strict"}, False)  # preview: off now, Strict wants on
+    assert {"kid_id": None, "who": None, "key": "penalties", "now": False, "next": True} in out[
+        "changes"
+    ]
+    ps.run(db, parent, {"style": "strict"}, True)
+    assert get_family(db).penalties_enabled is True
+    ps.run(
+        db, parent, {"style": "relaxed"}, True
+    )  # untouched since the preset: follows the new pick
+    assert get_family(db).penalties_enabled is False
+    fam.penalties_enabled = True  # the parent switched it on themselves: an edit, kept
+    db.commit()
+    out = ps.run(db, parent, {"style": "balanced"}, True)
+    assert "penalties" in [k["key"] for k in out["kept"]]
+    assert get_family(db).penalties_enabled is True

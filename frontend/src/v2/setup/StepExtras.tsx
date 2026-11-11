@@ -11,6 +11,8 @@ interface Props {
   onTrust: (ids: number[]) => void
   onBedtime: (on: boolean) => void
   onGoals: (on: boolean) => void
+  penalties: boolean
+  onPenalties: (on: boolean) => void
 }
 
 const Sw = ({ on, label, onClick }: { on: boolean; label: string; onClick: () => void }) => (
@@ -19,8 +21,8 @@ const Sw = ({ on, label, onClick }: { on: boolean; label: string; onClick: () =>
   </span>
 )
 
-/** Step 8: trust and bedtime opt-ins (off) and the Goals switch (on). The bedtime time stays in family settings until it is on. */
-export function StepExtras({ kids, trust, bedtime, goals, onTrust, onBedtime, onGoals }: Props) {
+/** trust, bedtime and penalties opt-ins (off) and the Goals switch (on). The bedtime time stays in family settings until it is on. */
+export function StepExtras({ kids, trust, bedtime, goals, onTrust, onBedtime, onGoals, penalties, onPenalties }: Props) {
   const flip = (id: number) => onTrust(trust.includes(id) ? trust.filter((x) => x !== id) : [...trust, id])
   return (
     <>
@@ -59,6 +61,15 @@ export function StepExtras({ kids, trust, bedtime, goals, onTrust, onBedtime, on
             <span style={{ fontWeight: 400, fontSize: 14, color: 'var(--p-sub)' }}>Kids can save points toward something big. You set the price.</span>
           </div>
           <Sw on={goals} label="Goals" onClick={() => onGoals(!goals)} />
+        </div>
+      </div>
+      <div className={styles.card}>
+        <div className={styles.kidrow} style={{ padding: 0 }}>
+          <div className={styles.t2}>
+            <h3 style={{ margin: '0 0 4px' }}><Icon name="gavel" size={18} />Penalties</h3>
+            <span style={{ fontWeight: 400, fontSize: 14, color: 'var(--p-sub)' }}>Take something away, say why, and let them earn part back.</span>
+          </div>
+          <Sw on={penalties} label="Penalties" onClick={() => onPenalties(!penalties)} />
         </div>
       </div>
     </>

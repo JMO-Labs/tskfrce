@@ -29,7 +29,7 @@ SETTING_KEYS = {
 
 def settings_out(db: Session, fam: FamilySettings) -> dict:
     out = {k: getattr(fam, col) for k, col in SETTING_KEYS.items()}
-    out["screen_ok"] = bool(fam.points_unlock_early and fam.screen_rollover)
+    out["screen_ok"] = bool(fam.points_unlock_early)
     return out
 
 
@@ -47,6 +47,12 @@ def _siblings(db: Session, goal: Goal) -> list[dict]:
         .all()
     )
     return [{"name": _name(u), "amount": int(n)} for u, n in rows if n and n > 0]
+
+
+def _no_devices(db: Session, goal: Goal) -> bool:
+    """A screen-time goal's kid has nowhere to use the minutes."""
+    kid = db.get(User, goal.kid_id) if goal.kind == "screen" and goal.kid_id else None
+    return kid is not None and not kid.devices
 
 
 def goal_out(db: Session, goal: Goal, viewer: User, fam: FamilySettings) -> dict:
@@ -69,6 +75,7 @@ def goal_out(db: Session, goal: Goal, viewer: User, fam: FamilySettings) -> dict
         "siblings": _siblings(db, goal) if (not kid_viewer or fam.goal_siblings) else None,
         "created_at": utc_z(goal.created_at),
         "fulfilled_at": utc_z(goal.fulfilled_at),
+        "no_devices": _no_devices(db, goal),
     }
 
 
@@ -82,6 +89,7 @@ def needs(db: Session, names: dict[int, str]) -> list[dict]:
             "kid_name": names.get(g.kid_id),
             "title": g.name,
             "cost": g.target,
+            "no_devices": _no_devices(db, g),
             "submitted_at": utc_z(g.reached_at if g.status == "full" else g.created_at),
         }
         for g in rows

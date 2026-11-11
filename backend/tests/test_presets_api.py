@@ -24,7 +24,7 @@ def test_catalog_shape(client, db, parent_headers):
     assert d["style"] is None
     assert d["kids"] == [{"id": k.id, "name": k.full_name, "age_group": "kid", "style": None}]
     assert d["plans"]["kid"]["strict"]["screen"] == 60
-    assert d["family"]["strict"] == {"banked": False, "goals": True}
+    assert d["family"]["strict"] == {"banked": False, "goals": True, "penalties": True}
 
 
 def test_kid_token_is_forbidden(client, db, kid_headers):

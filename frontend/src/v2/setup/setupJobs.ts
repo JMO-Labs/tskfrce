@@ -26,23 +26,28 @@ export function applyBody(style: Style, kids: Kid[], styles: Record<number, Styl
   return { style, kids: map, ...(skip ? { skip } : {}) }
 }
 
-/** One school-night and one weekend rule per distinct bedtime; a single Everyone rule when all kids agree. */
+/** Per day type: an Everyone rule at the most common bedtime (ties: the first kid's), so kids added
+ * later are covered, plus an override rule for the kids whose bedtime differs. */
 export function hoursFromPlans(kids: { id: number; name: string; plan: KidPlan }[]): RuleBody[] {
   if (kids.length === 0) return []
   const out: RuleBody[] = []
   for (const [i, d] of DEFAULT_DRAFTS.entries()) {
     const at = (k: { plan: KidPlan }) => (i === 0 ? k.plan.bedtime : k.plan.weekend)
-    const ends = Array.from(new Set(kids.map(at)))
+    const all = kids.map(at)
+    const ends = Array.from(new Set(all))
+    const common = ends.reduce((a, b) => (all.filter((x) => x === b).length > all.filter((x) => x === a).length ? b : a))
     const start = d.times[0].start
-    if (ends.length === 1) out.push({ ...d, times: [{ start, end: ends[0] }] })
-    else
-      for (const end of ends) {
-        const who = kids.filter((k) => at(k) === end)
-        out.push({ ...d, name: `${d.name} · ${who.map((k) => k.name).join(', ')}`, everyone: false, kid_ids: who.map((k) => k.id), times: [{ start, end }] })
-      }
+    out.push({ ...d, times: [{ start, end: common }] })
+    for (const end of ends.filter((e) => e !== common)) {
+      const who = kids.filter((k) => at(k) === end)
+      out.push({ ...d, name: `${d.name} · ${who.map((k) => k.name).join(', ')}`, everyone: false, kid_ids: who.map((k) => k.id), replaces_everyone: true, times: [{ start, end }] })
+    }
   }
   return out
 }
+
+/** Setup's rule editor hides "who": an edit keeps the draft's kids and override. */
+export const keepWho = (body: RuleBody, d: RuleBody): RuleBody => ({ ...body, everyone: d.everyone, kid_ids: d.kid_ids, group_ids: d.group_ids, replaces_everyone: d.replaces_everyone })
 
 export const planFor = (c: PresetCatalog, k: PresetKid, family: Style): KidPlan => c.plans[k.age_group][k.style ?? family]
 
@@ -57,6 +62,7 @@ export function tweakStart(kids: PresetKid[], catalog: PresetCatalog, family: St
     hours: hoursFromPlans(plans),
     lock: plans.some((p) => p.plan.lock),
     trust: plans.filter((p) => p.plan.trust).map((p) => p.id),
+    penalties: catalog.family[family]?.penalties ?? false,
   }
 }
 
@@ -109,8 +115,9 @@ export const hoursJobs = (hours: RuleBody[], choresLock: boolean): Job[] => [
   { key: `chores_lock:${choresLock}`, run: () => api('/family', { method: 'PATCH', body: { chores_lock: choresLock } }) },
 ]
 
-export const extrasJobs = (trustKids: number[], bedtimeAuto: boolean, goalsOn = true): Job[] => [
+export const extrasJobs = (trustKids: number[], bedtimeAuto: boolean, goalsOn = true, penalties = false): Job[] => [
   ...trustKids.map((id) => ({ key: `trust:${id}`, run: () => api(`/kids/${id}`, { method: 'PATCH', body: { trust_mode: true } }) })),
   ...(bedtimeAuto ? [{ key: 'bedtime', run: () => api('/family', { method: 'PATCH', body: { bedtime_auto: true } }) }] : []),
   { key: `goals:${goalsOn}`, run: () => api('/goals/settings', { method: 'PATCH', body: { on: goalsOn } }) },
+  ...(penalties ? [{ key: 'penalties', run: () => api('/family', { method: 'PATCH', body: { penalties_enabled: true } }) }] : []),
 ]

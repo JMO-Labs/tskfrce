@@ -12,6 +12,9 @@ os.environ["INTERNAL_TOKEN"] = "labtoken"
 def lab_up():
     if not shutil.which("docker"):
         pytest.skip("docker not available")
+    # journey.py calls compose directly; the e2e image tag needs PW_VERSION to interpolate.
+    # Set here, not at import, so the default (docker-less) suite does not need jq.
+    os.environ["PW_VERSION"] = j.lab("pw-version", check=True).stdout.strip()
     try:
         j.lab("up", check=True)
         yield

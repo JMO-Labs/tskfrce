@@ -25,7 +25,7 @@ const ITEMS: Record<AgeGroup, Item[]> = {
     ['chores', 'Chores', 'checklist'],
     ['games', 'Games', 'sports_esports'],
     ['rewards', 'Rewards', 'redeem'],
-    ['chat', 'Chat', 'forum'],
+    ['chat', 'Chat', 'chat'],
     ['alerts', 'Alerts', 'notifications'],
     ['me', 'Me', 'person'],
   ],

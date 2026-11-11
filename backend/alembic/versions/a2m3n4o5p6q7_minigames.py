@@ -1,7 +1,7 @@
 """minigames: plays, progress, family and kid switches
 
 Revision ID: a2m3n4o5p6q7
-Revises: d7e8f9a0b1c2
+Revises: i4c5d6e7f8a9
 Create Date: 2026-11-10 12:00:00.000000
 """
 
@@ -12,11 +12,11 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "a2m3n4o5p6q7"
-down_revision: str | Sequence[str] | None = "d7e8f9a0b1c2"
+down_revision: str | Sequence[str] | None = "i4c5d6e7f8a9"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-REASONS = "'chore','early_bonus','team_share','redemption','bonus','adjustment','deduction','goal_save','goal_return'"
+REASONS = "'chore','early_bonus','team_share','redemption','bonus','adjustment','deduction','goal_save','goal_return','penalty'"
 
 
 def upgrade() -> None:

@@ -168,6 +168,12 @@ An iPhone or iPad keeps the home-screen icon apart from Safari, so the icon star
 
 Open the kid's page, find **Phones and tablets**, and tap **Remove** next to the phone. It signs out right away. The phone shows "This phone was removed. Ask a parent for a new code." To add a phone back, scan a new code.
 
+## Homework sites won't load
+
+1. Check the site is in **Settings → Homework** (or the kid's extra list) and not in "Never during homework".
+2. Some sites need other addresses to work. Open **Homework activity** and add what the page pulled in.
+3. Turn off Private DNS (Android) or secure DNS in the browser on the kid's device. It can skip the box's answers.
+
 ## Backups
 
 Your family's information lives in one data store on the box. Before any upgrade that changes the database, the app saves a copy in `backups`, named `pre-upgrade-<time>.db`, inside that data store.

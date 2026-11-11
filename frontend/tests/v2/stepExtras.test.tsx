@@ -8,7 +8,7 @@ const kid = (id: number, name: string, age_group: Kid['age_group']) => ({ id, fu
 const kids = [kid(1, 'Maya', 'kid'), kid(2, 'Leo', 'teen'), kid(3, 'Sam', 'little')]
 
 function show(over: Partial<Parameters<typeof StepExtras>[0]> = {}) {
-  const props = { kids, trust: [] as number[], bedtime: false, goals: true, onGoals: jest.fn(), onTrust: jest.fn(), onBedtime: jest.fn(), ...over }
+  const props = { kids, trust: [] as number[], bedtime: false, goals: true, onGoals: jest.fn(), onTrust: jest.fn(), onBedtime: jest.fn(), penalties: false, onPenalties: jest.fn(), ...over }
   render(<StepExtras {...props} />)
   return props
 }

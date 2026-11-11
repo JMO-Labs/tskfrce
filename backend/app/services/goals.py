@@ -4,7 +4,7 @@ Saved amount is SUM(goal_contributions.amount). Kid points move through the
 Points ledger (TRANSFER, so no XP); parent chip-ins and penalty takes don't.
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import HTTPException
 from sqlalchemy import func
@@ -12,8 +12,8 @@ from sqlalchemy.orm import Session
 
 from app.models.family import FamilySettings, get_family
 from app.models.goal import Goal, GoalContribution, GoalParty
+from app.models.lock import Override
 from app.models.points import Points, PointsType
-from app.models.screen_bank import ScreenBank
 from app.models.user import User, UserRole
 from app.services import economy, inbox
 
@@ -167,12 +167,22 @@ def set_target(db: Session, goal: Goal, target: int) -> None:
     _check_full(db, goal)
 
 
-def grant_screen(db: Session, kid_id: int, minutes: int) -> None:
-    bank = db.get(ScreenBank, kid_id)
-    if bank is None:
-        db.add(ScreenBank(kid_id=kid_id, minutes=minutes))
-    else:
-        bank.minutes += minutes
+def grant_screen(db: Session, kid_id: int, minutes: int, parent_id: int | None = None) -> None:
+    """Free minutes now: a timed unlock on all the kid's devices (source "bonus", like a
+    bought screen-time unlock). Caller commits."""
+    now = datetime.utcnow()
+    expires = now + timedelta(minutes=minutes)
+    for dev in db.get(User, kid_id).devices:
+        db.add(
+            Override(
+                device_id=dev.id,
+                action="unlock",
+                source="bonus",
+                expires_at=expires,
+                created_at=now,
+                created_by_id=parent_id,
+            )
+        )
 
 
 def fulfill(db: Session, goal: Goal, parent: User) -> None:
@@ -193,7 +203,7 @@ def fulfill(db: Session, goal: Goal, parent: User) -> None:
         for kid_id in kids:
             db.add(GoalParty(goal_id=goal.id, kid_id=kid_id))
         if goal.kind == "screen" and goal.kid_id:
-            grant_screen(db, goal.kid_id, goal.minutes or 0)
+            grant_screen(db, goal.kid_id, goal.minutes or 0, parent.id)
         db.commit()
 
 

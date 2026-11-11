@@ -4,9 +4,9 @@ import pytest
 from app.models.family import get_family
 from app.models.goal import Goal, GoalContribution, GoalParty
 from app.models.inbox import Notification
+from app.models.lock import Device, Override
 from app.models.points import Points, PointsType
 from app.models.reward import Redemption
-from app.models.screen_bank import ScreenBank
 from app.models.user import User, UserRole
 from app.services import economy, goals, progression
 from fastapi import HTTPException
@@ -149,14 +149,18 @@ def test_fulfill_family_parties_for_every_kid(db, parent, kid):
     assert {p.kid_id for p in db.query(GoalParty).all()} == {kid.id, k2.id}
 
 
-def test_fulfill_screen_goal_adds_minutes(db, parent, kid):
+def test_fulfill_screen_goal_grants_free_minutes(db, parent, kid):
+    d = Device(name="tab", mac="aa:bb:cc:00:00:01", status="assigned", owners=[kid])
+    db.add(d)
+    db.commit()
     g = _goal(db, parent, kid, target=10, kind="screen", minutes=60)
     _fund(db, kid, 10)
     goals.save(db, g, kid, 10)
     goals.fulfill(db, g, parent)
-    assert db.get(ScreenBank, kid.id).minutes == 60
-    goals.grant_screen(db, kid.id, 15)
-    assert db.get(ScreenBank, kid.id).minutes == 75
+    o = db.query(Override).filter_by(device_id=d.id).one()
+    assert (o.action, o.source, o.created_by_id) == ("unlock", "bonus", parent.id)
+    assert 59 * 60 < (o.expires_at - o.created_at).total_seconds() <= 60 * 60
+    assert not hasattr(goals, "ScreenBank")
 
 
 def test_set_target_goes_both_ways(db, parent, kid):

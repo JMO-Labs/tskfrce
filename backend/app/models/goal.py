@@ -43,6 +43,8 @@ class Goal(Base):
     reached_at = Column(DateTime, nullable=True)
     fulfilled_at = Column(DateTime, nullable=True)
     fulfilled_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    played_at = Column(DateTime, nullable=True)  # jail goals: when the card was played
+    penalty_id = Column(Integer, ForeignKey("penalties.id", ondelete="SET NULL"), nullable=True)
 
 
 class GoalContribution(Base):

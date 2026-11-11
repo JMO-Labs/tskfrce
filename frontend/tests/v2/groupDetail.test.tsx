@@ -89,6 +89,13 @@ describe('group detail, calm', () => {
     expect(screen.getByRole('button', { name: /Hours.*1 rule · next lock/ })).toBeTruthy()
   })
 
+  test('Devices row uses the same glyph as the kid page Devices row (audit 25)', () => {
+    show()
+    const head = screen.getByRole('button', { name: /Devices.*2 of 3 devices/ })
+    expect(head.querySelector('[data-icon]')).toHaveAttribute('data-icon', 'devices')
+    expect(head.querySelector('[data-icon="devices_other"]')).toBeNull()
+  })
+
   test('a free group reads Free', () => {
     show({ ...group, chore_lock: false })
     expect(screen.getByRole('button', { name: /Settings.*Free/ })).toBeTruthy()

@@ -47,7 +47,11 @@ def approve(db: Session, run: ChoreRun, by_id: int | None, via: str = "parent") 
     svc.clear_note(run)
     fam = get_family(db)
     pts = award_chore(db, run, fam)
-    minigames.earn(db, run, fam)
+    if run.penalty_id:
+        from app.services import penalty_earnback
+
+        penalty_earnback.on_approved(db, run)
+    minigames.earn(db, run, fam)  # skips make-up (penalty) runs itself
     chat.system(db, run, f"Approved · +{pts}")
     badges.check_for_run(db, run, fam)
     if via != "integration":

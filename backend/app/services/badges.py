@@ -96,6 +96,7 @@ def _task_metrics(db: Session, kid: User, fam: FamilySettings) -> dict[str, int]
         .filter(
             chore_svc.kid_runs_filter(kid.id),
             ChoreRun.status == "done",
+            ChoreRun.penalty_id.is_(None),
             or_(ChoreRun.approved_by_id.isnot(None), ChoreRun.approved_via.in_(TRUSTED)),
         )
         .order_by(ChoreRun.day, ChoreRun.id)
@@ -202,6 +203,8 @@ def check_badges(db: Session, kid: User, fam: FamilySettings) -> list[BadgeAward
 
 def check_for_run(db: Session, run: ChoreRun, fam: FamilySettings) -> None:
     """Re-check badges for every kid paid for an approved chore."""
+    if run.penalty_id:
+        return
     for kid_id in economy._recipients(run):
         kid = db.get(User, kid_id)
         if kid:

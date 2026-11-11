@@ -97,6 +97,9 @@ class FamilySettings(Base):
     games_earn = Column(String(6), nullable=False, default="every", server_default="every")
     games_cap_pct = Column(Integer, nullable=False, default=10, server_default="10")
     games_board = Column(Boolean, nullable=False, default=True, server_default="1")
+    penalties_enabled = Column(Boolean, nullable=False, default=False, server_default="0")
+    penalty_sizes = Column(Text, nullable=True)  # JSON; NULL = defaults
+    makeup_chores = Column(Text, nullable=True)  # JSON; NULL = defaults
 
 
 def get_family(db: Session) -> FamilySettings:

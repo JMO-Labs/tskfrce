@@ -31,6 +31,7 @@ const KEYS: Record<string, string> = {
   photo: 'Photo proof',
   banked: 'Banked time',
   goals: 'Goals',
+  penalties: 'Penalties',
 }
 
 export const keyLabel = (key: string): string => KEYS[key] ?? key

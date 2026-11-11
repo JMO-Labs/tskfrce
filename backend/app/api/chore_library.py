@@ -132,6 +132,7 @@ def list_chores(kid_id: int | None = None, db: Session = Depends(get_db)):
             selectinload(Chore.steps),
             selectinload(Chore.assignments).selectinload(ChoreAssignment.kids),
         )
+        .filter(Chore.makeup.is_(False))
         .order_by(Chore.id)
     )
     out = []

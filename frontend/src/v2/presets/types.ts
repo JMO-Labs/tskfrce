@@ -15,6 +15,7 @@ export interface KidPlan {
 export interface FamilyPlan {
   banked: boolean
   goals?: boolean
+  penalties?: boolean
 }
 
 export interface PresetKid {

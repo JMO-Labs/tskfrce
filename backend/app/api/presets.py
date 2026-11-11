@@ -16,7 +16,9 @@ router = APIRouter(
 )
 
 Style = Literal["relaxed", "balanced", "strict"]
-Key = Literal["chores", "screen", "bedtime", "lock", "trust", "photo", "banked", "goals"]
+Key = Literal[
+    "chores", "screen", "bedtime", "lock", "trust", "photo", "banked", "goals", "penalties"
+]
 
 
 class PresetBody(BaseModel):

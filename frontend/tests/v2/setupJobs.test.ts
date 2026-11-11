@@ -1,5 +1,5 @@
 import { describe, expect, test } from '@jest/globals'
-import { applyBody, hoursFromPlans, presetKids, tweakStart } from '@/v2/setup/setupJobs'
+import { applyBody, hoursFromPlans, keepWho, presetKids, tweakStart } from '@/v2/setup/setupJobs'
 import type { KidPlan, PresetCatalog } from '@/v2/presets/types'
 import type { Kid } from '@/v2/types'
 
@@ -47,13 +47,20 @@ describe('hoursFromPlans', () => {
       ['Weekends', 'weekend', '45', true, [], [{ start: '08:00', end: '22:00' }]],
     ])
   })
-  test('different bedtimes: one rule per kid for each day type', () => {
+  test('different bedtimes: Everyone at the most common one, an override for the rest', () => {
+    const r = hoursFromPlans([p(1, 'Ivy', {}), p(2, 'Theo', { bedtime: '22:00', weekend: '23:30' }), p(3, 'Mia', { bedtime: '22:00', weekend: '23:30' })])
+    expect(r.map((d) => [d.name, d.everyone, d.kid_ids, d.replaces_everyone ?? false, d.times[0].end])).toEqual([
+      ['School nights', true, [], false, '22:00'],
+      ['School nights · Ivy', false, [1], true, '20:30'],
+      ['Weekends', true, [], false, '23:30'],
+      ['Weekends · Ivy', false, [1], true, '22:00'],
+    ])
+  })
+  test('a tie goes to the first kid', () => {
     const r = hoursFromPlans([p(1, 'Ivy', {}), p(2, 'Theo', { bedtime: '22:00', weekend: '23:30' })])
-    expect(r.map((d) => [d.name, d.everyone, d.kid_ids, d.times[0].end])).toEqual([
-      ['School nights · Ivy', false, [1], '20:30'],
-      ['School nights · Theo', false, [2], '22:00'],
-      ['Weekends · Ivy', false, [1], '22:00'],
-      ['Weekends · Theo', false, [2], '23:30'],
+    expect(r.filter((d) => d.category === 'school_night').map((d) => [d.name, d.times[0].end])).toEqual([
+      ['School nights', '20:30'],
+      ['School nights · Theo', '22:00'],
     ])
   })
   test('no kids: nothing to build from', () => expect(hoursFromPlans([])).toEqual([]))
@@ -64,8 +71,20 @@ describe('tweakStart', () => {
     const t = tweakStart(presetKids(kids, { 2: 'relaxed' }, 'balanced'), catalog, 'balanced')
     expect(t.chores).toEqual(['Make bed', 'Tidy room', 'Take out trash'])
     expect(t.assign).toEqual({ 'Make bed': [1, 2], 'Tidy room': [1], 'Take out trash': [2] })
-    expect(t.hours.map((d) => d.name)).toEqual(['School nights · Ivy', 'School nights · theo', 'Weekends · Ivy', 'Weekends · theo'])
+    expect(t.hours.map((d) => d.name)).toEqual(['School nights', 'School nights · theo', 'Weekends', 'Weekends · theo'])
     expect(t.lock).toBe(true)
     expect(t.trust).toEqual([2])
+    expect(t.penalties).toBe(false)
+  })
+  test('Strict starts Penalties on', () => {
+    expect(tweakStart(presetKids(kids, null, 'strict'), { ...catalog, family: { strict: { banked: false, penalties: true } } }, 'strict').penalties).toBe(true)
+  })
+})
+
+describe('keepWho', () => {
+  test('an edit in setup keeps who the draft was for and its override', () => {
+    const d = { name: 'School nights · Ivy', category: 'school_night', kind: 'allowed', days: '01236', start_date: null, end_date: null, everyone: false, kid_ids: [1], group_ids: [], replaces_everyone: true, times: [{ start: '07:00', end: '20:30' }] } as const
+    const edited = { ...d, everyone: true, kid_ids: [], replaces_everyone: undefined, times: [{ start: '07:00', end: '21:00' }] }
+    expect(keepWho(edited, d)).toEqual({ ...d, times: [{ start: '07:00', end: '21:00' }] })
   })
 })

@@ -16,6 +16,8 @@ export interface HourRule {
   kid_ids: number[]
   group_ids: number[]
   times: { start: string; end: string }[]
+  /** a kid style bedtime: for its kids it replaces Everyone rules of the same day type */
+  replaces_everyone?: boolean
 }
 
 export type RuleBody = Omit<HourRule, 'id'>

@@ -57,6 +57,7 @@ export default function SetupPage() {
   const [trustKids, setTrustKids] = useState<number[]>([])
   const [bedtimeAuto, setBedtimeAuto] = useState(false)
   const [goalsOn, setGoalsOn] = useState(true)
+  const [penalties, setPenalties] = useState(false)
   const [choresLock, setChoresLock] = useState(true)
   const [style, setStyle] = useState<Style>('balanced')
   const [kidStyles, setKidStyles] = useState<Record<number, Style> | null>(null) // set = "Different for each kid"
@@ -140,7 +141,7 @@ export default function SetupPage() {
 
   /** POST each not-yet-applied request; remember successes so Back/Next never duplicates. */
   const apply = useMutation({
-    mutationFn: async (jobs: Job[]) => {
+    mutationFn: async ({ jobs }: { jobs: Job[]; to?: number }) => {
       for (const j of jobs) {
         if (applied.current.has(j.key)) continue
         await j.run()
@@ -148,7 +149,7 @@ export default function SetupPage() {
         setSchedules(Array.from(applied.current).filter((k) => k.startsWith('rule:')).length)
       }
     },
-    onSuccess: () => go(step + 1),
+    onSuccess: (_d, v) => go(v.to ?? step + 1),
   })
 
   const go = (n: number) => {
@@ -161,9 +162,8 @@ export default function SetupPage() {
   }
 
   // one request per click even on a double-click; failures show via apply.error
-  // one request per click even on a double-click; failures show via apply.error
-  const run = (jobs: Job[]) =>
-    void once(() => apply.mutateAsync(jobs).catch(() => {}))
+  const run = (jobs: Job[], to?: number) =>
+    void once(() => apply.mutateAsync({ jobs, to }).catch(() => {}))
 
   const sub = (t: typeof tweak) => {
     apply.reset()
@@ -173,6 +173,11 @@ export default function SetupPage() {
     const body = applyBody(style, kids, kidStyles, skip)
     return { key: `${skip ? 'preset:tweak' : 'preset'}:${JSON.stringify(body)}`, run: () => applyPreset.mutateAsync(body) }
   }
+  /** Skipping How strict or Your plan still gives a working setup: Balanced for everyone (turnkey). */
+  const skipToBalanced = () => {
+    const body = applyBody('balanced', kids, null)
+    run([{ key: `preset:${JSON.stringify(body)}`, run: () => applyPreset.mutateAsync(body) }], 6)
+  }
   const startTweak = (catalog: PresetCatalog) => {
     const t = tweakStart(presetKids(kids, kidStyles, style), catalog, style)
     setChores(t.chores.filter((c) => !addedStarters.includes(c)))
@@ -180,6 +185,7 @@ export default function SetupPage() {
     if (t.hours.length) setHours(t.hours)
     setChoresLock(t.lock)
     setTrustKids(t.trust)
+    setPenalties(t.penalties)
     sub('chores')
   }
   /** Looks good applies the plan; Tweak walks Chores, Hours, Extras, then applies it with those three skipped. */
@@ -190,8 +196,8 @@ export default function SetupPage() {
     run([
       ...(kids.length === 0 ? [] : choreJobs(chores, (t) => assign[t] ?? kids.map((k) => k.id), choreCache.current)),
       ...hoursJobs(hours, choresLock),
-      ...extrasJobs(trustKids, bedtimeAuto, goalsOn),
-      presetJob(['chores', 'bedtime', 'trust', 'goals']),
+      ...extrasJobs(trustKids, bedtimeAuto, goalsOn, penalties),
+      presetJob(['chores', 'bedtime', 'trust', 'goals', 'penalties']),
     ])
   }
   const back = () => (tweak === 'extras' ? sub('hours') : tweak === 'hours' ? sub('chores') : tweak === 'chores' ? sub(null) : go(step - 1))
@@ -263,7 +269,7 @@ export default function SetupPage() {
           onNext={next}
           nextLabel={step === LAST ? 'Finish' : 'Next'}
           hideNext={step === 5 && !tweak}
-          onSkip={step >= 3 && step <= LAST && !tweak && !(step === 6 && kids.length === 0) ? () => go(step + 1) : undefined}
+          onSkip={step >= 3 && step <= LAST && !tweak && !(step === 6 && kids.length === 0) ? (step === 4 || step === 5 ? skipToBalanced : () => go(step + 1)) : undefined}
           onStepClick={(n) => {
             if (n > step && n > step + 1) return // Can't skip ahead multiple steps
             go(n)
@@ -289,7 +295,7 @@ export default function SetupPage() {
           {step === 5 && !tweak && <StepPlan kids={presetKids(kids, kidStyles, style)} style={style} onTweak={startTweak} busy={apply.isPending} />}
           {step === 5 && tweak === 'chores' && <StepChores selected={chores} made={addedStarters} hasKids={kids.length > 0} onChange={setChores} />}
           {step === 5 && tweak === 'hours' && <StepHours drafts={hours} onChange={setHours} choresLock={choresLock} onChoresLock={setChoresLock} />}
-          {step === 5 && tweak === 'extras' && <StepExtras kids={kids} trust={trustKids} bedtime={bedtimeAuto} goals={goalsOn} onTrust={setTrustKids} onBedtime={setBedtimeAuto} onGoals={setGoalsOn} />}
+          {step === 5 && tweak === 'extras' && <StepExtras kids={kids} trust={trustKids} bedtime={bedtimeAuto} goals={goalsOn} onTrust={setTrustKids} onBedtime={setBedtimeAuto} onGoals={setGoalsOn} penalties={penalties} onPenalties={setPenalties} />}
           {step === 6 && <StepPhones kids={kids} />}
           {step === 7 && <StepDevices kids={kids} />}
           {step > LAST && (

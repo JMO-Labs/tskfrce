@@ -154,12 +154,14 @@ def test_fetch_state_parses_and_defaults(make_stub):
     full = make_stub(body=b'{"blocked":["a"],"listen_only":true,"covered_vlans":[20,30]}')
     assert fetch_state(_cfg(full.url)) == {
         "blocked": ["a"],
+        "homework": {},
         "listen_only": True,
         "covered_vlans": [20, 30],
     }
     old = make_stub(body=b'{"blocked":["a"]}')
     assert fetch_state(_cfg(old.url)) == {
         "blocked": ["a"],
+        "homework": {},
         "listen_only": False,
         "covered_vlans": [],
     }

@@ -127,6 +127,13 @@ describe('family cards (items 7, 8)', () => {
     expect(screen.getByLabelText('Early finish bonus cap')).toHaveValue('5')
     expect(screen.queryByLabelText('Family name')).toBeNull()
   })
+  test('Points rules row uses the circled star (audit 25)', () => {
+    fakeRouter.reset('/settings', { section: 'family' })
+    wrap(<FamilyCard fam={fam()} />)
+    const head = screen.getByText('Points rules').closest('button') as HTMLElement
+    expect(head.querySelector('[data-icon]')).toHaveAttribute('data-icon', 'stars')
+    expect(head.querySelector('[data-icon="star"]')).toBeNull()
+  })
   test('a blank family name is not saved and says why; a bonus cap over 50 is not saved', async () => {
     fakeRouter.reset('/settings', { section: 'family', open: 'hh' })
     serve({})

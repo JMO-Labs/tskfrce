@@ -42,3 +42,20 @@ export function useKidGoalAction(onExpired: () => void) {
     },
   })
 }
+
+/** Play a Get out of jail free card on one of my penalties. */
+export function usePlayJail(onExpired: () => void) {
+  const qc = useQueryClient()
+  const as = useAsKid()
+  return useMutation({
+    mutationFn: (penaltyId: number) => {
+      if (as) return blocked()
+      return api('/kid/goals/jail/play', { method: 'POST', body: { penalty_id: penaltyId }, kid: true })
+    },
+    onError: (e: Error) => {
+      if (e instanceof AuthError) onExpired()
+      else toastFail(e)
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['kid'] }),
+  })
+}

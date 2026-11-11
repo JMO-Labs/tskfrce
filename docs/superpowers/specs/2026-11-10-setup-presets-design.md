@@ -55,9 +55,7 @@ families mid-setup must not break (*builder's call* on migrating the saved step 
 - **Per-kid vs family-wide** (*my call*). Per-kid fields follow the kid's style: chores, screen time,
   bedtime, the chores-before-internet lock, and checking/trust/photo proof. Family-wide fields follow the
   family pick: Penalties, Goals and banked time on/off.
-- Penalties and Goals toggles only apply when those features exist on the branch. Build them last, after
-  rebasing onto `feat/goals` (which stacks on `feat/penalties`). If those aren't ready yet, ship without
-  them and list them as a follow-up.
+- Penalties and Goals toggles are family keys (both now on this branch).
 
 ### Switching later
 - Settings shows a Family style segmented switch. Each kid page has its own (compact, in the kid's
@@ -94,13 +92,17 @@ Age offsets, data model for edit tracking, API shapes, copy polish within the mo
   switch; a device only waits for the chores of owners whose lock is on.
 - **Photo proof** (Strict): the kid's starter chores need a photo. A starter shared by several kids needs
   one if any of them is Strict.
-- **Per-kid bedtime**: hour rules. A fresh family where everyone shares a bedtime gets Everyone rules.
-  Otherwise each kid gets their own "School nights · Name" / "Weekends · Name" rules. Moving a kid off a
-  shared rule turns an Everyone rule into a list of the other kids.
+- **Per-kid bedtime** (lead decision 2026-11-10): hour rules. A fresh family gets Everyone rules at the
+  most common bedtime (ties: the first kid's), so kids added later stay covered. A kid whose bedtime differs
+  gets their own "School nights · Name" / "Weekends · Name" rule flagged `replaces_everyone`: for that kid
+  it replaces the Everyone rule of the same day type. Everyone rules are never turned into lists. Other
+  kid, group and Everyone rules still all apply together.
+- **Skip** (lead decision): Skip on How strict or Your plan applies Balanced for everyone and goes on to
+  Kids' phones, so doing nothing still gives a working setup.
 - **Edit tracking**: `family_settings.preset_base` (JSON) stores the last applied value per key. A key is
   an edit when it differs from that value. A key with no stored value counts as an edit unless it still
   has the app default (no screen limit, trust off, no photo, lock on, no starter chores, no bedtime
-  rule, banked on). This keeps families that set things up before presets safe.
+  rule, banked on, penalties off). This keeps families that set things up before presets safe.
 - **Styles**: `family_settings.preset_style`, `users.preset_style` (NULL = follows the family). On a kid
   page, picking the family's own style sets the kid back to following the family.
 - **Tweak**: Your plan → Chores → Hours → Extras, pre-filled from the plan, then the preset applies with
@@ -111,5 +113,8 @@ Age offsets, data model for edit tracking, API shapes, copy polish within the mo
   with `{style?, kids?: {id: style|null}, skip?: [keys]}`. Parents only. With `style`, family keys and all
   kids are in scope. Without it, only the listed kids are.
 - **Goals and Penalties** (2026-11-10): Goals (2.10.0) merged into `feat/declutter`, so `goals` is a family
-  key (`family_settings.goals_on`, on for every style; the Tweak Extras switch wins). Penalties is not
-  merged yet: its key (`penalties_enabled`, Strict on) is a follow-up.
+  key (`family_settings.goals_on`, on for every style; the Tweak Extras switch wins). Penalties (#92)
+  merged too, so `penalties` is a family key (`family_settings.penalties_enabled`; Strict on, Relaxed and
+  Balanced off). It has edit tracking like the others (`preset_base`), shows in the preview and the "See
+  what this sets" note, and the Tweak Extras Penalties switch wins. No stored value counts as an
+  edit unless penalties is still off (the app default).

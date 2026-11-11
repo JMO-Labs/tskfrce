@@ -1,11 +1,12 @@
 import type { CelebrateLevel } from './funTypes'
+import type { DevicePenaltyFields, FamilyPenaltyFields, KidTodayPenaltyFields } from './penaltyTypes'
 import type { KidScreen } from './rewardTypes'
 import type { ChoreTrustFields, FamilyExtrasFields, KidTrust, KidTrustFields, RunTrustFields, TodayTryFields } from './trustTypes'
 /** Shapes of the v2 backend responses (backend/app/api/{family,kid,devices,kids,hours,chores,setup}.py). */
 
 export type ChoreState = 'done' | 'needs_you' | 'todo' | 'skipped'
 export type DeviceStatus = 'unassigned' | 'assigned' | 'guest'
-export type OverrideAction = 'lock' | 'unlock'
+export type OverrideAction = 'lock' | 'unlock' | 'homework'
 
 /** GET /setup */
 export interface SetupStatus {
@@ -19,7 +20,7 @@ export interface Override {
 }
 
 /** GET /devices item (device_out) */
-export interface Device {
+export interface Device extends DevicePenaltyFields {
   id: number
   name: string
   mac: string
@@ -113,7 +114,7 @@ export interface Kid extends KidTrustFields {
 /** GET/PATCH /family */
 export type AccentKey = 'neon' | 'sun' | 'tangerine' | 'bubblegum' | 'lilac' | 'sky' | 'aqua' | 'mint' | 'peach' | 'ice'
 
-export interface Family extends FamilyExtrasFields {
+export interface Family extends FamilyExtrasFields, FamilyPenaltyFields {
   name: string
   timezone: string
   reset_time: string
@@ -252,7 +253,7 @@ export interface TodayKid {
 
 /** Item in GET /today needs_you. */
 export interface NeedsItem extends RunTrustFields {
-  type: 'chore' | 'redo' | 'screen_time' | 'reward' | 'note' | 'integration' | 'goal_full' | 'goal_suggested'
+  type: 'chore' | 'redo' | 'screen_time' | 'reward' | 'note' | 'integration' | 'homework' | 'goal_full' | 'goal_suggested'
   id: number
   kid_id: number | null
   kid_name: string | null
@@ -268,6 +269,8 @@ export interface NeedsItem extends RunTrustFields {
   cost?: number
   kid_balance?: number
   mode?: string
+  /** type 'goal_full': screen-time goal whose kid has no devices */
+  no_devices?: boolean
   /** type 'note': the kid's note label */
   note?: string
   /** type 'integration': the service that checked the chore off */
@@ -351,7 +354,7 @@ export interface KidChore extends TodayChore {
   points_now?: number
 }
 
-export interface KidToday {
+export interface KidToday extends KidTodayPenaltyFields {
   locked: boolean
   /** minigames: on for this kid, unplayed plays, plays not yet announced */
   games?: { on: boolean; saved: number; fresh: number }
@@ -371,6 +374,10 @@ export interface KidToday {
   happy_hour?: { ends_at: string; multiplier: number } | null
   /** null = trust mode off */
   trust?: KidTrust | null
+  /** homework mode until timestamp; null = not in homework mode */
+  homework?: { until: string } | null
+  /** true if kid has a pending homework request */
+  homework_pending?: boolean
 }
 
 /** GET /kids/{id}/push */
