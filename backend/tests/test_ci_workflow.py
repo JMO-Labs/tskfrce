@@ -40,7 +40,10 @@ def test_lab_gated_to_queue_tags_and_dispatch(wf):
 
 @pytest.mark.parametrize("job", CHEAP_JOBS)
 def test_cheap_jobs_not_gated(wf, job):
-    assert "if" not in wf["jobs"][job]
+    # Never gated on event/ref; the only allowed `if` is the `changes` path filter (docs-only PRs skip them).
+    cond = str(wf["jobs"][job].get("if", ""))
+    assert "github." not in cond
+    assert not cond or "needs.changes.outputs." in cond
 
 
 def test_only_image_build_needs_lab_and_survives_a_skip(wf):
