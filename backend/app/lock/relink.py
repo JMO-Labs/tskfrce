@@ -34,9 +34,11 @@ def apply_relink(db: Session, device: Device) -> bool:
             Device.id != device.id,
             Device.status == "assigned",
             Device.replaced.is_(False),
-            Device.network_id.is_(device.network_id) if device.network_id is None
+            Device.network_id.is_(device.network_id)
+            if device.network_id is None
             else Device.network_id == device.network_id,
-            Device.vlan_id.is_(device.vlan_id) if device.vlan_id is None
+            Device.vlan_id.is_(device.vlan_id)
+            if device.vlan_id is None
             else Device.vlan_id == device.vlan_id,
             Device.last_seen.isnot(None),
         )  # fmt: skip

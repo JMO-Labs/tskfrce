@@ -30,7 +30,9 @@ def _old(db, kid, mac=OLD_MAC, silent=timedelta(minutes=5), **kw):
 
 
 def seen(client, mac=NEW_MAC, **kw):
-    r = client.post(URL, json={"mac": mac, "ip": "10.0.0.9", "hostname": "phone", **kw}, headers=tok())
+    r = client.post(
+        URL, json={"mac": mac, "ip": "10.0.0.9", "hostname": "phone", **kw}, headers=tok()
+    )
     assert r.status_code == 200, r.text
     return r.json()["id"]
 
