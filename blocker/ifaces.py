@@ -55,6 +55,7 @@ def lan_addrs() -> list[tuple[str, str]]:
             capture_output=True,
             text=True,
             timeout=5,
+            check=False,  # a failure just means no interfaces this round
         )
         return parse(r.stdout)
     except (OSError, ValueError, subprocess.SubprocessError):
