@@ -9,6 +9,21 @@ BLK=http://10.99.0.4:7777
 USER_=labparent PASS_=labpassword1
 
 _curl_parent() { $COMPOSE exec -T parent curl -s -m 30 "$@"; }
+# Every probe runs from the parent container: without it, waits would only time out.
+_running() { _mine && [ -n "$($COMPOSE ps -q --status running parent 2>/dev/null)" ]; }
+
+# One lab per machine: fixed subnets and one compose project, so every checkout drives the same
+# containers. Refuse to build over, test on or tear down another checkout's lab.
+_others() {
+  docker ps -a --filter label=com.docker.compose.project=task4ce-lab \
+    --format '{{.Label "com.docker.compose.project.working_dir"}}' | sort -u | grep -vxF "$(pwd -P)/lab" || true
+}
+_mine() { [ -z "$(_others)" ]; }
+_guard() {
+  { [ -n "${LAB_FORCE:-}" ] || _mine; } && return 0
+  echo "lab in use by $(_others | tr '\n' ' ')- one lab per machine; wait for it (LAB_FORCE=1 overrides)" >&2
+  exit 3
+}
 
 _mac_of() {
   case "$1" in
@@ -52,6 +67,7 @@ _post() { # path json
 }
 
 _wait_http() { # url
+  _running || { echo "lab is not up (no parent container): run scripts/lab.sh up" >&2; return 1; }
   for _ in $(seq 180); do
     [ "$(_curl_parent -o /dev/null -w '%{http_code}' "$1" 2>/dev/null || true)" = 200 ] && return 0
     sleep 1
@@ -107,6 +123,7 @@ _portal() {
 
 # Browser e2e: needs `up` first. Screenshots land in frontend/e2e-artifacts.
 _e2e() {
+  _running || _up  # standalone `e2e` (or after a torn-down lab) needs the whole lab, not just frontend
   $COMPOSE up -d --build frontend
   _wait_http "http://10.99.0.5:3000/api/health"
   python3 lab/e2e_run.py $COMPOSE --profile e2e run --rm e2e
@@ -114,9 +131,11 @@ _e2e() {
 
 cmd=${1:-}; shift || true
 case "$cmd" in
-  up) _up ;;
-  down) rm -f "$TOKEN_FILE"; _bridges -D 2>/dev/null || true; $COMPOSE --profile e2e down -v ;;  # profile: also remove frontend
-  e2e) _e2e ;;
+  up) _guard; _up ;;
+  down) _guard; rm -f "$TOKEN_FILE"; _bridges -D 2>/dev/null || true; $COMPOSE --profile e2e down -v ;;  # profile: also remove frontend
+  e2e) _guard; _e2e ;;
+  running) _running ;;
+  wait-blocker) _wait_http "$BLK/health" ;;
   token) _token ;;
   device-id) _need_id "$1" ;;
   block) _post "/api/v1/devices/$(_need_id "$1")/override" '{"action":"lock"}' >/dev/null ;;
@@ -134,5 +153,5 @@ case "$cmd" in
     mac=$(_mac_of "$1")
     _devices | jq -r --arg m "$mac" '[.[] | select((.mac|ascii_downcase)==$m)][0].resisting // false' ;;
   test-block) _post "/api/v1/devices/$(_need_id "$1")/test-block" '{}' ;;
-  *) echo "usage: $0 {up|down|e2e|token|device-id|block|unblock|check|check6|portal|resist|reset|resisting|test-block} [host]" >&2; exit 2 ;;
+  *) echo "usage: $0 {up|down|e2e|running|wait-blocker|token|device-id|block|unblock|check|check6|portal|resist|reset|resisting|test-block} [host]" >&2; exit 2 ;;
 esac

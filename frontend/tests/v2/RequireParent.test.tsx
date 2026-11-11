@@ -31,6 +31,8 @@ const renderGuard = () => {
 }
 
 beforeEach(() => {
+  localStorage.clear()
+  cancelSignOut()
   replace.mockReset()
   apiMock.mockReset().mockResolvedValue({ needed: false })
 })

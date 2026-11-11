@@ -73,3 +73,4 @@ def test_box_restart_fails_open():
         assert wait_for(lambda: lab("check", "kid1").returncode == 0, timeout=90)
     finally:
         subprocess.run([*COMPOSE, "start", "blocker"], check=True)
+        lab("wait-blocker", check=True)  # later tests and stages need it serving again

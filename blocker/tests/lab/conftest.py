@@ -12,11 +12,14 @@ os.environ["INTERNAL_TOKEN"] = "labtoken"
 def lab_up():
     if not shutil.which("docker"):
         pytest.skip("docker not available")
+    # A lab that was already up belongs to the caller (CI's browser e2e runs on it next):
+    # tearing it down here left `lab.sh e2e` with no parent container and a health timeout.
+    ours = j.lab("running").returncode != 0
     try:
         j.lab("up", check=True)
         yield
     finally:
-        if not os.environ.get("LAB_KEEP"):  # LAB_KEEP=1 leaves the lab up for debugging
+        if ours and not os.environ.get("LAB_KEEP"):  # LAB_KEEP=1 leaves the lab up for debugging
             j.lab("down")
 
 
