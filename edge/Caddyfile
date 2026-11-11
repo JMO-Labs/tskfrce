@@ -15,13 +15,17 @@ http://10.42.0.1 {
 	reverse_proxy @setup_page {$FRONTEND_UPSTREAM:127.0.0.1:3000} {
 		header_up X-Real-IP {remote_host}
 		header_up X-Forwarded-For {remote_host}
+		header_up X-Edge-Token {$EDGE_TOKEN}
 	}
 
 	# Setup API endpoints: reverse-proxy to backend
+	# SECURITY: Overwrite X-Forwarded-For with remote_host (no spoofing)
+	# SECURITY: Require X-Edge-Token for setup join endpoint
 	@setup_api path /api/v1/network/wifi/setup/*
 	reverse_proxy @setup_api 127.0.0.1:8000 {
 		header_up X-Real-IP {remote_host}
 		header_up X-Forwarded-For {remote_host}
+		header_up X-Edge-Token {$EDGE_TOKEN}
 	}
 
 	# Everything else: redirect to setup
@@ -30,8 +34,15 @@ http://10.42.0.1 {
 
 https://{$BOX_ID}.{$BASE_DOMAIN}:443 {
 	tls /data/lego/certificates/{$BOX_ID}.{$BASE_DOMAIN}.crt /data/lego/certificates/{$BOX_ID}.{$BASE_DOMAIN}.key
+
+	# SECURITY: Strip setup routes - they only work on hotspot portal
+	@setup_routes path /api/v1/network/wifi/setup/*
+	error @setup_routes 403 "Setup routes unavailable on main site"
+
+	# SECURITY: Remove X-Edge-Token header from response (prevent client forgery)
 	reverse_proxy {$FRONTEND_UPSTREAM:127.0.0.1:3000} {
 		header_up X-Real-IP {remote_host}
 		header_up X-Edge-Token {$EDGE_TOKEN}
+		header_down -X-Edge-Token
 	}
 }

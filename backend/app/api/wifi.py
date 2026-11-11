@@ -1,9 +1,12 @@
 """Parent API: Wi-Fi setup and management."""
 
+import ipaddress
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.api.deps import require_parent
+from app.core.client_ip import client_ip
 from app.services import country_code, network_wifi, setup_mode
 
 # Parent auth router
@@ -117,27 +120,40 @@ def apply_country():
         raise HTTPException(500, f"Country apply failed: {e}")
 
 
-def _is_hotspot_client(request: Request) -> bool:
-    """Check if client is from hotspot (10.42.0.0/24)."""
-    # Check X-Forwarded-For header (set by Caddy reverse proxy)
-    forwarded_for = request.headers.get("X-Forwarded-For", "")
-    if forwarded_for:
-        client_ip = forwarded_for.split(",")[0].strip()
-    else:
-        client_ip = request.client.host if request.client else ""
-    # Check if IP is in 10.42.0.0/24 range (hotspot subnet)
+def _verify_hotspot_request(request: Request) -> None:
+    """Verify request is from hotspot client with valid token and setup mode active."""
+    # SECURITY: Use client_ip() helper (handles trusted proxy correctly)
+    ip = client_ip(request)
+
+    # SECURITY: Require X-Edge-Token (reuse main site's token mechanism)
+    token = request.headers.get("X-Edge-Token", "")
+    if not token:
+        raise HTTPException(403, "Missing X-Edge-Token")
+
+    # SECURITY: Verify IP is in hotspot subnet (10.42.0.0/24)
     try:
-        octets = [int(x) for x in client_ip.split(".")]
-        return octets[:3] == [10, 42, 0]
-    except (ValueError, IndexError):
-        return False
+        addr = ipaddress.ip_address(ip)
+        if not addr in ipaddress.ip_network("10.42.0.0/24"):
+            raise HTTPException(403, "Client IP outside hotspot subnet")
+    except ValueError:
+        raise HTTPException(403, "Invalid client IP")
+
+    # SECURITY: Check setup mode is active (query helper socket)
+    try:
+        status = network_wifi._call_helper("status")
+        # Helper's hotspot_active flag indicates setup mode
+        if not status.get("hotspot_active"):
+            raise HTTPException(503, "Setup mode not active")
+    except RuntimeError:
+        raise HTTPException(503, "Cannot verify setup mode")
 
 
 @setup_router.post("/join", response_model=JoinResponse)
 def setup_join(request: Request, body: JoinRequest):
-    """Setup mode: join a Wi-Fi network (hotspot clients only)."""
-    if not _is_hotspot_client(request):
-        raise HTTPException(403, "Forbidden: only hotspot clients can join")
+    """Setup mode: join a Wi-Fi network (hotspot clients only, requires X-Edge-Token)."""
+    # SECURITY: Verify hotspot client, token, and setup mode active
+    _verify_hotspot_request(request)
+
     try:
         success = network_wifi.join(body.ssid, body.password, timeout=60)
         if success:
