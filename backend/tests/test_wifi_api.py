@@ -112,3 +112,15 @@ def test_unknown_security_type_is_422(client, parent_headers, daemon):
         client.post("/api/v1/network/wifi/join", headers=parent_headers, json=body).status_code
         == 422
     )
+
+
+def test_fallback_join_on_a_set_up_box_needs_a_parent(
+    client, parent, parent_headers, kid_headers, daemon, via_proxy
+):
+    """After first run the sticker hotspot is only a fallback: a kid with the sticker can't move the box."""
+    h = {"X-Real-IP": "10.42.0.5"}
+    assert client.post(SETUP, json=BODY, headers=h).status_code == 401
+    assert client.post(SETUP, json=BODY, headers={**h, **kid_headers}).status_code == 403
+    assert all(c[0] != "setup_join" for c in daemon)
+    assert client.post(SETUP, json=BODY, headers={**h, **parent_headers}).status_code == 200
+    assert daemon[-1][0] == "setup_join"

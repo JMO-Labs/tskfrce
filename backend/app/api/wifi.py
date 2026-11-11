@@ -4,10 +4,13 @@ import ipaddress
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.security import HTTPAuthorizationCredentials
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
-from app.api.deps import require_parent
+from app.api.deps import get_db, require_parent, security, user_from_token
 from app.core.client_ip import client_ip
+from app.models.user import User, UserRole
 from app.services import network_wifi
 
 router = APIRouter(
@@ -95,6 +98,20 @@ def setup_status(request: Request) -> dict:
 
 
 @setup_router.post("/join")
-def setup_join(request: Request, body: JoinRequest) -> dict:
+def setup_join(
+    request: Request,
+    body: JoinRequest,
+    db: Session = Depends(get_db),
+    token: HTTPAuthorizationCredentials | None = Depends(security),
+) -> dict:
     _hotspot_only(request)
+    # First run (no family yet): anyone on the setup hotspot may pick the home Wi-Fi.
+    # After that the hotspot is only a fallback, and its password is on the sticker a kid can
+    # read, so moving the box to another network needs a parent session.
+    if db.query(User.id).first() is not None:
+        user = user_from_token(token.credentials if token else None, db)
+        if user is None:
+            raise HTTPException(401, "Sign in as a parent to change the box's Wi-Fi.")
+        if not user.is_active or user.role != UserRole.PARENT:
+            raise HTTPException(403, "Only parents can change the box's Wi-Fi.")
     return _daemon(network_wifi.setup_join, body.ssid, body.password, body.security, body.hidden)
