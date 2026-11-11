@@ -174,7 +174,19 @@ Kids save points toward something bigger, like a bike, a game or a family trip. 
 - When a meter fills you get a notice. Tap **Fulfilled** once it's done, and the kid gets a mascot party the next time they open the app. A family goal parties for every kid.
 - **+ Chip in** adds your own points to a family goal. They don't come from any kid.
 - Saved points leave a kid's balance. Removing a goal gives every kid back what they saved.
+- An **extra screen time** goal grants free minutes straight away when you tap **Fulfilled**: the kid's devices are unlocked for that long. It needs screen time banking.
 - **Goal settings** (the link at the bottom) turns Goals on or off and sets whether kids can suggest goals or take points back, whether kids see what siblings gave, automatic saving (a share of each approved chore goes to the kid's chosen goal), how many goals each age can have, and the built-in goals: extra screen time (needs screen time banking) and Get out of jail free.
+
+### Minigames
+
+Kids earn quick games for chores and play them in the **Games** tab. Set the rules in **Settings → Family → Minigames**.
+
+- **Minigames** turns games on or off for the whole family. Under **Per kid**, switch games off for one kid.
+- **Earn a game**: **Every chore** (the default), **Once a day**, **Random** (about half of approved chores) or **Custom** (only chores where you ticked **Earns a game** in the chore editor).
+- A kid can save up to 5 games. Games stop being earned until they play some. Make-up chores for a penalty never earn a game.
+- **Game points cap** limits the points games can add each day, as a share of the chore points that kid earned that day. The default is 10%. Choose 0% for games that add no points.
+- **Family leaderboard** shows or hides the weekly board.
+- **Games sleep** at each kid's bedtime (the end of their last allowed window in **Hours**, until the day resets) and during your family **Quiet hours** (**Settings → Notifications → When and how**). Saved games wait. A kid sees "Games are asleep" and when they wake up.
 
 ### Streak freezes
 
@@ -321,6 +333,8 @@ If you say no to a request, your kid can ask again after 5 minutes.
 - **School nights** and **Weekends**: your everyday hours.
 - **Holiday** and **Summer**: these replace everyday hours between the dates you pick. Tap **Add holiday**.
 - **Other**: anything else. Tap **Add window**.
+
+Quiet hours also put kids' minigames to sleep; see [Minigames](#minigames).
 
 Each rule says what it does: **Online**, **Free time** (online even if chores aren't done, like Saturday morning) or **Internet off** (like bedtime). A rule can be for **Everyone**, or for chosen kids or device groups. The timeline shows the whole family's week.
 
