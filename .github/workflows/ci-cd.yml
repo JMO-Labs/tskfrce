@@ -7,6 +7,7 @@ on:
   workflow_dispatch:
   pull_request:
     branches: [ main ]
+  merge_group:  # merge queue: the only place the network lab gates a merge
 
 # One run per PR/branch: a new push to a PR cancels its stale run. main/tags never cancel.
 concurrency:
@@ -118,6 +119,9 @@ jobs:
   lab:
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
     # runs in parallel with lint/test; build-and-push still waits for it
+    # Heavy (~20-30 min): skipped on PR pushes; runs once per merge in the merge queue, on release tags,
+    # and on demand. main pushes come from the queue, so the lab already passed on that exact commit.
+    if: github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
     timeout-minutes: 40
     # One lab at a time repo-wide (heavy, ~17 min); others wait in order without holding a runner.
     concurrency:
@@ -196,7 +200,8 @@ jobs:
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
     needs: [test, lint, frontend-test, standalone, security-scan, installer, lab]
     timeout-minutes: 45
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    # !failure(): a skipped lab (main push after the merge queue) must not skip the image build
+    if: ${{ !cancelled() && !failure() && github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) }}
     strategy:
       matrix:
         service: [backend, frontend, blocker, edge]
