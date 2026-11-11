@@ -25,11 +25,7 @@ def _dev(db, kid, mac="aa:bb:cc:dd:ee:01"):
 
 
 def _slot(db, dev, hh, mm, locked=False):
-    db.add(
-        DevicePresence(
-            device_id=dev.id, slot=datetime(2026, 10, 20, hh, mm), locked=locked
-        )
-    )
+    db.add(DevicePresence(device_id=dev.id, slot=datetime(2026, 10, 20, hh, mm), locked=locked))
     db.commit()
 
 
