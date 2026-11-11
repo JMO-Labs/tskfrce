@@ -154,15 +154,23 @@ wait_healthy() {
 }
 
 install_updater() {
-  [ -x "$DIR/install/update-check.sh" ] || return 0
+  # Tests and non-systemd hosts skip this; auto-updates are optional, the app still runs.
+  [ "${TASK4CE_SKIP_UPDATER:-0}" = 1 ] && return 0
+  [ -x "$DIR/install/update-check.sh" ] && have systemctl || return 0
+  root=""
+  if [ "$(id -u)" != 0 ]; then
+    have sudo || { say "Skipping automatic updates (needs sudo). Re-run this installer to update."; return 0; }
+    root="sudo"
+  fi
   say "Installing unattended update service..."
-  $SUDO install -m 0755 "$DIR/install/update-check.sh" /usr/local/bin/update-check.sh
-  $SUDO install -m 0644 "$DIR/install/update-check.service" /etc/systemd/system/update-check.service
-  $SUDO install -m 0644 "$DIR/install/update-check.timer" /etc/systemd/system/update-check.timer
-  $SUDO install -m 0755 "$DIR/install/pre-reboot-hook.sh" /usr/local/bin/pre-reboot-hook.sh
-  $SUDO systemctl daemon-reload
-  $SUDO systemctl enable update-check.timer
-  $SUDO systemctl start update-check.timer
+  $root install -m 0755 "$DIR/install/update-check.sh" /usr/local/bin/update-check.sh
+  $root install -m 0755 "$DIR/install/pre-reboot-hook.sh" /usr/local/bin/pre-reboot-hook.sh
+  $root install -m 0644 "$DIR/install/update-check.timer" /etc/systemd/system/update-check.timer
+  # The service runs as root, so tell it where this install lives.
+  sed "s|^ExecStart=.*|Environment=TASK4CE_DIR=$DIR\nExecStart=/usr/local/bin/update-check.sh|" \
+    "$DIR/install/update-check.service" | $root tee /etc/systemd/system/update-check.service >/dev/null
+  $root systemctl daemon-reload
+  $root systemctl enable --now update-check.timer
 }
 
 main() {
