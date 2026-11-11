@@ -19,7 +19,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # Path filter: docs/site-only PRs skip the heavy jobs (skipped counts as success). Non-PR events run everything.
+  # Path filter: docs/site-only PRs skip the heavy jobs (skipped counts as success). PRs and pushes to dev are filtered; main/tags/merge_group run everything.
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -27,16 +27,18 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      py: ${{ github.event_name != 'pull_request' || steps.f.outputs.py == 'true' }}
-      fe: ${{ github.event_name != 'pull_request' || steps.f.outputs.fe == 'true' }}
-      pg: ${{ github.event_name != 'pull_request' || steps.f.outputs.pg == 'true' }}
-      installer: ${{ github.event_name != 'pull_request' || steps.f.outputs.installer == 'true' }}
-      perf: ${{ github.event_name != 'pull_request' || steps.f.outputs.perf == 'true' }}
-      dbs: ${{ (github.event_name != 'pull_request' || steps.f.outputs.pg == 'true') && '["sqlite","postgres"]' || '["sqlite"]' }}
+      py: ${{ !(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.py == 'true' }}
+      fe: ${{ !(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.fe == 'true' }}
+      pg: ${{ !(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.pg == 'true' }}
+      installer: ${{ !(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.installer == 'true' }}
+      perf: ${{ !(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.perf == 'true' }}
+      dbs: ${{ (!(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.pg == 'true') && '["sqlite","postgres"]' || '["sqlite"]' }}
     steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      if: github.event_name == 'push'  # paths-filter diffs with git on push events
     - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
       id: f
-      if: github.event_name == 'pull_request'
+      if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')
       with:
         filters: |
           py: ['backend/**', 'blocker/**', 'examples/**', 'ruff.toml', '.github/workflows/ci-cd.yml']
