@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     LOCK_INTERVAL_SECONDS: int = 30
     LOCK_LOOP_ENABLED: bool = True
     INTEGRATIONS_LOOP_ENABLED: bool = True
+    POWER_HEARTBEAT_ENABLED: bool = True
     REGISTRY_URL: str = "https://taskfrce.jmolabs.dev"
     # Peers allowed to set X-Real-IP (our frontend proxy); comma list
     TRUSTED_PROXY_IPS: str = "127.0.0.1,::1,::ffff:127.0.0.1"
