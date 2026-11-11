@@ -1,6 +1,7 @@
-import { useState, type ChangeEvent } from 'react'
-import { PasswordInput, TextInput } from '@mantine/core'
-import { PasswordEye } from '@/v2/components/PasswordEye'
+import { useState, type ChangeEvent, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { IconCheck, IconX } from '@tabler/icons-react'
+import { api } from '../api'
 
 export interface ParentForm { username: string; password: string; again: string; fullName: string }
 
@@ -19,20 +20,145 @@ interface Props {
   onChange: (v: ParentForm) => void
 }
 
+function ValidationRule({ met, text }: { met: boolean; text: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', margin: '4px 0', color: met ? '#4a9d1f' : '#5f5f5c' }}>
+      {met ? <IconCheck size={16} /> : <IconX size={16} />}
+      <span>{text}</span>
+    </div>
+  )
+}
+
 export function StepParent({ value, showError, onChange }: Props) {
   const err = parentErrors(value)
-  const [againSeen, setAgainSeen] = useState(false) // the mismatch shows once they leave the field, not while typing
+  const [nameSeen, setNameSeen] = useState(false)
+  const [usernameSeen, setUsernameSeen] = useState(false)
+  const [passwordSeen, setPasswordSeen] = useState(false)
+  const [againSeen, setAgainSeen] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showAgain, setShowAgain] = useState(false)
+
+  // Check username availability
+  const usernameQuery = useQuery({
+    queryKey: ['username-available', value.username],
+    queryFn: () => api<{ available: boolean }>(`/setup/username-available?u=${encodeURIComponent(value.username)}`),
+    enabled: !!value.username && !err.username,
+    staleTime: Infinity,
+  })
+  const usernameAvailable = usernameQuery.data?.available ?? false
+  const usernameFormatValid = !err.username
+
   const set = (k: keyof ParentForm) => (e: ChangeEvent<HTMLInputElement>) =>
     onChange({ ...value, [k]: e.currentTarget.value })
+
   return (
-    <>
-      <TextInput label="Your name" value={value.fullName} onChange={set('fullName')} error={showError ? err.fullName : undefined} />
-      <TextInput mt="md" label="Username" value={value.username} onChange={set('username')} autoComplete="username"
-        error={showError ? err.username : undefined} />
-      <PasswordInput visibilityToggleIcon={PasswordEye} mt="md" label="Password" value={value.password} onChange={set('password')} autoComplete="new-password"
-        description={showError && err.password ? undefined : 'At least 8 characters.'} error={showError ? err.password : undefined} />
-      <PasswordInput visibilityToggleIcon={PasswordEye} mt="md" label="Type it again" value={value.again} onChange={set('again')} autoComplete="new-password"
-        onBlur={() => setAgainSeen(true)} error={showError || againSeen ? err.again : undefined} />
-    </>
+    <div style={{ display: 'grid', gap: '14px' }}>
+      <div style={{ background: 'var(--p-card)', border: '1px solid var(--p-line)', borderRadius: '18px', padding: '16px 18px' }}>
+        <div style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--p-ink)' }}>Your Account</div>
+
+        <div style={{ marginBottom: '12px' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--p-ink)' }}>Your name</label>
+          <input
+            type="text"
+            placeholder="e.g., Alex"
+            value={value.fullName}
+            onChange={set('fullName')}
+            onBlur={() => setNameSeen(true)}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              border: '1px solid var(--p-line)',
+              borderRadius: '8px',
+              fontSize: '14px',
+              backgroundColor: 'var(--p-card)',
+              color: 'var(--p-ink)',
+              fontFamily: 'inherit',
+            }}
+          />
+          {(showError || nameSeen) && err.fullName && (
+            <div style={{ fontSize: '12px', color: '#ff9b8f', marginTop: '4px' }}>{err.fullName}</div>
+          )}
+        </div>
+
+        <div style={{ marginBottom: '12px' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--p-ink)' }}>Username</label>
+          <input
+            type="text"
+            placeholder="e.g., alex_smith"
+            value={value.username}
+            onChange={set('username')}
+            onBlur={() => setUsernameSeen(true)}
+            autoComplete="username"
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              border: (showError || usernameSeen) && (err.username || !usernameAvailable) ? '1px solid #ff9b8f' : '1px solid var(--p-line)',
+              borderRadius: '8px',
+              fontSize: '14px',
+              backgroundColor: 'var(--p-card)',
+              color: 'var(--p-ink)',
+              fontFamily: 'inherit',
+            }}
+          />
+          {value.username && (
+            <>
+              <ValidationRule met={usernameFormatValid} text="3+ letters, numbers, dots, dashes or underscores" />
+              {usernameFormatValid && usernameQuery.isPending && (
+                <div style={{ fontSize: '12px', color: 'var(--p-sub)', marginTop: '4px' }}>Checking...</div>
+              )}
+              {usernameFormatValid && usernameQuery.isSuccess && (
+                <ValidationRule met={usernameAvailable} text={usernameAvailable ? 'Available' : 'Taken, try another'} />
+              )}
+            </>
+          )}
+        </div>
+
+        <div style={{ marginBottom: '12px' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--p-ink)' }}>Password</label>
+          <input
+            type={showPassword ? 'text' : 'password'}
+            placeholder="8+ characters"
+            value={value.password}
+            onChange={set('password')}
+            onBlur={() => setPasswordSeen(true)}
+            autoComplete="new-password"
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              border: (showError || passwordSeen) && err.password ? '1px solid #ff9b8f' : '1px solid var(--p-line)',
+              borderRadius: '8px',
+              fontSize: '14px',
+              backgroundColor: 'var(--p-card)',
+              color: 'var(--p-ink)',
+              fontFamily: 'inherit',
+            }}
+          />
+          {value.password && <ValidationRule met={!err.password} text="8+ characters" />}
+        </div>
+
+        <div style={{ marginBottom: '0' }}>
+          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--p-ink)' }}>Type it again</label>
+          <input
+            type={showAgain ? 'text' : 'password'}
+            placeholder="Confirm password"
+            value={value.again}
+            onChange={set('again')}
+            onBlur={() => setAgainSeen(true)}
+            autoComplete="new-password"
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              border: (showError || againSeen) && err.again ? '1px solid #ff9b8f' : '1px solid var(--p-line)',
+              borderRadius: '8px',
+              fontSize: '14px',
+              backgroundColor: 'var(--p-card)',
+              color: 'var(--p-ink)',
+              fontFamily: 'inherit',
+            }}
+          />
+          {value.again && <ValidationRule met={!err.again} text="Passwords match" />}
+        </div>
+      </div>
+    </div>
   )
 }
