@@ -6,7 +6,9 @@
 - Open your pull request into `dev`.
 - Only the owner merges and releases `dev` → `main`. Never push to `main`.
 
-CI (`.github/workflows/ci-cd.yml`) runs on PRs into `main`, `dev` and `feat/**`, pushes to `main`/`dev` and `v*` tags. The `lab` job runs only in the merge queue, on release tags and on manual runs, so run the lab checks below locally before opening a PR into `dev`.
+CI (`.github/workflows/ci-cd.yml`) runs on PRs into `main`, `dev` and `feat/**`, pushes to `main`/`dev`, `v*` tags, the merge queue and manual runs. Backend tests run on both SQLite and Postgres, and a `perf` job checks the Pi 4 2GB tier. The `lab` job runs only in the merge queue, on release tags and on manual runs, so run the lab checks below locally before opening a PR into `dev`.
+
+Dependabot minor and patch updates merge on their own once CI is green; major updates wait for a human.
 
 ## Local checks
 

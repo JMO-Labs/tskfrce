@@ -45,3 +45,12 @@ def test_contributing_commits_and_semver():
     doc = _doc().lower()
     assert "conventional commits" in doc
     assert "semver" in doc or "semantic versioning" in doc
+
+
+ENG_DOCS = [ROOT / "docs" / "engineering.md", ROOT / "site" / "engineering.html"]
+
+
+@pytest.mark.parametrize("path", [ROOT / "CONTRIBUTING.md", *ENG_DOCS], ids=lambda p: p.name)
+@pytest.mark.parametrize("term", ["Postgres", "perf", "merge queue", "Dependabot"])
+def test_ci_docs_describe_current_pipeline(path, term):
+    assert term.lower() in path.read_text(encoding="utf-8").lower(), f"{path.name} lacks {term!r}"
