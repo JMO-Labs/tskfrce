@@ -25,7 +25,7 @@ class Rng:
 
 @pytest.fixture(autouse=True)
 def _awake(monkeypatch):
-    monkeypatch.setattr(minigames, "asleep_until", lambda fam, now: None)
+    monkeypatch.setattr(minigames, "asleep_until", lambda db, fam, kid, now: None)
 
 
 def test_new_games():
