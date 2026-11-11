@@ -24,15 +24,10 @@ FINGERPRINT_HINTS = {
     "1,3,6,15,26,44,47": "Xbox",
     "1,3,6,15,44": "Xbox",
     # Smart TV
-    "1,3,6,15,119,120,121": "Smart TV",
     "1,15,3,6,44,46": "Smart TV",
     # Windows PC
     "1,15,3,6,44,46,47,31,33,249,43": "Windows PC",
     "1,15,3,6,44,46,47": "Windows PC",
-    # Mac
-    "1,3,6,15,119,120,121": "Mac",
-    # Chromebook
-    "1,3,6,15,252": "Chromebook",
 }
 
 

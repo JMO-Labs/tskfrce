@@ -1,6 +1,5 @@
 """Setup device discovery: filtering, naming, rescan."""
 
-import pytest
 from datetime import UTC, datetime, timedelta
 
 from app.api.devices import _setup_devices
@@ -9,8 +8,8 @@ from app.lock.device_names import (
     guess_device_type_from_fingerprint,
     guess_maker_from_signals,
 )
-from app.models.lock import Device
 from app.models.family import get_family
+from app.models.lock import Device
 
 
 def test_setup_devices_filters_gateway_and_box(client, db, parent_headers):
