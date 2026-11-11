@@ -1,8 +1,12 @@
 import type { CSSProperties } from 'react'
 import { useKids } from '@/v2/hooks/useKids'
 
-/** Light fills that keep dark text readable in both themes; kids get them in id order. */
-export const KID_COLORS = ['#ffd84a', '#8fd3ff', '#ff9fb2', '#a8e6a1', '#c9b6ff', '#ffb870', '#7fe0d4', '#e6c79c']
+/**
+ * Kid identity colors = the validated categorical chart palette (dark steps, >=3:1 on both
+ * surfaces with dark ink), in fixed order by kid id, so bubbles and Today charts match.
+ * ponytail: one step for both themes; split light/dark steps if light-mode charts need them.
+ */
+export const KID_COLORS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767']
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
 
@@ -16,7 +20,8 @@ export function kidBadges(kids: { id: number; name: string | null }[]): Map<numb
     const w = (k.name ?? '').trim().split(/\s+/).filter(Boolean)
     const first = Array.from(w[0] ?? '?')
     const c = [cap(first.slice(0, 2).join(''))]
-    if (w.length > 1) c.push((first[0] + Array.from(w[w.length - 1])[0]).toUpperCase())
+    const last = w.length > 1 ? w[w.length - 1] : ''
+    if (last) c.push((first[0] + (/^\d+$/.test(last) ? last.slice(0, 2) : Array.from(last)[0])).toUpperCase())
     if (first.length > 2) c.push(cap(first.slice(0, 3).join('')))
     c.push(`${first[0].toUpperCase()}${i + 1}`)
     return { first: (w[0] ?? '').toLowerCase(), c }
