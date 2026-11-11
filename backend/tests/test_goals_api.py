@@ -1,6 +1,7 @@
 import pytest
 from app.models.family import get_family
 from app.models.goal import Goal, GoalContribution
+from app.models.lock import Device
 from app.models.user import UserRole
 
 from tests.conftest import _make_user
@@ -226,3 +227,16 @@ def test_today_needs_you(client, db, parent, parent_headers, kid):
     items = {n["type"]: n for n in r.json()["needs_you"]}
     assert items["goal_suggested"]["kid_id"] == kid.id
     assert items["goal_full"]["kid_id"] is None and items["goal_full"]["cost"] == 100
+
+
+def test_no_devices_flag_for_screen_goal(client, db, parent, parent_headers, kid):
+    g = _goal(db, parent, kid, status="full", kind="screen", minutes=30)
+    _goal(db, parent, kid, status="full")  # custom goal: never flagged
+    needs = client.get("/api/v1/today", headers=parent_headers).json()["needs_you"]
+    assert {n["id"]: n["no_devices"] for n in needs if n["type"] == "goal_full"}[g.id] is True
+    assert [n["no_devices"] for n in needs].count(True) == 1
+    d = Device(name="tab", mac="aa:bb:cc:00:00:02", status="assigned", owners=[kid])
+    db.add(d)
+    db.commit()
+    needs = client.get("/api/v1/today", headers=parent_headers).json()["needs_you"]
+    assert not any(n["no_devices"] for n in needs)

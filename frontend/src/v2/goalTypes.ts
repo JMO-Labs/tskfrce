@@ -19,6 +19,8 @@ export interface Goal {
   siblings: Array<{ name: string; amount: number }> | null
   created_at: string
   fulfilled_at: string | null
+  /** screen-time goal whose kid has no devices, so the minutes can't be used */
+  no_devices?: boolean
 }
 
 export interface GoalSettings {

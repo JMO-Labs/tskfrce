@@ -259,6 +259,8 @@ export interface NeedsItem extends RunTrustFields {
   cost?: number
   kid_balance?: number
   mode?: string
+  /** type 'goal_full': screen-time goal whose kid has no devices */
+  no_devices?: boolean
   /** type 'note': the kid's note label */
   note?: string
   /** type 'integration': the service that checked the chore off */
