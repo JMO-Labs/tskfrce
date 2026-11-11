@@ -64,6 +64,7 @@ from app.api.setup import router as setup_router
 from app.api.tips import router as tips_router
 from app.api.trust import router as trust_router
 from app.api.updates import router as updates_router
+from app.api.updates import internal_router as updates_internal_router
 from app.core.logging import configure_logging, get_logger
 from app.core.monitoring import (
     MetricsMiddleware,
@@ -166,6 +167,7 @@ fastapi_app.include_router(chores_router)
 fastapi_app.include_router(chore_photos_router)
 fastapi_app.include_router(chat_router)
 fastapi_app.include_router(internal_router)
+fastapi_app.include_router(updates_internal_router)
 fastapi_app.include_router(devices_router)
 fastapi_app.include_router(device_activity_router)
 fastapi_app.include_router(hours_router)

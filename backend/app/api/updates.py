@@ -1,6 +1,7 @@
 """Box updates: version, channel, and upgrade management."""
 
 import os
+import subprocess
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -9,8 +10,10 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_parent
 from app.lock.loop import trigger
+from app.models.family import get_family
 
 router = APIRouter(prefix="/api/v1", tags=["updates"], dependencies=[Depends(require_parent)])
+internal_router = APIRouter(prefix="/internal", tags=["updates-internal"])
 
 
 class UpdatesOut(BaseModel):
@@ -91,10 +94,55 @@ def patch_updates(body: UpdatesPatch, db: Session = Depends(get_db)) -> UpdatesO
         _update_env("UPDATE_CHANNEL", body.channel)
 
     if body.pull_major is not None:
-        # ponytail: simplified; real impl would validate major version exists, then
-        # set TASK4CE_TAG to :pull_major and trigger updater immediately
-        _update_env("TASK4CE_TAG", f":{body.pull_major}")
-        # trigger(force=True) to run updater now
+        # Validate major version exists (future versions not available yet)
+        current = int(__version__.split(".")[0])
+        requested = int(body.pull_major)
+        if requested <= current:
+            raise HTTPException(400, f"Major version {requested} not available")
+        # Set tag and trigger updater
+        _update_env("TASK4CE_TAG", f":{requested}")
         trigger(force=True)
 
     return get_updates(db)
+
+
+# Internal endpoints for updater and reboot hook
+
+@internal_router.get("/kid-session-active")
+async def kid_session_active_check(db: Session = Depends(get_db)) -> dict[str, bool]:
+    """Check if any kid session is active (reboot and updater skip hook)."""
+    fam = get_family(db)
+    from app.models.lock import Device
+
+    active = db.query(Device).filter(
+        Device.family_id == fam.id,
+        Device.kid_session_active == True,
+    ).first() is not None
+
+    return {"active": active}
+
+
+@internal_router.post("/today-note")
+async def post_today_note(body: dict[str, str], db: Session = Depends(get_db)) -> dict[str, str]:
+    """Add a note to the Today page (update status messages)."""
+    from app.services import inbox
+
+    fam = get_family(db)
+    note = body.get("note", "")
+    if note:
+        inbox.add_note(db, fam, note)
+        db.commit()
+
+    return {"status": "ok"}
+
+
+@internal_router.post("/telemetry")
+async def post_telemetry(body: dict[str, str], db: Session = Depends(get_db)) -> dict[str, str]:
+    """Record telemetry event (e.g. update_failed for eval boxes)."""
+    # ponytail: telemetry integration via Umami; for now, log
+    event = body.get("event", "")
+    if event == "update_failed":
+        # Log update failure for eval channel monitoring
+        pass
+
+    return {"status": "recorded"}

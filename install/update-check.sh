@@ -1,5 +1,5 @@
 #!/bin/bash
-# t@sk4ce unattended updater: nightly pull, verify, health check, rollback on failure.
+# t@sk4ce unattended updater: nightly pull, verify all services, health check, rollback.
 # Installed as systemd service + timer by install.sh.
 # Updates the box unless: UPDATE_CHANNEL=off, or a kid session/timer is active.
 
@@ -9,16 +9,15 @@ DIR="${TASK4CE_DIR:-$HOME/task4ce}"
 ENV_FILE="$DIR/.env"
 DIGESTS_FILE="$DIR/.digests.json"
 LOG_FILE="$DIR/update-check.log"
+COMPOSE_FILE="$DIR/docker-compose.prod.yml"
 
 say() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*" | tee -a "$LOG_FILE"; }
 die() { say "ERROR: $*"; exit 1; }
 
-# Read .env value
 env_value() {
   sed -n "s/^$1=//p" "$ENV_FILE" | head -n 1 || echo ""
 }
 
-# Write or update .env value
 update_env() {
   local key="$1" value="$2"
   if grep -q "^$key=" "$ENV_FILE"; then
@@ -28,22 +27,76 @@ update_env() {
   fi
 }
 
-# Check if kid session is active (via backend API or local marker file)
-# ponytail: simple check via marker file; upgrade to backend API call if needed
+# Check if kid session is active via backend internal API
 kid_session_active() {
-  [ -f "$DIR/.kid_session_active" ] && return 0
-  return 1
+  local api_port
+  api_port=$(env_value BACKEND_PORT | sed 's/.*://')
+  api_port="${api_port:-8000}"
+  local token
+  token=$(env_value INTERNAL_TOKEN)
+  [ -n "$token" ] || return 1
+
+  curl -sf -H "Authorization: Bearer $token" \
+    "http://127.0.0.1:$api_port/internal/kid-session-active" >/dev/null 2>&1
 }
 
 # Verify image signature with cosign (keyless, GitHub OIDC)
+# Identity pinned to JMO-Labs/tskfrce repo and CI workflow
 verify_image() {
   local image="$1"
   say "Verifying image signature: $image"
-  docker run --rm gcr.io/projectsigstore/cosign verify \
-    --certificate-identity-regexp '.*github.*' \
+  cosign verify \
+    --certificate-identity-regexp '^https://github\.com/JMO-Labs/tskfrce/\.github/workflows/ci-cd\.yml@refs/(heads/main|tags/(v|eval-).*?)$' \
     --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
     "$image" >/dev/null 2>&1 ||
     die "Image signature verification failed: $image"
+}
+
+# Get image digest and verify
+get_verified_digest() {
+  local image="$1"
+  verify_image "$image"
+  docker inspect --format='{{index .RepoDigests 0}}' "$image" ||
+    die "Could not get digest for $image"
+}
+
+# Send ntfy alert + Today note via backend API
+alert_and_note() {
+  local result="$1" version="$2" old_version="$3"
+  local api_port ntfy_url token
+  api_port=$(env_value BACKEND_PORT | sed 's/.*://')
+  api_port="${api_port:-8000}"
+  ntfy_url=$(env_value NTFY_PUBLIC_URL)
+  token=$(env_value INTERNAL_TOKEN)
+
+  [ -n "$token" ] || return 1
+
+  if [ "$result" = "success" ]; then
+    local note="Updated to $version"
+  else
+    local note="Update to $version failed, still on $old_version, will retry tomorrow"
+  fi
+
+  # Post Today note via internal API
+  curl -sf -X POST -H "Authorization: Bearer $token" \
+    -H "Content-Type: application/json" \
+    -d "{\"note\":\"$note\"}" \
+    "http://127.0.0.1:$api_port/internal/today-note" >/dev/null 2>&1 || true
+
+  # For failed updates: send ntfy alert if configured
+  if [ "$result" = "failed" ] && [ -n "$ntfy_url" ]; then
+    curl -sf -d "Update failed: still on $old_version" "$ntfy_url/updates" >/dev/null 2>&1 || true
+  fi
+
+  # For eval channel failures: send telemetry
+  local channel
+  channel=$(env_value UPDATE_CHANNEL)
+  if [ "$result" = "failed" ] && [ "$channel" = "eval" ]; then
+    curl -sf -X POST -H "Authorization: Bearer $token" \
+      -H "Content-Type: application/json" \
+      -d '{"event":"update_failed"}' \
+      "http://127.0.0.1:$api_port/internal/telemetry" >/dev/null 2>&1 || true
+  fi
 }
 
 # Main updater logic
@@ -67,49 +120,53 @@ main() {
     return 0
   fi
 
-  # Resolve channel tag to image tag
+  # Resolve channel tag
   local image_base="ghcr.io/jmo-labs/tskfrce"
-  local tag
+  local tag services="backend frontend blocker edge"
   if [ "$channel" = "eval" ]; then
     tag=":eval"
   elif [ "$channel" = "stable" ]; then
-    tag=":2"  # Current major version; adjust if major bumped
+    tag=":2"
   else
     die "Unknown UPDATE_CHANNEL=$channel"
   fi
 
-  local full_image="$image_base/backend$tag"  # backend tag represents the whole box
-  say "Pulling from channel $channel: $full_image"
+  say "Pulling from channel $channel: tag=$tag"
 
-  # Verify cosign signature
-  verify_image "$full_image"
+  # Save old digests for rollback
+  [ -f "$DIGESTS_FILE" ] && cp "$DIGESTS_FILE" "$DIGESTS_FILE.bak"
 
-  # Get current digests
-  if [ -f "$DIGESTS_FILE" ]; then
-    cp "$DIGESTS_FILE" "$DIGESTS_FILE.bak"
-    say "Backed up digests to $DIGESTS_FILE.bak"
-  fi
+  # Verify and pull all services, collect digests
+  : >"$DIGESTS_FILE"
+  for svc in $services; do
+    local image="$image_base/$svc$tag"
+    say "Pulling and verifying $svc..."
+    docker pull "$image" || die "Failed to pull $svc"
+    local digest
+    digest=$(get_verified_digest "$image") || die "Signature verification failed: $image"
+    say "Verified $svc: $digest"
+    echo "$svc=$digest" >>"$DIGESTS_FILE"
+  done
+  say "Recorded new digests"
 
-  # Pull images
-  say "Pulling latest images..."
-  (cd "$DIR" && docker compose -f docker-compose.prod.yml pull) ||
-    die "Failed to pull images"
-
-  # Record new digests and update compose
+  # Deploy with verified digests
   say "Deploying update..."
-  (cd "$DIR" && docker compose -f docker-compose.prod.yml up -d) ||
+  (cd "$DIR" && docker compose -f "$COMPOSE_FILE" up -d) ||
     die "Failed to deploy"
 
-  # Health check (same as install.sh wait_healthy)
+  # Health check (same endpoints as install.sh wait_healthy)
   say "Running health check..."
-  local max_attempts=120
-  local attempt=0
+  local port api_port max_attempts=120 attempt=0
+  port=$(env_value FRONTEND_PORT | sed 's/.*://')
+  port="${port:-3000}"
+  api_port=$(env_value BACKEND_PORT | sed 's/.*://')
+  api_port="${api_port:-8000}"
+
   while [ $attempt -lt $max_attempts ]; do
-    if curl -sf http://localhost:3000/health >/dev/null 2>&1; then
+    if curl -fsS "http://127.0.0.1:$api_port/health" >/dev/null 2>&1 &&
+       curl -fsS "http://127.0.0.1:$port/api/health" >/dev/null 2>&1; then
       say "Health check passed"
-      say "Updated successfully"
-      # Add Today note: success
-      # ponytail: Today note API call would go here; for now, log only
+      alert_and_note "success" "$(env_value TASK4CE_TAG)" ""
       return 0
     fi
     attempt=$((attempt + 1))
@@ -119,17 +176,17 @@ main() {
   # Health check failed; rollback
   say "Health check failed; rolling back..."
   if [ -f "$DIGESTS_FILE.bak" ]; then
-    cp "$DIGESTS_FILE.bak" "$DIGESTS_FILE"
+    mv "$DIGESTS_FILE.bak" "$DIGESTS_FILE"
   fi
-  (cd "$DIR" && docker compose -f docker-compose.prod.yml down) ||
-    true
-  (cd "$DIR" && docker compose -f docker-compose.prod.yml up -d) ||
+  (cd "$DIR" && docker compose -f "$COMPOSE_FILE" down) || true
+  (cd "$DIR" && docker compose -f "$COMPOSE_FILE" up -d) ||
     die "Rollback failed; box may be down"
 
-  say "Rollback complete; still on old version"
-  # Add Today note: failed
-  # Send ntfy alert
-  # ponytail: ntfy alert would go here
+  say "Rollback complete"
+  local old_tag
+  old_tag=$(grep "^backend=" "$DIGESTS_FILE" 2>/dev/null | cut -d= -f2 | cut -d: -f2)
+  old_tag="${old_tag:-unknown}"
+  alert_and_note "failed" "$(env_value TASK4CE_TAG)" "$old_tag"
   return 1
 }
 

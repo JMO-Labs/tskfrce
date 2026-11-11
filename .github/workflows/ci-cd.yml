@@ -303,13 +303,13 @@ jobs:
         cache-to: type=gha,mode=max,scope=${{ matrix.service }}
         outputs: type=oci,dest=/tmp/${{ matrix.service }}-image
 
-    - name: Install cosign
-      uses: sigstore/cosign-installer@v4
-
     - name: Sign images with cosign (keyless)
       env:
         COSIGN_EXPERIMENTAL: 1
       run: |
+        # Use cosign container image with pinned digest for security
         for tag in ${{ steps.meta.outputs.tags }}; do
-          cosign sign --yes "$tag"
+          docker run --rm -e COSIGN_EXPERIMENTAL=1 \
+            gcr.io/projectsigstore/cosign:v2.4.1@sha256:c6e6d7167a92b3f0cd40b58e02a39625ccc60ffa64b5490b4e4ee226b1e4a4ff \
+            sign --yes "$tag"
         done
