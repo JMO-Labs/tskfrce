@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Today Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..24,400,0,0" rel="stylesheet">
+<style>
+/* One accent (the family's Appearance accent) + neutrals. Kid identity lives only in the name bubble. */
+:root {
+  --p-bg: #f8f8f8; --p-card: #ffffff; --p-soft: #efefec; --p-ink: #1c1c1b; --p-sub: #5f5f5c; --p-mute: #8a8a86;
+  --p-line: #e4e4e1; --acc: #c3f832; --acc-ink: #1c1c1b; --acc-mark: #6f9a00; --acc-faint: #eef8d2; --lock: #c4c4bf;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --p-bg: #1c1c1b; --p-card: #262625; --p-soft: #323230; --p-ink: #f0efec; --p-sub: #c3c2b7; --p-mute: #8f8e88;
+    --p-line: #3a3a38; --acc-mark: #c3f832; --acc-faint: #39421f; --lock: #4e4e4b;
+  }
+}
+:root[data-theme="dark"] {
+  --p-bg: #1c1c1b; --p-card: #262625; --p-soft: #323230; --p-ink: #f0efec; --p-sub: #c3c2b7; --p-mute: #8f8e88;
+  --p-line: #3a3a38; --acc-mark: #c3f832; --acc-faint: #39421f; --lock: #4e4e4b;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--p-bg); color: var(--p-ink); font: 14px/1.45 Inter, system-ui, sans-serif; }
+.ms { font-family: 'Material Symbols Rounded'; font-size: 18px; line-height: 1; vertical-align: middle; font-weight: normal; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+.label { margin: 26px 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--p-sub); }
+.note { margin: 0 0 12px; color: var(--p-sub); font-size: 12.5px; max-width: 780px; }
+.frame { border: 1px solid var(--p-line); border-radius: 16px; padding: 20px; background: var(--p-bg); margin-bottom: 18px; }
+.top { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.top h1 { margin: 0; font-size: 24px; }
+.top span { color: var(--p-sub); font-size: 13px; }
+.card { background: var(--p-card); border: 1px solid var(--p-line); border-radius: 16px; padding: 14px 16px; min-width: 0; }
+.ch { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font-size: 13.5px; font-weight: 600; }
+.ch .sp { flex: 1; }
+.ch small { font-weight: 500; color: var(--p-sub); font-size: 12px; }
+.av { display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 5px; border-radius: 999px; font-size: 11px; font-weight: 700; color: #1c1c1b; flex: none; }
+.c1 { background: #3987e5; } .c2 { background: #d95926; } .c3 { background: #199e70; } .c4 { background: #c98500; }
+.btn { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--p-line); background: var(--p-card); color: var(--p-ink); font: 600 12px Inter, sans-serif; cursor: pointer; white-space: nowrap; }
+.btn.ok { background: var(--acc); border-color: var(--acc); color: var(--acc-ink); }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--p-sub); }
+
+.banner { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 14px; background: var(--acc-faint); border: 1px solid var(--acc-mark); margin-bottom: 12px; font-size: 13px; }
+.banner .sp { flex: 1; }
+.banner small { color: var(--p-sub); }
+
+/* kid cards */
+.kcards { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 12px; }
+.kc { background: var(--p-card); border: 1px solid var(--p-line); border-radius: 16px; padding: 14px; display: grid; gap: 12px; }
+.kc .hd { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.kc .hd b { flex: 1; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pill { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--p-line); color: var(--p-sub); display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.ring { display: grid; grid-template-columns: 64px minmax(0,1fr); gap: 12px; align-items: center; }
+.ring dl { margin: 0; display: grid; gap: 3px; font-size: 12px; }
+.ring dt { color: var(--p-sub); display: inline; }
+.ring dd { margin: 0 0 0 4px; display: inline; font-weight: 600; }
+.tl { position: relative; height: 18px; }
+.tl .base { position: absolute; inset: 5px 0; border-radius: 4px; background: repeating-linear-gradient(45deg, var(--lock) 0 1.5px, transparent 1.5px 5px); }
+.tl .win { position: absolute; top: 5px; bottom: 5px; border-radius: 4px; background: var(--p-mute); opacity: .55; }
+.tl .dot { position: absolute; top: 4px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--acc-mark); box-shadow: 0 0 0 2px var(--p-card); }
+.tl .now { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--p-ink); border-radius: 1px; }
+.tlx { display: flex; justify-content: space-between; font-size: 10px; color: var(--p-mute); margin-top: 2px; }
+
+/* lower band */
+.lower { display: grid; grid-template-columns: minmax(0,1.25fr) minmax(0,1fr) minmax(0,1fr); gap: 10px; }
+.sug { display: grid; gap: 8px; }
+.sg { display: grid; grid-template-columns: 30px minmax(0,1fr); gap: 10px; align-items: start; padding: 10px; border-radius: 12px; background: var(--p-soft); }
+.sg .ic { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: var(--p-card); color: var(--p-sub); }
+.sg b { display: block; font-size: 13px; font-weight: 600; }
+.sg p { margin: 2px 0 6px; font-size: 12px; color: var(--p-sub); }
+.sg .row { display: flex; gap: 6px; }
+.goals { display: grid; gap: 12px; }
+.gl { display: grid; grid-template-columns: 26px minmax(0,1fr); gap: 10px; align-items: center; }
+.gl b { font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+.gl b em { font-style: normal; font-weight: 500; color: var(--p-sub); font-size: 12px; white-space: nowrap; }
+.track { height: 8px; border-radius: 4px; background: var(--p-soft); margin-top: 5px; overflow: hidden; }
+.track i { display: block; height: 100%; border-radius: 4px; background: var(--acc-mark); }
+.hero { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.hero b { font-size: 30px; font-weight: 700; letter-spacing: -.02em; }
+.hero span { color: var(--p-sub); font-size: 12.5px; }
+.up { color: var(--acc-mark); font-weight: 600; }
+svg.spark { width: 100%; height: 86px; display: block; overflow: visible; }
+.heat { display: grid; grid-template-columns: 26px repeat(7, minmax(0,1fr)); gap: 3px; font-size: 10px; color: var(--p-mute); margin-top: 10px; }
+.heat i { aspect-ratio: 1.6; border-radius: 3px; background: var(--acc-mark); }
+.heat span { display: grid; place-items: center; }
+
+#tip { position: fixed; pointer-events: none; background: var(--p-ink); color: var(--p-bg); font-size: 12px; padding: 6px 9px; border-radius: 8px; opacity: 0; transition: opacity .1s; z-index: 9; max-width: 230px; }
+
+.phone { width: 390px; max-width: 100%; margin: 0 auto 40px; border: 1px solid var(--p-line); border-radius: 26px; padding: 16px; background: var(--p-bg); display: grid; gap: 10px; }
+.phone .kcards { grid-template-columns: 1fr; margin: 0; }
+@media (max-width: 980px) {
+  .kcards { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .lower { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) { .kcards { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="tip" role="tooltip"></div>
+<div class="wrap">
+
+<div class="label">Option B, revised: calm kid cards + one themed band</div>
+<p class="note">Everything uses one accent (your Appearance color) plus grays; a kid's color appears only in their name bubble. Below the kids: suggestions the box picks up from trends and unused features, goals in the accent, and "This week": one number with a trend line, plus a "when chores get done" grid instead of the colorful bars.</p>
+
+<div class="frame">
+  <div class="top"><h1>Today</h1><span>Wednesday · 4:12 PM</span></div>
+  <div class="banner"><span class="ms">inbox</span><b>3 waiting on you</b><small>2 chores · 1 reward · oldest 42m</small><span class="sp"></span><button class="btn ok">Review</button></div>
+  <div class="kcards" id="kcards"></div>
+
+  <div class="lower">
+    <div class="card">
+      <div class="ch"><span class="ms">lightbulb</span>Suggestions <span class="sp"></span><small>3 this week</small></div>
+      <div class="sug">
+        <div class="sg"><span class="ic"><span class="ms">trending_down</span></span><div><b>R9 skipped "Feed the cat" 3 days running</b><p>Move it to after school, or add a photo step so it's clear what done looks like.</p><div class="row"><button class="btn">Move to 3:30 PM</button><button class="btn ghost">Dismiss</button></div></div></div>
+        <div class="sg"><span class="ic"><span class="ms">menu_book</span></span><div><b>Homework mode hasn't been used</b><p>E12 and E16 have homework chores on school nights. Homework mode keeps school sites open while games stay locked.</p><div class="row"><button class="btn">Try it tonight</button><button class="btn ghost">Not for us</button></div></div></div>
+        <div class="sg"><span class="ic"><span class="ms">celebration</span></span><div><b>E12 is 2 days from New headphones</b><p>Send a cheer to keep the streak going.</p><div class="row"><button class="btn">Send cheer</button></div></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ch"><span class="ms">flag</span>Goals <span class="sp"></span><small>closest first</small></div>
+      <div class="goals">
+        <div class="gl"><span class="av c3">E12</span><span><b>New headphones <em>92% · ~2 days</em></b><div class="track"><i style="width:92%"></i></div></span></div>
+        <div class="gl"><span class="av c1">R6</span><span><b>Zoo trip <em>78% · ~5 days</em></b><div class="track"><i style="width:78%"></i></div></span></div>
+        <div class="gl"><span class="av c4">E16</span><span><b>7-day streak <em>day 5 of 7</em></b><div class="track"><i style="width:71%"></i></div></span></div>
+        <div class="gl"><span class="av c2">R9</span><span><b>Lego set <em>34% · ~3 weeks</em></b><div class="track"><i style="width:34%"></i></div></span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ch"><span class="ms">insights</span>This week</div>
+      <div class="hero"><b>81%</b><span>of chores done on time · <span class="up">+9 pts vs last week</span></span></div>
+      <svg class="spark" id="spark" viewBox="0 0 300 86" preserveAspectRatio="none" role="img" aria-label="On-time chore rate, last 14 days"></svg>
+      <div class="tlx"><span>2 weeks ago</span><span>Today</span></div>
+      <div class="ch" style="margin:14px 0 0"><small>When chores get done</small></div>
+      <div class="heat" id="heat" role="img" aria-label="Chores done by weekday and time of day"></div>
+    </div>
+  </div>
+</div>
+
+<div class="label">Phone</div>
+<div class="phone">
+  <div class="top" style="margin:0"><h1 style="font-size:20px">Today</h1><span>4:12 PM</span></div>
+  <div class="banner" style="margin:0"><span class="ms">inbox</span><b>3 waiting</b><span class="sp"></span><button class="btn ok">Review</button></div>
+  <div class="kcards" id="kcards-m"></div>
+  <div class="card"><div class="ch"><span class="ms">lightbulb</span>Suggestion</div>
+    <div class="sg"><span class="ic"><span class="ms">trending_down</span></span><div><b>R9 skipped "Feed the cat" 3 days</b><p>Move it to after school?</p><div class="row"><button class="btn">Move to 3:30 PM</button></div></div></div>
+  </div>
+</div>
+
+</div>
+<script>
+const KIDS = [
+  { id: 'R6', name: 'Richard 6', cls: 'c1', done: 3, total: 4, pts: 40, used: 55, cap: 90, state: 'Open', allowed: [[7, 8], [15, 19]], chores: [[7.6, 'Make bed'], [15.4, 'Feed fish'], [15.9, 'Homework']] },
+  { id: 'R9', name: 'Richard 9', cls: 'c2', done: 2, total: 5, pts: 30, used: 70, cap: 90, state: 'Locked', why: 'chores', allowed: [[7, 8], [15.5, 16]], chores: [[7.3, 'Make bed'], [15.2, 'Unload dishwasher']] },
+  { id: 'E12', name: 'Evie 12', cls: 'c3', done: 4, total: 4, pts: 55, used: 25, cap: 120, state: 'Open', allowed: [[7, 8], [14.5, 20]], chores: [[7.1, 'Make bed'], [14.8, 'Homework'], [15.1, 'Trash'], [15.6, 'Practice piano']] },
+  { id: 'E16', name: 'Evie 16', cls: 'c4', done: 2, total: 5, pts: 20, used: 10, cap: 60, state: 'Locked', why: 'hours', allowed: [[15, 16], [19, 21]], chores: [[15.3, 'Laundry'], [15.8, 'Dishes']] },
+]
+const D0 = 7, D1 = 21, NOW = 16.2
+const pc = (h) => ((h - D0) / (D1 - D0)) * 100
+const hm = (h) => { const H = Math.floor(h), M = Math.round((h - H) * 60); return `${((H + 11) % 12) + 1}:${String(M).padStart(2, '0')}${H < 12 ? 'am' : 'pm'}` }
+
+function card(k) {
+  const arc = (r, f, col, w) => { const c = 2 * Math.PI * r; return `<circle cx="32" cy="32" r="${r}" fill="none" stroke="var(--p-soft)" stroke-width="${w}"/><circle cx="32" cy="32" r="${r}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round" stroke-dasharray="${Math.max(0.01, c * f)} ${c}" transform="rotate(-90 32 32)"/>` }
+  const ring = `<svg width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="${k.done} of ${k.total} chores, ${k.used} of ${k.cap} minutes" data-tip="Outer: ${k.done}/${k.total} chores · Inner: ${k.used}m of ${k.cap}m screen time">${arc(27, k.done / k.total, 'var(--acc-mark)', 6)}${arc(18, k.used / k.cap, 'var(--p-mute)', 5)}</svg>`
+  const tl = `<div class="tl"><span class="base" data-tip="${k.name}: locked"></span>${k.allowed.map(([a, b]) => `<span class="win" style="left:${pc(a)}%;width:${pc(b) - pc(a)}%" data-tip="Screen allowed ${hm(a)}–${hm(b)}"></span>`).join('')}${k.chores.map(([t, n]) => `<i class="dot" style="left:${pc(t)}%" data-tip="${n} · ${hm(t)}"></i>`).join('')}<i class="now" style="left:${pc(NOW)}%" data-tip="Now ${hm(NOW)}"></i></div><div class="tlx"><span>7am</span><span>2pm</span><span>9pm</span></div>`
+  const pill = k.state === 'Locked' ? `<span class="pill"><span class="ms" style="font-size:13px">lock</span>${k.why}</span>` : `<span class="pill">Open</span>`
+  return `<div class="kc"><div class="hd"><span class="av ${k.cls}">${k.id}</span><b>${k.name}</b>${pill}</div>
+    <div class="ring">${ring}<dl><div><dt>Chores</dt><dd>${k.done}/${k.total}</dd></div><div><dt>Screen</dt><dd>${k.used}m of ${k.cap}m</dd></div><div><dt>Points</dt><dd>${k.pts}</dd></div></dl></div>
+    <div>${tl}</div></div>`
+}
+document.getElementById('kcards').innerHTML = KIDS.map(card).join('')
+document.getElementById('kcards-m').innerHTML = KIDS.slice(0, 2).map(card).join('')
+
+// sparkline: on-time rate, 14 days; single series, 2px line, soft area, endpoint labelled
+;(() => {
+  const v = [62, 70, 66, 72, 68, 74, 72, 70, 78, 75, 82, 79, 84, 81], W = 300, H = 86, lo = 50, hi = 100
+  const X = (i) => (i / (v.length - 1)) * W, Y = (n) => H - 6 - ((n - lo) / (hi - lo)) * (H - 16)
+  const pts = v.map((n, i) => `${X(i)},${Y(n)}`).join(' ')
+  let s = `<line x1="0" x2="${W}" y1="${Y(75)}" y2="${Y(75)}" stroke="var(--p-line)" stroke-dasharray="3 4"/><text x="2" y="${Y(75) + 12}" font-size="10" fill="var(--p-mute)">goal 75%</text>`
+  s += `<polygon points="0,${H} ${pts} ${W},${H}" fill="var(--acc-mark)" opacity=".12"/>`
+  s += `<polyline points="${pts}" fill="none" stroke="var(--acc-mark)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>`
+  v.forEach((n, i) => { s += `<rect x="${X(i) - 10}" y="0" width="20" height="${H}" fill="transparent" data-tip="${i === v.length - 1 ? 'Today' : `${v.length - 1 - i} days ago`}: ${n}% on time"/>` })
+  document.getElementById('spark').innerHTML = s
+})()
+
+// heat grid: weekday x time-of-day, single-hue sequential (opacity steps of the accent)
+;(() => {
+  const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'], slots = ['AM', 'PM', 'Eve']
+  const m = [[6, 5, 6, 5, 4, 2, 1], [9, 10, 8, 9, 7, 6, 7], [3, 2, 4, 3, 1, 4, 5]]
+  let s = '<span></span>' + days.map((d) => `<span>${d}</span>`).join('')
+  m.forEach((row, r) => { s += `<span>${slots[r]}</span>` + row.map((n, c) => `<i style="opacity:${0.12 + (n / 10) * 0.88}" data-tip="${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][c]} ${slots[r]}: ${n} chores"></i>`).join('') })
+  document.getElementById('heat').innerHTML = s
+})()
+
+const tip = document.getElementById('tip')
+document.addEventListener('mousemove', (e) => {
+  const t = e.target.closest('[data-tip]')
+  if (!t) { tip.style.opacity = 0; return }
+  tip.textContent = t.getAttribute('data-tip'); tip.style.opacity = 1
+  tip.style.left = Math.min(e.clientX + 12, innerWidth - 240) + 'px'; tip.style.top = e.clientY + 14 + 'px'
+})
+</script>
+</body>
+</html>
