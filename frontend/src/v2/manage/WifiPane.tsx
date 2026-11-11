@@ -68,7 +68,7 @@ export function WifiPane() {
 
   const handleForget = () => {
     if (confirm('Forget current network?')) {
-      forget.mutate()
+      status.data?.ssid && forget.mutate(status.data.ssid)
     }
   }
 
@@ -84,23 +84,23 @@ export function WifiPane() {
       <PaneCard icon="wifi" title="Current Network">
         {status.isPending && <div className="pn-help">Loading...</div>}
         {status.isError && <div className="pn-help" style={{ color: 'var(--p-err)' }}>Failed to load status</div>}
-        {status.data && status.data.is_connected && (
+        {status.data && status.data.connected && (
           <div className="wifi-current">
             <div>
-              <div className="wifi-name">{status.data.current_ssid}</div>
-              <div className="pn-help">Connected — {status.data.signal_strength}% signal</div>
+              <div className="wifi-name">{status.data.ssid}</div>
+              <div className="pn-help">Connected — {status.data.signal}% signal</div>
             </div>
             <div className="wifi-badge">Connected</div>
           </div>
         )}
-        {status.data && !status.data.is_connected && <div className="pn-help">Not connected</div>}
+        {status.data && !status.data.connected && <div className="pn-help">Not connected</div>}
       </PaneCard>
 
       {/* Country/Region */}
       <PaneCard icon="public" title="Region">
         <div className="wifi-select-wrap">
           <select
-            value=""
+            value={status.data?.country ?? ''}
             onChange={(e) => {
               if (e.target.value) handleCountryChange(e.target.value)
             }}
