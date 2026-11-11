@@ -11,7 +11,7 @@
 #   TASK4CE_API_PORT     loopback API port           (default 8000, first install only)
 #   TASK4CE_SKIP_BLOCKER=1  do not start the internet pauser (tests)
 #   TASK4CE_YES=1        answer yes to "install Docker?"
-#   TASK4CE_PROJECT, TASK4CE_SUBNET, TASK4CE_FRONTEND_IP   side-by-side installs (tests)
+#   TASK4CE_PROJECT, TASK4CE_SUBNET, TASK4CE_BRIDGE_GW, TASK4CE_FRONTEND_IP   side-by-side installs (tests)
 
 set -eu
 
@@ -130,6 +130,7 @@ write_env() {
     echo "BLOCKER_BACKEND_URL=http://127.0.0.1:$API_PORT"
     echo "LAN_IFACE=$(lan_iface)"
     [ -z "${TASK4CE_SUBNET:-}" ] || echo "TASK4CE_SUBNET=$TASK4CE_SUBNET"
+    [ -z "${TASK4CE_BRIDGE_GW:-}" ] || echo "TASK4CE_BRIDGE_GW=$TASK4CE_BRIDGE_GW"
     [ -z "${TASK4CE_FRONTEND_IP:-}" ] || echo "TASK4CE_FRONTEND_IP=$TASK4CE_FRONTEND_IP"
   } >"$DIR/.env"
 }
@@ -161,6 +162,12 @@ main() {
   # Passed through env (sudo drops exports) so it wins over .env on upgrades.
   case "$REF" in v[0-9]*) tag="${REF#v}" ;; *) tag="${TASK4CE_TAG:-latest}" ;; esac
   dc() { (cd "$DIR" && $SUDO env TASK4CE_TAG="$tag" docker compose -f docker-compose.prod.yml "$@"); }
+  # Remember the tag: a reboot or a plain `docker compose up` must keep these images, not fall back to :latest.
+  if grep -q '^TASK4CE_TAG=' "$DIR/.env"; then
+    sed -i "s/^TASK4CE_TAG=.*/TASK4CE_TAG=$tag/" "$DIR/.env"
+  else
+    echo "TASK4CE_TAG=$tag" >>"$DIR/.env"
+  fi
   say "Downloading t@sk4ce..."
   # Prebuilt amd64/arm64 images; build on the box only if the download fails.
   # TASK4CE_BUILD=1 forces a local build (the smoke test checks this checkout's code).
