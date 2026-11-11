@@ -17,7 +17,7 @@ Boxes authenticate with Basic auth (`<box-id>:<secret>`). KV (`BOXES`) stores
 
 Prerequisites: Node >=22, `npm ci`, `npx wrangler login`, `openssl`, and `sha256sum` or `shasum`.
 
-1. `npm ci`, then `npx wrangler kv namespace create BOXES`. Paste the id into
+1. `npm ci`. The KV namespace id and zone id are already in `wrangler.toml` (not secrets); a fork creates its own with `npx wrangler kv namespace create BOXES` and pastes the id into
    `wrangler.toml`.
 2. Set `CF_ZONE_ID` (the `jmolabs.dev` zone id) in `wrangler.toml` `[vars]`.
 3. `npx wrangler secret put CF_API_TOKEN` with a token scoped to
