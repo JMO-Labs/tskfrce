@@ -30,3 +30,10 @@ def test_features_pages_are_generated(tmp_path, monkeypatch):
     # guide nav and guide home link to the section
     assert "features/index.html" in (tmp_path / "guide" / "index.html").read_text()
     assert "features/index.html" in (tmp_path / "guide" / "01-what-you-need.html").read_text()
+
+
+def test_feature_guides_empty_when_source_dir_missing(tmp_path, monkeypatch):
+    import build_site
+
+    monkeypatch.setattr(build_site, "FEATURES_SOURCE", tmp_path / "nope")
+    assert build_site.feature_guides() == []
