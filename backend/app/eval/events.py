@@ -30,7 +30,7 @@ ROUTES = frozenset(
     }
 )
 FORMS = ("chore", "kid", "window", "feedback")
-WIZARD_STEPS = 8  # frontend/src/v2/setup/WizardFrame.tsx STEPS
+WIZARD_STEPS = 7  # frontend/src/v2/setup/WizardFrame.tsx STEPS
 _ERR = re.compile(r"^(http_[1-5]\d\d|network|other)$")
 
 
