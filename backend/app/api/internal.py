@@ -436,10 +436,14 @@ def report_networks(body: NetworksReport, db: Session = Depends(get_db)) -> dict
     upserted = 0
     for net_item in body.networks:
         # Find or create network by (iface, subnet)
-        net = db.query(Network).filter(
-            Network.iface == net_item.iface,
-            Network.subnet == net_item.subnet,
-        ).first()
+        net = (
+            db.query(Network)
+            .filter(
+                Network.iface == net_item.iface,
+                Network.subnet == net_item.subnet,
+            )
+            .first()
+        )
         if net is None:
             net = Network(
                 iface=net_item.iface,

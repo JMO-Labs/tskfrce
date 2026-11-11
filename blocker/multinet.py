@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import logging
 import threading
-import time
 from dataclasses import replace
 from typing import Any
 
@@ -40,6 +39,7 @@ def detect_iface_gateway(iface: str) -> LanFacts:
             capture_output=True,
             text=True,
             timeout=5,
+            check=False,
         )
         lines = result.stdout.strip().split("\n")
         if lines and lines[0]:
@@ -68,6 +68,7 @@ def detect_iface_gateway(iface: str) -> LanFacts:
             capture_output=True,
             text=True,
             timeout=5,
+            check=False,
         )
         lines = result.stdout.strip().split("\n")
         if lines and lines[0]:
@@ -83,6 +84,7 @@ def detect_iface_gateway(iface: str) -> LanFacts:
                 capture_output=True,
                 text=True,
                 timeout=5,
+                check=False,
             )
             # Format: "<ip6> dev <iface> lladdr <mac> ... REACHABLE"
             line = result.stdout.strip().split("\n")[0] if result.stdout.strip() else ""
@@ -122,7 +124,9 @@ class InterfaceManager:
         self._lan_cidrs = lan_cidrs or []
         self._lock = threading.Lock()
         # iface -> (stop_event, RedirectionManager, ResistanceWatch)
-        self._managers: dict[str, tuple[threading.Event, RedirectionManager, ResistanceWatch | None]] = {}
+        self._managers: dict[
+            str, tuple[threading.Event, RedirectionManager, ResistanceWatch | None]
+        ] = {}
         self._global_stop = threading.Event()
 
     def sync(self) -> None:
@@ -163,7 +167,9 @@ class InterfaceManager:
                         args=(iface, stop_ev),
                         daemon=True,
                     ).start()
-                    log.info("started enforcement on interface %s (gateway %s)", iface, lan.gateway_ip)
+                    log.info(
+                        "started enforcement on interface %s (gateway %s)", iface, lan.gateway_ip
+                    )
                 except Exception:
                     log.exception("failed to start enforcement on %s", iface)
 
@@ -244,11 +250,13 @@ class InterfaceManager:
                 try:
                     lan = redir._lanfacts()
                     if lan.gateway_ip:
-                        nets.append({
-                            "iface": iface,
-                            "gateway_ip": lan.gateway_ip,
-                            "auto_label": f"Network on {iface}",
-                        })
+                        nets.append(
+                            {
+                                "iface": iface,
+                                "gateway_ip": lan.gateway_ip,
+                                "auto_label": f"Network on {iface}",
+                            }
+                        )
                 except Exception:
                     log.exception("network collection failed on interface")
             return nets

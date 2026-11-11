@@ -463,3 +463,29 @@ def test_resist_once_reports_workarounds_only_when_found():
     svc.workarounds.add("192.168.1.42", "nordvpn.com.")
     svc._resist_once()
     assert sent == [{MAC: ["vpn"]}]
+
+
+def test_interface_manager_used_when_lan_iface_empty():
+    """Verify Service uses InterfaceManager when LAN_IFACE is unset."""
+    svc, _fw, _redir = _svc()
+    assert svc._using_iface_mgr is True
+    assert svc._iface_manager is not None
+    assert svc._redir is None
+
+
+def test_single_redir_used_when_lan_iface_set():
+    """Verify Service uses single RedirectionManager when LAN_IFACE is set."""
+    cfg_with_iface = CFG.__class__(
+        backend_url="http://b",
+        blocker_url_host="b",
+        internal_token="t",
+        lan_iface="eth0",  # Explicitly set
+        data_dir=Path("/tmp"),
+    )
+    fw = FakeFirewall()
+    redir = FakeRedir()
+    svc = Service(cfg_with_iface, firewall=fw, redirection=redir, sleep=lambda *_: None)
+    assert svc._using_iface_mgr is False
+    assert svc._iface_manager is None
+    assert svc._redir is not None
+    assert svc._redir is redir

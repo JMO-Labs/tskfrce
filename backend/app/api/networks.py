@@ -6,7 +6,9 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, require_parent
 from app.models.network import Network
 
-router = APIRouter(prefix="/api/v1/networks", tags=["networks"], dependencies=[Depends(require_parent)])
+router = APIRouter(
+    prefix="/api/v1/networks", tags=["networks"], dependencies=[Depends(require_parent)]
+)
 
 
 @router.get("", response_model=list[dict])
