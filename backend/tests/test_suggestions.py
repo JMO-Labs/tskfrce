@@ -217,7 +217,7 @@ def test_goal_close_reappears_on_target_change(db, client, parent, kid, parent_h
         GoalContribution(
             goal_id=g.id,
             kid_id=kid.id,
-            amount=70,
+            amount=80,
             kind="save",
             created_at=datetime.utcnow() - timedelta(days=1),
         )
