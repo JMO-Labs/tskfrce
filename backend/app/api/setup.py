@@ -167,12 +167,13 @@ def run_setup(body: SetupIn, request: Request, db: Session = Depends(get_db)):
     except IntegrityError:
         db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, DONE) from None
+    # Create tokens with token_epoch (0 at setup time)
     token = auth.create_access_token(
-        data={"sub": str(user.id), "username": user.username, "email": user.email},
+        data={"sub": str(user.id), "username": user.username, "email": user.email, "token_epoch": 0},
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
     refresh = auth.create_refresh_token(
-        data={"sub": str(user.id), "username": user.username, "email": user.email},
+        data={"sub": str(user.id), "username": user.username, "email": user.email, "token_epoch": 0},
         expires_delta=timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
     )
     return {

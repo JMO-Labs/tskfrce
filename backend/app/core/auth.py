@@ -195,6 +195,10 @@ class AuthService:
         if payload is None or payload.get("type") != "access":
             return None
 
+        # Check epoch first (revocation check)
+        if not self.check_epoch(payload):
+            return None
+
         user_id = payload.get("sub")
         if user_id is None:
             return None
@@ -208,18 +212,46 @@ class AuthService:
         if user is None or not user.is_active:
             return None
 
-        # Check token_epoch for parent/admin sessions (revocation)
+        sid = payload.get("sid")
+        if sid is not None and (user.role != UserRole.KID or not self._device_alive(sid, user.id)):
+            return None  # enrolled phone removed (or idle-expired): revoked at once
+        return user
+
+    def check_epoch(self, payload: dict) -> bool:
+        """
+        Check if JWT token_epoch matches current family epoch (revocation check).
+
+        For parent/admin tokens: token_epoch in claim must match family.token_epoch.
+        For kid tokens: skip check (no revocation on parent PIN change).
+
+        Args:
+            payload: Decoded JWT payload
+
+        Returns:
+            True if epoch valid or not applicable, False if revoked (token_epoch mismatch)
+        """
+        user_id = payload.get("sub")
+        if user_id is None:
+            return False
+
+        try:
+            user_id = int(user_id)
+        except (ValueError, TypeError):
+            return False
+
+        user = self.user_service.get_user(user_id)
+        if user is None:
+            return False
+
+        # Check token_epoch only for parent/admin (kids not affected)
         if user.role == UserRole.PARENT or user.is_superuser:
             from app.models.family import get_family
             token_epoch_claim = payload.get("token_epoch", 0)
             fam = get_family(self.db)
             if fam and token_epoch_claim != fam.token_epoch:
-                return None  # token revoked (session invalidated by reset/PIN change)
+                return False  # token revoked (epoch bumped on reset/PIN change)
 
-        sid = payload.get("sid")
-        if sid is not None and (user.role != UserRole.KID or not self._device_alive(sid, user.id)):
-            return None  # enrolled phone removed (or idle-expired): revoked at once
-        return user
+        return True
 
     def _device_alive(self, sid: int, kid_id: int) -> bool:
         return (

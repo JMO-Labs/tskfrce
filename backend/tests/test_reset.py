@@ -245,6 +245,32 @@ class TestTokenEpochRevocation:
         assert user is not None
         assert user.id == kid.id
 
+    def test_refresh_token_revoked_after_reset(self, db: Session, setup_family):
+        """Pre-reset refresh token gets 401 when used to refresh (epoch mismatch)."""
+        fam, parent, kids = setup_family
+        auth = AuthService(db)
+
+        # Issue refresh token at epoch 0
+        initial_epoch = fam.token_epoch
+        refresh_token = auth.create_refresh_token(
+            data={"sub": str(parent.id), "username": parent.username, "email": parent.email, "token_epoch": initial_epoch}
+        )
+
+        # Verify it works (check_epoch passes)
+        payload = auth.verify_token(refresh_token)
+        assert payload is not None
+        assert auth.check_epoch(payload) is True
+
+        # Reset bumps epoch
+        reset_app_data(db, unblock=False)
+        fam_after = db.query(FamilySettings).first()
+        assert fam_after.token_epoch > initial_epoch
+
+        # Old refresh token fails epoch check (HIGH security: pre-reset refresh bypassed before)
+        payload = auth.verify_token(refresh_token)
+        assert payload is not None
+        assert auth.check_epoch(payload) is False
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
