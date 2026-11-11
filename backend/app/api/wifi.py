@@ -1,6 +1,5 @@
 """Wi-Fi API: parent Settings routes, plus the captive setup page's hotspot-only routes."""
 
-import hmac
 import ipaddress
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -8,13 +7,12 @@ from pydantic import BaseModel
 
 from app.api.deps import require_parent
 from app.core.client_ip import client_ip
-from app.core.config import settings
 from app.services import network_wifi
 
 router = APIRouter(
     prefix="/api/v1/network/wifi", tags=["wifi"], dependencies=[Depends(require_parent)]
 )
-# Unauthenticated, but only for hotspot clients via the edge's hotspot site (see _hotspot_only).
+# Unauthenticated, but only for setup-hotspot clients while the hotspot is up (_hotspot_only).
 setup_router = APIRouter(prefix="/api/v1/network/wifi/setup", tags=["wifi-setup"])
 
 HOTSPOT_NET = ipaddress.ip_network("10.42.0.0/24")
@@ -70,11 +68,11 @@ def set_country(body: CountryRequest) -> dict:
 
 
 def _hotspot_only(request: Request) -> dict:
-    """Edge token + hotspot subnet + hotspot really up. Returns daemon status."""
-    if not settings.EDGE_TOKEN:
-        raise HTTPException(503, "Setup mode not configured")
-    if not hmac.compare_digest(request.headers.get("X-Edge-Token", ""), settings.EDGE_TOKEN):
-        raise HTTPException(403, "Invalid or missing X-Edge-Token")
+    """Hotspot subnet (real client IP via our trusted proxy) + hotspot really up.
+
+    No edge token: hotspot phones reach the frontend directly at 10.42.0.1, and only phones
+    that joined the setup Wi-Fi (sticker password) can have a 10.42.0.x address.
+    """
     try:
         if ipaddress.ip_address(client_ip(request)) not in HOTSPOT_NET:
             raise HTTPException(403, "Not a setup hotspot client")

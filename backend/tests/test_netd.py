@@ -125,3 +125,19 @@ def test_terse_split_handles_escaped_colons():
 
 def test_unknown_command(nmcli):
     assert netd.handle({"cmd": "rm -rf"}) == {"error": "unknown_command"}
+
+
+def test_hotspot_installs_antispoof_and_captive_then_removes(nmcli, monkeypatch, tmp_path):
+    creds = tmp_path / "setup.json"
+    creds.write_text('{"ssid": "t@sk4ce-k7m2", "password": "sticker-pass"}')
+    monkeypatch.setattr(netd, "SETUP_CREDS", creds)
+    started = []
+    monkeypatch.setattr(netd, "captive_start", lambda: started.append(1))
+    assert netd.hotspot_up() == {"success": True}
+    nft = [c for c in nmcli.calls if c[0] == "nft"]
+    assert nft and nft[0][:3] == ["nft", "-f", "-"] and started == [1]
+    assert netd.CAPTIVE_DNS.read_text() == "address=/#/10.42.0.1\n"
+    assert not any("sticker-pass" in " ".join(c) for c in nmcli.calls)
+    netd.hotspot_down()
+    assert ["nft", "delete", "table", "inet", "tskfrce_netd"] in nmcli.calls
+    assert not netd.CAPTIVE_DNS.exists()

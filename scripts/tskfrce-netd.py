@@ -11,6 +11,7 @@ CLI (host, root): tskfrce-netd.py serve | forget-all | status
 
 import grp
 import hashlib
+import http.server
 import json
 import os
 import re
@@ -33,12 +34,65 @@ CAPTIVE_DNS = Path("/etc/NetworkManager/dnsmasq-shared.d/99-tskfrce-captive.conf
 HOTSPOT = "tskfrce-setup"
 PREFIX = "tskfrce-wifi-"
 HOTSPOT_IP = "10.42.0.1"
+# Captive page lives in the frontend (published on all interfaces); netd only redirects to it.
+SETUP_URL = f"http://{HOTSPOT_IP}:{os.environ.get('FRONTEND_PORT', '3000')}/wifi-setup"
 FALLBACK_AFTER = 300  # spec: saved Wi-Fi unreachable 5 min -> hotspot
 RETRY_EVERY = 600  # in fallback, drop the hotspot this often so saved Wi-Fi can retry
 TICK = 30
 
 lock = threading.Lock()  # ponytail: one global lock for state-changing nmcli calls; joins are rare
 setup = {"phase": "idle", "error": None}  # idle | connecting | connected | failed
+captive = {"server": None}
+
+
+class Captive(http.server.BaseHTTPRequestHandler):
+    """Every hotspot request (incl. OS captive probes) -> the setup page. Bound to 10.42.0.1 only."""
+
+    def redirect(self):
+        self.send_response(302)
+        self.send_header("Location", SETUP_URL)
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+
+    do_GET = do_HEAD = do_POST = redirect
+
+    def log_message(self, *a):
+        pass
+
+
+def antispoof(dev):
+    """Only the hotspot radio may carry 10.42.0.0/24 sources (the backend trusts that subnet)."""
+    rules = (
+        "table inet tskfrce_netd { chain in { type filter hook prerouting priority -300; "
+        f'iifname != "{dev}" ip saddr 10.42.0.0/24 drop; }} }}\n'
+    )
+    subprocess.run(["nft", "-f", "-"], input=rules, text=True, capture_output=True, timeout=10)
+
+
+def antispoof_off():
+    subprocess.run(
+        ["nft", "delete", "table", "inet", "tskfrce_netd"], capture_output=True, timeout=10
+    )
+
+
+def captive_start():
+    if captive["server"] is None:
+        try:
+            srv = http.server.ThreadingHTTPServer((HOTSPOT_IP, 80), Captive)
+        except (
+            OSError
+        ) as e:  # address not up yet or port taken: setup still works by typing the URL
+            print(f"captive http: {e}", file=sys.stderr, flush=True)
+            return
+        captive["server"] = srv
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+
+
+def captive_stop():
+    srv, captive["server"] = captive["server"], None
+    if srv:
+        srv.shutdown()
+        srv.server_close()
 
 
 # --- validation (mirrors backend/app/services/network_wifi.py; never trust the caller) ---
@@ -191,10 +245,18 @@ def hotspot_up():
     CAPTIVE_DNS.parent.mkdir(parents=True, exist_ok=True)
     CAPTIVE_DNS.write_text(f"address=/#/{HOTSPOT_IP}\n")  # read by NM's shared dnsmasq at start
     write_profile(HOTSPOT, creds["ssid"], creds["password"], dev, ap=True)
-    return {"success": try_up(HOTSPOT, wait=30) is None}
+    antispoof(dev)  # before the AP is up, so no window
+    ok = try_up(HOTSPOT, wait=30) is None
+    if ok:
+        captive_start()
+    else:
+        antispoof_off()
+    return {"success": ok}
 
 
 def hotspot_down():
+    captive_stop()
+    antispoof_off()
     CAPTIVE_DNS.unlink(missing_ok=True)
     delete(HOTSPOT)
     return {"success": True}

@@ -2,7 +2,6 @@
 
 import pytest
 from app.api import wifi as wifi_api
-from app.core.config import settings
 from app.services import network_wifi
 
 HOTSPOT = {"hotspot_active": True, "setup": {"phase": "idle", "error": None}}
@@ -17,7 +16,6 @@ def daemon(monkeypatch):
         return {"status": HOTSPOT}.get(cmd, {"success": True})
 
     monkeypatch.setattr(network_wifi, "_call", fake)
-    monkeypatch.setattr(settings, "EDGE_TOKEN", "edge-secret")
     return calls
 
 
@@ -62,41 +60,25 @@ def via_proxy(monkeypatch):
 
 def test_spoofed_real_ip_from_untrusted_peer_rejected(client, daemon):
     # No via_proxy: the TestClient peer is not a trusted proxy, so X-Real-IP is ignored.
-    r = client.post(
-        SETUP, json=BODY, headers={"X-Real-IP": "10.42.0.5", "X-Edge-Token": "edge-secret"}
-    )
+    r = client.post(SETUP, json=BODY, headers={"X-Real-IP": "10.42.0.5"})
     assert r.status_code == 403
-
-
-def test_setup_join_needs_edge_token(client, daemon):
-    assert client.post(SETUP, json=BODY, headers={"X-Real-IP": "10.42.0.5"}).status_code == 403
-    r = client.post(SETUP, json=BODY, headers={"X-Real-IP": "10.42.0.5", "X-Edge-Token": "wrong"})
-    assert r.status_code == 403
-    assert all(c[0] != "setup_join" for c in daemon)
 
 
 def test_setup_join_rejects_lan_clients_even_with_token(client, daemon, via_proxy):
-    r = client.post(
-        SETUP, json=BODY, headers={"X-Real-IP": "192.168.1.50", "X-Edge-Token": "edge-secret"}
-    )
+    r = client.post(SETUP, json=BODY, headers={"X-Real-IP": "192.168.1.50"})
     assert r.status_code == 403
     assert all(c[0] != "setup_join" for c in daemon)
 
 
 def test_setup_join_refused_when_hotspot_down(client, monkeypatch, via_proxy):
-    monkeypatch.setattr(settings, "EDGE_TOKEN", "edge-secret")
     monkeypatch.setattr(
         network_wifi, "_call", lambda cmd, timeout=15, **kw: {"hotspot_active": False, "setup": {}}
     )
-    r = client.post(
-        SETUP, json=BODY, headers={"X-Real-IP": "10.42.0.5", "X-Edge-Token": "edge-secret"}
-    )
+    r = client.post(SETUP, json=BODY, headers={"X-Real-IP": "10.42.0.5"})
     assert r.status_code == 409
 
 
 def test_setup_join_from_hotspot_client(client, daemon, via_proxy):
-    r = client.post(
-        SETUP, json=BODY, headers={"X-Real-IP": "10.42.0.5", "X-Edge-Token": "edge-secret"}
-    )
+    r = client.post(SETUP, json=BODY, headers={"X-Real-IP": "10.42.0.5"})
     assert r.status_code == 200, r.text
     assert daemon[-1] == ("setup_join", {"ssid": "Home", "password": "x" * 10})
