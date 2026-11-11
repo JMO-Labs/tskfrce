@@ -235,3 +235,22 @@ def test_goals_follow_the_family_pick_unless_edited(db, parent):
     db.commit()
     out = ps.run(db, parent, {"style": "relaxed"}, False)
     assert "goals" not in [c["key"] for c in out["changes"] + out["kept"]]
+
+
+def test_penalties_follow_the_family_pick_unless_edited(db, parent):
+    fam = get_family(db)
+    out = ps.run(db, parent, {"style": "strict"}, False)  # preview: off now, Strict wants on
+    assert {"kid_id": None, "who": None, "key": "penalties", "now": False, "next": True} in out[
+        "changes"
+    ]
+    ps.run(db, parent, {"style": "strict"}, True)
+    assert get_family(db).penalties_enabled is True
+    ps.run(
+        db, parent, {"style": "relaxed"}, True
+    )  # untouched since the preset: follows the new pick
+    assert get_family(db).penalties_enabled is False
+    fam.penalties_enabled = True  # the parent switched it on themselves: an edit, kept
+    db.commit()
+    out = ps.run(db, parent, {"style": "balanced"}, True)
+    assert "penalties" in [k["key"] for k in out["kept"]]
+    assert get_family(db).penalties_enabled is True

@@ -18,7 +18,7 @@ const catalog: PresetCatalog = {
     kid: { relaxed: plan(), balanced: plan(), strict: plan() },
     teen: { relaxed: plan({ chores: ['a', 'b'], screen: 210, bedtime: '22:00', lock: false, trust: true }), balanced: plan(), strict: plan() },
   },
-  family: { relaxed: { banked: true }, balanced: { banked: true }, strict: { banked: false } },
+  family: { relaxed: { banked: true }, balanced: { banked: true, penalties: false }, strict: { banked: false, penalties: true } },
 }
 
 describe('StylePicker', () => {
@@ -55,6 +55,6 @@ describe('LimitsTable', () => {
     expect(screen.getByText('Theo · Relaxed')).toBeInTheDocument()
     expect(screen.getByText('Internet locks till chores done').closest('tr')).toHaveTextContent('yesno')
     expect(screen.getByText('Bedtime').closest('tr')).toHaveTextContent('8:3010:00')
-    expect(screen.getByText(/Family-wide: banked time on/)).toBeInTheDocument()
+    expect(screen.getByText(/Family-wide: banked time on, penalties off/)).toBeInTheDocument()
   })
 })

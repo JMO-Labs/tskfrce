@@ -74,6 +74,10 @@ describe('tweakStart', () => {
     expect(t.hours.map((d) => d.name)).toEqual(['School nights', 'School nights · theo', 'Weekends', 'Weekends · theo'])
     expect(t.lock).toBe(true)
     expect(t.trust).toEqual([2])
+    expect(t.penalties).toBe(false)
+  })
+  test('Strict starts Penalties on', () => {
+    expect(tweakStart(presetKids(kids, null, 'strict'), { ...catalog, family: { strict: { banked: false, penalties: true } } }, 'strict').penalties).toBe(true)
   })
 })
 

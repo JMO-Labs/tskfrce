@@ -22,6 +22,8 @@ describe('preset format', () => {
   test('keyLabel and fmtValue', () => {
     expect(keyLabel('screen')).toBe('Screen time')
     expect(keyLabel('banked')).toBe('Banked time')
+    expect(keyLabel('penalties')).toBe('Penalties')
+    expect(fmtValue('penalties', true)).toBe('on')
     expect(fmtValue('chores', ['a', 'b', 'c'])).toBe('3')
     expect(fmtValue('chores', 4)).toBe('4')
     expect(fmtValue('screen', 60)).toBe('1h')

@@ -324,7 +324,7 @@ describe('setup wizard', () => {
     expect(posts('/hours')).toHaveLength(2)
     expect(apiMock).toHaveBeenCalledWith('/family', { method: 'PATCH', body: { chores_lock: true } })
     expect(posts('/presets/apply')).toHaveLength(1)
-    expect(posts('/presets/apply')[0][1]).toEqual({ method: 'POST', body: { style: 'balanced', kids: { 7: null }, skip: ['chores', 'bedtime', 'trust', 'goals'] } })
+    expect(posts('/presets/apply')[0][1]).toEqual({ method: 'POST', body: { style: 'balanced', kids: { 7: null }, skip: ['chores', 'bedtime', 'trust', 'goals', 'penalties'] } })
   })
 
   test('Back from Tweak Chores returns to the plan', async () => {

@@ -183,6 +183,8 @@ def write(db: Session, parent: User, kid: User | None, key: str, value, plans: d
             screen_bank.clear_all(db)
     elif key == "goals":
         get_family(db).goals_on = bool(value)
+    elif key == "penalties":
+        get_family(db).penalties_enabled = bool(value)
     elif key == "chores":
         _chores(db, parent, kid, value)
     elif key == "screen":

@@ -21,7 +21,7 @@ const Sw = ({ on, label, onClick }: { on: boolean; label: string; onClick: () =>
   </span>
 )
 
-/** Step 8: trust, bedtime and penalties opt-ins (off) and the Goals switch (on). The bedtime time stays in family settings until it is on. */
+/** trust, bedtime and penalties opt-ins (off) and the Goals switch (on). The bedtime time stays in family settings until it is on. */
 export function StepExtras({ kids, trust, bedtime, goals, onTrust, onBedtime, onGoals, penalties, onPenalties }: Props) {
   const flip = (id: number) => onTrust(trust.includes(id) ? trust.filter((x) => x !== id) : [...trust, id])
   return (

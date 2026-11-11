@@ -62,6 +62,7 @@ export function tweakStart(kids: PresetKid[], catalog: PresetCatalog, family: St
     hours: hoursFromPlans(plans),
     lock: plans.some((p) => p.plan.lock),
     trust: plans.filter((p) => p.plan.trust).map((p) => p.id),
+    penalties: catalog.family[family]?.penalties ?? false,
   }
 }
 
@@ -114,8 +115,9 @@ export const hoursJobs = (hours: RuleBody[], choresLock: boolean): Job[] => [
   { key: `chores_lock:${choresLock}`, run: () => api('/family', { method: 'PATCH', body: { chores_lock: choresLock } }) },
 ]
 
-export const extrasJobs = (trustKids: number[], bedtimeAuto: boolean, goalsOn = true): Job[] => [
+export const extrasJobs = (trustKids: number[], bedtimeAuto: boolean, goalsOn = true, penalties = false): Job[] => [
   ...trustKids.map((id) => ({ key: `trust:${id}`, run: () => api(`/kids/${id}`, { method: 'PATCH', body: { trust_mode: true } }) })),
   ...(bedtimeAuto ? [{ key: 'bedtime', run: () => api('/family', { method: 'PATCH', body: { bedtime_auto: true } }) }] : []),
   { key: `goals:${goalsOn}`, run: () => api('/goals/settings', { method: 'PATCH', body: { on: goalsOn } }) },
+  ...(penalties ? [{ key: 'penalties', run: () => api('/family', { method: 'PATCH', body: { penalties_enabled: true } }) }] : []),
 ]

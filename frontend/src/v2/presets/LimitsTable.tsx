@@ -17,6 +17,7 @@ export function LimitsTable({ catalog, kids, style }: Props) {
   const parts = [
     fam?.goals === undefined ? '' : `goals ${fam.goals ? 'on' : 'off'}`,
     fam?.banked === undefined ? '' : `banked time ${fam.banked ? 'on' : 'off'}`,
+    fam?.penalties === undefined ? '' : `penalties ${fam.penalties ? 'on' : 'off'}`,
   ].filter(Boolean)
   return (
     <details className={s.details}>
