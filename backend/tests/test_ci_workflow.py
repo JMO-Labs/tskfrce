@@ -29,11 +29,13 @@ def test_push_triggers_main_dev_no_develop(on):
     assert on["push"]["tags"] == ["v*"]
 
 
-def test_lab_gated_to_main_and_tags(wf):
+def test_lab_gated_to_queue_tags_and_dispatch(wf):
+    # #98: the heavy network lab gates merges in the merge queue, release tags and manual runs only
     cond = " ".join(str(wf["jobs"]["lab"].get("if", "")).split())
-    assert "github.base_ref == 'main'" in cond
-    assert "github.ref == 'refs/heads/main'" in cond
-    assert "startsWith(github.ref, 'refs/tags/')" in cond
+    assert "github.event_name == 'merge_group'" in cond
+    assert "github.event_name == 'workflow_dispatch'" in cond
+    assert "startsWith(github.ref, 'refs/tags/v')" in cond
+    assert "merge_group" in wf[True]  # `on:` parses as True in YAML 1.1
 
 
 @pytest.mark.parametrize("job", CHEAP_JOBS)
@@ -41,11 +43,14 @@ def test_cheap_jobs_not_gated(wf, job):
     assert "if" not in wf["jobs"][job]
 
 
-def test_nothing_needs_lab(wf):
+def test_only_image_build_needs_lab_and_survives_a_skip(wf):
+    # build-and-push waits for the lab, but a skipped lab (main push after the queue) must not skip it
     for name, job in wf["jobs"].items():
         needs = job.get("needs", [])
         needs = [needs] if isinstance(needs, str) else needs
-        assert "lab" not in needs, name
+        if "lab" in needs:
+            assert name == "build-and-push"
+            assert "!failure()" in str(job["if"]) and "!cancelled()" in str(job["if"])
 
 
 def test_concurrency_unchanged(wf):

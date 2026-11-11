@@ -103,10 +103,12 @@ def online(host) -> bool:
     return lab("check", host).returncode == 0
 
 
-def wait_online(host, want: bool, timeout=60):
+def wait_online(host, want: bool, timeout=60) -> bool:
+    """Asserts on its own; returns True so `assert wait_online(...)` also holds."""
     assert wait_for(lambda: online(host) == want, timeout), (
         f"{host} never went {'online' if want else 'offline'}"
     )
+    return True
 
 
 def on_cleanup(fn):

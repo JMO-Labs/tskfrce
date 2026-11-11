@@ -2,7 +2,7 @@ import subprocess
 
 import pytest
 
-from .journey import COMPOSE, make_chore, make_kid, online, parent, wait_for, wait_online
+from .journey import COMPOSE, lab, make_chore, make_kid, online, parent, wait_for, wait_online
 
 pytestmark = pytest.mark.integration
 
@@ -18,5 +18,6 @@ def test_box_offline_warns_and_fails_open():
         assert wait_for(lambda: online("kid1"), 90)
     finally:
         subprocess.run([*COMPOSE, "start", "blocker"], check=True)
+        lab("wait-blocker", check=True)  # later tests and stages need it serving again
     assert wait_for(lambda: parent("GET", "/api/v1/blocker")["online"] is True, 90, 5)
     wait_online("kid1", False)  # the box is back and the chore gate closes again

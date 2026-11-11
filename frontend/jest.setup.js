@@ -6,6 +6,14 @@ configure({ asyncUtilTimeout: 4000 })
 import fs from 'fs'
 import path from 'path'
 
+// userEvent defaults to a setTimeout(0) between every action; skip it (big win for
+// click/type-heavy suites). Tests can still pass their own `delay`.
+jest.mock('@testing-library/user-event', () => {
+  const actual = jest.requireActual('@testing-library/user-event')
+  const setup = (opts) => actual.default.setup({ delay: null, ...opts })
+  return { __esModule: true, ...actual, default: { ...actual.default, setup } }
+})
+
 // Load CSS files into the DOM for testing
 const parentTokensCss = fs.readFileSync(
   path.join(__dirname, 'src/v2/parent/parent-tokens.css'),
