@@ -71,7 +71,7 @@ test('decline posts deny', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'More for Homework time' }))
   await userEvent.click(await screen.findByRole('menuitem', { name: 'Decline' }))
   await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/homework/requests/7/deny', { method: 'POST' }))
-})
+}, 15000) // menu open + two userEvent clicks run ~5s on CI runners
 
 test('approve all includes homework at 60 min', async () => {
   render(wrap(<NeedsYouList items={[hw, reward]} />))
