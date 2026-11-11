@@ -17,6 +17,7 @@ import { useCelebrationTriggers } from './celebrate/triggers'
 import { useCelebrate } from './celebrate/useCelebrate'
 import { useFreezeNotice } from './freezeNotice'
 import { KidAlerts } from './KidAlerts'
+import { useLockNotify } from './lockNotify'
 import { Locker } from './Locker'
 import { kidSort, tally } from './kidChips'
 import { KidNav, type KidTab } from './KidNav'
@@ -30,6 +31,9 @@ import { RewardsSection } from './RewardsSection'
 
 const MODES = { little: LittleMode, kid: KidMode, teen: TeenMode }
 const noop = () => {}
+const toKid = () => {
+  if (window.location.pathname !== '/kid') window.location.assign('/kid')
+}
 
 export interface KidAppProps {
   d: KidToday
@@ -66,6 +70,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
   const threads = useThreads(true, !preview && mode !== 'little')
   const inbox = useInbox(true, !preview && mode !== 'little')
   useOsNotify(inbox.data?.items, noop) // OS pop-ups while the tab is in the background, as the old bell did
+  useLockNotify(d, toKid, !preview)
   useEffect(() => {
     if (!preview) askOnFirstClick()
   }, [preview])
