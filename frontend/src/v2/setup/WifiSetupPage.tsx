@@ -4,10 +4,11 @@
 
 import { useState, useCallback } from 'react'
 import { Button, Modal, PasswordInput, Select, Stack, Text, TextInput, Group, Alert, Loader, Center, Box, Checkbox } from '@mantine/core'
-import { IconWifi, IconPlus, IconEye, IconEyeOff } from '@tabler/icons-react'
+import { IconWifi, IconPlus } from '@tabler/icons-react'
 import { useSetupWifiStatus, useSetupWifiScan } from '@/v2/hooks/useSetupWifi'
-import { api } from '@/v2/api'
+import { api, ApiError } from '@/v2/api'
 import { useMutation } from '@tanstack/react-query'
+import { tokenManager } from '@/services/tokenManager'
 import styles from '@/v2/setup/wifiSetup.module.css'
 
 interface NetworkItem {
@@ -23,11 +24,9 @@ export function WifiSetupPage() {
   const [manualSecurity, setManualSecurity] = useState('wpa')
   const [manualHidden, setManualHidden] = useState(false)
   const [showOtherDialog, setShowOtherDialog] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
   const [showParentLogin, setShowParentLogin] = useState(false)
   const [parentUsername, setParentUsername] = useState('')
   const [parentPassword, setParentPassword] = useState('')
-  const [parentShowPassword, setParentShowPassword] = useState(false)
   const [pendingJoin, setPendingJoin] = useState<{
     ssid: string
     password?: string
@@ -42,11 +41,10 @@ export function WifiSetupPage() {
 
   // Custom join mutation that handles auth errors
   const joinMutation = useMutation({
-    mutationFn: async (params: { ssid: string; password?: string; security: string; hidden: boolean; token?: string }) => {
+    mutationFn: async (params: { ssid: string; password?: string; security: string; hidden: boolean }) => {
       const response = await api('/setup/wifi/join', {
         method: 'POST',
         body: { ssid: params.ssid, password: params.password, security: params.security, hidden: params.hidden },
-        headers: params.token ? { Authorization: `Bearer ${params.token}` } : undefined,
       })
       return response
     },
@@ -58,7 +56,7 @@ export function WifiSetupPage() {
       setAuthError('')
     },
     onError: (error: any) => {
-      const status = error?.response?.status || error?.status
+      const status = error?.status
       if (status === 401) {
         setShowParentLogin(true)
         setAuthError('Parent sign-in required to change Wi-Fi')
@@ -101,22 +99,29 @@ export function WifiSetupPage() {
     setAuthError('')
 
     try {
-      // ponytail: POST to /auth/login, get token, retry join with token
-      const loginResp = await api('/auth/login', {
+      // ponytail: POST to /auth/login, store token, retry join
+      const loginResp = await api<{ access_token: string; refresh_token?: string; expires_in: number }>('/auth/login', {
         method: 'POST',
         body: { username: parentUsername, password: parentPassword },
       })
-      const token = loginResp?.token || loginResp?.access_token
 
-      if (!token) {
+      if (!loginResp?.access_token) {
         setAuthError('Invalid response from server')
         return
       }
 
-      // Retry the join with the token
-      await joinMutation.mutateAsync({ ...pendingJoin, token })
+      // Store tokens in tokenManager so subsequent requests use them
+      tokenManager.setTokens({
+        access_token: loginResp.access_token,
+        refresh_token: loginResp.refresh_token || '',
+        expires_in: loginResp.expires_in || 3600,
+      })
+
+      // Retry the join request - it will now use the parent token
+      await joinMutation.mutateAsync(pendingJoin)
     } catch (e: any) {
-      setAuthError(e?.message || 'Sign-in failed')
+      const apiError = e as ApiError
+      setAuthError(apiError?.detail || e?.message || 'Sign-in failed')
     }
   }, [parentUsername, parentPassword, pendingJoin, joinMutation])
 
@@ -159,7 +164,7 @@ export function WifiSetupPage() {
           <h1>Connected</h1>
           <p>Your box is on {statusQuery.data?.ssid}</p>
           <p style={{ fontSize: 12, marginTop: 8, opacity: 0.7 }}>
-            Scan "Open my box" on the sticker to continue setup.
+            Scan &quot;Open my box&quot; on the sticker to continue setup.
           </p>
         </div>
       </div>
@@ -184,7 +189,6 @@ export function WifiSetupPage() {
             setManualPassword('')
             setSelectedNetwork(null)
             setManualSsid('')
-            statusQuery.remove()
           }}
           variant="filled"
         >
@@ -205,7 +209,7 @@ export function WifiSetupPage() {
         <Alert icon={<Loader size={16} />} color="blue" mb="md">
           <Text size="sm">Connecting…</Text>
           <Text size="xs" mt={8} opacity={0.8}>
-            Your phone will leave the setup Wi-Fi. If this page doesn't update within a minute, rejoin
+            Your phone will leave the setup Wi-Fi. If this page doesn&apos;t update within a minute, rejoin
             Wi-Fi <code>t@sk4ce-K7M2</code> and reopen this page.
           </Text>
         </Alert>
@@ -303,7 +307,7 @@ export function WifiSetupPage() {
       )}
 
       <Text size="xs" opacity={0.6} mt="lg" ta="center">
-        Your phone will return to your home network. Scan "Open my box" QR to continue setup.
+        Your phone will return to your home network. Scan &quot;Open my box&quot; QR to continue setup.
       </Text>
 
       <Modal opened={showOtherDialog} onClose={() => setShowOtherDialog(false)} title="Join Network" centered>
@@ -333,9 +337,6 @@ export function WifiSetupPage() {
               value={manualPassword}
               onChange={(e) => setManualPassword(e.currentTarget.value)}
               disabled={isConnecting}
-              visibilityToggleIcon={showPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
-              visible={showPassword}
-              onVisibilityChange={setShowPassword}
               description="8–63 characters"
             />
           )}
@@ -372,9 +373,6 @@ export function WifiSetupPage() {
             value={parentPassword}
             onChange={(e) => setParentPassword(e.currentTarget.value)}
             disabled={joinMutation.isPending}
-            visibilityToggleIcon={parentShowPassword ? <IconEyeOff size={16} /> : <IconEye size={16} />}
-            visible={parentShowPassword}
-            onVisibilityChange={setParentShowPassword}
           />
           <Group grow>
             <Button variant="default" onClick={() => setShowParentLogin(false)} disabled={joinMutation.isPending}>

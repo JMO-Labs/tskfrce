@@ -65,13 +65,15 @@
   border-bottom: none;
 }
 
-.networkItem:hover:not(:disabled) {
-  background-color: var(--mantine-color-gray-1);
-}
-
-@media (prefers-color-scheme: dark) {
+@media (hover: hover) {
   .networkItem:hover:not(:disabled) {
-    background-color: var(--mantine-color-dark-6);
+    background-color: var(--mantine-color-gray-1);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .networkItem:hover:not(:disabled) {
+      background-color: var(--mantine-color-dark-6);
+    }
   }
 }
 
