@@ -497,3 +497,31 @@ def test_single_redir_used_when_lan_iface_set():
     assert svc._iface_manager is None
     assert svc._redir is not None
     assert svc._redir is redir
+
+
+def test_device_with_unknown_iface_skipped():
+    """Devices with iface=None are skipped when using InterfaceManager."""
+    fw = FakeFirewall()
+    svc = Service(CFG_MULTINET, firewall=fw, sleep=lambda *_: None, portal_ip="192.168.1.2")
+    svc.store.set_blocked([MAC])
+    svc._on_seen(Seen(mac=MAC, ip="192.168.1.50", ipv6=[], hostname=None, vendor=None))
+    # iface_of is not set (defaults to None), so _by_interface should skip this device
+    by_iface = svc._by_interface({MAC: TargetAddrs(mac=MAC, ip="192.168.1.50")})
+    assert by_iface == {}  # Device is skipped
+
+
+def test_interface_manager_stop_synchronously_stops_managers():
+    """Service.stop() synchronously stops InterfaceManager's managers before firewall flush."""
+    fw = FakeFirewall()
+    svc = Service(CFG_MULTINET, firewall=fw, sleep=lambda *_: None, portal_ip="192.168.1.2")
+    # Add a mock manager to verify it gets stopped
+    svc._iface_manager._managers["eth0"] = (
+        SimpleNamespace(is_set=lambda: False),  # stop event
+        FakeRedir(),
+        None,  # no watch
+    )
+    svc.stop()
+    # Verify managers are emptied (stopped)
+    assert len(svc._iface_manager._managers) == 0
+    # Verify firewall was flushed
+    assert fw.flushed

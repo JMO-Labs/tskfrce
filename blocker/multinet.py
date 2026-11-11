@@ -226,7 +226,7 @@ class InterfaceManager:
             return macs
 
     def infra(self) -> tuple[set[str], set[str]]:
-        """Return (gateway_macs, gateway_ips) to never enforce/spoof."""
+        """Return (gateway_macs, gateway_ips) to never enforce/spoof. Includes IPv6."""
         with self._lock:
             macs, ips = set(), set()
             for _, (_, redir, _) in self._managers.items():
@@ -236,6 +236,10 @@ class InterfaceManager:
                         macs.add(lan.gateway_mac.lower())
                     if lan.gateway_ip:
                         ips.add(lan.gateway_ip)
+                    if lan.gateway_mac6:
+                        macs.add(lan.gateway_mac6.lower())
+                    if lan.gateway_ip6:
+                        ips.add(lan.gateway_ip6)
                     if lan.box_mac:
                         macs.add(lan.box_mac.lower())
                 except Exception:

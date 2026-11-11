@@ -237,14 +237,21 @@ class Service:
         return base, by_vid
 
     def _by_interface(self, devs: dict[str, TargetAddrs]) -> dict[str, dict[str, TargetAddrs]]:
-        """Organize targets per interface for InterfaceManager. Devices with iface=None go to all."""
+        """Organize targets per interface for InterfaceManager.
+
+        Devices must have a known interface. Devices with iface=None are skipped
+        with a warning (shouldn't happen when using InterfaceManager).
+        """
         by_iface: dict[str, dict[str, TargetAddrs]] = {}
-        ifaces = set(self._iface_manager._managers.keys()) if self._iface_manager else set()
         for m, a in devs.items():
             iface = self._iface_of.get(m)
-            targets = [iface] if iface else list(ifaces)  # None -> all interfaces
-            for tgt_iface in targets:
-                by_iface.setdefault(tgt_iface, {})[m] = a
+            if iface is None:
+                log.warning(
+                    "device %s has unknown interface when using InterfaceManager; skipping",
+                    m,
+                )
+                continue
+            by_iface.setdefault(iface, {})[m] = a
         return by_iface
 
     def _mac_for_ip(self, ip: str) -> str | None:
@@ -573,20 +580,36 @@ class Service:
 
     def stop(self) -> None:
         self._stop.set()
-        if not self._using_iface_mgr and self._watch is not None:
-            try:
-                self._watch.stop()
-            except Exception:
-                log.exception("resistance watch stop failed")
-        try:
-            self._sites.stop_all()
-        except Exception:
-            log.exception("site restore failed")
-        if not self._using_iface_mgr:
+        # Stop redirection and resistance watches before flushing firewall
+        if self._using_iface_mgr:
+            # Synchronously stop all per-interface managers before flush
+            if self._iface_manager:
+                with self._iface_manager._lock:
+                    for iface in list(self._iface_manager._managers):
+                        stop_ev, redir, watch = self._iface_manager._managers.pop(iface)
+                        try:
+                            redir.stop_all()
+                        except Exception:
+                            log.exception("redirection restore failed on %s", iface)
+                        if watch is not None:
+                            try:
+                                watch.stop()
+                            except Exception:
+                                log.exception("resistance watch stop failed on %s", iface)
+        else:
+            if self._watch is not None:
+                try:
+                    self._watch.stop()
+                except Exception:
+                    log.exception("resistance watch stop failed")
             try:
                 self._redir.stop_all()
             except Exception:
                 log.exception("redirection restore failed")
+        try:
+            self._sites.stop_all()
+        except Exception:
+            log.exception("site restore failed")
         try:
             self._fw.flush()  # fail open
         except Exception:
