@@ -197,7 +197,7 @@
           </div>
           <div class="f-card">
             <h3>CI</h3>
-            <p>On pull requests into main, dev and feat/** branches, and on pushes to main and dev: lint (ruff, ESLint, tsc), backend tests, an installer smoke test and a Trivy security scan. The lab runs only for pull requests into main, pushes to main and tags. Keep it green.</p>
+            <p>On pull requests into main, dev and feat/** branches, on pushes to main and dev, and on release tags: lint (ruff, ESLint, tsc), backend tests on both SQLite and Postgres, frontend tests, an installer smoke test, a Trivy security scan and a perf gate that checks the Pi 4 2GB tier. The heavy network lab runs only in the merge queue, on release tags and on manual runs. Dependabot minor and patch updates merge on their own once CI is green. Keep it green.</p>
           </div>
         </div>
       </section>
