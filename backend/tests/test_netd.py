@@ -141,3 +141,12 @@ def test_hotspot_installs_antispoof_and_captive_then_removes(nmcli, monkeypatch,
     netd.hotspot_down()
     assert ["nft", "delete", "table", "inet", "tskfrce_netd"] in nmcli.calls
     assert not netd.CAPTIVE_DNS.exists()
+
+
+def test_no_antispoof_rule_means_no_hotspot(nmcli, monkeypatch, tmp_path):
+    creds = tmp_path / "setup.json"
+    creds.write_text('{"ssid": "t@sk4ce-k7m2", "password": "sticker-pass"}')
+    monkeypatch.setattr(netd, "SETUP_CREDS", creds)
+    monkeypatch.setattr(netd, "antispoof", lambda dev: False)
+    assert netd.hotspot_up() == {"success": False, "error": "antispoof_failed"}
+    assert not any("up" in c for c in nmcli.calls if c[0] == "nmcli")

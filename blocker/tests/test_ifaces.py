@@ -87,3 +87,32 @@ def test_failed_bind_is_retried_next_sync():
     stop = threading.Event()
     stop.set()
     pa.run(stop)
+
+
+def test_host_bridge_and_bond_count_but_docker_bridges_dont(tmp_path):
+    links = [
+        link("br0", "192.168.1.10", kind="bridge"),
+        link("bond0", "10.0.0.2", kind="bond"),
+        link("docker0", "172.17.0.1", kind="bridge"),
+        link("br-a72b38255f2f", "172.29.50.1", kind="bridge"),
+    ]
+    assert parse(json.dumps(links), tmp_path) == [("br0", "192.168.1.10"), ("bond0", "10.0.0.2")]
+
+
+def test_crash_other_than_oserror_is_retried():
+    tries = []
+
+    def serve(ip, ev):
+        tries.append(ip)
+        if len(tries) == 1:
+            raise RuntimeError("boom")
+        ev.wait()
+
+    pa = PerAddress(serve, addrs=lambda: [("eno2", "192.168.1.98")])
+    pa.sync()
+    time.sleep(0.05)
+    pa.sync()
+    time.sleep(0.05)
+    assert len(tries) == 2
+    for ev in pa.running.values():
+        ev.set()

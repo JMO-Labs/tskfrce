@@ -66,7 +66,8 @@ def antispoof(dev):
         "table inet tskfrce_netd { chain in { type filter hook prerouting priority -300; "
         f'iifname != "{dev}" ip saddr 10.42.0.0/24 drop; }} }}\n'
     )
-    subprocess.run(["nft", "-f", "-"], input=rules, text=True, capture_output=True, timeout=10)
+    r = subprocess.run(["nft", "-f", "-"], input=rules, text=True, capture_output=True, timeout=10)
+    return r.returncode == 0
 
 
 def antispoof_off():
@@ -245,7 +246,8 @@ def hotspot_up():
     CAPTIVE_DNS.parent.mkdir(parents=True, exist_ok=True)
     CAPTIVE_DNS.write_text(f"address=/#/{HOTSPOT_IP}\n")  # read by NM's shared dnsmasq at start
     write_profile(HOTSPOT, creds["ssid"], creds["password"], dev, ap=True)
-    antispoof(dev)  # before the AP is up, so no window
+    if not antispoof(dev):  # before the AP is up, so no window; no rule -> no hotspot
+        return {"success": False, "error": "antispoof_failed"}
     ok = try_up(HOTSPOT, wait=30) is None
     if ok:
         captive_start()
@@ -254,9 +256,10 @@ def hotspot_up():
     return {"success": ok}
 
 
-def hotspot_down():
+def hotspot_down(keep_antispoof=False):
     captive_stop()
-    antispoof_off()
+    if not keep_antispoof:
+        antispoof_off()
     CAPTIVE_DNS.unlink(missing_ok=True)
     delete(HOTSPOT)
     return {"success": True}
@@ -266,9 +269,10 @@ def setup_join(ssid, psk):
     """Captive-page join. Single radio: drop the hotspot, try, bring it back on failure."""
     # ponytail: drop-and-retry only; concurrent AP+managed needs a second virtual iface, add if the UX needs it
     setup.update(phase="connecting", error=None)
-    hotspot_down()
+    hotspot_down(keep_antispoof=True)  # the setup flow isn't over until we know the result
     res = join(ssid, psk, rollback=False)
     if res["success"]:
+        antispoof_off()
         setup.update(phase="connected", error=None)
     else:
         setup.update(phase="failed", error=res.get("error"))

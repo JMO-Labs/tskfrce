@@ -18,6 +18,7 @@ SKIP_PREFIXES = ("lo", "docker", "br-", "veth", "virbr", "wg", "tailscale", "tun
 PRIVATE = [ipaddress.ip_network(n) for n in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")]
 EXCLUDE = [ipaddress.ip_network(n) for n in ("10.42.0.0/24", "169.254.0.0/16", "100.64.0.0/10")]
 SYS = Path("/sys/class/net")
+LAN_KINDS = {"vlan", "bridge", "bond", "macvlan"}
 
 
 def is_lan_ip(ip: str) -> bool:
@@ -28,8 +29,9 @@ def is_lan_ip(ip: str) -> bool:
 def is_lan_link(name: str, kind: str | None, sys: Path = SYS) -> bool:
     if name.startswith(SKIP_PREFIXES):
         return False
-    # VLAN sub-interfaces have no device/ link; physical NICs and Wi-Fi do
-    return kind == "vlan" or (sys / name / "device").exists()
+    # Physical NICs and Wi-Fi have a device/ link; VLANs, bridges (br0 on Unraid/Proxmox),
+    # bonds and macvlans don't. Docker's own bridges are already excluded by name above.
+    return kind in LAN_KINDS or (sys / name / "device").exists()
 
 
 def parse(ip_json: str, sys: Path = SYS) -> list[tuple[str, str]]:
@@ -87,10 +89,10 @@ class PerAddress:
     def _run(self, ip: str, ev: threading.Event) -> None:
         try:
             self.serve(ip, ev)
-        except OSError:
+        except Exception:
             log.exception("portal on %s failed; retrying next sync", ip)
-            if self.running.get(ip) is ev:
-                del self.running[ip]
+        if self.running.get(ip) is ev:  # ended without being told to: let the next sync restart it
+            del self.running[ip]
 
     def run(self, stop: threading.Event) -> None:
         while not stop.is_set():

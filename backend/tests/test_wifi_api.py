@@ -82,3 +82,12 @@ def test_setup_join_from_hotspot_client(client, daemon, via_proxy):
     r = client.post(SETUP, json=BODY, headers={"X-Real-IP": "10.42.0.5"})
     assert r.status_code == 200, r.text
     assert daemon[-1] == ("setup_join", {"ssid": "Home", "password": "x" * 10})
+
+
+def test_join_refused_while_connecting_but_status_allowed(client, monkeypatch, via_proxy):
+    state = {"hotspot_active": False, "setup": {"phase": "connecting", "error": None}}
+    monkeypatch.setattr(network_wifi, "_call", lambda cmd, timeout=15, **kw: state)
+    h = {"X-Real-IP": "10.42.0.5"}
+    assert client.post(SETUP, json=BODY, headers=h).status_code == 409
+    r = client.get("/api/v1/network/wifi/setup/status", headers=h)
+    assert r.status_code == 200 and r.json()["phase"] == "connecting"
