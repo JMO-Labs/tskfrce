@@ -458,7 +458,7 @@ func TestDecideCapEnforcement(t *testing.T) {
 	m.now = func() time.Time { return now }
 
 	// Allow a name to open the gate
-	allowed, via := m.Decide("google.com")
+	allowed, _ := m.Decide("google.com")
 	if !allowed {
 		t.Fatalf("Decide(google.com) failed")
 	}
@@ -472,7 +472,7 @@ func TestDecideCapEnforcement(t *testing.T) {
 	}
 
 	// Next name should be denied (cap exceeded)
-	allowed, via = m.Decide("toolate.com")
+	allowed, via := m.Decide("toolate.com")
 	if allowed {
 		t.Errorf("Decide() allowed after cap exceeded: (%v, %q), want (false, cap_exceeded)", allowed, via)
 	}
