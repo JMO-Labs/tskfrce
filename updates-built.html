@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Updates - Built Component</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --p-bg: #f8f8f8;
+      --p-card: #ffffff;
+      --p-soft: #f3f3f3;
+      --p-ink: #292928;
+      --p-sub: #5f5f5c;
+      --p-line: #e4e4e1;
+      --p-acc: #c3f832;
+      --p-focus: #292928;
+      --font-parent: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --p-bg: #1c1c1b;
+        --p-card: #292928;
+        --p-soft: #323230;
+        --p-ink: #f4f4f2;
+        --p-sub: #a8a8a4;
+        --p-line: #3d3d3b;
+        --p-focus: #b4b4af;
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      background: var(--p-bg);
+      color: var(--p-ink);
+      font-family: var(--font-parent);
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .pn { display: grid; gap: 14px; }
+    .pn-mh { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .pn-mh h2 { margin: 0; font-size: 28px; color: var(--p-ink); }
+    .pn-s, .pn-help { color: var(--p-sub); font-size: 13px; }
+    .pn-help { margin: -6px 0 12px; font-size: 12.5px; }
+    .pn-card { background: var(--p-card); color: var(--p-ink); border: 1px solid var(--p-line); border-radius: 18px; padding: 16px 18px; min-width: 0; }
+    .pn-h { margin: 0 0 10px; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+    .icon { color: var(--p-sub); }
+    .pn-kv { padding: 8px 0; font-size: 13px; border-top: 1px solid var(--p-line); }
+    .pn-kv:first-child { border-top: 0; }
+    .pn-kv-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .pn-kv-key { font-weight: 600; color: var(--p-ink); }
+    .pn-kv-val { color: var(--p-sub); text-align: right; }
+    .pn-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; }
+    .pn-acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; padding-top: 8px; }
+    .p-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 14px; border: 1px solid var(--p-line); border-radius: 999px; background: var(--p-card); color: var(--p-ink); font: 600 13px var(--font-parent); cursor: pointer; text-decoration: none; transition: all 0.15s ease; white-space: nowrap; }
+    .p-btn[data-variant='accent'] { background: var(--p-acc); border-color: var(--p-acc); color: #292928; }
+    .switch { display: inline-flex; align-items: center; width: 44px; height: 24px; background: var(--p-soft); border: 1.5px solid var(--p-line); border-radius: 12px; padding: 2px; cursor: pointer; transition: all 0.15s ease; }
+    .switch.on { background: #4a9d1f; border-color: #4a9d1f; }
+    .switch-thumb { width: 20px; height: 20px; background: var(--p-card); border-radius: 4px; transition: all 0.15s ease; }
+    .switch.on .switch-thumb { transform: translateX(20px); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="pn">
+      <div class="pn-mh">
+        <h2>Updates</h2>
+      </div>
+      <p class="pn-s">Manage automatic updates and check for new versions.</p>
+
+      <div class="pn-card">
+        <div class="pn-h">
+          <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 11l5 5l5 -5" /><path d="M12 4l0 12" /></svg>
+          <span>Version</span>
+        </div>
+        <div class="pn-kv">
+          <div class="pn-kv-row">
+            <span class="pn-kv-key">Current:</span>
+            <span class="pn-kv-val">2.13.0</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pn-card">
+        <div class="pn-h">
+          <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></svg>
+          <span>Auto-update</span>
+        </div>
+        <div class="pn-kv">
+          <div class="pn-line">
+            <span class="pn-kv-key">Nightly checks</span>
+            <button class="switch on" aria-label="Toggle auto-update">
+              <span class="switch-thumb"></span>
+            </button>
+          </div>
+          <p class="pn-help">Minor and patch versions install automatically at 03:30.</p>
+        </div>
+      </div>
+
+      <div class="pn-card">
+        <div class="pn-h">
+          <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+          <span>Last result</span>
+        </div>
+        <div class="pn-kv">
+          <div class="pn-kv-row">
+            <span class="pn-kv-key">Updated to 2.13.0</span>
+            <span class="pn-kv-val" style="color: #4a9d1f; font-weight: 600;">Success</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pn-card">
+        <div class="pn-h">
+          <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 13m0 2a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z" /><path d="M17 17l0 .01" /><path d="M13 17l0 .01" /><path d="M15 13l0 -2" /><path d="M11.75 8.75a4 4 0 0 1 6.5 0" /><path d="M8.5 6.5a8 8 0 0 1 13 0" /></svg>
+          <span>Major versions</span>
+        </div>
+        <div class="pn-kv">
+          <p class="pn-help">Need your approval before installing.</p>
+          <div class="pn-acts">
+            <button class="p-btn" data-variant="accent">Version 3 available — Update</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
