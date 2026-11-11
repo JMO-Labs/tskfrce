@@ -110,3 +110,32 @@ def test_goal_without_recent_earning_has_no_eta(client, db, parent, parent_heade
     _goal(db, parent, a, target=100)
     g = client.get(URL, headers=parent_headers).json()["goals"][0]
     assert g["pct"] == 0 and g["eta_days"] is None
+
+
+def test_chore_without_due_time_is_on_time_until_end_of_day(client, db, parent, parent_headers):
+    _setup(db)
+    kid = _make_user(db, "leo", UserRole.KID)
+    y = DAY - timedelta(days=1)
+    _run(db, parent, kid, y, 12, due=None)  # same day: on time
+    _run(db, parent, kid, y, 36, due=None)  # next day at noon: late
+    j = client.get(URL, headers=parent_headers).json()["week"]
+    assert j["series"][-2] == {"day": y.isoformat(), "rate": 50, "done": 1, "total": 2}
+
+
+def test_done_run_without_timestamp_counts_as_on_time(client, db, parent, parent_headers):
+    _setup(db)
+    kid = _make_user(db, "leo", UserRole.KID)
+    y = DAY - timedelta(days=1)
+    make_run(db, parent, kid, day=y, status="done", due_time="17:00")  # no submitted_at
+    j = client.get(URL, headers=parent_headers).json()["week"]
+    assert j["series"][-2] == {"day": y.isoformat(), "rate": 100, "done": 1, "total": 1}
+    assert sum(sum(row) for row in j["when"]) == 0  # no timestamp: not in the grid
+
+
+def test_open_run_today_is_not_late_yet(client, db, parent, parent_headers):
+    _setup(db)
+    kid = _make_user(db, "leo", UserRole.KID)
+    make_run(db, parent, kid, day=DAY, status="todo", due_time="09:00")
+    j = client.get(URL, headers=parent_headers).json()["week"]
+    assert j["series"][-1] == {"day": DAY.isoformat(), "rate": None, "done": 0, "total": 0}
+    assert j["has_history"] is False
