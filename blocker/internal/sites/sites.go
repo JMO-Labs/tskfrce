@@ -48,10 +48,9 @@ func (m *Manager) Sync(coveredVLANs []uint16) error {
 		return nil
 	}
 
+	// Build list of VLANs to stop/create under lock
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// Stop sites no longer in covered list
+	toStop := make([]*Site, 0)
 	for vid, site := range m.sites {
 		found := false
 		for _, cv := range coveredVLANs {
@@ -61,21 +60,35 @@ func (m *Manager) Sync(coveredVLANs []uint16) error {
 			}
 		}
 		if !found {
-			m.teardownSite(site)
-			delete(m.sites, vid)
+			toStop = append(toStop, site)
 		}
 	}
-
-	// Create/update sites for covered VLANs
+	toCreate := make([]uint16, 0)
 	for _, vid := range coveredVLANs {
 		if _, exists := m.sites[vid]; !exists {
-			site, err := m.createSite(vid)
-			if err != nil {
-				m.logger.Error("failed to create site", "vid", vid, "err", err)
-				continue
-			}
-			m.sites[vid] = site
+			toCreate = append(toCreate, vid)
 		}
+	}
+	m.mu.Unlock()
+
+	// Stop sites (no lock needed; teardownSite acquires its own if needed)
+	for _, site := range toStop {
+		m.teardownSite(site)
+		m.mu.Lock()
+		delete(m.sites, site.VID)
+		m.mu.Unlock()
+	}
+
+	// Create sites (may block on DHCP; don't hold lock)
+	for _, vid := range toCreate {
+		site, err := m.createSite(vid)
+		if err != nil {
+			m.logger.Error("failed to create site", "vid", vid, "err", err)
+			continue
+		}
+		m.mu.Lock()
+		m.sites[vid] = site
+		m.mu.Unlock()
 	}
 
 	return nil

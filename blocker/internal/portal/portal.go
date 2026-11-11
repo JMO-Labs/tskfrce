@@ -63,6 +63,12 @@ func (p *Portal) ListenDNS(ctx context.Context) error {
 			conn.Close()
 		}()
 
+		// F28: Portal off if no valid IPv4 portal IP
+		if p.portalIP == nil || p.portalIP.To4() == nil {
+			p.logger.Warn("DNS listener disabled: no valid IPv4 portal IP")
+			return
+		}
+
 		buf := make([]byte, 512) // F44: reads ≤512 bytes
 		for {
 			select {
@@ -81,35 +87,44 @@ func (p *Portal) ListenDNS(ctx context.Context) error {
 				return
 			}
 
-			// F44: Drop if sport 53, response, opcode ≠ 0, qdcount ≠ 1, or unparsable
-			if remoteAddr.Port == 53 {
-				continue
-			}
+			// Wrap per-packet handling in recover (fail-safe: one bad packet doesn't stop listener)
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						p.logger.Warn("DNS packet panic", "err", r)
+					}
+				}()
 
-			var msg dnsmessage.Message
-			if err := msg.Unpack(buf[:n]); err != nil {
-				continue
-			}
+				// F44: Drop if sport 53, response, opcode ≠ 0, qdcount ≠ 1, or unparsable
+				if remoteAddr.Port == 53 {
+					return
+				}
 
-			// Drop if response or invalid opcode or wrong question count
-			if msg.Response || msg.OpCode != 0 || len(msg.Questions) != 1 {
-				continue
-			}
+				var msg dnsmessage.Message
+				if err := msg.Unpack(buf[:n]); err != nil {
+					return
+				}
 
-			// Handle query
-			q := msg.Questions[0]
-			resp := p.buildDNSResponse(&msg, q)
+				// Drop if response or invalid opcode or wrong question count
+				if msg.Response || msg.OpCode != 0 || len(msg.Questions) != 1 {
+					return
+				}
 
-			// Send response
-			packed, err := resp.Pack()
-			if err != nil {
-				p.logger.Error("DNS pack error", "err", err)
-				continue
-			}
+				// Handle query
+				q := msg.Questions[0]
+				resp := p.buildDNSResponse(&msg, q)
 
-			if _, err := conn.WriteToUDP(packed, remoteAddr); err != nil {
-				p.logger.Error("DNS write error", "err", err)
-			}
+				// Send response
+				packed, err := resp.Pack()
+				if err != nil {
+					p.logger.Error("DNS pack error", "err", err)
+					return
+				}
+
+				if _, err := conn.WriteToUDP(packed, remoteAddr); err != nil {
+					p.logger.Error("DNS write error", "err", err)
+				}
+			}()
 		}
 	}()
 
@@ -128,9 +143,13 @@ func (p *Portal) buildDNSResponse(req *dnsmessage.Message, q dnsmessage.Question
 	resp.Questions = []dnsmessage.Question{q}
 
 	// F44: A -> box IP, TTL 30, aa=1, ra=1, rd copied; other types -> NOERROR, no answer
-	if q.Type == dnsmessage.TypeA {
+	if q.Type == dnsmessage.TypeA && p.portalIP != nil {
+		v4 := p.portalIP.To4()
+		if v4 == nil {
+			return &resp // No answer for IPv6-only portal IP
+		}
 		arec := dnsmessage.AResource{
-			A: [4]byte{p.portalIP[0], p.portalIP[1], p.portalIP[2], p.portalIP[3]},
+			A: [4]byte{v4[0], v4[1], v4[2], v4[3]},
 		}
 		resp.Answers = []dnsmessage.Resource{
 			{

@@ -73,6 +73,12 @@ func (s *Service) Run(ctx context.Context) error {
 
 	s.reconcileOnce(ctx)
 
+	// F22: Periodic reconcile to fetch updated covered_vlans from backend
+	stops["reconcile"] = s.startLoop(ctx, func() error {
+		s.reconcileOnce(ctx)
+		return nil
+	}, time.Duration(s.cfg.ReconcileInterval*1000)*time.Millisecond)
+
 	stops["resist"] = s.startLoop(ctx, func() error {
 		resisting := s.resist.Resisting()
 		macs := make([]string, 0, len(resisting))
@@ -97,12 +103,10 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 
 	stops["sites"] = s.startLoop(ctx, func() error {
-		if vlans := s.vlanDetect.GetVLANs(); vlans != nil {
-			vids := make([]uint16, 0, len(vlans))
-			for vid := range vlans {
-				vids = append(vids, vid)
-			}
-			return s.sites.Sync(vids)
+		// F50: sync uses backend's covered_vlans from /state, not detector (F49 only listens)
+		covered := s.store.GetCoveredVLANs()
+		if len(covered) > 0 {
+			return s.sites.Sync(covered)
 		}
 		return nil
 	}, 60*time.Second)
@@ -164,6 +168,7 @@ func (s *Service) reconcileOnce(ctx context.Context) {
 	if state, err := s.backend.GetState(ctx); err == nil && state != nil {
 		s.store.SetBlocked(state.Blocked)
 		s.store.SetListenOnly(state.ListenOnly)
+		s.store.SetCoveredVLANs(state.CoveredVLANs) // F50: only backend drives covered_vlans
 	}
 }
 

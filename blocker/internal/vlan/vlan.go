@@ -11,6 +11,12 @@ import (
 	"github.com/mdlayher/packet"
 )
 
+const (
+	maxVLANs       = 4094       // Valid VLAN IDs 1-4094 per spec
+	maxMACsPerVLAN = 1000       // Cap per VLAN to prevent DoS memory growth
+	maxTotalMACs   = 10000      // Cap total MACs across all VLANs
+)
+
 // Detector listens for 802.1Q frames and detects VLAN topology (F49)
 type Detector struct {
 	mu          sync.RWMutex
@@ -143,21 +149,45 @@ func (d *Detector) listenOnInterface(iface *net.Interface) {
 	}
 }
 
-// recordMACOnVLAN records a MAC address seen on a VLAN
+// recordMACOnVLAN records a MAC address seen on a VLAN (F49: cap to prevent DoS)
 func (d *Detector) recordMACOnVLAN(mac string, vid uint16) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	vi, vlanExists := d.vlans[vid]
+
+	// Cap: max VLANs (reject new VLANs once at limit)
+	if len(d.vlans) >= maxVLANs && !vlanExists {
+		return
+	}
+
 	// Ensure VLAN info exists
-	if _, exists := d.vlans[vid]; !exists {
-		d.vlans[vid] = &vlanInfo{
+	if !vlanExists {
+		vi = &vlanInfo{
 			macs:    make(map[string]bool),
 			subnets: make(map[string]int),
+		}
+		d.vlans[vid] = vi
+	}
+
+	// Cap: max MACs per VLAN (ignore new MACs once limit reached)
+	if len(vi.macs) >= maxMACsPerVLAN && !vi.macs[mac] {
+		return
+	}
+
+	// Cap: max total MACs across all VLANs (ignore new MACs once limit reached)
+	if !vi.macs[mac] {
+		totalMACs := 0
+		for _, info := range d.vlans {
+			totalMACs += len(info.macs)
+		}
+		if totalMACs >= maxTotalMACs {
+			return
 		}
 	}
 
 	// Record MAC
-	d.vlans[vid].macs[mac] = true
+	vi.macs[mac] = true
 
 	// Track MAC -> VLAN mapping
 	if _, exists := d.macVLANs[mac]; !exists {

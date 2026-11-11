@@ -1,6 +1,6 @@
 module github.com/jmo-labs/tskfrce/blocker
 
-go 1.26
+go 1.26.10
 
 require (
 	github.com/google/nftables v0.3.0
