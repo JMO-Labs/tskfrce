@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from '@jest/globals'
 import type { Mock } from 'jest-mock'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MantineProvider } from '@mantine/core'
 import { api } from '@/v2/api'
@@ -31,9 +31,10 @@ const wrap = (ui: React.ReactElement) =>
 
 describe('SystemWarnings', () => {
   test('renders nothing when the box is fine', async () => {
-    const { container } = wrap(<SystemWarnings />)
-    await new Promise((r) => setTimeout(r, 20))
-    expect(container).toBeEmptyDOMElement()
+    wrap(<SystemWarnings />)
+    await waitFor(() => expect(apiMock.mock.calls.some(([p]) => p === '/system/warnings')).toBe(true))
+    await act(async () => {})
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   test('shows each warning with a plain explanation and a fix action', async () => {
