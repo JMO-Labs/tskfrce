@@ -115,9 +115,10 @@ def make_api(
     state: Any,
     token: str,
     tester: Callable,
-    rescan: Callable | None = None,
     host: str = "127.0.0.1",
     port: int = 0,
+    *,
+    rescan: Callable | None = None,
 ) -> HTTPServer:
     server = HTTPServer((host, port), _Handler)
     server.state = state  # type: ignore[attr-defined]
