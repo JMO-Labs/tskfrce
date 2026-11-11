@@ -50,8 +50,9 @@ export function StepFamily({ name, tz, showError, onName, onTz }: Props) {
       <div style={{ background: 'var(--p-card)', border: '1px solid var(--p-line)', borderRadius: '18px', padding: '16px 18px' }}>
         <div style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--p-ink)' }}>Family</div>
         <div style={{ marginBottom: '12px' }}>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--p-ink)' }}>Family name</label>
+          <label htmlFor="familyName" style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--p-ink)' }}>Family name</label>
           <input
+            id="familyName"
             type="text"
             placeholder="The Smiths"
             value={name}

@@ -59,8 +59,9 @@ export function StepParent({ value, showError, onChange }: Props) {
         <div style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--p-ink)' }}>Your Account</div>
 
         <div style={{ marginBottom: '12px' }}>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--p-ink)' }}>Your name</label>
+          <label htmlFor="fullName" style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--p-ink)' }}>Your name</label>
           <input
+            id="fullName"
             type="text"
             placeholder="e.g., Alex"
             value={value.fullName}
@@ -83,8 +84,9 @@ export function StepParent({ value, showError, onChange }: Props) {
         </div>
 
         <div style={{ marginBottom: '12px' }}>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--p-ink)' }}>Username</label>
+          <label htmlFor="username" style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--p-ink)' }}>Username</label>
           <input
+            id="username"
             type="text"
             placeholder="e.g., alex_smith"
             value={value.username}
@@ -116,8 +118,9 @@ export function StepParent({ value, showError, onChange }: Props) {
         </div>
 
         <div style={{ marginBottom: '12px' }}>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--p-ink)' }}>Password</label>
+          <label htmlFor="password" style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--p-ink)' }}>Password</label>
           <input
+            id="password"
             type={showPassword ? 'text' : 'password'}
             placeholder="8+ characters"
             value={value.password}
@@ -139,8 +142,9 @@ export function StepParent({ value, showError, onChange }: Props) {
         </div>
 
         <div style={{ marginBottom: '0' }}>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--p-ink)' }}>Type it again</label>
+          <label htmlFor="passwordConfirm" style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--p-ink)' }}>Type it again</label>
           <input
+            id="passwordConfirm"
             type={showAgain ? 'text' : 'password'}
             placeholder="Confirm password"
             value={value.again}
