@@ -1,7 +1,7 @@
 """goals: played_at and penalty_id for the Get out of jail free card
 
 Revision ID: i4c5d6e7f8a9
-Revises: w1a2b3c4d5e6
+Revises: d7e8f9a0b1c2
 Create Date: 2026-11-10 14:00:00.000000
 """
 
@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "i4c5d6e7f8a9"
-down_revision: str | Sequence[str] | None = "w1a2b3c4d5e6"
+down_revision: str | Sequence[str] | None = "d7e8f9a0b1c2"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
