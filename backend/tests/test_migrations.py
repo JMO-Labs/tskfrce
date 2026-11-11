@@ -119,3 +119,23 @@ def test_penalties_downgrade_removes_makeup_chores(tmp_path):
     with eng.connect() as c:
         for t in ("chores", "chore_assignments", "assignment_kids", "chore_runs"):
             assert c.execute(text(f"SELECT COUNT(*) FROM {t}")).scalar() == 0, t
+
+
+def test_goal_jail_card_migration_round_trips(tmp_path):
+    url = f"sqlite:///{tmp_path / 'jail.db'}"
+
+    def alembic(*args):
+        subprocess.run(
+            [sys.executable, "-m", "alembic", *args],
+            cwd=BACKEND,
+            env={**os.environ, "DATABASE_URL": url},
+            check=True,
+        )
+
+    cols = lambda: {c["name"] for c in inspect(create_engine(url)).get_columns("goals")}  # noqa: E731
+    alembic("upgrade", "head")
+    assert {"played_at", "penalty_id"} <= cols()
+    alembic("downgrade", "-1")
+    assert not {"played_at", "penalty_id"} & cols()
+    alembic("upgrade", "head")
+    assert {"played_at", "penalty_id"} <= cols()

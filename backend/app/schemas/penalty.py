@@ -66,3 +66,15 @@ class PenaltyIn(_Amount):
 
 class ShortenIn(BaseModel):
     minutes: int = Field(ge=15, le=20160)
+
+
+class GoalPenaltyIn(BaseModel):
+    goal_id: int
+    mode: Literal["take", "raise"]
+    amount: int = Field(ge=1, le=100000)
+    reason: Annotated[str | None, StringConstraints(strip_whitespace=True, max_length=120)] = None
+
+    @field_validator("reason")
+    @classmethod
+    def _blank(cls, v):
+        return v or None

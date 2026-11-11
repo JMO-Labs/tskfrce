@@ -2,10 +2,13 @@ import type { ReactNode } from "react";
 import {
   earnLine,
   duration,
+  goalLine,
   stepAmount,
   whatLine,
   type EarnBack,
+  type GoalMode,
   type PenaltyDraft,
+  type PenaltyGoal,
   type PenaltyKind,
   type PenaltyOptions,
 } from "../penaltyTypes";
@@ -74,6 +77,8 @@ interface WhatProps {
   open: boolean;
   onOpen: () => void;
   onChange: (p: Partial<PenaltyDraft>) => void;
+  /** family sheet only: live family goals to take from or raise */
+  goals?: PenaltyGoal[];
 }
 
 const DEFAULT_AMOUNT: Record<PenaltyKind, number> = {
@@ -82,11 +87,15 @@ const DEFAULT_AMOUNT: Record<PenaltyKind, number> = {
   block: 1440,
 };
 
-export function WhatLine({ draft, kid, open, onOpen, onChange }: WhatProps) {
+export function WhatLine({ draft, kid, open, onOpen, onChange, goals = [] }: WhatProps) {
   if (!open)
     return (
       <Row
-        text={whatLine(draft, deviceLabel(draft, kid))}
+        text={
+          draft.goal
+            ? goalLine(draft, goals)
+            : whatLine(draft, deviceLabel(draft, kid))
+        }
         action="change"
         onOpen={onOpen}
       />
@@ -97,19 +106,42 @@ export function WhatLine({ draft, kid, open, onOpen, onChange }: WhatProps) {
       amount: draft.kind === kind ? draft.amount : DEFAULT_AMOUNT[kind],
       device_id: null,
       group_id: null,
+      goal: null,
       ...extra,
+    });
+  const setGoal = (mode: GoalMode, id = draft.goal?.id ?? goals[0].id) =>
+    onChange({
+      kind: "points",
+      amount: draft.kind === "points" ? draft.amount : DEFAULT_AMOUNT.points,
+      device_id: null,
+      group_id: null,
+      goal: { id, mode },
     });
   const allDevices =
     draft.kind === "block" && !draft.device_id && !draft.group_id;
+  const mode = draft.goal?.mode;
   return (
     <div className="p-pen-edit">
       <div className="p-pen-chips">
-        <Chip on={draft.kind === "points"} onClick={() => setKind("points")}>
+        <Chip
+          on={draft.kind === "points" && !draft.goal}
+          onClick={() => setKind("points")}
+        >
           Points
         </Chip>
         <Chip on={draft.kind === "screen"} onClick={() => setKind("screen")}>
           Screen time
         </Chip>
+        {goals.length > 0 && (
+          <>
+            <Chip on={mode === "take"} onClick={() => setGoal("take")}>
+              Take from a goal
+            </Chip>
+            <Chip on={mode === "raise"} onClick={() => setGoal("raise")}>
+              Raise a goal&apos;s target
+            </Chip>
+          </>
+        )}
         {kid?.groups.map((g) => (
           <Chip
             key={`g${g.id}`}
@@ -132,6 +164,19 @@ export function WhatLine({ draft, kid, open, onOpen, onChange }: WhatProps) {
           </Chip>
         ))}
       </div>
+      {mode && goals.length > 1 && (
+        <div className="p-pen-chips">
+          {goals.map((g) => (
+            <Chip
+              key={g.id}
+              on={draft.goal?.id === g.id}
+              onClick={() => setGoal(mode, g.id)}
+            >
+              {g.name}
+            </Chip>
+          ))}
+        </div>
+      )}
       <div className="p-pen-step">
         <button
           type="button"

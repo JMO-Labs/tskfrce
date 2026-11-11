@@ -9,13 +9,15 @@ from app.api.deps import get_db, require_parent
 from app.lock.loop import trigger
 from app.models.chores import ChoreRun
 from app.models.family import get_family
+from app.models.goal import Goal
 from app.models.inbox import Notification
 from app.models.lock import Device
 from app.models.penalty import Penalty
 from app.models.user import User, UserRole
-from app.schemas.penalty import PenaltyIn, ShortenIn
+from app.schemas.penalty import GoalPenaltyIn, PenaltyIn, ShortenIn
 from app.services import chores as svc
-from app.services import penalties, penalty_earnback
+from app.services import goals, goals_hook, penalties, penalty_earnback
+from app.services.goals_out import goal_out
 
 router = APIRouter(prefix="/api/v1", tags=["penalties"], dependencies=[Depends(require_parent)])
 
@@ -65,7 +67,23 @@ def options(db: Session = Depends(get_db)):
         "sizes": penalties.sizes(fam),
         "makeup_chores": penalties.makeup_list(fam),
         "kids": rows,
+        "goals": _family_goals(db, fam),
     }
+
+
+def _family_goals(db: Session, fam) -> list[dict]:
+    """Live family goals a family penalty can hit; none while Goals is off."""
+    if not fam.goals_on:
+        return []
+    rows = (
+        db.query(Goal)
+        .filter(Goal.kid_id.is_(None), Goal.status.in_(("active", "full")))
+        .order_by(Goal.created_at, Goal.id)
+    )
+    return [
+        {"id": g.id, "name": g.name, "saved": goals.saved(db, g.id), "target": g.target}
+        for g in rows
+    ]
 
 
 @router.post("/penalties", status_code=201)
@@ -97,6 +115,22 @@ def give(body: PenaltyIn, db: Session = Depends(get_db), parent: User = Depends(
     rows = penalties.give(db, ids, g, parent, datetime.now(UTC))
     trigger()
     return penalties.out_many(db, rows)
+
+
+@router.post("/penalties/goal")
+def goal_penalty(
+    body: GoalPenaltyIn, db: Session = Depends(get_db), parent: User = Depends(require_parent)
+):
+    fam = get_family(db)
+    if not fam.penalties_enabled:
+        raise HTTPException(409, "Penalties are turned off. Turn them on in Settings.")
+    if not fam.goals_on:
+        raise HTTPException(409, "Goals are turned off.")
+    if body.mode == "take":
+        g = goals_hook.take(db, body.goal_id, parent, body.amount, body.reason)
+    else:
+        g = goals_hook.raise_target(db, body.goal_id, body.amount)
+    return goal_out(db, g, parent, fam)
 
 
 @router.get("/kids/{kid_id}/penalties")

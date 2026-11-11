@@ -11,7 +11,7 @@ from app.api.kid import require_kid, view_kid
 from app.models.family import get_family
 from app.models.goal import Goal, GoalAuto, GoalParty
 from app.models.user import User
-from app.services import economy, goals, goals_auto
+from app.services import economy, goals, goals_auto, goals_jail
 from app.services.goals_out import goal_out
 
 router = APIRouter(prefix="/api/v1/kid", tags=["kid"])
@@ -23,6 +23,10 @@ class SuggestIn(BaseModel):
 
 class StartIn(BaseModel):
     kind: str = Field(pattern="^(screen|jail)$")
+
+
+class PlayIn(BaseModel):
+    penalty_id: int
 
 
 class AmountIn(BaseModel):
@@ -55,6 +59,7 @@ def my_goals(db: Session = Depends(get_db), kid: User = Depends(view_kid)):
         "auto_goal_id": auto.goal_id if auto else None,
         "can_add": goals_auto.can_add(db, fam, kid),
         "free": economy.balance(db, kid.id) - economy.pending_cost(db, kid.id),
+        "cards": goals_jail.cards(db, kid.id),
         "builtins": [],
         "goals": [],
         "done": [],
@@ -102,6 +107,12 @@ def suggest(body: SuggestIn, db: Session = Depends(get_db), kid: User = Depends(
 def start(body: StartIn, db: Session = Depends(get_db), kid: User = Depends(require_kid)):
     g = goals_auto.start(db, kid, body.kind)
     return goal_out(db, g, kid, get_family(db))
+
+
+@router.post("/goals/jail/play")
+def play_jail(body: PlayIn, db: Session = Depends(get_db), kid: User = Depends(require_kid)):
+    goals_jail.play(db, kid, body.penalty_id)
+    return {"cards": goals_jail.cards(db, kid.id)}
 
 
 @router.post("/goals/{goal_id}/add")

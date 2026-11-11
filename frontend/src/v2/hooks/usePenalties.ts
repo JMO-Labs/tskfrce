@@ -28,6 +28,26 @@ export function useGivePenalty() {
   })
 }
 
+export interface GoalPenaltyBody {
+  goal_id: number
+  mode: 'take' | 'raise'
+  amount: number
+  reason?: string
+}
+
+/** Family penalty on a family goal: take points from it or raise its target. */
+export function useGoalPenalty() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: GoalPenaltyBody) => api('/penalties/goal', { method: 'POST', body }),
+    onSuccess: () => {
+      toastOk('Penalty given')
+      return Promise.all([refresh(qc), qc.invalidateQueries({ queryKey: ['goals'] })])
+    },
+    onError: toastFail,
+  })
+}
+
 export function usePenaltyAction() {
   const qc = useQueryClient()
   return useMutation({
