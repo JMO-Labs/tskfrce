@@ -42,7 +42,7 @@ describe('RuleEditor', () => {
     editor({ initial: { category: 'other' } })
     await userEvent.click(await screen.findByRole('switch', { name: 'Everyone' }))
     const kids = within(screen.getByRole('group', { name: 'Kids' }))
-    expect(kids.getAllByRole('button').map((b) => b.textContent)).toEqual(['MMia', 'LLeo']) // avatar letter + name
+    expect(kids.getAllByRole('button').map((b) => b.textContent)).toEqual(['MiMia', 'LeLeo']) // avatar letter + name
     await userEvent.click(kids.getByRole('button', { name: 'Mia' }))
     expect(kids.getByRole('button', { name: 'Mia' }).getAttribute('aria-pressed')).toBe('true')
   })
