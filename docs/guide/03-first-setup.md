@@ -38,15 +38,23 @@ Every kid starts with the **Kid (9–12)** look. You can switch a kid to **Littl
 
 The page asks "How strict should it be?" Pick one:
 
-- **Relaxed**: fewer chores, more screen time and later bedtimes.
-- **Balanced** (most families): the default. Tap **Next** to keep it.
-- **Strict**: more chores, less screen time, an earlier bedtime, and photo proof for chores.
+- **Relaxed**: 2 chores a day, 3 hours of screen time, bedtime 9:00 PM. Trust mode is on, so chores approve themselves with random spot checks. Devices are not locked until chores are done.
+- **Balanced** (most families): the default. 3 chores a day, 2 hours of screen time, bedtime 8:30 PM. You approve each chore, and devices stay locked until the day's chores are done. Tap **Next** to keep it.
+- **Strict**: 4 chores a day, 1 hour of screen time, bedtime 8:00 PM. You approve each chore and it needs a photo. Devices stay locked until chores are done. Penalties are on, and banked time is off.
+
+These numbers are for the **Kid (9–12)** look. Goals are on for every style. Relaxed and Balanced also turn banked time on, and Strict turns it off. Screen time is a daily amount, and weekend bedtimes are an hour and a half later.
 
 With two or more kids, switch on **Different for each kid** to pick a style for each one. Tap **See what this sets** to see the limits in a table, one column per kid. You don't need to open it.
 
-Each kid's age changes the plan. Little kids get fewer and simpler chores and an earlier bedtime. Teens get more freedom.
+Each kid's age changes the plan. Little kids get one chore fewer, 30 minutes less screen time and a bedtime an hour earlier. Teens get 30 minutes more screen time and a bedtime an hour later.
 
-You should see: your pick selected. You can change it later.
+You should see: your pick selected.
+
+### Change the style later
+
+Nothing here is final. To switch the whole family, tap **Settings**, then **Family**, then **Style**. To switch one kid, open that kid's page and use its **Style** switch.
+
+Pick a different style and t@sk4ce first shows what would change. It keeps anything you already edited, such as chores you added or hours you changed. Tap **Switch to** to confirm.
 
 ## Step 5. Your plan
 
