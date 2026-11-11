@@ -1,7 +1,5 @@
 """Settings API: reset app/factory reset, backup export, forgot-PIN recovery."""
 
-from typing import Annotated
-
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -9,7 +7,9 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, require_parent
 from app.core.auth import AuthService
 from app.core.claim import matches as claim_matches
+from app.core.client_ip import client_ip
 from app.core import lockout
+from app.models.family import get_family
 from app.models.user import User
 from app.services.reset import backup_export, factory_reset, reset_app_data
 
@@ -19,8 +19,8 @@ router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
 class ResetRequest(BaseModel):
     """Request to reset or factory-reset the box."""
 
-    password: Annotated[str, Field(min_length=1)]
-    confirm: Annotated[str, Field(min_length=5)]  # Must be exactly "RESET"
+    password: str = Field(min_length=1)
+    confirm: str = Field(min_length=5)  # Must be exactly "RESET"
     factory: bool = False
 
 
@@ -33,8 +33,8 @@ class BackupExportResponse(BaseModel):
 class ForgotPinRequest(BaseModel):
     """Request to reset parent password using sticker claim code."""
 
-    claim_code: Annotated[str, Field(min_length=1)]
-    new_password: Annotated[str, Field(min_length=8)]
+    claim_code: str = Field(min_length=1)
+    new_password: str = Field(min_length=8)
 
 
 @router.post("/reset")
@@ -112,18 +112,20 @@ def forgot_pin(
     db: Session = Depends(get_db),
 ) -> dict:
     """
-    Reset parent password using sticker claim code (no auth required, rate-limited by IP).
+    Reset owner parent password using sticker claim code (no auth required).
 
-    Checks claim code against CLAIM_CODE setting.
-    Rate limit: 5 attempts/min/IP, then 60–3600 s backoff (doubling).
-    Comparison: hmac.compare_digest on normalized code.
+    Rate-limited: shares claim-code lockout namespace (5 attempts/min/IP,
+    then 60–3600 s backoff). Uses constant-time compare on normalized code.
 
-    Returns 200 if code is correct (sets new password).
-    Returns 403 if code is wrong or lockout active (generic message).
+    Returns 200 if code is correct (resets owner password).
+    Returns 403 if code is wrong (generic message).
+    Returns 429 if lockout active (shared with /setup/claim endpoint).
+
+    Post-reset: TODO: Invalidate all existing owner sessions, notify owner.
     """
-    # Extract IP from X-Forwarded-For or use client address
-    client_ip = request.client.host if request.client else "127.0.0.1"
-    lockout_key = f"forgot_pin:{client_ip}"
+    # Use shared claim-code lockout namespace (same as /setup/claim)
+    ip = client_ip(request)
+    lockout_key = f"claim:{ip}"
 
     # Check rate limit (raises 429 if locked out)
     try:
@@ -139,19 +141,30 @@ def forgot_pin(
             detail="Claim code is incorrect. Check the sticker and try again.",
         )
 
-    # Code is correct: reset parent password
+    # Code is correct: reset owner parent password
     try:
         auth = AuthService(db)
-        parent = db.query(User).filter(User.role == "PARENT").first()
-        if not parent:
+        fam = get_family(db)
+        owner_id = fam.owner_id
+        if not owner_id:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="No parent account found.",
             )
 
+        owner = db.query(User).filter(User.id == owner_id).first()
+        if not owner:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Parent account not found.",
+            )
+
         # Hash and update password
-        parent.hashed_password = auth.hash_password(body.new_password)
+        owner.hashed_password = auth.hash_password(body.new_password)
         db.commit()
+
+        # TODO: Invalidate all existing owner sessions/tokens
+        # TODO: Send notification: ntfy + Today note "Parent PIN was reset with box code"
 
         return {
             "ok": True,

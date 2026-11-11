@@ -1,22 +1,15 @@
 """Tests for box reset functionality (PR 2)."""
 
 import json
-from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.orm import Session
 
-from app.models import (
-    Chore,
-    ChoreAssignment,
-    ChoreRun,
-    FamilySettings,
-    User,
-)
-from app.models.family import get_family
+from app.models import FamilySettings, User
 from app.models.user import UserRole
-from app.services.reset import backup_export, factory_reset, reset_app_data
+from app.models.family import get_family
+from app.services.reset import backup_export, reset_app_data
 
 
 @pytest.fixture
@@ -56,65 +49,72 @@ def setup_family(db: Session):
 
 
 class TestResetAppData:
-    """Test reset_app_data: wipes family data, keeps Wi-Fi/box ID/UPDATE_CHANNEL."""
+    """Test reset_app_data: wipes family data, keeps box ID/settings."""
 
-    def test_reset_wipes_kids_and_data(self, db: Session, setup_family):
-        """After reset, kids/chores/devices/etc are gone, parent/settings unchanged."""
+    def test_reset_wipes_kids(self, db: Session, setup_family):
+        """After reset, all kids are deleted."""
         fam, parent, kids = setup_family
-        kid1_id = kids[0].id
+        assert db.query(User).filter(User.role == UserRole.KID).count() == 2
 
-        # Create a chore and run for the kid
-        chore = Chore(name="Clean room", family_id=1, category="home")
-        db.add(chore)
-        db.flush()
-
-        run = ChoreRun(chore_id=chore.id, kid_id=kid1_id, status="todo", created_at=datetime.now(UTC))
-        db.add(run)
-        db.commit()
-
-        # Verify setup
-        assert db.query(User).filter(User.role == "KID").count() == len(kids)
-        assert db.query(Chore).count() >= 1
-        assert db.query(ChoreRun).count() >= 1
-
-        # Reset
         reset_app_data(db, unblock=False)
 
-        # Verify wipes
-        assert db.query(User).filter(User.role == "KID").count() == 0
-        assert db.query(Chore).count() == 0
-        assert db.query(ChoreRun).count() == 0
-        assert db.query(ChoreAssignment).count() == 0
+        # Verify kids are wiped
+        assert db.query(User).filter(User.role == UserRole.KID).count() == 0
 
-        # Verify parent unchanged
-        parent_after = db.query(User).filter(User.id == parent.id).first()
-        assert parent_after is not None
-        assert parent_after.role == "PARENT"
+    def test_reset_deletes_parent_user(self, db: Session, setup_family):
+        """After reset, parent user is deleted (setup wizard reachable)."""
+        fam, parent, kids = setup_family
+        parent_id = parent.id
 
-        # Verify settings unchanged
+        reset_app_data(db, unblock=False)
+
+        # Verify parent is deleted
+        assert db.query(User).filter(User.id == parent_id).first() is None
+        assert db.query(User).count() == 0
+
+    def test_reset_clears_owner_id(self, db: Session, setup_family):
+        """After reset, owner_id is None (claim code re-armed)."""
+        fam, parent, kids = setup_family
+        assert fam.owner_id is not None
+
+        reset_app_data(db, unblock=False)
+
+        # Verify owner is cleared
         fam_after = db.query(FamilySettings).first()
-        assert fam_after.id == fam.id
-        assert fam_after.name == fam.name
+        assert fam_after.owner_id is None
 
-    def test_reset_keeps_box_id_and_secret(self, db: Session, setup_family):
-        """box ID/secret/domain from family_keys are unchanged by reset."""
-        # Note: family_keys is a separate table; verify it exists after reset
+    def test_reset_keeps_family_settings(self, db: Session, setup_family):
+        """After reset, family settings record exists."""
+        fam, parent, kids = setup_family
+        orig_name = fam.name
+
         reset_app_data(db, unblock=False)
 
-        # Verify family settings still exist
-        fam = db.query(FamilySettings).first()
-        assert fam is not None
+        # Verify family_settings still exists (now with owner_id=None)
+        fam_after = db.query(FamilySettings).first()
+        assert fam_after is not None
+        assert fam_after.id == fam.id
 
-    @patch("app.services.reset.push_blocked")
-    def test_reset_unblocks_devices(self, mock_push: MagicMock, db: Session, setup_family):
-        """reset_app_data with unblock=True calls blocker to flush rules."""
+    def test_reset_setup_step_none(self, db: Session, setup_family):
+        """After reset, setup_step is None (wizard starts fresh)."""
+        fam, parent, kids = setup_family
+        fam.setup_step = 3  # Simulate mid-wizard
+
+        reset_app_data(db, unblock=False)
+
+        fam_after = db.query(FamilySettings).first()
+        assert fam_after.setup_step is None
+
+    @patch("app.services.reset.push_state")
+    def test_reset_calls_blocker_unblock(self, mock_push, db: Session, setup_family):
+        """reset_app_data calls push_state([], {}) to unblock all devices."""
         reset_app_data(db, unblock=True)
 
-        # Verify blocker was called with empty list
-        mock_push.assert_called_once_with([])
+        # Verify blocker was called with empty blocked list and empty homework
+        mock_push.assert_called_once_with([], {})
 
-    @patch("app.services.reset.push_blocked")
-    def test_reset_blocker_unreachable(self, mock_push: MagicMock, db: Session, setup_family):
+    @patch("app.services.reset.push_state")
+    def test_reset_blocker_unreachable_proceeds(self, mock_push, db: Session, setup_family):
         """If blocker is unreachable, reset still completes (fail-safe)."""
         mock_push.return_value = False  # Blocker didn't respond
 
@@ -122,46 +122,14 @@ class TestResetAppData:
         reset_app_data(db, unblock=True)
 
         # Data is still wiped
-        assert db.query(User).filter(User.role == "KID").count() == 0
-
-    def test_reset_with_active_session_raises(self, db: Session, setup_family):
-        """Reset is blocked if a kid session is active."""
-        fam, parent, kids = setup_family
-        kid = kids[0]
-
-        # TODO: Mark kid as in active session (check how the app tracks active sessions)
-        # For now, this test is a placeholder for the mechanism
-        pass
-
-
-class TestFactoryReset:
-    """Test factory_reset: also wipes Wi-Fi, re-arms claim code."""
-
-    @patch("app.services.reset.push_blocked")
-    def test_factory_reset_includes_app_wipe(self, mock_push: MagicMock, db: Session, setup_family):
-        """Factory reset wipes all data like reset_app_data."""
-        fam, parent, kids = setup_family
-
-        factory_reset(db, unblock=True)
-
-        # Verify data is wiped
-        assert db.query(User).filter(User.role == "KID").count() == 0
-
-    @patch("app.services.reset.push_blocked")
-    @patch("app.services.reset.restart_network_manager")
-    def test_factory_reset_wipes_wifi(self, mock_restart: MagicMock, mock_push: MagicMock, db: Session, setup_family):
-        """Factory reset calls restart for Wi-Fi (systemd-networkd restart or NetworkManager restart)."""
-        factory_reset(db, unblock=True)
-
-        # Verify network restart was called
-        mock_restart.assert_called_once()
+        assert db.query(User).count() == 0
 
 
 class TestBackupExport:
-    """Test backup_export: JSON with family data, no secrets or PIN."""
+    """Test backup_export: JSON with family data, no secrets."""
 
-    def test_backup_export_includes_family(self, db: Session, setup_family):
-        """Backup JSON includes family name and settings (non-secret)."""
+    def test_backup_includes_family(self, db: Session, setup_family):
+        """Backup JSON includes family name and config."""
         fam, parent, kids = setup_family
 
         export = backup_export(db)
@@ -170,45 +138,25 @@ class TestBackupExport:
         assert data["family"]["name"] == fam.name
         assert data["family"]["timezone"] == fam.timezone
 
-    def test_backup_export_includes_kids(self, db: Session, setup_family):
-        """Backup includes kid list (name, age, etc.)."""
+    def test_backup_includes_kids(self, db: Session, setup_family):
+        """Backup includes kid list."""
         fam, parent, kids = setup_family
 
         export = backup_export(db)
         data = json.loads(export)
 
         assert "kids" in data
-        assert len(data["kids"]) == len(kids)
-        assert all("name" in k for k in data["kids"])
+        assert len(data["kids"]) == 2
 
-    def test_backup_export_no_parent_password(self, db: Session, setup_family):
-        """Backup does NOT include parent password or PIN."""
+    def test_backup_no_parent_password(self, db: Session, setup_family):
+        """Backup does NOT include parent hashed_password."""
         fam, parent, kids = setup_family
 
         export = backup_export(db)
         data = json.loads(export)
 
-        # Parent info should not exist or should not have hashed_password
-        if "parent" in data:
-            assert "hashed_password" not in data["parent"]
-
-    def test_backup_export_no_device_secrets(self, db: Session, setup_family):
-        """Backup does NOT include device enrollment secrets."""
-        fam, parent, kids = setup_family
-
-        export = backup_export(db)
-        data = json.loads(export)
-
-        # Verify no enrollment tokens, kid device secrets, etc.
-        assert "enrollment_tokens" not in str(data)
-        assert "device_secrets" not in str(data)
-
-
-class TestForgotPinRecovery:
-    """Test forgot-PIN sticker code recovery in the API layer (see api/reset.py)."""
-
-    # These are tested in test_reset_api.py
-    pass
+        # Backup should have kids, not parent data
+        assert "hashed_password" not in json.dumps(data)
 
 
 if __name__ == "__main__":

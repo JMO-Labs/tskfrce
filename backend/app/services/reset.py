@@ -5,102 +5,70 @@ import subprocess
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import and_, delete
+from sqlalchemy import delete, text
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.database import Base
 from app.core.logging import get_logger
-from app.lock.blocker_client import push_blocked
-from app.models import (
-    Chore,
-    ChoreAssignment,
-    ChoreRun,
-    CustomBadge,
-    Device,
-    DeviceGroup,
-    DeviceHintRejection,
-    FamilySettings,
-    Goal,
-    GoalAuto,
-    GoalContribution,
-    GoalParty,
-    HappyHour,
-    HomeworkActivity,
-    HomeworkRequest,
-    HourRule,
-    KidDevice,
-    Notification,
-    Points,
-    PointsType,
-    Redemption,
-    Reward,
-    ScreenBank,
-    TrustEvent,
-    User,
-    UsedInvite,
-)
+from app.lock.blocker_client import push_state
+from app.models import FamilySettings, User
 from app.models.user import UserRole
 
 logger = get_logger(__name__)
 
+# Tables to KEEP (not wiped): box identity, settings, config, secrets
+# Everything else is wiped.
+KEEP_TABLES = {
+    "family_settings",  # family name, timezone, config
+    "family_keys",  # box ID, secret, domain (if exists)
+    "alembic_version",  # migration tracking
+}
+
 
 def reset_app_data(db: Session, unblock: bool = True) -> None:
     """
-    Reset app: wipe family data, keep Wi-Fi/box ID/UPDATE_CHANNEL/telemetry.
+    Reset app: wipe family data (kids, chores, history, parent PIN).
+    Keep box ID/domain, UPDATE_CHANNEL, telemetry config.
 
-    Tables wiped: kids (users with ROLE=KID), chores, chore_runs, devices,
-    device groups, notifications (inbox), points, rewards, assignments,
-    hour rules, and related data.
+    Order: unblock devices → wipe data → caller handles restart.
 
-    Parent (ROLE=PARENT) and family_settings are kept.
-    box ID/secret/domain (family_keys) are kept.
-    UPDATE_CHANNEL env var is kept (it's in .env, not the database).
+    Parent user (ROLE=PARENT) is deleted so setup wizard is reachable again
+    (claim code re-armed if factory reset).
     """
     try:
         # Unblock all devices first (flush blocker nftables rules)
         if unblock:
-            if not push_blocked([]):
+            if not push_state([], {}):
                 logger.warning("Blocker unreachable; proceeding with reset anyway")
 
-        # Delete all kids (users with role='KID')
-        db.execute(delete(User).where(User.role == UserRole.KID))
-
-        # Delete family data (cascade should handle most, but be explicit)
-        db.execute(delete(ChoreRun))
-        db.execute(delete(ChoreAssignment))
-        db.execute(delete(Chore))
-        db.execute(delete(Device))
-        db.execute(delete(DeviceGroup))
-        db.execute(delete(DeviceHintRejection))
-        db.execute(delete(KidDevice))
-        db.execute(delete(Notification))
-        db.execute(delete(Points))
-        db.execute(delete(PointsType))
-        db.execute(delete(Reward))
-        db.execute(delete(Redemption))
-        db.execute(delete(HourRule))
-        db.execute(delete(CustomBadge))
-        db.execute(delete(Goal))
-        db.execute(delete(GoalAuto))
-        db.execute(delete(GoalContribution))
-        db.execute(delete(GoalParty))
-        db.execute(delete(HappyHour))
-        db.execute(delete(TrustEvent))
-        db.execute(delete(HomeworkActivity))
-        db.execute(delete(HomeworkRequest))
-        db.execute(delete(ScreenBank))
-
-        # Reset family settings but keep the family name and other config
+        # Reset family settings fields FIRST (before deleting users)
+        # This clears foreign key references
         fam = db.query(FamilySettings).first()
         if fam:
-            # Reset to wizard start (setup_step set to None by frontend or we leave it)
+            fam.owner_id = None  # Re-arm claim code for setup
             fam.last_reset_date = None
+            fam.setup_step = None  # Wizard starts fresh
+            db.commit()
+
+        # Disable FK constraints temporarily (SQLite only; Postgres auto-handles with CASCADE)
+        db.execute(text("PRAGMA foreign_keys=OFF"))
+
+        # Delete all family data except KEEP_TABLES
+        # Iterate sorted_tables in reverse to respect dependency order
+        for table in reversed(Base.metadata.sorted_tables):
+            if table.name not in KEEP_TABLES:
+                db.execute(delete(table))
+
+        # Re-enable FK constraints
+        db.execute(text("PRAGMA foreign_keys=ON"))
 
         db.commit()
         logger.info("Reset app data complete")
 
-        # Send telemetry if eval box
-        _send_telemetry_event("box_reset", {"factory": False})
+        # Telemetry: use eval-branch hooks when available
+        # For now, log the intent (actual send deferred to telemetry integration)
+        _log_telemetry_intent("box_reset", {"factory": False})
 
     except Exception as e:
         logger.error("Reset app data failed", error=str(e))
@@ -111,8 +79,7 @@ def reset_app_data(db: Session, unblock: bool = True) -> None:
 def factory_reset(db: Session, unblock: bool = True) -> None:
     """
     Factory reset: wipe everything reset_app_data wipes, plus saved Wi-Fi.
-
-    Also re-arms the sticker claim code (if present in .env).
+    Re-arms the sticker claim code for setup (on next boot).
     """
     try:
         # First do the app reset
@@ -121,15 +88,11 @@ def factory_reset(db: Session, unblock: bool = True) -> None:
         # Then wipe Wi-Fi (restart network manager or systemd-networkd)
         restart_network_manager()
 
-        # Re-arm claim code: clear it from memory so the next setup needs the sticker again
-        # (This is more of a note for the deployment/install.sh; claim code is in .env)
-        # For now, just log it
-        logger.info("Sticker claim code re-armed (set in .env)")
-
+        # Sticker claim code is re-armed by setting owner_id=None in reset_app_data
         logger.info("Factory reset complete")
 
-        # Send telemetry if eval box
-        _send_telemetry_event("box_reset", {"factory": True})
+        # Telemetry: use eval-branch hooks when available
+        _log_telemetry_intent("box_reset", {"factory": True})
 
     except Exception as e:
         logger.error("Factory reset failed", error=str(e))
@@ -165,7 +128,7 @@ def restart_network_manager() -> None:
 
 def backup_export(db: Session) -> str:
     """
-    Export family data as JSON (no secrets, no PIN, no device enrollment data).
+    Export family data as JSON (no secrets, no PIN, no device enrollment).
 
     Returns: JSON string with {family, kids, chores, rewards, points_history}.
     """
@@ -176,6 +139,8 @@ def backup_export(db: Session) -> str:
 
         # Gather data
         kids = db.query(User).filter(User.role == UserRole.KID).all()
+        from app.models import Chore, Points, Reward
+
         chores = db.query(Chore).all()
         rewards = db.query(Reward).all()
         points = db.query(Points).all()
@@ -190,7 +155,7 @@ def backup_export(db: Session) -> str:
             "kids": [
                 {
                     "id": k.id,
-                    "name": k.name,
+                    "name": k.full_name,
                     "email": k.email,
                     "role": k.role,
                 }
@@ -231,17 +196,12 @@ def backup_export(db: Session) -> str:
         return json.dumps({"error": str(e)})
 
 
-def _send_telemetry_event(event_name: str, data: dict[str, Any] | None = None) -> None:
-    """Send event to telemetry backend if eval box (TASK4CE_TAG starts with 'eval-')."""
-    try:
-        tag = settings.TASK4CE_TAG
-        if not tag or not tag.startswith("eval-"):
-            return  # Not an eval box, don't send
+def _log_telemetry_intent(event_name: str, data: dict[str, Any] | None = None) -> None:
+    """
+    Log intent for telemetry (actual send via eval-branch hooks).
 
-        # TODO: Implement telemetry send to Umami or other backend
-        # For now, just log it
-        logger.info(f"Telemetry event: {event_name}", data=data)
-
-    except Exception as e:
-        logger.warning("Telemetry send failed", error=str(e))
-        # Never block the reset for telemetry
+    When eval-telemetry branch is merged, replace this with actual send.
+    Check: TASK4CE_TAG env var for eval- prefix, or use the eval-branch
+    telemetry hooks (see docs/superpowers/plans/2026-10-25-eval-telemetry.md).
+    """
+    logger.info(f"Telemetry intent: {event_name}", data=data)
