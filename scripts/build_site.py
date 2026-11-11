@@ -399,7 +399,7 @@ def build_site():
         title_match = re.search(r"<h1[^>]*>([^<]+)</h1>", html)
         title = title_match.group(1) if title_match else source.stem
 
-        html = rewrite_links(html, source.name)
+        html = rewrite_links(html, source)
         html = add_copy_buttons(html)
         html = style_callouts(html)
 
