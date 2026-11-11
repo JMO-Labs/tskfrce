@@ -45,7 +45,7 @@ async function loadSVGTexture(name: string): Promise<HTMLCanvasElement | null> {
 }
 
 /**
- * Mascot component: PixiJS-based living sticker with procedural deformations.
+ * Mascot component: PixiJS sprite with procedural animations.
  * Falls back to CSS-SVG if Pixi unavailable or reduced motion is enabled.
  */
 export const Mascot: React.FC<MascotProps> = ({ state, mascotName: pm, name, mascotSvg, className }) => {
@@ -80,11 +80,13 @@ export const Mascot: React.FC<MascotProps> = ({ state, mascotName: pm, name, mas
         containerRef.current!.innerHTML = ''
         const { app, stage } = await initPixiApp(containerRef.current!, 400, 400)
         appRef.current = app
+
         const sprite = new P.Sprite(P.Texture.from(tex))
-        sprite.anchor.set(0.5)
+        sprite.anchor.set(0.5, 0.5)
         sprite.position.set(200, 200)
         sprite.scale.set(1.5)
         stage.addChild(sprite)
+
         const anim = animatorRef.current
         const loop = () => {
           anim.update(0.016, state)
@@ -103,7 +105,7 @@ export const Mascot: React.FC<MascotProps> = ({ state, mascotName: pm, name, mas
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
       if (appRef.current) { destroyPixiApp(appRef.current); appRef.current = null }
     }
-  }, [mascotName, name, state, useFallback, reducedMotion])
+  }, [mascotName, state, useFallback, reducedMotion])
 
   useEffect(() => {
     animatorRef.current.update(0, state)
@@ -124,4 +126,5 @@ export const Mascot: React.FC<MascotProps> = ({ state, mascotName: pm, name, mas
   return <div className={[styles.root, className].filter(Boolean).join(' ')} ref={containerRef} data-testid="mascot-pixi" />
 }
 
+export type { MascotState }
 export default Mascot

@@ -188,16 +188,94 @@ export class MascotAnimator {
   }
 
   /**
-   * Get procedural vertex deformations (for mesh warp).
-   * Returns array of {x, y} offsets for each vertex (if any).
-   * Simple implementation: breathing pulse on vertices.
+   * Get procedural vertex deformations (for MeshPlane grid deformation).
+   * Returns array of {x, y} offsets indexed by row-major grid position.
+   * Grid is 4x4 (16 vertices) laid out left-to-right, top-to-bottom.
    */
-  getVertexOffsets(t: number): VertexOffset[] {
-    if (this.prefersReducedMotion) return []
+  getVertexOffsets(gridW: number, gridH: number): VertexOffset[] {
+    if (this.prefersReducedMotion) return Array(gridW * gridH).fill({ x: 0, y: 0 })
 
-    // For now, return empty (vertex warp is optional).
-    // A full implementation would return sine-wave deformations per vertex.
-    return []
+    const st = this.getStateTime()
+    const offsets: VertexOffset[] = []
+
+    switch (this.state) {
+      case 'idle': {
+        // Breathing: vertical squash wave through vertices (top to bottom)
+        const breathPeriod = 4
+        const phase = (st % breathPeriod) / breathPeriod
+        const breathWave = Math.sin(phase * Math.PI * 2) * 0.08
+        for (let row = 0; row < gridH; row++) {
+          const rowRatio = row / (gridH - 1)
+          const localWave = Math.sin((phase + rowRatio) * Math.PI * 2) * 0.04
+          for (let col = 0; col < gridW; col++) {
+            offsets.push({ x: 0, y: localWave * 20 })
+          }
+        }
+        break
+      }
+      case 'cheer': {
+        // Jelly wobble: ripple outward from center, synced with hop
+        const cycleTime = 0.5
+        const phase = (st % cycleTime) / cycleTime
+        const rippleMagnitude = Math.sin(phase * Math.PI) * 0.12
+        const centerRow = (gridH - 1) / 2
+        const centerCol = (gridW - 1) / 2
+        for (let row = 0; row < gridH; row++) {
+          for (let col = 0; col < gridW; col++) {
+            const dx = col - centerCol
+            const dy = row - centerRow
+            const dist = Math.sqrt(dx * dx + dy * dy)
+            const delay = dist * 0.1
+            const ripplePhase = ((phase - delay) % 1) * Math.PI
+            const offset = Math.sin(ripplePhase) > 0 ? Math.sin(ripplePhase) * rippleMagnitude : 0
+            offsets.push({ x: (dx / Math.max(1, dist)) * offset * 15, y: (dy / Math.max(1, dist)) * offset * 15 })
+          }
+        }
+        break
+      }
+      case 'wince': {
+        // Squash down with shake: top pulls in, bottom extends
+        if (st > 0.4) {
+          // Recovery: return to normal
+          for (let i = 0; i < gridW * gridH; i++) offsets.push({ x: 0, y: 0 })
+        } else {
+          const phase = st / 0.4
+          const squashAmount = phase < 0.5 ? phase * 2 * 0.15 : (1 - phase) * 2 * 0.15
+          const shakePhase = (st / 0.2) * Math.PI * 2
+          const shake = Math.sin(shakePhase) * 1.5
+          for (let row = 0; row < gridH; row++) {
+            const rowRatio = row / (gridH - 1)
+            const compression = -squashAmount * (rowRatio - 0.5) * 40
+            for (let col = 0; col < gridW; col++) {
+              const colRatio = col / (gridW - 1)
+              offsets.push({ x: (colRatio - 0.5) * shake, y: compression })
+            }
+          }
+        }
+        break
+      }
+      case 'dance': {
+        // Bounce and sway: vertical oscillation + horizontal rock
+        const bouncePhase = (st % 0.8) / 0.8
+        const swayPhase = (st % 0.8) / 0.8
+        const bounceMag = Math.sin(bouncePhase * Math.PI * 2) * 0.1
+        const swayMag = Math.sin(swayPhase * Math.PI * 2) * 0.08
+        for (let row = 0; row < gridH; row++) {
+          const rowRatio = row / (gridH - 1)
+          for (let col = 0; col < gridW; col++) {
+            const colRatio = col / (gridW - 1)
+            const vertOffset = bounceMag * (rowRatio - 0.5) * 25
+            const horizOffset = swayMag * (colRatio - 0.5) * 20
+            offsets.push({ x: horizOffset, y: vertOffset })
+          }
+        }
+        break
+      }
+      default:
+        return Array(gridW * gridH).fill({ x: 0, y: 0 })
+    }
+
+    return offsets
   }
 
   /**

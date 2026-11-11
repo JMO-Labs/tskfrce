@@ -6,6 +6,7 @@ import type { PowerUp } from '../types'
 import { initCat, stepCat } from './logic'
 import { destroyPixiApp, initPixiApp } from '../PixiApp'
 import { burst, loadAssets, mkCat, mkFood, updateFx, applyShake, type Assets, type SpriteItem } from './render'
+import { Mascot, type MascotState } from '../Mascot'
 import s from './HungryCat.module.css'
 
 const clamp = (n: number) => Math.min(1, Math.max(0, n))
@@ -22,6 +23,8 @@ interface Props {
 export function HungryCat({ level, seed, onEnd, upgrades = [], powerUp = null, held = [] }: Props) {
   const [rng] = useState(() => seeded(seed))
   const [st, setSt] = useState(() => initCat(level, rng, { upgrades, powerUp }))
+  const [mascotState, setMascotState] = useState<MascotState>('idle')
+  const mascotReactRef = useRef<NodeJS.Timeout | null>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const catX = useRef(0.5)
   const endCb = useRef(onEnd)
@@ -153,9 +156,15 @@ export function HungryCat({ level, seed, onEnd, upgrades = [], powerUp = null, h
               if (it.kind === 'food') {
                 burst(P, sprite.x, sprite.y, '+1', 0x5cc46f, world, assets, stillRef.current, fxRef.current)
                 catsRef.current[0].body.scale.y = catsRef.current[0].body.scale.x * 0.75
+                setMascotState('cheer')
+                if (mascotReactRef.current) clearTimeout(mascotReactRef.current)
+                mascotReactRef.current = setTimeout(() => setMascotState('idle'), 800)
               } else {
                 burst(P, sprite.x, sprite.y, '-2', 0xff6b4a, world, assets, stillRef.current, fxRef.current)
                 if (!stillRef.current) shakeRef.current = 14
+                setMascotState('wince')
+                if (mascotReactRef.current) clearTimeout(mascotReactRef.current)
+                mascotReactRef.current = setTimeout(() => setMascotState('idle'), 600)
               }
               world.removeChild(sprite)
               sprites.delete(it.id)
@@ -174,6 +183,7 @@ export function HungryCat({ level, seed, onEnd, upgrades = [], powerUp = null, h
         if (cur.over) {
           if (!endedRef.current) {
             endedRef.current = true
+            setMascotState('dance')
             endCb.current(cur.score)
           }
         } else {
@@ -188,6 +198,7 @@ export function HungryCat({ level, seed, onEnd, upgrades = [], powerUp = null, h
 
     return () => {
       mounted = false
+      if (mascotReactRef.current) clearTimeout(mascotReactRef.current)
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
       if (appRef.current) {
         appRef.current.ticker.stop()
@@ -222,6 +233,7 @@ export function HungryCat({ level, seed, onEnd, upgrades = [], powerUp = null, h
     <div>
       <div className={s.hud}>
         <span>🍽️ {st.score}</span>
+        <Mascot state={mascotState} mascotName="cat-princess" />
         <span aria-label={`${st.hearts} hearts`} role="img">
           {'❤️'.repeat(Math.max(0, st.hearts))}
           {'🖤'.repeat(3 - Math.max(0, st.hearts))}

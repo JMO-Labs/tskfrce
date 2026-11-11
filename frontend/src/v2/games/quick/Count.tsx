@@ -29,7 +29,7 @@ function CountGame({ level, rng, onDone, easier }: MicroProps) {
   return (
     <div className={s.stage}>
       <div className={`${s.cookies} ${shown ? '' : s.hidden}`}>
-        {shown ? Array.from({ length: n }, (_, i) => <span key={i} className={s.cookie} data-testid="cookie">🍪</span>) : <span aria-hidden>🫙</span>}
+        {shown ? Array.from({ length: n }, (_, i) => <img key={i} src="/art/fluent/cookie.png" alt="cookie" className={s.cookie} data-testid="cookie" />) : <span aria-hidden>📦</span>}
       </div>
       <p className={s.hint}>{shown ? 'Count the cookies!' : 'How many were there?'}</p>
       <div className={s.row}>

@@ -7,6 +7,7 @@ import { answerQ, hiddenCount, initMath, limitMs } from './logic'
 import { initPixiApp, destroyPixiApp } from '../PixiApp'
 import { initGameDisplay, updateQuestion, animateCorrect, animateWrong, updateShake, destroyGameDisplay } from './render'
 import type { GameDisplay } from './render'
+import { Mascot, type MascotState } from '../Mascot'
 import s from './MathDash.module.css'
 
 const PU: Record<string, string> = { freeze: '❄️ Freeze', fifty: '✂️ 50/50' }
@@ -20,6 +21,8 @@ export function MathDash({ level, seed, age, upgrades = [], powerUp = null, onEn
 }) {
   const [rng] = useState(() => seeded(seed))
   const [st, setSt] = useState(() => initMath(age, level, rng))
+  const [mascotState, setMascotState] = useState<MascotState>('idle')
+  const mascotReactRef = useRef<NodeJS.Timeout | null>(null)
   const displayRef = useRef<GameDisplay | null>(null)
   const limit = limitMs(upgrades, powerUp)
   const ms = useElapsed()
@@ -50,6 +53,7 @@ export function MathDash({ level, seed, age, upgrades = [], powerUp = null, onEn
     setup()
 
     return () => {
+      if (mascotReactRef.current) clearTimeout(mascotReactRef.current)
       cancelAnimationFrame(animRef.current)
       if (displayRef.current) {
         destroyGameDisplay(displayRef.current)
@@ -67,7 +71,7 @@ export function MathDash({ level, seed, age, upgrades = [], powerUp = null, onEn
 
   // Handle end game
   useEffect(() => {
-    if (over && !ended.current) { ended.current = true; onEnd(st.score) }
+    if (over && !ended.current) { ended.current = true; setMascotState('dance'); onEnd(st.score) }
   }, [over, st.score, onEnd])
 
   const handleAnswer = (i: number) => {
@@ -78,11 +82,15 @@ export function MathDash({ level, seed, age, upgrades = [], powerUp = null, onEn
     if (displayRef.current) {
       if (correct) {
         animateCorrect(displayRef.current, i)
+        setMascotState('cheer')
       } else {
         animateWrong(displayRef.current, i)
+        setMascotState('wince')
       }
     }
 
+    if (mascotReactRef.current) clearTimeout(mascotReactRef.current)
+    mascotReactRef.current = setTimeout(() => setMascotState('idle'), correct ? 800 : 600)
     setSt((cur) => answerQ(cur, i, age, upgrades, rng))
   }
 
@@ -92,6 +100,7 @@ export function MathDash({ level, seed, age, upgrades = [], powerUp = null, onEn
     <div>
       <div className={s.hud}>
         <span>🧮 {st.score}</span>
+        <Mascot state={mascotState} mascotName="dog-cowboy" />
         <span>⏱ {clock(limit - ms)}</span>
       </div>
       <div ref={gameRef} style={{ width: '100%', height: '400px', position: 'relative' }} />
