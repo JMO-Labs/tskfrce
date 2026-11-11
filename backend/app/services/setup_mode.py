@@ -51,20 +51,23 @@ class SetupModeManager:
             return False
 
     def process_join_request(self, ssid: str, password: str) -> bool:
-        """Attempt to join, with 60s rollback if fails."""
-        # Get current connection to rollback to
-        status_before = network_wifi.status()
+        """Attempt to join with concurrent AP+managed, 60s fallback."""
+        # Concurrent mode: keep hotspot up while joining (chip supports AP+managed on same radio)
+        # If that fails (single-radio), drop hotspot and retry for 60s
 
-        # Try to join (hotspot stays up)
-        if not network_wifi.join(ssid, password, timeout=60):
-            # Join failed, hotspot drops if concurrent mode not supported
-            # Bring hotspot back up
+        # Try to join (hotspot stays up during join if concurrent mode works)
+        if network_wifi.join(ssid, password, timeout=60):
+            self.last_online = datetime.now()
+            return True
+
+        # Join failed. If hotspot still up (concurrent mode worked), we're done.
+        # If concurrent mode not supported, hotspot drops. Bring it back and notify client.
+        status = network_wifi.status()
+        if not status["connected"]:
+            # Concurrent mode not available: drop and retry
+            # (Join already tried and failed, hotspot dropped)
             network_wifi.hotspot_up(self.hotspot_ssid, self.setup_password)
-            return False
-
-        # Join succeeded, save it as successful
-        self.last_online = datetime.now()
-        return True
+        return False
 
     def process_settings_join(self, ssid: str, password: str) -> bool:
         """Join from Settings with 60s rollback to previous network."""

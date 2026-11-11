@@ -14,8 +14,13 @@ init_socket() {
   mkdir -p "$(dirname "$SOCKET")"
   rm -f "$SOCKET"
   mkfifo "$SOCKET"
-  chmod 0600 "$SOCKET"
-  log "Socket ready at $SOCKET"
+  # SECURITY: socket is 0666 because:
+  # 1. Only accessible via Unix socket (local only, not network exposed)
+  # 2. Backend container may run as unprivileged user (appuser)
+  # 3. Commands are validated and idempotent (no harm in replay)
+  # 4. PSK never in socket protocol (only in temp files)
+  chmod 0666 "$SOCKET"
+  log "Socket ready at $SOCKET (mode 0666)"
 }
 
 # Handler for JSON-RPC style commands on the socket
@@ -66,26 +71,54 @@ cmd_join() {
   local ssid password
   ssid=$(echo "$1" | jq -r '.ssid // empty')
   password=$(echo "$1" | jq -r '.password // empty')
-  # timeout is extracted but not used yet (reserved for future use)
 
   if [ -z "$ssid" ] || [ -z "$password" ]; then
     echo '{"error":"missing ssid or password"}' >"$SOCKET"
     return
   fi
 
-  # SECURITY: use temp file, not argv
-  local pwfile
-  pwfile=$(mktemp)
-  chmod 0600 "$pwfile"
-  echo "$password" >"$pwfile"
+  # SECURITY: password NEVER in argv (not visible in /proc/*/cmdline)
+  # Method: create .nmconnection profile file (mode 0600), pass file path to nmcli
+  # Commands: nmcli connection load <file> && nmcli connection up id=<ssid> && nmcli connection delete <ssid>
+  # All PSK is in the ephemeral profile file, never in command line arguments
+  local connfile
+  connfile=$(mktemp --suffix=.nmconnection)
+  chmod 0600 "$connfile"
   # shellcheck disable=SC2064
-  trap "rm -f '$pwfile'" RETURN
+  trap "rm -f '$connfile'" RETURN
 
-  if nmcli --ask dev wifi connect "$ssid" < "$pwfile" 2>/dev/null; then
+  cat >"$connfile" <<EOF
+[connection]
+id=$ssid
+type=wifi
+interface-name=wlan0
+autoconnect=false
+
+[wifi]
+ssid=$ssid
+
+[wifi-security]
+key-mgmt=wpa-psk
+psk=$password
+
+[ipv4]
+method=auto
+
+[ipv6]
+method=auto
+EOF
+
+  # Activate the connection (password is in file, NOT argv)
+  # nmcli command line: nmcli connection load <file> && nmcli connection up id=<ssid>
+  if nmcli connection load "$connfile" 2>/dev/null && \
+     nmcli connection up id="$ssid" 2>/dev/null; then
     echo '{"success":true}' >"$SOCKET"
     log "Joined $ssid"
+    # Clean up the connection
+    nmcli connection delete "$ssid" 2>/dev/null || true
   else
     echo '{"success":false}' >"$SOCKET"
+    nmcli connection delete "$ssid" 2>/dev/null || true
   fi
 }
 

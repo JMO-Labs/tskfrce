@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from app.api.deps import require_parent
-from app.services import network_wifi
+from app.services import country_code, network_wifi, setup_mode
 
 router = APIRouter(
     prefix="/api/v1/network/wifi", tags=["wifi"], dependencies=[Depends(require_parent)]
@@ -82,3 +82,32 @@ def forget_wifi():
         return {"status": "not_connected"}
     except Exception as e:
         raise HTTPException(500, f"Forget failed: {e}")
+
+
+@router.post("/settings-join", response_model=JoinResponse)
+def settings_join(body: JoinRequest):
+    """Join from Settings with 60s rollback to previous network."""
+    try:
+        # Use SetupModeManager for rollback logic (even though not in setup mode)
+        manager = setup_mode.SetupModeManager("temp", "")  # dummy box_id/password
+        success = manager.process_settings_join(body.ssid, body.password)
+        if success:
+            # Try to apply country code if available
+            country_code.apply_country_code()
+            return {"status": "connected", "reason": None}
+        return {"status": "error", "reason": "connection_failed"}
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"Settings join failed: {e}")
+
+
+@router.post("/apply-country")
+def apply_country():
+    """Apply country code from domain service CF-IPCountry header."""
+    try:
+        success = country_code.apply_country_code()
+        cc = country_code.get_country_code()
+        return {"applied": success, "country": cc}
+    except Exception as e:
+        raise HTTPException(500, f"Country apply failed: {e}")

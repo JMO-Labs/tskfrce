@@ -23,10 +23,15 @@ lan_ip() {
   ip -4 route get 1.1.1.1 | sed -n 's/.* src \([0-9.]*\).*/\1/p' | head -n 1
 }
 
-# post_ip <curl family flag> <ip>
+# post_ip <curl family flag> <ip>: returns country code from CF-IPCountry header
 post_ip() {
+  # Capture headers to extract CF-IPCountry
   curl "$1" -fsS --max-time 30 -X POST -u "$BOX_ID:$BOX_SECRET" -H 'Content-Type: application/json' \
+    -D /tmp/curl_headers_$$ \
     -d "{\"ip\":\"$2\"}" "$REGISTRY_URL/api/ip"
+  # Extract CF-IPCountry from response headers (e.g., "CF-IPCountry: US")
+  grep -i "^cf-ipcountry:" /tmp/curl_headers_$$ 2>/dev/null | cut -d: -f2 | tr -d ' \r' || true
+  rm -f /tmp/curl_headers_$$
 }
 
 # report_ip [force]: -4 required, -6 best-effort (lets /find match IPv6-only visitors)
@@ -35,8 +40,11 @@ report_ip() {
   [ -n "$ip" ] || return 1
   [ "${1:-}" = force ] || [ "$ip" != "$(cat "$LAST_IP_FILE" 2>/dev/null)" ] || return 0
   post_ip -6 "$ip" >/dev/null 2>&1 || :
-  if post_ip -4 "$ip"; then
+  cc=$(post_ip -4 "$ip")
+  if [ -n "$cc" ]; then
     echo "$ip" > "$LAST_IP_FILE"
+    # Write country code for the box to pick up
+    [ -d /data ] && echo "$cc" > /data/cf_country 2>/dev/null || true
   else
     echo "report_ip failed" >&2
     return 1
