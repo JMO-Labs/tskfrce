@@ -17,18 +17,14 @@ from app.models.user import UserRole
 
 logger = get_logger(__name__)
 
-# Tables to KEEP (not wiped): box identity, settings, config, security registries
-# Everything else is wiped. Security registries MUST be kept to prevent:
-# - Replayed invite tokens
-# - Stale JWT auth (via token_epoch bump)
-# - Unauthorized setup (setup token tracking)
+# Tables to KEEP (not wiped): box identity, settings, config, DENYLIST only
+# Everything else is wiped. KEEP ONLY denylists (prevent replay).
+# DELETE live credentials: kid_enroll_tokens, pending_invites, password_reset.
+# Token_epoch invalidates old JWTs (no need to keep them).
 KEEP_TABLES = {
     "family_settings",      # family name, timezone, config, token_epoch
     "family_keys",          # box ID, secret, domain
-    "used_invites",         # security: prevent replayed invite tokens
-    "kid_enroll_tokens",    # security: enrollment tokens
-    "pending_invites",      # security: setup wizard state
-    "password_reset",       # security: password reset tokens
+    "used_invites",         # DENYLIST: prevent replayed invite tokens
     "alembic_version",      # migration tracking
 }
 

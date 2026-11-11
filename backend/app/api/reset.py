@@ -203,54 +203,5 @@ def forgot_pin(
         )
 
 
-@router.post("/set-pin")
-def set_pin(
-    body: SetPinRequest,
-    db: Session = Depends(get_db),
-) -> dict:
-    """
-    Set a new parent PIN via CLI (no data loss, bumps token epoch for security).
-
-    Called by: sudo tskfrce-reset --pin
-    Auth: X-Internal-Token (internal only, not user-facing)
-
-    Sets new PIN + bumps token_epoch to invalidate old sessions.
-    """
-    try:
-        auth = AuthService(db)
-        fam = get_family(db)
-        owner_id = fam.owner_id
-        if not owner_id:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="No parent account found.",
-            )
-
-        owner = db.query(User).filter(User.id == owner_id).first()
-        if not owner:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Parent account not found.",
-            )
-
-        # Hash and update password
-        owner.hashed_password = auth.hash_password(body.new_password)
-
-        # Bump token_epoch to invalidate old sessions
-        # (defensive: column added in migration a0b1c2d3e4f5)
-        if hasattr(fam, 'token_epoch'):
-            fam.token_epoch = (fam.token_epoch or 0) + 1
-
-        db.commit()
-
-        return {
-            "ok": True,
-            "message": "PIN updated and sessions invalidated.",
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"PIN set failed: {str(e)}",
-        )
+# SECURITY: /set-pin is CLI-only, not HTTP.
+# See app/cli.py set_pin_cmd for the safe implementation.

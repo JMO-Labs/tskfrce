@@ -55,21 +55,17 @@ fi
 
 if [[ "$SET_PIN" == "true" ]]; then
     echo "Setting new parent PIN (no data loss, bumps session epoch)..."
-    if [[ -z "$NEW_PIN" ]]; then
-        read -rsp "Enter new PIN: " NEW_PIN
-        echo ""
-    fi
-    if [[ -z "$NEW_PIN" ]] || [[ ${#NEW_PIN} -lt 4 ]]; then
-        echo "Error: PIN must be at least 4 characters"
+    echo "Note: This is a safe local operation on the box console."
+    echo ""
+
+    # Call CLI directly (no network, no vulnerability)
+    if ! command -v docker-compose &>/dev/null; then
+        echo "Error: docker-compose not found"
         exit 1
     fi
 
-    echo "Sending PIN set request..."
-    RESPONSE=$(curl -s -X POST \
-        -H "Content-Type: application/json" \
-        -H "X-Internal-Token: $INTERNAL_TOKEN" \
-        -d "{\"new_password\": \"$NEW_PIN\"}" \
-        "$API_URL/api/v1/settings/set-pin" 2>/dev/null || true)
+    docker-compose exec backend python -m app.cli set-pin
+    exit $?
 else
     echo "Starting box reset..."
     echo "This will:"
