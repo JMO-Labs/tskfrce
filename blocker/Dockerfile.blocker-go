@@ -1,5 +1,6 @@
 # Build stage: cross-compile to target architectures
-FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS builder
+# go1.26.10: fixes GO-2026-6809 (x509), GO-2026-6617 (http/2)
+FROM --platform=$BUILDPLATFORM golang:1.26.10-alpine AS builder
 
 WORKDIR /build
 
