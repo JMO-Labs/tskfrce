@@ -30,7 +30,7 @@ from blocker.discovery import run_discovery
 from blocker.hits import HitCounter
 from blocker.homework import HomeworkGate
 from blocker.hw_wiring import HomeworkWiring
-from blocker.ifaces import PerAddress
+from blocker.ifaces import PerAddress, lan_addrs
 from blocker.multinet import InterfaceManager
 from blocker.portal import run_dns, run_http
 from blocker.resist import ResistanceCounter, ResistanceWatch, Tally
