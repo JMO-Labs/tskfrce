@@ -4,7 +4,7 @@ import pytest
 from app.models.user import User
 from sqlalchemy.exc import IntegrityError
 
-from tests.test_suggestions import U, _get, _quiet
+from tests.test_suggestions import _get, _quiet
 
 K = "/api/v1/kids"
 
@@ -46,16 +46,22 @@ def test_birth_ranges(db, kid, m, y):
 
 
 def test_api_sets_and_clears_birth(client, parent_headers, kid):
-    r = client.patch(f"{K}/{kid.id}", json={"birth_month": 4, "birth_year": 2016}, headers=parent_headers)
+    r = client.patch(
+        f"{K}/{kid.id}", json={"birth_month": 4, "birth_year": 2016}, headers=parent_headers
+    )
     assert r.json()["birth_month"] == 4 and r.json()["birth_year"] == 2016
-    r = client.patch(f"{K}/{kid.id}", json={"birth_month": None, "birth_year": None}, headers=parent_headers)
+    r = client.patch(
+        f"{K}/{kid.id}", json={"birth_month": None, "birth_year": None}, headers=parent_headers
+    )
     assert r.json()["birth_month"] is None
     r = client.patch(f"{K}/{kid.id}", json={"birth_month": 4}, headers=parent_headers)
     assert r.status_code == 422
 
 
 def test_create_with_birth(client, parent_headers):
-    r = client.post(K, json={"full_name": "Ann", "birth_month": 2, "birth_year": 2018}, headers=parent_headers)
+    r = client.post(
+        K, json={"full_name": "Ann", "birth_month": 2, "birth_year": 2018}, headers=parent_headers
+    )
     assert r.json()["birth_year"] == 2018
 
 

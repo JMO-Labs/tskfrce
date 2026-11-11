@@ -137,9 +137,7 @@ def patch_kid(
 
 
 @router.post("/{kid_id}/age-up")
-def age_up(
-    kid_id: int, db: Session = Depends(get_db), parent: User = Depends(require_parent)
-):
+def age_up(kid_id: int, db: Session = Depends(get_db), parent: User = Depends(require_parent)):
     """Confirm a kid.age_up suggestion: next group, then that group's preset defaults."""
     kid = _kid(db, kid_id)
     nxt = next_group(kid.age_group)
