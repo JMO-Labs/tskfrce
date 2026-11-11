@@ -15,6 +15,7 @@ import { useSettingsLines } from './useSettingsLines'
 import { SettingsList } from './SettingsList'
 import { SETTINGS_SECTIONS, type S } from './settingsSections'
 import { AppearancePane } from './AppearancePane'
+import { HomeworkPane } from './HomeworkPane'
 import { NotificationsPane } from './NotificationsPane'
 import { accentHex } from '@/v2/parent/accent'
 import { toastFail, toastOk } from '@/v2/notify'
@@ -70,6 +71,7 @@ function SettingsBody() {
         {section === 'gifs' && family.data && <GifsCard fam={family.data} />}
         {section === 'hours' && <HoursSection />}
         {section === 'notifications' && <NotificationsPane />}
+        {section === 'homework' && <HomeworkPane />}
         {section === 'parents' && <ParentsPane />}
         {section === 'integrations' && <IntegrationsPane />}
       </div>

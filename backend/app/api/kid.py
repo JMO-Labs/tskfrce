@@ -21,6 +21,7 @@ from app.lock.state import Prefetch, device_facts
 from app.models.badge import BadgeAward
 from app.models.chores import ChoreRun, ChoreSeen
 from app.models.family import get_family
+from app.models.homework import HomeworkRequest
 from app.models.lock import Device, DeviceIPv6
 from app.models.penalty import Penalty
 from app.models.points import Points
@@ -33,6 +34,7 @@ from app.services import (
     chore_actions,
     economy,
     happy_hour,
+    homework,
     inbox,
     kid_view,
     penalties,
@@ -212,6 +214,7 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
         "happy_hour": (
             {"ends_at": utc_z(hh.ends_at), "multiplier": hh.mult_x10 / 10} if hh else None
         ),
+        **homework.kid_state(db, kid, now),
         "penalties": _penalty_cards(db, kid.id),
     }
 
@@ -252,6 +255,25 @@ def patch_me(body: MePatch, db: Session = Depends(get_db), kid: User = Depends(r
     kid.celebrate = body.celebrate
     db.commit()
     return {"celebrate": kid.celebrate_level}
+
+
+@router.post("/homework")
+def ask_homework(db: Session = Depends(get_db), kid: User = Depends(require_kid)) -> dict:
+    if not homework.paused(db, kid, datetime.now(UTC)):
+        raise HTTPException(409, "Your internet is already on.")
+    if homework.pending(db, kid.id):
+        raise HTTPException(409, "You already asked. A parent will answer soon.")
+    if homework.recently_denied(db, kid.id, datetime.now(UTC)):
+        raise HTTPException(429, "A parent just said no. Try again in a few minutes.")
+    req = HomeworkRequest(kid_id=kid.id, status="pending")
+    db.add(req)
+    db.flush()
+    name = kid.full_name or kid.username
+    inbox.notify_parents(
+        db, "homework_request", "Homework time", f"{name} is asking for homework time"
+    )
+    db.commit()
+    return {"ok": True, "id": req.id}
 
 
 def _open_run(db: Session, kid: User, run_id: int) -> ChoreRun:

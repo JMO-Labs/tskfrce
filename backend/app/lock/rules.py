@@ -26,6 +26,7 @@ class DeviceFacts:
     chores_apply: bool = True  # False: family or a group switched the chore check off
     exempt: bool = False  # never locked by hours or chores
     bonus_any_hours: bool = False  # bonus also opens outside hours (never off windows)
+    homework_until: datetime | None = None  # homework mode expires at this time, UTC
     penalty: bool = False  # a live penalty block; only a parent's unlock beats it
 
 

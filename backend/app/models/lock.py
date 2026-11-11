@@ -110,7 +110,7 @@ class DeviceGroup(Base):
 class Override(Base):
     __tablename__ = "overrides"
     __table_args__ = (
-        CheckConstraint("action IN ('lock','unlock')", name="ck_override_action"),
+        CheckConstraint("action IN ('lock','unlock','homework')", name="ck_override_action"),
         CheckConstraint("source IN ('manual','bonus','penalty')", name="ck_override_source"),
     )
 

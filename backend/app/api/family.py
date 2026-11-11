@@ -19,6 +19,7 @@ from app.lock.state import Prefetch
 from app.models.chore_extra import ChorePhoto
 from app.models.chores import ChoreRun
 from app.models.family import get_family
+from app.models.homework import HomeworkRequest
 from app.models.lock import Device
 from app.models.points import Points
 from app.models.reward import Redemption, Reward
@@ -182,6 +183,17 @@ def _needs_you(
             "submitted_at": utc_z(r.created_at),
         }
         for r in reds
+    ]
+    items += [
+        {
+            "type": "homework",
+            "id": h.id,
+            "kid_id": h.kid_id,
+            "kid_name": names.get(h.kid_id),
+            "title": "Homework time",
+            "submitted_at": utc_z(h.created_at),
+        }
+        for h in db.query(HomeworkRequest).filter_by(status="pending")
     ]
     items.sort(key=lambda x: x["submitted_at"] or "")
     items += goals_out.needs(db, names)
