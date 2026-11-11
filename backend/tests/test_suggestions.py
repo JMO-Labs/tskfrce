@@ -335,3 +335,59 @@ def test_single_alembic_head():
     cfg = Config("alembic.ini")
     heads = ScriptDirectory.from_config(cfg).get_heads()
     assert len(heads) == 1
+
+
+def test_dismiss_rejects_invalid_or_internal_key(client, parent_headers):
+    for key in ("Bad Key!", "_internal"):
+        body = {"key": key, "fingerprint": "x"}
+        r = client.post(U + "/dismiss", json=body, headers=parent_headers)
+        assert r.status_code == 400
+
+
+def test_chore_skipped_ignores_inactive_assignment(db, client, parent, kid, parent_headers):
+    _quiet(db, parent, kid)
+    _, a = make_chore(db, parent, "Dishes", kids=[kid])
+    _runs(db, a, kid, ["skipped"] * 3)
+    a.active = False
+    db.commit()
+    assert not any(k.startswith("chore.skipped") for k in _keys(client, parent_headers))
+
+
+def test_chore_skipped_ignores_missing_kid(db, client, parent, kid, parent_headers):
+    _quiet(db, parent, kid)
+    _, a = make_chore(db, parent, "Dishes", kids=[kid])
+    _runs(db, a, kid, ["skipped"] * 3)
+    db.query(ChoreRun).update({ChoreRun.kid_id: 9999})
+    db.commit()
+    assert client.get(U, headers=parent_headers).status_code == 200
+    assert not any(k.startswith("chore.skipped") for k in _keys(client, parent_headers))
+
+
+def test_goal_close_skips_goal_without_target(db, client, parent, kid, parent_headers):
+    _quiet(db, parent, kid)
+    db.query(Goal).update({Goal.target: 0})
+    db.commit()
+    assert not any(k.startswith("goal.close") for k in _keys(client, parent_headers))
+
+
+def test_goal_close_skips_missing_kid(db, client, parent, kid, parent_headers):
+    _quiet(db, parent, kid)
+    g = db.query(Goal).first()
+    g.target = 7
+    db.add(GoalContribution(goal_id=g.id, kid_id=kid.id, amount=4, kind="save"))
+    db.commit()
+    assert any(k.startswith("goal.close") for k in _keys(client, parent_headers))
+    g.kid_id = 9999
+    db.commit()
+    assert not any(k.startswith("goal.close") for k in _keys(client, parent_headers))
+
+
+def test_goal_missing_off_when_goals_disabled(db, client, parent, kid, parent_headers):
+    from app.models.family import get_family
+
+    _old(db, parent, kid)
+    _make_user(db, "dad", UserRole.PARENT)
+    assert "goal.missing:%d" % kid.id in _keys(client, parent_headers)
+    get_family(db).goals_on = False
+    db.commit()
+    assert not any(k.startswith("goal.missing") for k in _keys(client, parent_headers))
