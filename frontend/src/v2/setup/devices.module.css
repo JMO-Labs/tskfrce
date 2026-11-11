@@ -212,6 +212,124 @@
   margin: 0;
 }
 
+.p-srows {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.rowTabs {
+  border: 1px solid var(--p-line);
+  border-radius: 8px;
+  padding: 4px;
+  background: var(--p-card);
+}
+
+.rowTab {
+  flex: 1;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--p-sub);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+@media (hover: hover) {
+  .rowTab:hover {
+    background: var(--p-soft);
+  }
+}
+
+.rowTab.active {
+  background: var(--p-soft);
+  border-color: var(--p-line);
+  color: var(--p-ink);
+}
+
+.rowInfo {
+  font-size: 13px;
+  color: var(--p-sub);
+  padding: 8px 4px;
+  margin-bottom: 12px;
+}
+
+.helpSection {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--p-soft);
+  border: 1px solid var(--p-line);
+  border-radius: 8px;
+}
+
+.helpText {
+  font-size: 13px;
+  margin: 0 0 8px 0;
+  color: var(--p-ink);
+}
+
+.moreButton {
+  padding: 6px 12px;
+  background: var(--p-card);
+  border: 1px solid var(--p-line);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--p-ink);
+  transition: background-color 0.15s;
+}
+
+@media (hover: hover) {
+  .moreButton:hover {
+    background: var(--p-line);
+  }
+}
+
+.helpContent {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--p-line);
+}
+
+.helpContent p {
+  font-size: 12px;
+  color: var(--p-sub);
+  margin: 4px 0;
+}
+
+.ownerPopup {
+  background: var(--p-soft);
+  border: 1px solid var(--p-line);
+  border-radius: 8px;
+  padding: 4px;
+  margin: 6px 0 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ownerOption {
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--p-ink);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s;
+}
+
+@media (hover: hover) {
+  .ownerOption:hover {
+    background: var(--p-card);
+  }
+}
+
 @media (max-width: 600px) {
   .deviceItem {
     grid-template-columns: 36px 1fr 28px;
