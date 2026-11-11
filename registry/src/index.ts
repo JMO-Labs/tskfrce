@@ -22,10 +22,12 @@ const postIp: Route = async ({ req, env, cf }) => {
   // Handle new networks array format
   if (Array.isArray(body?.networks)) {
     if (body.networks.length === 0) return json({ error: 'networks array must not be empty' }, 400)
+    if (body.networks.length > 8) return json({ error: 'networks array must have ≤8 items' }, 400)
     const validated = body.networks.filter((n: unknown): n is { ip: string; label: string } =>
-      typeof (n as any)?.ip === 'string' && typeof (n as any)?.label === 'string' && isPrivateV4((n as any).ip)
+      typeof (n as any)?.ip === 'string' && typeof (n as any)?.label === 'string' && (n as any)?.label.length > 0 &&
+      (n as any)?.label.length <= 32 && isPrivateV4((n as any).ip)
     )
-    if (validated.length !== body.networks.length) return json({ error: 'all networks must have private IPv4' }, 400)
+    if (validated.length !== body.networks.length) return json({ error: 'all networks must have private IPv4 and label ≤32 chars' }, 400)
     networks = validated
     firstIp = validated[0].ip
   } else {
@@ -49,12 +51,13 @@ const postIp: Route = async ({ req, env, cf }) => {
     await upsertRecord(env, cf, 'A', `${id}.${env.BASE_DOMAIN}`, firstIp)
   }
 
-  // Clean up stale records from previous larger network list
+  // Clean up stale records from previous larger network list (idempotent)
   let prevNetworkCount = 1
   if (prev.networks && Array.isArray(prev.networks)) prevNetworkCount = (prev.networks as unknown[]).length
   if (prevNetworkCount > newNetworkCount) {
-    for (let i = newNetworkCount + 1; i <= prevNetworkCount; i++) {
-      const suffix = i === 1 ? '' : `-${i}`
+    // Delete records from newNetworkCount up to 7 (max 8 networks = indices 0-7)
+    for (let i = newNetworkCount; i < 8; i++) {
+      const suffix = i === 0 ? '' : `-${i + 1}`
       try {
         await deleteRecord(env, cf, 'A', `${id}${suffix}.${env.BASE_DOMAIN}`)
       } catch { /* ignore if record doesn't exist */ }

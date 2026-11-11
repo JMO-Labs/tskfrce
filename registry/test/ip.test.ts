@@ -87,7 +87,7 @@ test.each([
   expect(await env.BOXES.get('seen:abc123')).toBeNull()
 })
 
-test.each(['jmolabs.dev', 'www.jmolabs.dev', 'a.b.taskfrce.jmolabs.dev', 'abc123.taskfrce.jmolabsXdev'])('out-of-scope name %s throws, no CF call', async (name) => {
+test.each(['jmolabs.dev', 'www.jmolabs.dev', 'a.b.taskfrce.jmolabs.dev', 'abc123.taskfrce.jmolabsXdev', 'abc123-1.taskfrce.jmolabs.dev', 'abc123-9.taskfrce.jmolabs.dev'])('out-of-scope name %s throws, no CF call', async (name) => {
   const env = await makeEnv(), cf = fakeCf()
   await expect(upsertRecord(env, cf, 'A', name, '10.0.0.1')).rejects.toThrow()
   expect(cf.calls).toHaveLength(0)
@@ -174,4 +174,37 @@ test('empty networks array rejected', async () => {
   const res = await handle(post('/api/ip', { networks: [] }, basic('abc123', 's3cret')), env, cf)
   expect(res.status).toBe(400)
   expect(cf.calls).toHaveLength(0)
+})
+
+test('networks capped at 8', async () => {
+  const env = await makeEnv(), cf = fakeCf()
+  const nets = Array.from({ length: 9 }, (_, i) => ({ ip: `10.0.0.${i + 1}`, label: `Net${i}` }))
+  const res = await handle(post('/api/ip', { networks: nets }, basic('abc123', 's3cret')), env, cf)
+  expect(res.status).toBe(400)
+  expect(cf.calls).toHaveLength(0)
+})
+
+test('label capped at 32 chars', async () => {
+  const env = await makeEnv(), cf = fakeCf()
+  const res = await handle(post('/api/ip', { networks: [{ ip: '10.0.0.1', label: 'x'.repeat(33) }] }, basic('abc123', 's3cret')), env, cf)
+  expect(res.status).toBe(400)
+  expect(cf.calls).toHaveLength(0)
+})
+
+test('empty label rejected', async () => {
+  const env = await makeEnv(), cf = fakeCf()
+  const res = await handle(post('/api/ip', { networks: [{ ip: '10.0.0.1', label: '' }] }, basic('abc123', 's3cret')), env, cf)
+  expect(res.status).toBe(400)
+  expect(cf.calls).toHaveLength(0)
+})
+
+test('8 networks accepted', async () => {
+  const env = await makeEnv(), cf = fakeCf()
+  const nets = Array.from({ length: 8 }, (_, i) => ({ ip: `10.0.0.${i + 1}`, label: `N${i}` }))
+  const res = await handle(post('/api/ip', { networks: nets }, basic('abc123', 's3cret')), env, cf)
+  expect(res.status).toBe(204)
+  // Verify all 8 records: id., id-2., id-3., ..., id-8.
+  expect(cf.calls.some((c) => c.body?.name === 'abc123.taskfrce.jmolabs.dev')).toBe(true)
+  expect(cf.calls.some((c) => c.body?.name === 'abc123-2.taskfrce.jmolabs.dev')).toBe(true)
+  expect(cf.calls.some((c) => c.body?.name === 'abc123-8.taskfrce.jmolabs.dev')).toBe(true)
 })

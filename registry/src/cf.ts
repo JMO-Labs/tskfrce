@@ -2,8 +2,8 @@ import type { Env } from './index'
 
 function guard(env: Env, name: string): void {
   const base = env.BASE_DOMAIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  // Allow: <id>, <id>-2, <id>-3, etc. for multiple networks, and _acme-challenge.<id>
-  if (!new RegExp(`^(_acme-challenge\\.)?[a-z0-9]{6}(-[0-9]+)?\\.${base}$`).test(name)) throw new Error('name out of scope')
+  // Allow: <id>, <id>-2, <id>-3, ..., <id>-8 for up to 8 networks, and _acme-challenge.<id>
+  if (!new RegExp(`^(_acme-challenge\\.)?[a-z0-9]{6}(-[2-8])?\\.${base}$`).test(name)) throw new Error('name out of scope')
 }
 
 const api = (env: Env) => `https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/dns_records`

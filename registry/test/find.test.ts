@@ -196,4 +196,25 @@ describe('rate limiting', () => {
     const res = await handle(new Request('https://x/find?id=abc123', { headers: { 'CF-Connecting-IP': '203.0.113.10' } }), env, cf)
     expect(res.status).not.toBe(429)
   })
+
+  test('ipv6 /64 prefix shares rate limit', async () => {
+    const env = await makeEnv(), cf = fakeCf()
+    // Different hosts in same /64: 2001:db8:1:2::1 and 2001:db8:1:2::2
+    for (let i = 0; i < 20; i++) {
+      await handle(new Request('https://x/find?id=abc123', { headers: { 'CF-Connecting-IP': '2001:db8:1:2::1' } }), env, cf)
+    }
+    // Same /64, different host should be rate limited
+    const res = await handle(new Request('https://x/find?id=abc123', { headers: { 'CF-Connecting-IP': '2001:db8:1:2::2' } }), env, cf)
+    expect(res.status).toBe(429)
+  })
+
+  test('ipv6 different /64 has separate limit', async () => {
+    const env = await makeEnv(), cf = fakeCf()
+    for (let i = 0; i < 20; i++) {
+      await handle(new Request('https://x/find?id=abc123', { headers: { 'CF-Connecting-IP': '2001:db8:1:2::1' } }), env, cf)
+    }
+    // Different /64 should not be limited
+    const res = await handle(new Request('https://x/find?id=abc123', { headers: { 'CF-Connecting-IP': '2001:db8:1:3::1' } }), env, cf)
+    expect(res.status).not.toBe(429)
+  })
 })

@@ -103,7 +103,14 @@ function isOnline(seen: Seen, now: number): boolean {
 
 async function checkRateLimit(env: Env, visitorIp: string | null, now: number): Promise<boolean> {
   if (!visitorIp) return false
-  const key = `ratelimit:find:${visitorIp}`
+  // Use /64 prefix for IPv6 (prevent rotation bypass), full address for IPv4
+  let rateKey = visitorIp
+  if (visitorIp.includes(':')) {
+    const p = v6prefix(visitorIp)
+    if (!p) return false
+    rateKey = `ipv6:${p}`
+  }
+  const key = `ratelimit:find:${rateKey}`
   const raw = await env.BOXES.get(key)
   let count = 0, startTime = now
   if (raw) {
@@ -119,7 +126,7 @@ async function checkRateLimit(env: Env, visitorIp: string | null, now: number): 
     startTime = now
   }
   if (count >= 20) return false // Rate limited
-  // Increment and store
+  // ponytail: KV put is not atomic; concurrent requests within 1ms window may bypass limit on edge
   await env.BOXES.put(key, JSON.stringify({ count: count + 1, startTime }), { expirationTtl: 3600 })
   return true
 }
