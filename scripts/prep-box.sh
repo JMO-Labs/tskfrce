@@ -29,7 +29,22 @@ say "Updating the system (can take a while)"
 $APT update -q
 $APT -yq -o Dpkg::Options::=--force-confold full-upgrade
 $APT install -yq curl git ca-certificates openssl iproute2 nftables \
-  openssh-server unattended-upgrades
+  openssh-server unattended-upgrades network-manager wpasupplicant wireless-tools iw
+
+say "Setting up NetworkManager and netplan"
+sudo mkdir -p /etc/netplan
+if [ ! -f /etc/netplan/01-netcfg.yaml ]; then
+  sudo tee /etc/netplan/01-netcfg.yaml >/dev/null <<'EOF'
+network:
+  version: 2
+  renderer: NetworkManager
+  ethernets:
+    eno2:
+      dhcp4: true
+EOF
+fi
+sudo netplan apply 2>/dev/null || true
+sudo systemctl enable --now NetworkManager
 
 say "Turning on SSH and automatic security updates"
 sudo systemctl enable --now ssh
