@@ -35,6 +35,7 @@ services:
     volumes:
       - task4ce_data:/app/data
       - ntfy_conf:/ntfy-conf
+      - /run/tskfrce-wifi.sock:/run/tskfrce-wifi.sock:ro
     networks:
       - task4ce
     restart: unless-stopped

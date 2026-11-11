@@ -75,6 +75,15 @@ sudo docker compose version >/dev/null 2>&1 || die "Docker compose plugin is mis
 # Security: docker group = root-equivalent. Fine on a single-purpose home box.
 sudo usermod -aG docker "$(id -un)"
 
+say "Installing Wi-Fi privileged helper"
+curl -fsSL "https://raw.githubusercontent.com/JMO-Labs/tskfrce/$REF/scripts/tskfrce-wifi-helper.sh" |
+  sudo tee /usr/local/bin/tskfrce-wifi-helper.sh >/dev/null
+sudo chmod +x /usr/local/bin/tskfrce-wifi-helper.sh
+curl -fsSL "https://raw.githubusercontent.com/JMO-Labs/tskfrce/$REF/systemd/tskfrce-wifi-helper.service" |
+  sudo tee /etc/systemd/system/tskfrce-wifi-helper.service >/dev/null
+sudo systemctl daemon-reload
+sudo systemctl enable --now tskfrce-wifi-helper
+
 say "Installing t@sk4ce ($REF)"
 curl -fsSL "https://raw.githubusercontent.com/JMO-Labs/tskfrce/$REF/install.sh" |
   TASK4CE_REF="$REF" TASK4CE_YES=1 sh
