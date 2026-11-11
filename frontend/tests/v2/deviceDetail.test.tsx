@@ -146,6 +146,20 @@ describe('device detail, calm', () => {
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/devices/12', { method: 'PATCH', body: { name: 'Den iPad' } }))
   })
 
+  test('the phone guide opens only after the first owner is saved', async () => {
+    localStorage.clear()
+    let release = () => {}
+    apiMock.mockImplementation(async (_p, o) => {
+      if (o?.method === 'PATCH') await new Promise<void>((r) => (release = r))
+      return {}
+    })
+    show(dev({ owner_ids: [], status: 'unassigned' }), { open: 'details' })
+    await userEvent.click(within(screen.getByRole('group', { name: 'Owners' })).getByRole('button', { name: 'Maya' }))
+    expect(screen.queryByText('Keep this phone on the box')).toBeNull() // still saving: the page stays usable
+    release()
+    expect(await screen.findByText('Keep this phone on the box')).toBeTruthy()
+  })
+
   test('unknown open value shows calm', async () => {
     show(dev(), { open: 'bogus' })
     await waitFor(() => expect(fakeRouter.replace).toHaveBeenCalled())

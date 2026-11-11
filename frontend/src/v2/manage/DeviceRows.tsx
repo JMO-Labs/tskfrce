@@ -57,8 +57,9 @@ export function DetailsBody({ device, kids, groups, nameFocus = 0 }: Props) {
       <div className="pk-field">
         <span className="pk-label">Owners</span>
         <KidPicker kids={kids} label="Owners" value={device.owner_ids.map(String)} disabled={guest} busy={patch.isPending} onChange={(v) => {
-          save({ owner_ids: v.map(Number) })
-          if (!device.owner_ids.length && v.length && !guideSeen(device.id)) setGuide(true)
+          const first = !device.owner_ids.length && v.length > 0 && !guideSeen(device.id)
+          // open the guide only once the owner is saved: a modal during the save would block the page, and a failed save needs no guide
+          once(() => toasted(patch.mutateAsync({ id: device.id, patch: { owner_ids: v.map(Number) } }).then(() => { if (first) setGuide(true) }), 'Saved'))
         }} />
         <PhoneGuide deviceId={device.id} opened={guide} onClose={() => setGuide(false)} />
       </div>
