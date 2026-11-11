@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, jest, test } from '@jest/globals'
+import { afterEach, beforeEach, expect, test } from '@jest/globals'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { ShelfMemory } from '@/v2/games/shelfMemory/ShelfMemory'
 import { newRound } from '@/v2/games/shelfMemory/logic'

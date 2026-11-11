@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, jest, test } from '@jest/globals'
+import { afterEach, beforeEach, expect, test } from '@jest/globals'
 import { act, render } from '@testing-library/react'
 import { GAME_INFO } from '@/v2/games/catalog'
 import { seeded } from '@/v2/games/rng'

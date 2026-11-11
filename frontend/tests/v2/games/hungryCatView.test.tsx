@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, jest, test } from '@jest/globals'
+import { afterEach, beforeEach, expect, test } from '@jest/globals'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 
 // Mock pixi.js before importing the component
@@ -52,6 +52,12 @@ beforeEach(() => {
   window.cancelAnimationFrame = ((id: number) => clearTimeout(id)) as typeof window.cancelAnimationFrame
 })
 afterEach(() => jest.useRealTimers())
+
+test('pixi.js is mocked', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { Application } = require('pixi.js')
+  expect(jest.isMockFunction(Application)).toBe(true)
+})
 
 test('shows HUD, hearts, and empty power-up slots', () => {
   render(<HungryCat level={1} seed={1} onEnd={() => {}} />)
