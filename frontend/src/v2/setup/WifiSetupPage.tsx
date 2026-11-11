@@ -7,8 +7,7 @@ import { Button, Modal, PasswordInput, Select, Stack, Text, TextInput, Group, Al
 import { IconWifi, IconPlus } from '@tabler/icons-react'
 import { useSetupWifiStatus, useSetupWifiScan } from '@/v2/hooks/useSetupWifi'
 import { api, ApiError } from '@/v2/api'
-import { useMutation } from '@tanstack/react-query'
-import { tokenManager } from '@/services/tokenManager'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import styles from '@/v2/setup/wifiSetup.module.css'
 
 interface NetworkItem {
@@ -18,6 +17,7 @@ interface NetworkItem {
 }
 
 export function WifiSetupPage() {
+  const qc = useQueryClient()
   const [selectedNetwork, setSelectedNetwork] = useState<NetworkItem | null>(null)
   const [manualSsid, setManualSsid] = useState('')
   const [manualPassword, setManualPassword] = useState('')
@@ -99,31 +99,35 @@ export function WifiSetupPage() {
     setAuthError('')
 
     try {
-      // ponytail: POST to /auth/login, store token, retry join
-      const loginResp = await api<{ access_token: string; refresh_token?: string; expires_in: number }>('/auth/login', {
+      // The parent token lives only in this function: one join retry, never stored, so a
+      // borrowed phone isn't left signed in as a parent.
+      const login = await fetch('/api/proxy/auth/login', {
         method: 'POST',
-        body: { username: parentUsername, password: parentPassword },
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: parentUsername, password: parentPassword }),
       })
-
-      if (!loginResp?.access_token) {
-        setAuthError('Invalid response from server')
+      const loginBody = await login.json().catch(() => ({}))
+      if (!login.ok || !loginBody?.access_token) {
+        setAuthError(loginBody?.detail || 'Sign-in failed. Check the username and password.')
         return
       }
-
-      // Store tokens in tokenManager so subsequent requests use them
-      tokenManager.setTokens({
-        access_token: loginResp.access_token,
-        refresh_token: loginResp.refresh_token || '',
-        expires_in: loginResp.expires_in || 3600,
+      const retry = await fetch('/api/proxy/v1/network/wifi/setup/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${loginBody.access_token}` },
+        body: JSON.stringify(pendingJoin),
       })
-
-      // Retry the join request - it will now use the parent token
-      await joinMutation.mutateAsync(pendingJoin)
+      setParentPassword('')
+      if (!retry.ok) {
+        const body = await retry.json().catch(() => ({}))
+        setAuthError(retry.status === 403 ? 'Only a parent can change the Wi-Fi.' : body?.detail || 'Could not start the join.')
+        return
+      }
+      qc.invalidateQueries({ queryKey: ['setup', 'wifi'] })
     } catch (e: any) {
       const apiError = e as ApiError
       setAuthError(apiError?.detail || e?.message || 'Sign-in failed')
     }
-  }, [parentUsername, parentPassword, pendingJoin, joinMutation])
+  }, [parentUsername, parentPassword, pendingJoin, qc])
 
   const getSignalLabel = (signal: number) => {
     if (signal >= 70) return 'Strong'
