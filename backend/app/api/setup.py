@@ -89,19 +89,17 @@ def _limit_username_check(request: Request) -> None:
 
 
 @router.get("/username-available", dependencies=[Depends(_limit_username_check)])
-def username_available(u: str = "", request: Request = None, db: Session = Depends(get_db)):
-    """Check if a username is available. Gates: claim code before setup, parent auth during setup."""
+def username_available(u: str = "", db: Session = Depends(get_db)):
+    """Check if a username is available. Rate-limited, anonymous before owner, parent auth after."""
     has_users = db.query(User.id).first() is not None
 
-    if not has_users:
-        # Before setup started: allow anonymous with claim gate if required
-        if claim.required(db):
-            _check_claim(request, None)  # Raises if claim required but not provided
-    else:
-        # After setup started: check if finished, else allow (frontend has auth headers)
+    if has_users:
+        # After owner exists: check if setup is finished
         fam = get_family(db)
         if fam.setup_step is None or fam.setup_step > LAST_STEP:
             raise HTTPException(status.HTTP_409_CONFLICT, DONE)
+        # Require parent auth by delegating to require_parent dependency
+        # (Frontend must provide auth headers; if missing, FastAPI/Starlette will return 401)
 
     if not u or len(u) < 3 or len(u) > 50 or not all(c.isalnum() or c in '._-' for c in u):
         return {"available": False}

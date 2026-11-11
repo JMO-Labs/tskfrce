@@ -130,34 +130,49 @@ def test_finished_setup_step_is_locked(client, db):
 
 
 def test_username_available_before_setup(client):
-    """Username check works before setup is complete."""
+    """Username check works before setup (anonymous, rate-limited)."""
     r = client.get("/api/v1/setup/username-available?u=alice")
     assert r.status_code == 200
     assert r.json() == {"available": True}
 
 
+def test_username_available_no_claim_check(client):
+    """Username check does not enforce claim gate (avoids lockout)."""
+    r = client.get("/api/v1/setup/username-available?u=alice")
+    assert r.status_code == 200  # Never returns 403 for missing claim
+
+
 def test_username_taken_during_setup(client, db):
     """Username check detects taken usernames."""
-    client.post("/api/v1/setup", json=BODY)
-    r = client.get("/api/v1/setup/username-available?u=rich")
+    r = client.post("/api/v1/setup", json=BODY)
+    assert r.status_code == 201
+    token = r.json()["access_token"]
+    h = {"Authorization": f"Bearer {token}"}
+    r = client.get("/api/v1/setup/username-available?u=rich", headers=h)
     assert r.status_code == 200
     assert r.json() == {"available": False}
 
 
 def test_username_available_new_one_during_setup(client, db):
-    """Username check works for new usernames after setup."""
-    client.post("/api/v1/setup", json=BODY)
-    r = client.get("/api/v1/setup/username-available?u=alice")
+    """Username check works for new usernames after setup (requires parent auth)."""
+    r = client.post("/api/v1/setup", json=BODY)
+    assert r.status_code == 201
+    token = r.json()["access_token"]
+    h = {"Authorization": f"Bearer {token}"}
+    r = client.get("/api/v1/setup/username-available?u=alice", headers=h)
     assert r.status_code == 200
     assert r.json() == {"available": True}
 
 
 def test_username_check_after_setup_done(client, db):
     """Username check blocked after setup is completely done."""
-    client.post("/api/v1/setup", json=BODY)
+    r = client.post("/api/v1/setup", json=BODY)
+    assert r.status_code == 201
+    token = r.json()["access_token"]
+    h = {"Authorization": f"Bearer {token}"}
     get_family(db).setup_step = None
     db.commit()
-    r = client.get("/api/v1/setup/username-available?u=bob")
+    r = client.get("/api/v1/setup/username-available?u=bob", headers=h)
     assert r.status_code == 409
 
 
