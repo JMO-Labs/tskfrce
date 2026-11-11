@@ -165,9 +165,9 @@ describe('Today Needs focus', () => {
     apiMock.mockImplementationOnce(async () => (setToday([]), {}))
     await userEvent.click(b.getByRole('button', { name: 'Approve' }))
     expect(await screen.findByText('All caught up')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: /^Needs you/, expanded: true }))
+    await userEvent.click(screen.getByRole('button', { name: /^Review/, expanded: true }))
     await waitFor(() => expect(fakeRouter.query.focus).toBeUndefined())
-    expect(screen.queryByRole('button', { name: /^Needs you/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Review/ })).toBeNull()
   })
 
   test('Esc and the strip head close Needs focus', async () => {
@@ -177,7 +177,7 @@ describe('Today Needs focus', () => {
     await waitFor(() => expect(fakeRouter.query.focus).toBeUndefined())
     fakeRouter.reset('/', { focus: 'needs' })
     await body()
-    await userEvent.click(screen.getByRole('button', { name: /^Needs you · 4/ }))
+    await userEvent.click(screen.getByRole('button', { name: /^Review/ }))
     await waitFor(() => expect(fakeRouter.query.focus).toBeUndefined())
   })
 
@@ -191,7 +191,7 @@ describe('Today Needs focus', () => {
   test('Reply keeps a way back: it pushes, and Back returns to the Needs list', async () => {
     fakeRouter.reset('/', {})
     wrap()
-    await userEvent.click(await screen.findByRole('button', { name: /^Needs you · 4/ }))
+    await userEvent.click(await screen.findByRole('button', { name: /^Review/ }))
     await body()
     await userEvent.click(within(rowOf('Make bed')).getByRole('button', { name: 'More for Make bed' }))
     await userEvent.click(await screen.findByRole('menuitem', { name: 'Reply' }))
@@ -202,11 +202,11 @@ describe('Today Needs focus', () => {
 
   describe('focus on close', () => {
     const settle = () => new Promise((r) => setTimeout(r, 150))
-    const headFocused = () => expect(screen.getByRole('button', { name: /^Needs you/ })).toHaveFocus()
+    const headFocused = () => expect(screen.getByRole('button', { name: /^Review/ })).toHaveFocus()
     const open = async () => {
       fakeRouter.reset('/', {})
       wrap()
-      await userEvent.click(await screen.findByRole('button', { name: /^Needs you · \d/ }))
+      await userEvent.click(await screen.findByRole('button', { name: /^Review/ }))
       await body()
     }
 
@@ -238,7 +238,7 @@ describe('Today Needs focus', () => {
       await userEvent.click((await body()).getByRole('button', { name: 'Approve' }))
       await screen.findByText('All caught up')
       await userEvent.keyboard('{Escape}')
-      await waitFor(() => expect(screen.queryByRole('button', { name: /^Needs you/ })).toBeNull())
+      await waitFor(() => expect(screen.queryByRole('button', { name: /^Review/ })).toBeNull())
       await settle()
       expect(document.activeElement).not.toBe(document.body)
       expect(document.activeElement?.closest('main')).not.toBeNull()

@@ -99,7 +99,7 @@ function audit() {
 }
 
 const cases: [string, Record<string, string>, () => ReactNode, string | RegExp][] = [
-  ['Today', { focus: 'needs' }, () => <TodayPage />, /Needs you/],
+  ['Today', { focus: 'needs' }, () => <TodayPage />, /waiting on you/],
   ['Today (kid focus)', { kid: '3' }, () => <TodayPage />, /Maya/],
   ['Kid', { section: 'kids', item: '8', open: 'settings' }, () => <KidsPage />, 'Settings'],
   ['Kid (editing)', { section: 'kids', item: '8', open: 'settings', edit: '1' }, () => <KidsPage />, 'Settings'],

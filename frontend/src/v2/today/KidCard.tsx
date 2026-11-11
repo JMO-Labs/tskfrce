@@ -2,13 +2,13 @@ import Link from 'next/link'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { Icon } from '../parent/Icon'
 import { InfoPop } from '../parent/InfoPop'
-import { ProgressRing } from '../parent/ProgressRing'
 import type { Focus } from '../parent/useFocusParam'
 import type { TodayKid } from '../types'
+import { KidDay, LockPill } from './KidDay'
 import { KidFacts, initial } from './KidFacts'
 
 /**
- * Calm kid row/tile on Today: avatar (details pop-over) and a row button that focuses the kid.
+ * Kid card on Today: avatar (details pop-over) and a row button that focuses the kid.
  * `children` is the focused body, shown only while this kid is the open `kid` focus.
  */
 export function KidCard({ kid, focus, children }: { kid: TodayKid; focus: Focus; children?: ReactNode }) {
@@ -28,6 +28,33 @@ export function KidCard({ kid, focus, children }: { kid: TodayKid; focus: Focus;
             <button type="button" className="pt-kav" aria-label={`${name} details`}>
               {initial(kid.name)}
             </button>
+          }
+        >
+          <KidFacts kid={kid} />
+          <p className="pt-kearned">Earned today: {kid.earned ?? 0}</p>
+          <Link href={`/kids?section=kids&item=${kid.id}`} className="pt-klink">
+            Open {name}&apos;s page
+            <Icon name="chevron_right" size={16} />
+          </Link>
+        </InfoPop>
+        <button
+          type="button"
+          className="pt-krow"
+          aria-expanded={open}
+          aria-controls={open ? `kbody-${id}` : undefined}
+          data-focus-head={id}
+          onClick={() => focus.toggle(id)}
+        >
+          <span className="pt-khead">
+            <span className="pt-kname">
+              <span className="p-kn">{name}</span>
+              {waitingN > 0 && <span className="p-chip" data-tone="lav">{waitingN} waiting</span>}
+            </span>
+            <LockPill kid={kid} />
+            <Icon name="chevron_right" size={18} className="pt-kchev" />
+          </span>
+          <KidDay kid={kid} />
+        </button>
           }
         >
           <KidFacts kid={kid} />

@@ -79,20 +79,20 @@ describe('calm Today', () => {
 
   test('Needs strip shows the total and only when something waits', async () => {
     const { unmount } = wrap()
-    const strip = await screen.findByRole('button', { name: /^Needs you · 7/ })
+    const strip = await screen.findByRole('button', { name: /^Review/ })
     expect(strip).toHaveAttribute('aria-expanded', 'false')
     expect(strip).not.toHaveAttribute('aria-controls') // its body is not in the DOM while closed
     unmount()
     state.today = base({ needs_you: [] })
     wrap()
     await screen.findByRole('button', { name: MAYA })
-    expect(screen.queryByRole('button', { name: /^Needs you/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Review/ })).toBeNull()
   })
 
   test('Needs strip opens the waiting list in place', async () => {
     wrap()
-    await userEvent.click(await screen.findByRole('button', { name: /^Needs you · 7/ }))
-    expect(screen.getByRole('button', { name: /^Needs you · 7/ })).toHaveAttribute('aria-expanded', 'true')
+    await userEvent.click(await screen.findByRole('button', { name: /^Review/ }))
+    expect(screen.getByRole('button', { name: /^Review/ })).toHaveAttribute('aria-expanded', 'true')
     expect(fakeRouter.query.focus).toBe('needs')
     const region = screen.getByRole('region', { name: 'Needs you' })
     expect(within(region).getByText('Chore 1')).toBeInTheDocument()
