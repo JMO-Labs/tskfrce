@@ -20,6 +20,7 @@ import { KidStrip } from './KidStrip'
 import { isChore } from './needsActions'
 import { NeedsStrip } from './NeedsStrip'
 import { TipSlot } from './TipSlot'
+import { TodayInsights } from './TodayInsights'
 import { AddonsRow, DevicesRow } from './TodayRows'
 
 export function TodayPage() {
@@ -105,6 +106,7 @@ export function TodayPage() {
               </KidCard>
             ))}
           </div>}
+          {calm && data.kids.length > 0 && <TodayInsights />}
           {calm && data.kids.length > 0 && <TipSlot kids={data.kids} />}
           {!kidFocus.open && !needsOpen && data.kids.length > 0 && (
             <FocusArea focus={areaFocus} label="More">

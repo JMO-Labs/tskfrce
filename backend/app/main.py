@@ -33,6 +33,7 @@ from app.api.community import router as community_router
 from app.api.device_activity import router as device_activity_router
 from app.api.devices import router as devices_router
 from app.api.family import router as family_router
+from app.api.today_insights import router as today_insights_router
 from app.api.flair import router as flair_router
 from app.api.goals import router as goals_router
 from app.api.happy_hour import router as happy_hour_router
@@ -186,6 +187,7 @@ fastapi_app.include_router(kid_router)
 fastapi_app.include_router(kid_rewards_router)
 fastapi_app.include_router(kid_goals_router)
 fastapi_app.include_router(family_router)
+fastapi_app.include_router(today_insights_router)
 fastapi_app.include_router(updates_router)
 fastapi_app.include_router(network_router)
 fastapi_app.include_router(networks_router)
