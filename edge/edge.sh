@@ -14,6 +14,7 @@ RENEW_SECS=${RENEW_SECS:-43200}
 REPORT_EVERY_SECS=${REPORT_EVERY_SECS:-3600}
 DATA_DIR=${DATA_DIR:-/data}
 LAST_IP_FILE=${LAST_IP_FILE:-/tmp/last_ip} # non-persistent: every container start reports
+HDR_FILE=${HDR_FILE:-/tmp/ip_headers}
 [ -n "${EDGE_TOKEN:-}" ] || echo "EDGE_TOKEN not set: kids' devices will not be told apart behind HTTPS" >&2
 export BOX_ID BASE_DOMAIN
 FQDN=$BOX_ID.$BASE_DOMAIN
@@ -23,10 +24,12 @@ lan_ip() {
   ip -4 route get 1.1.1.1 | sed -n 's/.* src \([0-9.]*\).*/\1/p' | head -n 1
 }
 
-# post_ip <curl family flag> <ip>
+# post_ip <curl family flag> <ip> [extra curl args]
 post_ip() {
-  curl "$1" -fsS --max-time 30 -X POST -u "$BOX_ID:$BOX_SECRET" -H 'Content-Type: application/json' \
-    -d "{\"ip\":\"$2\"}" "$REGISTRY_URL/api/ip"
+  fam=$1 addr=$2
+  shift 2
+  curl "$fam" "$@" -fsS --max-time 30 -X POST -u "$BOX_ID:$BOX_SECRET" -H 'Content-Type: application/json' \
+    -d "{\"ip\":\"$addr\"}" "$REGISTRY_URL/api/ip"
 }
 
 # report_ip [force]: -4 required, -6 best-effort (lets /find match IPv6-only visitors)
@@ -35,8 +38,11 @@ report_ip() {
   [ -n "$ip" ] || return 1
   [ "${1:-}" = force ] || [ "$ip" != "$(cat "$LAST_IP_FILE" 2>/dev/null)" ] || return 0
   post_ip -6 "$ip" >/dev/null 2>&1 || :
-  if post_ip -4 "$ip"; then
+  if post_ip -4 "$ip" -D "$HDR_FILE"; then
     echo "$ip" > "$LAST_IP_FILE"
+    # Hand the Wi-Fi country (Cloudflare CF-IPCountry) to the host network daemon. Optional.
+    cc=$(sed -n 's/^[Cc][Ff]-[Ii][Pp][Cc]ountry: *\([A-Za-z][A-Za-z]\).*/\1/p' "$HDR_FILE" | tr '[:lower:]' '[:upper:]')
+    [ -n "$cc" ] && [ -d /tskfrce-host ] && echo "$cc" >/tskfrce-host/country || :
   else
     echo "report_ip failed" >&2
     return 1
