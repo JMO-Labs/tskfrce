@@ -16,6 +16,7 @@ import json
 import os
 import re
 import socketserver
+import stat
 import subprocess
 import sys
 import threading
@@ -289,10 +290,28 @@ def forget_all():
     return {"success": True}
 
 
+def read_small(path):
+    """Read a short hand-off file safely: no symlinks, regular files only, at most 8 bytes, never blocks.
+
+    The edge container can write into STATE/edge, so a FIFO or a symlink to a root-only file
+    must not hang or leak into this root daemon.
+    """
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except OSError:
+        return None
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            return None
+        return os.read(fd, 8).decode("ascii", "replace").strip()
+    finally:
+        os.close(fd)
+
+
 def apply_country(cc=None):
     if cc is None:
         for f in (EDGE_COUNTRY, COUNTRY_FILE):
-            cc = f.read_text().strip() if f.exists() else None
+            cc = read_small(f)
             if valid_cc(cc):
                 break
         else:
@@ -438,9 +457,8 @@ def watchdog():
                         last_online, hotspot_since = time.monotonic(), None
                     elif hotspot_up()["success"]:
                         hotspot_since = time.monotonic()
-                if EDGE_COUNTRY.exists() and EDGE_COUNTRY.read_text().strip() != (
-                    COUNTRY_FILE.read_text().strip() if COUNTRY_FILE.exists() else ""
-                ):
+                edge_cc = read_small(EDGE_COUNTRY)
+                if valid_cc(edge_cc) and edge_cc != read_small(COUNTRY_FILE):
                     apply_country()
         except Exception as e:
             print(f"watchdog: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
