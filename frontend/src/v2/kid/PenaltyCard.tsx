@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useSeenPenalty } from '../hooks/usePenalties'
+import { usePlayJail } from '../hooks/useKidGoals'
 import { duration, kidTitle } from '../penaltyTypes'
 import type { KidPenalty } from '../penaltyTypes'
 
@@ -14,8 +15,9 @@ export function backText(p: Pick<KidPenalty, 'kind' | 'amount_returned' | 'back_
 
 type Done = { mutate: (id: number) => void; isPending: boolean }
 
-function Card({ p, done }: { p: KidPenalty; done: Done }) {
+function Card({ p, done, jail }: { p: KidPenalty; done: Done; jail: boolean }) {
   const seen = useSeenPenalty()
+  const play = usePlayJail(() => {})
   const none = p.back_total === 0
   useEffect(() => {
     if (none && !p.seen_by_kid) seen.mutate(p.id)
@@ -50,17 +52,22 @@ function Card({ p, done }: { p: KidPenalty; done: Done }) {
           {!none && <span className="k-pen-back">{backText(p)}</span>}
         </div>
       )}
+      {jail && (
+        <button type="button" className="k-pen-jail" disabled={play.isPending} onClick={() => play.mutate(p.id)}>
+          Use Get out of jail free
+        </button>
+      )}
     </section>
   )
 }
 
 /** Active penalties on the kid's chores tab: what was lost, why, how to earn it back (penalties-v2 mockup, Ivy's view). */
-export function PenaltyCards({ list, done }: { list?: KidPenalty[]; done: Done }) {
+export function PenaltyCards({ list, done, jail = 0 }: { list?: KidPenalty[]; done: Done; jail?: number }) {
   if (!list?.length) return null
   return (
     <>
       {list.map((p) => (
-        <Card key={p.id} p={p} done={done} />
+        <Card key={p.id} p={p} done={done} jail={jail > 0} />
       ))}
     </>
   )

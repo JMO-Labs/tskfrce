@@ -52,6 +52,8 @@ export interface FamilyPenaltyFields {
 
 export interface KidTodayPenaltyFields {
   penalties?: KidPenalty[]
+  /** unplayed Get out of jail free cards (0 while Penalties is off) */
+  jail_cards?: number
 }
 
 /** GET /penalties/options */
@@ -59,6 +61,8 @@ export interface PenaltyOptions {
   enabled: boolean
   sizes: Record<SizeKey, PenaltySize>
   makeup_chores: string[]
+  /** live family goals a family-wide penalty can take from or raise */
+  goals: PenaltyGoal[]
   kids: {
     id: number
     name: string
@@ -68,6 +72,15 @@ export interface PenaltyOptions {
   }[]
 }
 
+export interface PenaltyGoal {
+  id: number
+  name: string
+  saved: number
+  target: number | null
+}
+
+export type GoalMode = 'take' | 'raise'
+
 export interface PenaltyDraft {
   kind: PenaltyKind
   amount: number
@@ -76,6 +89,8 @@ export interface PenaltyDraft {
   device_id?: number | null
   group_id?: number | null
   makeup?: string[]
+  /** family goal hit instead of a kid: take points from it or raise its target (kind stays points) */
+  goal?: { id: number; mode: GoalMode } | null
 }
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`
@@ -86,6 +101,11 @@ export function duration(min: number): string {
   const m = min % 60
   const parts = [d && plural(d, 'day'), h && plural(h, 'hour'), m && `${m} min`].filter(Boolean)
   return parts.join(' ') || '0 min'
+}
+
+export function goalLine(d: PenaltyDraft, goals: PenaltyGoal[]): string {
+  const name = goals.find((g) => g.id === d.goal?.id)?.name ?? 'goal'
+  return d.goal?.mode === 'raise' ? `Raise ${name} by ${d.amount} points` : `−${d.amount} points from ${name}`
 }
 
 export function whatLine(d: PenaltyDraft, label: string): string {

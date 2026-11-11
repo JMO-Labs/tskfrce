@@ -69,7 +69,7 @@ export function TodayPage() {
   const needsOpen = areaFocus.isOpen('needs')
   return (
     <ParentShell title="Today" actions={<MoreMenu label="More for Today" items={todayMenu} />}>
-      {penAll && data && <PenaltySheet kidIds={data.kids.map((k) => k.id)} onClose={() => setPenAll(false)} />}
+      {penAll && data && <PenaltySheet everyone kidIds={data.kids.map((k) => k.id)} onClose={() => setPenAll(false)} />}
       <HappyHourSheet opened={hhOpen} onClose={() => setHhOpen(false)} allKids />
       {isError && !data && <ErrorPanel kind="unreachable" error={error} onRetry={() => refetch()} />}
       {!data && !isError && <Skeleton rows={4} />}
