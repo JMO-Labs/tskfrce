@@ -33,7 +33,6 @@ from app.api.community import router as community_router
 from app.api.device_activity import router as device_activity_router
 from app.api.devices import router as devices_router
 from app.api.family import router as family_router
-from app.api.today_insights import router as today_insights_router
 from app.api.flair import router as flair_router
 from app.api.goals import router as goals_router
 from app.api.happy_hour import router as happy_hour_router
@@ -64,6 +63,7 @@ from app.api.rewards import router as rewards_router
 from app.api.screen_time import router as screen_time_router
 from app.api.setup import router as setup_router
 from app.api.tips import router as tips_router
+from app.api.today_insights import router as today_insights_router
 from app.api.trust import router as trust_router
 from app.api.updates import internal_router_with_auth as updates_internal_router
 from app.api.updates import router as updates_router

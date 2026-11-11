@@ -22,11 +22,21 @@ def _run(db, parent, kid, day, hour, due="17:00", status="done"):
 
 
 def _goal(db, parent, kid, target=100, saved=0, **kw):
-    g = Goal(name="Bike", kid_id=kid.id, target=target, status="active", created_by_id=parent.id, **kw)
+    g = Goal(
+        name="Bike", kid_id=kid.id, target=target, status="active", created_by_id=parent.id, **kw
+    )
     db.add(g)
     db.commit()
     if saved:
-        db.add(GoalContribution(goal_id=g.id, kid_id=kid.id, amount=saved, kind="save", created_at=datetime.now(UTC).replace(tzinfo=None)))
+        db.add(
+            GoalContribution(
+                goal_id=g.id,
+                kid_id=kid.id,
+                amount=saved,
+                kind="save",
+                created_at=datetime.now(UTC).replace(tzinfo=None),
+            )
+        )
         db.commit()
     return g
 
@@ -35,7 +45,11 @@ def test_new_family_is_empty_not_zero(client, db, parent_headers):
     _setup(db)
     j = client.get(URL, headers=parent_headers).json()
     assert j["goals"] == []
-    assert j["week"]["rate"] is None and j["week"]["delta"] is None and j["week"]["has_history"] is False
+    assert (
+        j["week"]["rate"] is None
+        and j["week"]["delta"] is None
+        and j["week"]["has_history"] is False
+    )
     assert len(j["week"]["series"]) == 14 and all(p["rate"] is None for p in j["week"]["series"])
     assert len(j["week"]["when"]) == 3 and all(row == [0] * 7 for row in j["week"]["when"])
 

@@ -78,7 +78,12 @@ def week(db: Session, today: date, tz: ZoneInfo) -> dict:
         c[0] += r.status == "done" and _on_time(r, tz)
     days = [today - timedelta(days=i) for i in range(SERIES_DAYS - 1, -1, -1)]
     series = [
-        {"day": d.isoformat(), "rate": _rate(*per.get(d, [0, 0])), "done": per.get(d, [0, 0])[0], "total": per.get(d, [0, 0])[1]}
+        {
+            "day": d.isoformat(),
+            "rate": _rate(*per.get(d, [0, 0])),
+            "done": per.get(d, [0, 0])[0],
+            "total": per.get(d, [0, 0])[1],
+        }
         for d in days
     ]
 
