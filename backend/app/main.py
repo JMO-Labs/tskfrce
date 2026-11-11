@@ -56,8 +56,8 @@ from app.api.notify import router as notify_router
 from app.api.password_reset import router as password_reset_router
 from app.api.penalties import router as penalties_router
 from app.api.presets import router as presets_router
-from app.api.reset import router as reset_router
 from app.api.recap import router as recap_router
+from app.api.reset import router as reset_router
 from app.api.rewards import redemptions_router
 from app.api.rewards import router as rewards_router
 from app.api.screen_time import router as screen_time_router

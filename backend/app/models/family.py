@@ -100,6 +100,7 @@ class FamilySettings(Base):
     penalties_enabled = Column(Boolean, nullable=False, default=False, server_default="0")
     penalty_sizes = Column(Text, nullable=True)  # JSON; NULL = defaults
     makeup_chores = Column(Text, nullable=True)  # JSON; NULL = defaults
+    token_epoch = Column(Integer, nullable=False, default=0, server_default="0")  # revokes all JWTs on reset/PIN/set-pin
 
 
 def get_family(db: Session) -> FamilySettings:

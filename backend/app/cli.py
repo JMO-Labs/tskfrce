@@ -52,11 +52,10 @@ def set_pin_cmd() -> int:
 
         # Hash and update password
         auth = AuthService(db)
-        owner.hashed_password = auth.hash_password(new_pin)
+        owner.hashed_password = auth.get_password_hash(new_pin)
 
         # Bump token_epoch to invalidate old sessions
-        if hasattr(fam, 'token_epoch'):
-            fam.token_epoch = (fam.token_epoch or 0) + 1
+        fam.token_epoch = (fam.token_epoch or 0) + 1
 
         db.commit()
         print("Parent PIN updated and sessions invalidated.")

@@ -208,6 +208,14 @@ class AuthService:
         if user is None or not user.is_active:
             return None
 
+        # Check token_epoch for parent/admin sessions (revocation)
+        if user.role == UserRole.PARENT or user.is_superuser:
+            from app.models.family import get_family
+            token_epoch_claim = payload.get("token_epoch", 0)
+            fam = get_family(self.db)
+            if fam and token_epoch_claim != fam.token_epoch:
+                return None  # token revoked (session invalidated by reset/PIN change)
+
         sid = payload.get("sid")
         if sid is not None and (user.role != UserRole.KID or not self._device_alive(sid, user.id)):
             return None  # enrolled phone removed (or idle-expired): revoked at once

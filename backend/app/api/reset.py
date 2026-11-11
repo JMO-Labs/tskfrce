@@ -5,13 +5,16 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_parent
+from app.core import lockout
 from app.core.auth import AuthService
 from app.core.claim import matches as claim_matches
 from app.core.client_ip import client_ip
-from app.core import lockout
+from app.core.logging import get_logger
 from app.models.family import get_family
 from app.models.user import User
 from app.services.reset import backup_export, factory_reset, reset_app_data
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
 
@@ -170,12 +173,10 @@ def forgot_pin(
             )
 
         # Hash and update password
-        owner.hashed_password = auth.hash_password(body.new_password)
+        owner.hashed_password = auth.get_password_hash(body.new_password)
 
         # Bump token_epoch to invalidate all existing JWTs (session invalidation)
-        # (defensive: column added in migration a0b1c2d3e4f5)
-        if hasattr(fam, 'token_epoch'):
-            fam.token_epoch = (fam.token_epoch or 0) + 1
+        fam.token_epoch = (fam.token_epoch or 0) + 1
 
         db.commit()
 

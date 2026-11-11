@@ -4,12 +4,12 @@ import json
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy.orm import Session
-
+from app.core.auth import AuthService
 from app.models import FamilySettings, User
-from app.models.user import UserRole
 from app.models.family import get_family
+from app.models.user import UserRole
 from app.services.reset import backup_export, reset_app_data
+from sqlalchemy.orm import Session
 
 
 @pytest.fixture
@@ -157,6 +157,93 @@ class TestBackupExport:
 
         # Backup should have kids, not parent data
         assert "hashed_password" not in json.dumps(data)
+
+
+class TestTokenEpochRevocation:
+    """Test token_epoch enforcement: old tokens rejected after reset/PIN changes."""
+
+    def test_token_epoch_revocation_on_reset(self, db: Session, setup_family):
+        """After reset, old parent token returns 401 (token_epoch mismatch)."""
+        fam, parent, kids = setup_family
+        auth = AuthService(db)
+
+        # Issue a token at epoch 0
+        initial_epoch = fam.token_epoch
+        token = auth.create_access_token(
+            data={"sub": str(parent.id), "token_epoch": initial_epoch}
+        )
+
+        # Verify token works (epoch matches)
+        user = auth.get_current_user(token)
+        assert user is not None
+        assert user.id == parent.id
+
+        # Reset bumps epoch
+        reset_app_data(db, unblock=False)
+        fam_after = db.query(FamilySettings).first()
+        assert fam_after.token_epoch > initial_epoch
+
+        # Old token now fails (epoch mismatch)
+        user = auth.get_current_user(token)
+        assert user is None
+
+    def test_token_epoch_revocation_on_pin_change(self, db: Session, setup_family):
+        """After set-pin (bump epoch), old token returns 401."""
+        fam, parent, kids = setup_family
+        auth = AuthService(db)
+
+        # Issue token at epoch 0
+        initial_epoch = fam.token_epoch
+        token = auth.create_access_token(
+            data={"sub": str(parent.id), "token_epoch": initial_epoch}
+        )
+        assert auth.get_current_user(token) is not None
+
+        # Simulate PIN change: bump epoch
+        fam.token_epoch = (fam.token_epoch or 0) + 1
+        db.commit()
+
+        # Old token fails
+        assert auth.get_current_user(token) is None
+
+    def test_token_epoch_revocation_on_forgot_pin(self, db: Session, setup_family):
+        """After forgot-PIN (bump epoch), old token returns 401."""
+        fam, parent, kids = setup_family
+        auth = AuthService(db)
+
+        # Issue token at epoch 0
+        initial_epoch = fam.token_epoch
+        token = auth.create_access_token(
+            data={"sub": str(parent.id), "token_epoch": initial_epoch}
+        )
+        assert auth.get_current_user(token) is not None
+
+        # Simulate forgot-PIN: bump epoch
+        fam.token_epoch = (fam.token_epoch or 0) + 1
+        db.commit()
+
+        # Old token fails
+        assert auth.get_current_user(token) is None
+
+    def test_token_epoch_kid_tokens_unaffected(self, db: Session, setup_family):
+        """Kid tokens do NOT check token_epoch (no revocation on parent PIN change)."""
+        fam, parent, kids = setup_family
+        auth = AuthService(db)
+
+        kid = kids[0]
+
+        # Issue kid token (no token_epoch)
+        token = auth.create_access_token(data={"sub": str(kid.id)})
+        assert auth.get_current_user(token) is not None
+
+        # Bump family epoch (parent PIN changed)
+        fam.token_epoch = (fam.token_epoch or 0) + 1
+        db.commit()
+
+        # Kid token still works (epoch not checked for kids)
+        user = auth.get_current_user(token)
+        assert user is not None
+        assert user.id == kid.id
 
 
 if __name__ == "__main__":
