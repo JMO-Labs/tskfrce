@@ -35,6 +35,7 @@ from .points import Points, PointsType
 from .reward import Redemption, Reward
 from .screen_bank import ScreenBank
 from .screen_time import ScreenTimeLimit
+from .suggestion import SuggestionState
 from .tips import DismissedTip
 from .trust import TrustEvent
 from .user import PendingInvite, UsedInvite, User

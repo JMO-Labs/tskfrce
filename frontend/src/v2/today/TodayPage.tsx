@@ -19,6 +19,7 @@ import { KidFocus } from './KidFocus'
 import { KidStrip } from './KidStrip'
 import { isChore } from './needsActions'
 import { NeedsStrip } from './NeedsStrip'
+import { SuggestionsCard } from './SuggestionsCard'
 import { TipSlot } from './TipSlot'
 import { TodayInsights } from './TodayInsights'
 import { AddonsRow, DevicesRow } from './TodayRows'
@@ -108,6 +109,7 @@ export function TodayPage() {
           </div>}
           {calm && data.kids.length > 0 && <TodayInsights />}
           {calm && data.kids.length > 0 && <TipSlot kids={data.kids} />}
+          {calm && data.kids.length > 0 && <SuggestionsCard />}
           {!kidFocus.open && !needsOpen && data.kids.length > 0 && (
             <FocusArea focus={areaFocus} label="More">
               <DevicesRow focus={areaFocus} />

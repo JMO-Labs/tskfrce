@@ -62,6 +62,7 @@ from app.api.rewards import redemptions_router
 from app.api.rewards import router as rewards_router
 from app.api.screen_time import router as screen_time_router
 from app.api.setup import router as setup_router
+from app.api.suggestions import router as suggestions_router
 from app.api.tips import router as tips_router
 from app.api.today_insights import router as today_insights_router
 from app.api.trust import router as trust_router
@@ -205,6 +206,7 @@ fastapi_app.include_router(community_router)
 fastapi_app.include_router(flair_router)
 fastapi_app.include_router(redemptions_router)
 fastapi_app.include_router(tips_router)
+fastapi_app.include_router(suggestions_router)
 fastapi_app.include_router(integrations_router)
 fastapi_app.include_router(integration_widgets_router)
 fastapi_app.include_router(integration_local_router)
