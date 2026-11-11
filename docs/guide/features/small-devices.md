@@ -16,7 +16,7 @@ t@sk4ce runs well on a small, cheap box such as a Raspberry Pi. This page explai
 
 ## How fast is it?
 
-We measured four "tiers" (a tier is a pretend small box with a fixed amount of memory and processor). Every one passes its own targets:
+We measured four "tiers" (a tier is a pretend small box with a fixed amount of memory and processor). Every one passes its own targets (the Pi 4 and the old laptop share the same targets):
 
 | Box | Pages answer within | Total memory budget |
 |---|---|---|
@@ -75,7 +75,7 @@ The installer writes `TASK4CE_TAG=2.13.0` into `.env`, so a reboot keeps those i
 - Run `db-migrate.sh` from the install folder. Without a `.env` there, it stops with an error.
 - t@sk4ce does not set up a Postgres server for you. You bring your own.
 - The move is one way for data: SQLite is not updated while you use Postgres.
-- The first start after a boot takes 10 to 20 seconds on small boxes.
+- The first start after a boot takes 10 to 25 seconds on small boxes.
 - On a very small box, do not build on the box. If the download fails, fix the internet and run the installer again.
 
 ## FAQ
