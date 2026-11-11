@@ -66,6 +66,11 @@ describe('trust card', () => {
     await waitFor(() => expect(sent('/kids/7')).toEqual({ trust_mode: false }))
   })
 
+  test('the level chip uses a check, not a shield or seal (audit 25)', () => {
+    wrap(<TrustSection kid={kid()} />)
+    expect(screen.getByText('Trusted').querySelector('[data-icon]')).toHaveAttribute('data-icon', 'check')
+  })
+
   test('Proven has no progress line', () => {
     wrap(<TrustSection kid={kid({ trust_level: 2, trust_goal: null })} />)
     expect(screen.getByText('Proven')).toBeInTheDocument()

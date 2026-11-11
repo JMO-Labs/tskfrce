@@ -83,6 +83,14 @@ describe('NotificationsPane', () => {
     expect(document.body.textContent).not.toContain(RAW)
   })
 
+  test('place rows use the one-bubble glyph (audit 25)', async () => {
+    serve([place])
+    wrap(<NotificationsPane />)
+    const head = (await screen.findByText("Parents' Signal group")).closest('button') as HTMLElement
+    expect(head.querySelector('[data-icon]')).toHaveAttribute('data-icon', 'chat_bubble')
+    expect(head.querySelector('[data-icon="forum"]')).toBeNull()
+  })
+
   test('an unreadable place shows the re-enter banner; a readable one does not', async () => {
     serve([{ ...place, readable: false }, { ...place, id: 2, name: 'Fine one' }])
     wrap(<NotificationsPane />)
