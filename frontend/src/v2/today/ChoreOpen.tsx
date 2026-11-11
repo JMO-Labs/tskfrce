@@ -4,6 +4,7 @@ import { Drawer, Tooltip } from '@mantine/core'
 import type { TodayKid, TodayChore } from '../types'
 import { useRunDetail } from '../hooks/useChores'
 import { useApproveChore, useMarkDone, useMarkNotDone, useSendBack, useToday } from '../hooks/useToday'
+import { useFamily } from '../hooks/useFamily'
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext'
 import { Icon } from '../parent/Icon'
 import { Skeleton } from '../parent/states'
@@ -18,6 +19,7 @@ import { DeductForm } from './DeductForm'
 import { useKids } from '../hooks/useKids'
 import { ownApproved } from '../trustTypes'
 import { WasntDoneSheet } from './WasntDoneSheet'
+import { PenaltySheet } from './PenaltySheet'
 import { useClock, useNow } from './useClock'
 
 function AuthImg({ path, alt }: { path: string; alt: string }) {
@@ -49,6 +51,8 @@ export function ChoreOpen({ chore, kid }: { chore: TodayChore; kid: TodayKid }) 
   const [note, setNote] = useState('')
   const [photo, setPhoto] = useState<number | null>(null) // index of the enlarged proof photo
   const [approving, setApproving] = useState(false)
+  const [pen, setPen] = useState(false)
+  const penalties = !!useFamily().data?.penalties_enabled
   const backBtn = useRef<HTMLButtonElement>(null)
   const dedBtn = useRef<HTMLButtonElement>(null)
   const sending = useRef(false) // synchronous guard: a double click or Enter-mash fires before React re-renders
@@ -313,6 +317,7 @@ export function ChoreOpen({ chore, kid }: { chore: TodayChore; kid: TodayKid }) 
           onClose={() => setTaking(false)}
         />
       )}
+      {pen && <PenaltySheet kidIds={[kid.id]} from={{ chore_run_id: chore.id }} onClose={() => setPen(false)} />}
       <PhotoViewer
         item={photo === null ? null : { type: 'chore', id: chore.id, kid_id: kid.id, kid_name: kid.name, title: chore.title }}
         photos={run.photos}

@@ -112,7 +112,7 @@ export interface Kid extends KidTrustFields {
 /** GET/PATCH /family */
 export type AccentKey = 'neon' | 'sun' | 'tangerine' | 'bubblegum' | 'lilac' | 'sky' | 'aqua' | 'mint' | 'peach' | 'ice'
 
-export interface Family extends FamilyExtrasFields {
+export interface Family extends FamilyExtrasFields, FamilyPenaltyFields {
   name: string
   timezone: string
   reset_time: string
