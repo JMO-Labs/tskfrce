@@ -21,6 +21,7 @@ from blocker.backend import (
     fetch_state,
     report_hits,
     report_homework_activity,
+    report_networks,
     report_resisting,
     report_workarounds,
 )
@@ -30,7 +31,8 @@ from blocker.discovery import run_discovery
 from blocker.hits import HitCounter
 from blocker.homework import HomeworkGate
 from blocker.hw_wiring import HomeworkWiring
-from blocker.ifaces import PerAddress
+from blocker.ifaces import PerAddress, iface_for_ip, lan_networks
+from blocker.multinet import InterfaceManager
 from blocker.portal import run_dns, run_http
 from blocker.resist import ResistanceCounter, ResistanceWatch, Tally
 from blocker.signals import Signals
@@ -99,11 +101,23 @@ class Service:
     ) -> None:
         self.cfg = cfg
         self._fw = firewall
-        self._redir = redirection or RedirectionManager(cfg)
+        self._using_iface_mgr = cfg.lan_iface == ""
+        if self._using_iface_mgr:
+            # InterfaceManager will be set up later with on_seen callback after full init
+            self._iface_manager: InterfaceManager | None = InterfaceManager(
+                cfg, lan_cidrs=lan_cidrs
+            )
+            self._redir = None  # type: ignore
+        else:
+            self._iface_manager = None
+            self._redir = redirection or RedirectionManager(cfg)
         self._fetch = fetch  # legacy blocked-only fetch; wins over fetch_state when given
         self._fetch_state = fetch_state
         self._listen_only = False
         self._vid_of: dict[str, int | None] = {}  # mac -> vlan it was last seen on
+        self._iface_of: dict[
+            str, str | None
+        ] = {}  # mac -> interface name; None when using LAN_IFACE
         # (mac, vid) -> addresses + time: a MAC seen on another segment stays enforced on each
         self._seg_seen: dict[tuple[str, int | None], tuple[TargetAddrs, float]] = {}
         self._sleep = sleep
@@ -111,7 +125,8 @@ class Service:
         self._lan_cidrs = lan_cidrs or DEFAULT_LAN_CIDRS
         self._sites = sites or SiteManager(cfg, on_seen=self._on_seen, lan_cidrs=self._lan_cidrs)
         self._portal_ip = portal_ip
-        self._watch = watch
+        # When using InterfaceManager, _watch will be set to None; each interface manages its own
+        self._watch = watch if not self._using_iface_mgr else None
         self._report = report
         self._report_hits = report_hits
         self._report_workarounds = report_workarounds
@@ -138,6 +153,9 @@ class Service:
         self.store.on_change(
             lambda _: self._wiring.on_state(self.store.homework(), rerender=self._apply)
         )
+        # Set on_seen callback for InterfaceManager now that _on_seen is defined
+        if self._using_iface_mgr and self._iface_manager:
+            self._iface_manager._on_seen = self._on_seen
 
     # --- policy application -------------------------------------------------
 
@@ -146,13 +164,20 @@ class Service:
         # re-read the authoritative set inside it, so concurrent callers
         # (on_change, reconcile, _on_seen) can't apply a stale ruleset last.
         with self._lock:
-            lan = self._lan()
-            site_macs, site_ips = self._sites.infra()
-            infra = site_macs | (
-                {m.lower() for m in (lan.gateway_mac, lan.gateway_mac6, lan.box_mac) if m}
-                if lan
-                else set()
-            )
+            if self._using_iface_mgr:
+                infra_macs, infra_ips = self._iface_manager.infra()
+                site_macs, site_ips = self._sites.infra()
+                infra = infra_macs | site_macs
+                unsafe = self._unsafe_ips(None) | infra_ips | site_ips
+            else:
+                lan = self._lan()
+                site_macs, site_ips = self._sites.infra()
+                infra = site_macs | (
+                    {m.lower() for m in (lan.gateway_mac, lan.gateway_mac6, lan.box_mac) if m}
+                    if lan
+                    else set()
+                )
+                unsafe = self._unsafe_ips(lan) | site_ips
             # listen-only: nothing is paused anywhere (discovery continues)
             blocked = set() if self._listen_only else set(self.store.current()) | self._probing
             skipped = {m for m in blocked if m.lower() in infra}
@@ -163,7 +188,6 @@ class Service:
             # Never spoof an address that isn't safely one device's: the gateway's
             # own IP or the box/portal IP. Stripping it here keeps it out of the firewall sets, the
             # redirect targets and the watch — and off the restore path.
-            unsafe = self._unsafe_ips(lan) | site_ips
             devs, stripped = self._strip_unsafe(devs, unsafe)
             if stripped:
                 log.warning("refusing unsafe gateway-side addresses: %s", sorted(stripped))
@@ -182,11 +206,15 @@ class Service:
             except Exception:
                 log.exception("firewall apply failed")
             self._ip_mac = {ip: mac for mac, t in devs.items() for ip in (t.ip, *t.ip6) if ip}
-            base, by_vid = self._by_segment(devs, unsafe)
-            self._redir.set_targets(base)
-            if self._watch is not None:
-                self._watch.set_watched(base)
-            self._sites.set_targets(by_vid)
+            if self._using_iface_mgr:
+                by_iface = self._by_interface(devs)
+                self._iface_manager.set_targets(by_iface)
+            else:
+                base, by_vid = self._by_segment(devs, unsafe)
+                self._redir.set_targets(base)
+                if self._watch is not None:
+                    self._watch.set_watched(base)
+                self._sites.set_targets(by_vid)
 
     def _by_segment(self, devs: dict[str, TargetAddrs], unsafe: set[str]):
         """Split targets per segment. A MAC is redirected on every segment it was seen on within
@@ -209,6 +237,20 @@ class Service:
         self._seg_seen = {k: v for k, v in self._seg_seen.items() if now - v[1] <= ADDR_TTL}
         return base, by_vid
 
+    def _by_interface(self, devs: dict[str, TargetAddrs]) -> dict[str, dict[str, TargetAddrs]]:
+        """Targets per managed interface: where discovery saw the device, else the interface whose
+        subnet holds its IP. Neither: it isn't on a network we manage, so there's nothing to enforce
+        there (never spoof onto other networks)."""
+        nets = lan_networks()
+        by_iface: dict[str, dict[str, TargetAddrs]] = {}
+        for m, a in devs.items():
+            iface = self._iface_of.get(m) or iface_for_ip(a.ip, nets)
+            if iface is None:
+                log.info("device %s (%s) is on no managed network; not enforcing", m, a.ip)
+                continue
+            by_iface.setdefault(iface, {})[m] = a
+        return by_iface
+
     def _mac_for_ip(self, ip: str) -> str | None:
         return self._ip_mac.get(ip)
 
@@ -219,8 +261,19 @@ class Service:
         return dev.ip if dev else None
 
     def _gateway_ip(self) -> str | None:
-        lan = self._lan()
-        return lan.gateway_ip if lan else None
+        if self._using_iface_mgr:
+            # Return the first available gateway IP from any interface
+            try:
+                for _, redir, _ in self._iface_manager._managers.values():
+                    lan = redir._lanfacts()
+                    if lan.gateway_ip:
+                        return lan.gateway_ip
+            except (OSError, ValueError):
+                log.exception("reading gateway from managed interfaces failed")
+            return None
+        else:
+            lan = self._lan()
+            return lan.gateway_ip if lan else None
 
     def _lan(self):
         try:
@@ -287,6 +340,8 @@ class Service:
             self._devices[seen.mac] = TargetAddrs(mac=seen.mac, ip=seen.ip, ip6=tuple(seen.ipv6))
             self._seen_at[seen.mac] = self._clock()
             self._vid_of[seen.mac] = seen.vid
+            if seen.iface:  # never forget a known interface because a report lacked one
+                self._iface_of[seen.mac] = seen.iface
             self._seg_seen[(seen.mac, seen.vid)] = (self._devices[seen.mac], self._clock())
         if seen.mac in self.store.current():
             self._apply(self.store.current())
@@ -319,7 +374,11 @@ class Service:
         # Local `until` first: must not depend on the backend reports below succeeding.
         self._wiring.tick(rerender=self._apply)
         # Always report the full set (even empty) so the backend can clear.
-        self._report(self.cfg, self._watch.counter.resisting() | self._sites.resisting())
+        if self._using_iface_mgr:
+            resisting = self._iface_manager.resisting() | self._sites.resisting()
+        else:
+            resisting = self._watch.counter.resisting() | self._sites.resisting()
+        self._report(self.cfg, resisting)
         h = self.hits.drain()
         if h:
             self._report_hits(self.cfg, h)
@@ -327,6 +386,11 @@ class Service:
         w = self.workarounds.drain()
         if w:
             self._report_workarounds(self.cfg, w)
+        if self._using_iface_mgr:  # Report detected networks to backend
+            try:
+                report_networks(self.cfg, self._iface_manager.networks())
+            except Exception:
+                log.exception("network report failed")
 
     def _resist_loop(self) -> None:
         while not self._stop.wait(self.cfg.resist_interval):
@@ -394,12 +458,17 @@ class Service:
             self._fw.enable_forwarding()
         except Exception:
             log.exception("enable_forwarding failed")
-        if self._watch is None:
+        if not self._using_iface_mgr and self._watch is None:
             counter = ResistanceCounter(self._redir._lanfacts(), lan_cidrs=self._lan_cidrs)
             self._watch = ResistanceWatch(self.cfg, counter)
         self._spawn(self._reconcile_loop)
         self._spawn(self._resist_loop)
-        self._spawn(lambda: run_discovery(self.cfg, self._stop, self._on_seen, enrich=self._enrich))
+        if self._using_iface_mgr:
+            self._spawn(lambda: self._iface_manager.run(self._stop))
+        else:
+            self._spawn(
+                lambda: run_discovery(self.cfg, self._stop, self._on_seen, enrich=self._enrich)
+            )
         if self.cfg.lan_iface or self.cfg.mirror_iface:
             self._spawn(lambda: self._vlan.run(self._stop))
         self._spawn(lambda: self.signals.run_dhcp(self._stop))
@@ -515,24 +584,40 @@ class Service:
 
     def stop(self) -> None:
         self._stop.set()
-        if self._watch is not None:
+        # Stop redirection and resistance watches before flushing firewall
+        if self._using_iface_mgr:
+            # Synchronously stop all per-interface managers before flush
+            if self._iface_manager:
+                with self._iface_manager._lock:
+                    for iface in list(self._iface_manager._managers):
+                        _stop_ev, redir, watch = self._iface_manager._managers.pop(iface)
+                        try:
+                            redir.stop_all()
+                        except Exception:
+                            log.exception("redirection restore failed on %s", iface)
+                        if watch is not None:
+                            try:
+                                watch.stop()
+                            except Exception:
+                                log.exception("resistance watch stop failed on %s", iface)
+        else:
+            if self._watch is not None:
+                try:
+                    self._watch.stop()
+                except Exception:
+                    log.exception("resistance watch stop failed")
             try:
-                self._watch.stop()
+                self._redir.stop_all()
             except Exception:
-                log.exception("resistance watch stop failed")
+                log.exception("redirection restore failed")
         try:
             self._sites.stop_all()
         except Exception:
             log.exception("site restore failed")
         try:
-            self._redir.stop_all()
+            self._fw.flush()  # fail open
         except Exception:
-            log.exception("redirection restore failed")
-        finally:
-            try:
-                self._fw.flush()  # fail open
-            except Exception:
-                log.exception("firewall flush failed")
+            log.exception("firewall flush failed")
         if self._api is not None:
             try:
                 self._api.shutdown()

@@ -27,6 +27,7 @@ from .integration import (
 )
 from .kid_device import KidDevice, KidEnrollToken
 from .lock import Device, DeviceGroup, DeviceHintRejection, Override, Vlan
+from .network import Network
 from .notify import NotifyHeld, NotifyPlace
 from .password_reset import PasswordReset
 from .penalty import Penalty
@@ -79,6 +80,7 @@ __all__ = [
     "PointsType",
     "Device",
     "Vlan",
+    "Network",
     "DeviceHintRejection",
     "DeviceGroup",
     "HourRule",

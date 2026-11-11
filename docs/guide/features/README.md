@@ -10,5 +10,6 @@ One page for each t@sk4ce feature, with the steps in more detail than the [every
 - [Rewards and celebrations](rewards-celebrations.md): celebrations and Happy Hour.
 - [Minigames](minigames.md): quick games kids earn by doing chores.
 - [Goals](goals.md): kids save points toward something bigger.
+- [Small devices and Postgres](small-devices.md): run on a Raspberry Pi, and optionally move to Postgres.
 
 More pages are added here as they are written.

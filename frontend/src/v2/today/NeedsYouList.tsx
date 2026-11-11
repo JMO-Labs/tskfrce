@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { KidAv } from '@/v2/KidAv'
 import type { NeedsItem } from '../types'
 import { ActionRow } from '../parent/ActionRow'
 import { Chip, type ChipTone } from '../parent/Chip'
@@ -8,7 +9,6 @@ import { dayName } from '../trustTypes'
 import { PhotoViewer, useAuthImage } from './PhotoViewer'
 import { SendBackBox } from './WaitingActions'
 import { groupNeeds } from './needsGroups'
-import { initial } from './KidFacts'
 import { useClock } from './useClock'
 import { isChore, isGoal, useNeedsActions } from './needsActions'
 
@@ -82,7 +82,7 @@ export function NeedsYouList({ items, today }: { items: NeedsItem[]; today?: str
       {groupNeeds(items).map((g) => (
         <div key={g.key} className="pt-ngroup" data-testid="needs-group">
           <div className="pt-ngroup-h">
-            <span className="pt-ngroup-av" aria-hidden>{initial(g.name)}</span>
+            <KidAv id={g.kidId} name={g.name} className="pt-ngroup-av" />
             <span className="pt-ngroup-name">{g.name}</span>
           </div>
           {g.items.map((i) => {
