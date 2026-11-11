@@ -107,10 +107,10 @@ def test_setup_step_validates_and_is_parent_only(client, db):
     assert client.put("/api/v1/setup/step", json={"step": 4}, headers=kid).status_code == 403
 
 
-def test_extras_step_8_is_saved_and_resumed(client, db):
+def test_extras_step_7_is_saved_and_resumed(client, db):
     h = _tok(client)
-    assert client.put("/api/v1/setup/step", json={"step": 8}, headers=h).status_code == 200
-    assert client.get("/api/v1/setup/step", headers=h).json() == {"step": 8}
+    assert client.put("/api/v1/setup/step", json={"step": 7}, headers=h).status_code == 200
+    assert client.get("/api/v1/setup/step", headers=h).json() == {"step": 7}
 
 
 def test_stored_step_above_last_reads_as_finished(client, db):

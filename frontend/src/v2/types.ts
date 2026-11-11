@@ -103,6 +103,8 @@ export interface Kid extends KidTrustFields {
   avatar: string | null
   has_pin: boolean
   age_group: AgeGroup
+  chores_lock?: boolean
+  preset_style?: 'relaxed' | 'balanced' | 'strict' | null
   /** the kid's own pick; null = mode default */
   celebrate?: CelebrateLevel | null
 }

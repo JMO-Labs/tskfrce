@@ -1,7 +1,11 @@
 import type { ReactNode } from 'react'
+import { Switch } from '@mantine/core'
 import Link from 'next/link'
 import { useDevices } from '@/v2/hooks/useDevices'
 import { useLibrary } from '@/v2/hooks/useChores'
+import { usePatchKid } from '@/v2/hooks/useKids'
+import { PresetSwitch } from '@/v2/presets/PresetSwitch'
+import { toastFail } from '@/v2/notify'
 import { useChoreTypes } from '@/v2/hooks/useChoreTypes'
 import { useToday } from '@/v2/hooks/useToday'
 import { useSelfApproved } from '@/v2/hooks/useTrust'
@@ -108,6 +112,23 @@ const kv = (label: string, value: ReactNode) => (
   </div>
 )
 
+function KidStyle({ kid }: { kid: Kid }) {
+  const patch = usePatchKid()
+  return (
+    <div>
+      <PresetSwitch kidId={kid.id} />
+      <Switch
+        className="pn-sw"
+        mt={12}
+        label="Internet locks until chores are done"
+        labelPosition="left"
+        checked={kid.chores_lock ?? true}
+        onChange={(e) => patch.mutate({ id: kid.id, body: { chores_lock: e.currentTarget.checked } }, { onError: toastFail })}
+      />
+    </div>
+  )
+}
+
 export function SettingsRow({ kid, focus, editing, focusPin, onSaved, onCancel, onDirty }: RowProps & {
   editing: boolean; focusPin: boolean; onSaved: () => void; onCancel: () => void; onDirty: (d: boolean) => void
 }) {
@@ -128,6 +149,7 @@ export function SettingsRow({ kid, focus, editing, focusPin, onSaved, onCancel, 
           </div>
         )}
       </div>
+      <KidStyle kid={kid} />
       <KidCelebrations kid={kid} />
     </SummaryRow>
   )

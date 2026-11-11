@@ -51,3 +51,8 @@ jest.mock('next/router', () => ({
     }
   },
 }))
+
+// Mantine's SegmentedControl measures itself; jsdom has no ResizeObserver
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} }
+}

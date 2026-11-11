@@ -24,6 +24,7 @@ class RuleView:
     kid_ids: frozenset[int]
     group_ids: frozenset[int]
     windows: tuple[Window, ...]
+    replaces_everyone: bool = False  # kid style bedtime: Everyone rules of its category step aside
 
 
 class Resolved(NamedTuple):
@@ -57,6 +58,7 @@ def load(db: Session) -> list[RuleView]:
                     Window(days, time.fromisoformat(t.start), time.fromisoformat(t.end))
                     for t in r.times
                 ),
+                replaces_everyone=bool(r.replaces_everyone),
             )
         )
     return out
@@ -125,7 +127,22 @@ def resolve(rules, owner_ids: set[int], group_ids: set[int], d: date) -> Resolve
     free: list[Window] = []
     off: list[Window] = []
     for p in principals:
-        mine = [(r, k) for r in rules if (k := _keys(r, p, group_ids))]
+        # a kid style bedtime replaces Everyone rules of its category, for that kid only
+        own = {
+            r.category for r in rules if r.replaces_everyone and p[0] == "kid" and p[1] in r.kid_ids
+        }
+        mine = [
+            (r, k)
+            for r in rules
+            if (
+                k := _keys(r, p, group_ids)
+                - (
+                    {("all", 0)}
+                    if r.everyone and r.kind == "allowed" and r.category in own
+                    else set()
+                )
+            )
+        ]
         for r, _ in mine:
             if r.kind in ("free", "off"):
                 out = free if r.kind == "free" else off
