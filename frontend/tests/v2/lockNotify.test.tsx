@@ -1,4 +1,4 @@
-import { expect, test, jest } from '@jest/globals'
+import { expect, test } from '@jest/globals'
 import { readFileSync } from 'fs'
 import { renderHook } from '@testing-library/react'
 import { lockNote, useLockNotify } from '@/v2/kid/lockNotify'
