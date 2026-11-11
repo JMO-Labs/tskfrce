@@ -108,23 +108,3 @@ def make_api(
     server.token = token  # type: ignore[attr-defined]
     server.tester = tester  # type: ignore[attr-defined]
     return server
-
-
-def make_api_multi(
-    state: Any, token: str, tester: Callable, hosts: list[str], port: int = 0
-) -> list[HTTPServer]:
-    """Create HTTPServer instances for each host. If port is 0, all servers use the same port
-    (assigned by the OS on the first server); otherwise, each gets the specified port.
-    """
-    servers: list[HTTPServer] = []
-    assigned_port = port
-    for i, host in enumerate(hosts):
-        server = HTTPServer((host, assigned_port), _Handler)
-        server.state = state  # type: ignore[attr-defined]
-        server.token = token  # type: ignore[attr-defined]
-        server.tester = tester  # type: ignore[attr-defined]
-        servers.append(server)
-        # After the first server, use the same port if we started with 0
-        if i == 0 and port == 0:
-            assigned_port = server.server_address[1]
-    return servers
