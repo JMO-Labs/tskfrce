@@ -17,6 +17,7 @@ class Config:
     data_dir: Path
     blocker_port: int = 7777
     bind_host: str = "127.0.0.1"  # API bind; 0.0.0.0 only for the lab (host net = loopback)
+    bind_hosts: tuple[str, ...] = ()  # Multiple bind addresses (if set, bind_host is ignored)
     scan_interval: float = 20
     reconcile_interval: float = 30
     resist_interval: float = 15
@@ -31,6 +32,10 @@ class Config:
         if not token:
             raise RuntimeError("INTERNAL_TOKEN not set in env or secrets.json")
         upstream_dns = environ.get("UPSTREAM_DNS", "") or _read_resolv_conf() or ""
+        bind_str = environ.get("BLOCKER_BIND", "127.0.0.1")
+        # Parse comma-separated bind addresses; if multiple, store in bind_hosts
+        bind_hosts = tuple(h.strip() for h in bind_str.split(",") if h.strip())
+        bind_host = bind_hosts[0] if bind_hosts else "127.0.0.1"
         return cls(
             backend_url=environ.get("BACKEND_URL", "http://backend:8000"),
             blocker_url_host=environ.get("BLOCKER_URL_HOST", "blocker"),
@@ -38,7 +43,8 @@ class Config:
             lan_iface=environ.get("LAN_IFACE", ""),
             data_dir=data_dir,
             blocker_port=int(environ.get("BLOCKER_PORT", 7777)),
-            bind_host=environ.get("BLOCKER_BIND", "127.0.0.1"),
+            bind_host=bind_host,
+            bind_hosts=bind_hosts if len(bind_hosts) > 1 else (),
             scan_interval=float(environ.get("SCAN_INTERVAL", 20)),
             reconcile_interval=float(environ.get("RECONCILE_INTERVAL", 30)),
             resist_interval=float(environ.get("RESIST_INTERVAL", 15)),

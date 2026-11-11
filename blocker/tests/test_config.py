@@ -53,3 +53,24 @@ def test_mirror_iface_default_empty_and_env(tmp_path):
     base = {"INTERNAL_TOKEN": "t", "DATA_DIR": str(tmp_path)}
     assert Config.from_env(base).mirror_iface == ""
     assert Config.from_env({**base, "MIRROR_IFACE": "eth1"}).mirror_iface == "eth1"
+
+
+def test_single_bind_host_no_retry(tmp_path):
+    base = {"INTERNAL_TOKEN": "t", "DATA_DIR": str(tmp_path)}
+    cfg = Config.from_env({**base, "BLOCKER_BIND": "127.0.0.1"})
+    assert cfg.bind_host == "127.0.0.1"
+    assert cfg.bind_hosts == ()
+
+
+def test_multiple_bind_hosts_parses_comma_separated(tmp_path):
+    base = {"INTERNAL_TOKEN": "t", "DATA_DIR": str(tmp_path)}
+    cfg = Config.from_env({**base, "BLOCKER_BIND": "127.0.0.1,172.29.50.1"})
+    assert cfg.bind_host == "127.0.0.1"
+    assert cfg.bind_hosts == ("127.0.0.1", "172.29.50.1")
+
+
+def test_multiple_bind_hosts_handles_spaces(tmp_path):
+    base = {"INTERNAL_TOKEN": "t", "DATA_DIR": str(tmp_path)}
+    cfg = Config.from_env({**base, "BLOCKER_BIND": "127.0.0.1 , 172.29.50.1 , ::1"})
+    assert cfg.bind_host == "127.0.0.1"
+    assert cfg.bind_hosts == ("127.0.0.1", "172.29.50.1", "::1")
