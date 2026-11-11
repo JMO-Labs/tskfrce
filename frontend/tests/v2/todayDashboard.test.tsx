@@ -46,7 +46,7 @@ beforeEach(() => {
     if (p === '/me/tips') return { dismissed: ['onboard.parent'] }
     if (p === '/happy-hour') return { active: [], recent: [] }
     if (p === '/hours') return { rules: [] }
-    if (p === '/devices' || p.startsWith('/integration-widgets') || p === '/parents') return []
+    if (p === '/devices' || p === '/kids' || p.startsWith('/integration-widgets') || p === '/parents') return []
     return {}
   })
 })
