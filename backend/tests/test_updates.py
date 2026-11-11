@@ -86,7 +86,6 @@ def test_internal_today_note_endpoint_requires_token(client):
 
 def test_eval_cannot_pull_major(client, parent_headers, monkeypatch):
     """Hard rule: eval boxes cannot pull major versions (409, state stays eval)."""
-    # Mock install-time channel as eval
     monkeypatch.setenv("HOME", "/tmp")
     tmp_env = Path("/tmp/.env")
     tmp_env.write_text("UPDATE_CHANNEL=eval\n")
@@ -102,5 +101,27 @@ def test_eval_cannot_pull_major(client, parent_headers, monkeypatch):
     # Verify state stayed eval
     status = client.get("/api/v1/updates", headers=parent_headers).json()
     assert status["channel"] == "eval"
+
+    tmp_env.unlink()
+
+
+def test_eval_respects_off_channel(client, parent_headers, monkeypatch):
+    """On eval installs, "off" channel is respected (not coerced to eval)."""
+    monkeypatch.setenv("HOME", "/tmp")
+    tmp_env = Path("/tmp/.env")
+    tmp_env.write_text("UPDATE_CHANNEL=eval\n")
+
+    # Set channel to off (user disables updates)
+    resp = client.patch(
+        "/api/v1/updates",
+        headers=parent_headers,
+        json={"channel": "off"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["channel"] == "off"
+
+    # Verify it stays off when read
+    status = client.get("/api/v1/updates", headers=parent_headers).json()
+    assert status["channel"] == "off"
 
     tmp_env.unlink()

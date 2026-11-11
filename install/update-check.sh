@@ -119,9 +119,10 @@ main() {
   fi
   [ -z "$channel" ] && channel="$install_channel"
 
-  # Defense in depth: if install is eval, ONLY allow eval
-  if [ "$install_channel" = "eval" ] && [ "$channel" != "eval" ]; then
-    say "WARN: Non-eval channel in state on eval install; forcing eval"
+  # Defense in depth: if install is eval, only coerce non-eval/off to eval
+  # Respect "off" even on eval installs (user can disable)
+  if [ "$install_channel" = "eval" ] && [ "$channel" != "eval" ] && [ "$channel" != "off" ]; then
+    say "WARN: Non-eval/off channel in state on eval install; forcing eval"
     channel="eval"
   fi
 

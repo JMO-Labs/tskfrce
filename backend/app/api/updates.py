@@ -78,13 +78,15 @@ def _write_state(data: dict, install_channel: str = None) -> None:
         install_channel = _get_install_channel()
 
     # Guard: eval installs cannot have stable channel or major pull
+    # But respect "off" channel (user can disable updates)
     if install_channel == "eval":
         if data.get("channel") == "stable":
             raise ValueError("Eval channel cannot write stable channel")
         if data.get("requested_major"):
             raise ValueError("Eval channel cannot request major version")
-        # Force channel to eval if it somehow got set to something else
-        data["channel"] = "eval"
+        # Only coerce non-eval/off values to eval
+        if data.get("channel") not in {"eval", "off"}:
+            data["channel"] = "eval"
 
     try:
         path = _state_file()
