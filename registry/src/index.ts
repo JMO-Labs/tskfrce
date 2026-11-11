@@ -14,16 +14,56 @@ const json = (o: unknown, status = 200) =>
 const postIp: Route = async ({ req, env, cf }) => {
   const id = await authBox(req, env)
   if (!id) return json({ error: 'unauthorized' }, 401)
-  const body = (await req.json().catch(() => null)) as { ip?: unknown } | null
-  const ip = body?.ip
-  if (typeof ip !== 'string' || !isPrivateV4(ip)) return json({ error: 'ip must be private IPv4' }, 400)
-  await upsertRecord(env, cf, 'A', `${id}.${env.BASE_DOMAIN}`, ip)
+  const body = (await req.json().catch(() => null)) as { ip?: unknown; networks?: unknown } | null
+
+  let networks: Array<{ ip: string; label: string }> | null = null
+  let firstIp: string | null = null
+
+  // Handle new networks array format
+  if (Array.isArray(body?.networks)) {
+    if (body.networks.length === 0) return json({ error: 'networks array must not be empty' }, 400)
+    const validated = body.networks.filter((n: unknown): n is { ip: string; label: string } =>
+      typeof (n as any)?.ip === 'string' && typeof (n as any)?.label === 'string' && isPrivateV4((n as any).ip)
+    )
+    if (validated.length !== body.networks.length) return json({ error: 'all networks must have private IPv4' }, 400)
+    networks = validated
+    firstIp = validated[0].ip
+  } else {
+    // Backward compat: single IP
+    const ip = body?.ip
+    if (typeof ip !== 'string' || !isPrivateV4(ip)) return json({ error: 'ip must be private IPv4' }, 400)
+    firstIp = ip
+  }
+
   let prev: Record<string, unknown> = {}
   try { prev = JSON.parse((await env.BOXES.get(`seen:${id}`)) ?? '{}') } catch { /* corrupt -> reset */ }
+
+  // Create DNS records
+  const newNetworkCount = networks ? networks.length : 1
+  if (networks) {
+    for (let i = 0; i < networks.length; i++) {
+      const suffix = i === 0 ? '' : `-${i + 1}`
+      await upsertRecord(env, cf, 'A', `${id}${suffix}.${env.BASE_DOMAIN}`, networks[i].ip)
+    }
+  } else if (firstIp) {
+    await upsertRecord(env, cf, 'A', `${id}.${env.BASE_DOMAIN}`, firstIp)
+  }
+
+  // Clean up stale records from previous larger network list
+  let prevNetworkCount = 1
+  if (prev.networks && Array.isArray(prev.networks)) prevNetworkCount = (prev.networks as unknown[]).length
+  if (prevNetworkCount > newNetworkCount) {
+    for (let i = newNetworkCount + 1; i <= prevNetworkCount; i++) {
+      const suffix = i === 1 ? '' : `-${i}`
+      try {
+        await deleteRecord(env, cf, 'A', `${id}${suffix}.${env.BASE_DOMAIN}`)
+      } catch { /* ignore if record doesn't exist */ }
+    }
+  }
   const pub = req.headers.get('CF-Connecting-IP') ?? ''
   const now = Date.now()
   const f = pub ? (pub.includes(':') ? '6' : '4') : ''
-  const seen: Record<string, unknown> = { lanIp: ip, seenAt: now }
+  const seen: Record<string, unknown> = networks ? { networks, last_seen: now } : { lanIp: firstIp, seenAt: now }
   for (const k of ['publicIp4', 'seenAt4', 'publicIp6', 'seenAt6']) if (prev[k] !== undefined) seen[k] = prev[k]
   if (f) { seen[`publicIp${f}`] = pub; seen[`seenAt${f}`] = now }
   await env.BOXES.put(`seen:${id}`, JSON.stringify(seen))

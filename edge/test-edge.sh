@@ -73,4 +73,54 @@ r=0; echo "$out" | grep -q "EDGE_TOKEN not set" || r=1; ok "warns without EDGE_T
 out=$(EDGE_TOKEN=x run next_backoff 30 2>&1)
 r=0; echo "$out" | grep -q "EDGE_TOKEN" && r=1; ok "no warning with EDGE_TOKEN" $r
 r=0; ! grep -q 2443 "$HERE/Caddyfile" || r=1; ok "Caddyfile has no public ntfy port" $r
+
+# Test collect_networks
+setnet() {
+  printf '#!/bin/sh\ncat <<EOF\n%s\nEOF\n' "$1" > "$T/bin/ip"
+}
+chmod +x "$T/bin/ip"
+
+# Single Wired network
+setnet "1: eth0    inet 192.168.1.10/24 scope global eth0"
+out=$(run collect_networks); r=0
+echo "$out" | grep -q '"ip":"192.168.1.10"' || r=1
+echo "$out" | grep -q '"label":"Wired"' || r=1; ok "collect single wired network" $r
+
+# Multiple networks including VLAN
+setnet "1: eth0    inet 192.168.1.10/24 scope global eth0
+2: wlan0    inet 10.0.0.5/8 scope global wlan0
+3: eth0.100 inet 172.20.0.1/24 scope global eth0.100"
+out=$(run collect_networks); r=0
+echo "$out" | grep -q '"ip":"192.168.1.10"' || r=1
+echo "$out" | grep -q '"ip":"10.0.0.5"' || r=1
+echo "$out" | grep -q '"ip":"172.20.0.1"' || r=1
+echo "$out" | grep -q '"label":"VLAN 100"' || r=1; ok "collect multiple networks with VLAN" $r
+
+# Exclude hotspot, link-local, CGNAT
+setnet "1: eth0    inet 192.168.1.10/24 scope global eth0
+2: ap0     inet 10.42.0.2/24 scope global ap0
+3: eth1    inet 169.254.1.1/16 scope link eth1
+4: wlan0   inet 100.100.0.5/10 scope global wlan0"
+out=$(run collect_networks); r=0
+echo "$out" | grep -q '"ip":"192.168.1.10"' || r=1
+echo "$out" | grep -qv '"ip":"10.42.0.2"' || r=1
+echo "$out" | grep -qv '"ip":"169.254"' || r=1
+echo "$out" | grep -qv '"ip":"100.100"' || r=1; ok "collect excludes hotspot, link-local, CGNAT" $r
+
+# Skip docker, virbr, veth, etc
+setnet "1: eth0    inet 192.168.1.10/24 scope global eth0
+2: docker0 inet 172.17.0.1/16 scope global docker0
+3: virbr0  inet 192.168.122.1/24 scope global virbr0
+4: veth1   inet 10.1.0.1/24 scope global veth1"
+out=$(run collect_networks); r=0
+echo "$out" | grep -q '"ip":"192.168.1.10"' || r=1
+echo "$out" | grep -qv docker || r=1
+echo "$out" | grep -qv virbr || r=1
+echo "$out" | grep -qv veth || r=1; ok "collect skips docker, virbr, veth" $r
+
+# Empty networks (loopback only)
+setnet "1: lo    inet 127.0.0.1/8 scope host lo"
+out=$(run collect_networks); r=0
+echo "$out" | grep -q '"networks":\[' || r=1; ok "collect empty networks returns empty array" $r
+
 exit $fail

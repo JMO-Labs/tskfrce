@@ -136,3 +136,42 @@ test('report without CF-Connecting-IP leaves family fields unchanged', async () 
   expect(got).toMatchObject({ ...fam, lanIp: '192.168.1.40' })
   expect(got.seenAt).toBeGreaterThan(22)
 })
+
+test('networks array: single network creates id record', async () => {
+  const env = await makeEnv(), cf = fakeCf()
+  const res = await handle(post('/api/ip', { networks: [{ ip: '192.168.1.40', label: 'Wired' }] }, basic('abc123', 's3cret'), '203.0.113.9'), env, cf)
+  expect(res.status).toBe(204)
+  expect(cf.calls.some((c) => c.method === 'POST' && c.body.name === 'abc123.taskfrce.jmolabs.dev' && c.body.content === '192.168.1.40')).toBe(true)
+  const seen = JSON.parse((await env.BOXES.get('seen:abc123'))!)
+  expect(seen).toMatchObject({ networks: [{ ip: '192.168.1.40', label: 'Wired' }], publicIp4: '203.0.113.9' })
+})
+
+test('networks array: multiple networks create id, id-2, id-3 records', async () => {
+  const env = await makeEnv(), cf = fakeCf()
+  const nets = [
+    { ip: '192.168.1.40', label: 'Wired' },
+    { ip: '10.0.0.5', label: 'Wi-Fi' },
+    { ip: '172.20.0.1', label: 'VLAN 100' },
+  ]
+  const res = await handle(post('/api/ip', { networks: nets }, basic('abc123', 's3cret')), env, cf)
+  expect(res.status).toBe(204)
+  expect(cf.calls.some((c) => c.method === 'POST' && c.body.name === 'abc123.taskfrce.jmolabs.dev' && c.body.content === '192.168.1.40')).toBe(true)
+  expect(cf.calls.some((c) => c.method === 'POST' && c.body.name === 'abc123-2.taskfrce.jmolabs.dev' && c.body.content === '10.0.0.5')).toBe(true)
+  expect(cf.calls.some((c) => c.method === 'POST' && c.body.name === 'abc123-3.taskfrce.jmolabs.dev' && c.body.content === '172.20.0.1')).toBe(true)
+  const seen = JSON.parse((await env.BOXES.get('seen:abc123'))!)
+  expect(seen.networks).toEqual(nets)
+})
+
+test('networks with invalid IP rejected', async () => {
+  const env = await makeEnv(), cf = fakeCf()
+  const res = await handle(post('/api/ip', { networks: [{ ip: '8.8.8.8', label: 'Bad' }] }, basic('abc123', 's3cret')), env, cf)
+  expect(res.status).toBe(400)
+  expect(cf.calls).toHaveLength(0)
+})
+
+test('empty networks array rejected', async () => {
+  const env = await makeEnv(), cf = fakeCf()
+  const res = await handle(post('/api/ip', { networks: [] }, basic('abc123', 's3cret')), env, cf)
+  expect(res.status).toBe(400)
+  expect(cf.calls).toHaveLength(0)
+})
