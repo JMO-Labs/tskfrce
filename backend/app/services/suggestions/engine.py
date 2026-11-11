@@ -10,6 +10,7 @@ from app.services.suggestions.rules import RULES, SYSTEM_RULES
 MAX_SHOWN = 3
 FAMILY = 1
 HIDDEN_KEY = "__hidden__"
+MUTE_PREFIX = "mute:"
 MUTABLE_RULES = frozenset(r for r in RULES if r not in SYSTEM_RULES)
 
 
@@ -37,7 +38,7 @@ def suggestions(db: Session, now: datetime | None = None) -> dict:
         return {"hidden": True, "items": []}
     now = now or datetime.utcnow()
     state = db.query(SuggestionState).filter_by(family_id=FAMILY).all()
-    muted = {s.key for s in state if s.muted}
+    muted = {s.key.removeprefix(MUTE_PREFIX) for s in state if s.muted}
     dismissed = {s.key: s.fingerprint for s in state if not s.muted}
     found = []
     for rule, fn in RULES.items():
@@ -55,7 +56,7 @@ def dismiss(db: Session, key: str, fingerprint: str) -> None:
 
 
 def mute(db: Session, rule: str) -> None:
-    _upsert(db, rule, None, True)
+    _upsert(db, MUTE_PREFIX + rule, None, True)
 
 
 def hide(db: Session) -> None:

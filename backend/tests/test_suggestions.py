@@ -173,6 +173,120 @@ def test_feature_homework(db, client, parent, kid, parent_headers):
     assert "feature.homework" not in [i["rule"] for i in _get(client, parent_headers)["items"]]
 
 
+def _dismiss(client, h, rule):
+    """Dismiss the live `rule` item; assert it is gone; return its key."""
+    s = next(i for i in _get(client, h)["items"] if i["rule"] == rule)
+    r = client.post(
+        U + "/dismiss", json={"key": s["key"], "fingerprint": s["fingerprint"]}, headers=h
+    )
+    assert r.status_code == 200
+    assert s["key"] not in _keys(client, h)
+    return s["key"]
+
+
+def test_chore_stale_reappears_on_new_cycle(db, client, parent, kid, parent_headers):
+    _quiet(db, parent, kid)
+    _, a = make_chore(db, parent, "Vacuum", kids=[kid])
+    a.created_at = datetime.utcnow() - timedelta(days=30)
+    db.commit()
+    _runs(db, a, kid, ["done"], start=10)
+    key = _dismiss(client, parent_headers, "chore.stale")
+    _runs(db, a, kid, ["done"], start=8)  # done again, then stale again
+    assert key in _keys(client, parent_headers)
+
+
+def test_kid_cruising_reappears_on_new_last_day(db, client, parent, kid, parent_headers):
+    from app.services.suggestions.engine import suggestions
+
+    _quiet(db, parent, kid)
+    _, a = make_chore(db, parent, "Dishes", kids=[kid])
+    _runs(db, a, kid, ["done"] * 5, start=1)
+    key = _dismiss(client, parent_headers, "kid.cruising")
+    db.add(ChoreRun(assignment_id=a.id, day=TODAY, kid_id=kid.id, status="done"))
+    db.commit()
+    tomorrow = datetime.utcnow() + timedelta(days=1)  # window now ends on TODAY
+    assert key in [i["key"] for i in suggestions(db, tomorrow)["items"]]
+
+
+def test_goal_close_reappears_on_target_change(db, client, parent, kid, parent_headers):
+    _quiet(db, parent, kid)
+    g = Goal(name="Lego", kid_id=kid.id, target=100, status="active", created_by_id=parent.id)
+    db.add(g)
+    db.commit()
+    db.add(
+        GoalContribution(
+            goal_id=g.id,
+            kid_id=kid.id,
+            amount=70,
+            kind="save",
+            created_at=datetime.utcnow() - timedelta(days=1),
+        )
+    )
+    db.commit()
+    key = _dismiss(client, parent_headers, "goal.close")
+    g.target = 105
+    db.commit()
+    assert key in _keys(client, parent_headers)
+
+
+def test_goal_missing_reappears_none_to_stalled(db, client, parent, kid, parent_headers):
+    _old(db, parent, kid)
+    _make_user(db, "dad", UserRole.PARENT)
+    key = _dismiss(client, parent_headers, "goal.missing")
+    db.add(
+        Goal(
+            name="Bike",
+            kid_id=kid.id,
+            target=500,
+            status="active",
+            created_by_id=parent.id,
+            created_at=datetime.utcnow() - timedelta(days=20),
+        )
+    )
+    db.commit()
+    assert key in _keys(client, parent_headers)
+
+
+def test_family_parent_stays_dismissed(db, client, parent, kid, parent_headers):
+    _old(db, parent)
+    key = _dismiss(client, parent_headers, "family.parent")
+    assert key not in _keys(client, parent_headers)
+
+
+def test_devices_unknown_reappears_on_new_device(db, client, parent, kid, parent_headers):
+    db.add(Device(mac="aa:bb:cc:dd:ee:01", name="Phone", status="unassigned"))
+    db.commit()
+    key = _dismiss(client, parent_headers, "devices.unknown")
+    db.add(Device(mac="aa:bb:cc:dd:ee:02", name="Tablet", status="unassigned"))
+    db.commit()
+    assert key in _keys(client, parent_headers)
+
+
+def test_feature_homework_stays_dismissed(db, client, parent, kid, parent_headers):
+    _quiet(db, parent, kid)
+    make_chore(db, parent, "Homework", kids=[kid])
+    key = _dismiss(client, parent_headers, "feature.homework")
+    assert key not in _keys(client, parent_headers)
+
+
+def test_deleted_kid_does_not_break_card(db, client, parent, kid, parent_headers):
+    _quiet(db, parent, kid)
+    _, a = make_chore(db, parent, "Dishes", kids=[kid])
+    _runs(db, a, kid, ["skipped"] * 3)
+    kid.is_active = False
+    db.commit()
+    assert client.get(U, headers=parent_headers).status_code == 200
+
+
+def test_dismiss_after_mute_keeps_mute(db, client, parent, parent_headers):
+    _old(db, parent)
+    client.post(U + "/mute", json={"rule": "family.parent"}, headers=parent_headers)
+    client.post(
+        U + "/dismiss", json={"key": "family.parent", "fingerprint": "1"}, headers=parent_headers
+    )
+    assert "family.parent" not in _keys(client, parent_headers)
+
+
 def test_max_three_ranked_system_first(db, client, parent, kid, parent_headers):
     _old(db, parent, kid)  # family.parent + goal.missing
     make_chore(db, parent, "Homework", kids=[kid])  # feature.homework

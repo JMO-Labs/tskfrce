@@ -73,6 +73,8 @@ def chore_skipped(db: Session, now: datetime) -> list[dict]:
         if a is None or not a.active:
             continue
         kid = db.get(User, kid_id)
+        if kid is None:
+            continue
         out.append(
             _s(
                 "chore.skipped",
@@ -167,6 +169,8 @@ def goal_close(db: Session, now: datetime) -> list[dict]:
         if left <= 0 or earned <= 0 or left / (earned / 7) > CLOSE_DAYS:
             continue
         kid = db.get(User, g.kid_id)
+        if kid is None:
+            continue
         out.append(
             _s(
                 "goal.close",
@@ -201,7 +205,7 @@ def goal_missing(db: Session, now: datetime) -> list[dict]:
                     kid.id,
                     KID,
                     "none",
-                    kid.created_at + timedelta(days=7),
+                    (kid.created_at or now) + timedelta(days=SETUP_DAYS),
                     f"{_name(kid)} has no goal",
                     f"{_name(kid)} isn't saving for anything yet. A goal makes chores matter.",
                     "link",
@@ -213,7 +217,7 @@ def goal_missing(db: Session, now: datetime) -> list[dict]:
         stalled = [
             g
             for g in goals
-            if g.created_at <= idle
+            if (g.created_at or now) <= idle
             and not db.query(GoalContribution)
             .filter(GoalContribution.goal_id == g.id, GoalContribution.created_at >= idle)
             .count()
@@ -226,7 +230,7 @@ def goal_missing(db: Session, now: datetime) -> list[dict]:
                     kid.id,
                     KID,
                     f"stalled:{g.id}",
-                    g.created_at + timedelta(days=GOAL_IDLE_DAYS),
+                    (g.created_at or now) + timedelta(days=GOAL_IDLE_DAYS),
                     f"{g.name} has stalled",
                     f"{_name(kid)} hasn't added to {g.name} in {GOAL_IDLE_DAYS} days. "
                     "Refresh it or set a new goal.",
