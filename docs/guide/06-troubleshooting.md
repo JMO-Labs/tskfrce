@@ -51,6 +51,16 @@ Work through these in order:
    - "The device is trying to get around the block. The box is still stopping it, but someone may have changed its network settings.": see below.
    - "We couldn't see this device use the internet during the test. ...": open a video on the device and test again. If it repeats, your router may be stopping the box. Check the [router list](../routers.md).
 
+## My kid is stuck in jail (a penalty block won't end)
+
+A penalty block ends by itself, but you can end it sooner. Try these in order:
+
+1. Open **Devices**. A blocked device shows **Blocked by penalty until …**. Tap **Forgive** there to end it now.
+2. Or open the kid's page and find the active penalty. **Forgive** ends it and keeps the record. **Cancel** undoes it and gives back what was taken. **Shorten** ends a block earlier.
+3. If the kid has make-up chores, they must be done and you must approve them (they always wait for you, even in trust mode). Check **Needs you**.
+4. If the kid saved for **Get out of jail free**, they can tap **Use Get out of jail free** on the penalty card.
+5. Still blocked? Make sure the device is not paused for another reason, like bedtime or no screen time left. See [A device isn't being paused](#a-device-isnt-being-paused) for the other side of this.
+
 ## My kid found a way around it
 
 This can happen. t@sk4ce stops normal use, and tells you when it notices. It can't stop everything.
