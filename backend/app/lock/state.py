@@ -104,9 +104,7 @@ def device_facts(
         owners=tuple(
             OwnerChores(t, a)
             for a, t in (
-                (0, 0)
-                if not o.chores_lock
-                else _counts(db, o.id, day, pre)  # lock off: chores never block
+                (0, 0) if not o.chores_lock else _counts(db, o.id, day, pre)  # lock off: chores never block
                 for o in device.owners
             )
         ),

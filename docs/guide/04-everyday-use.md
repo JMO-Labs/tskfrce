@@ -176,7 +176,7 @@ Kids save points toward something bigger, like a bike, a game or a family trip. 
 - Saved points leave a kid's balance. Removing a goal gives every kid back what they saved.
 - **Goal settings** (the link at the bottom) turns Goals on or off and sets whether kids can suggest goals or take points back, whether kids see what siblings gave, automatic saving (a share of each approved chore goes to the kid's chosen goal), how many goals each age can have, and the built-in goals: extra screen time (needs screen time banking) and Get out of jail free.
 
-**Create a goal.** Tap **+ New goal**. Under **Goal type**, choose a custom goal (pick an emoji, a **Name** and a **Price, points**) or a built-in one. Then choose who it is for: one kid, several kids or **Family**. The price is what kids must save before the goal is full.
+**Create a goal.** Tap **+ New goal**. Under **Goal type**, choose a custom goal (pick an emoji, a **Name** and a **Price, points**) or a built-in one. Then choose who it is for: one kid or several kids. Custom goals can also be for the whole **Family**. The price is what kids must save before the goal is full.
 
 **Rewards for goals.** Fill the meter and tap **Fulfilled**: the kid gets the mascot party, and you hand over the real prize (a bike, a trip). Two built-in goals give a reward by themselves. **Extra screen time** grants free minutes. **Get out of jail free** gives the kid one card. A kid with a card sees **Use Get out of jail free** on a penalty card. Playing it cancels that penalty, even one that ended in the last 7 days. Each card works once. Turn it on in **Goal settings** (needs Penalties on); **Price, points** sets its cost. If you turn Penalties off, kids' cards are hidden.
 
