@@ -1,11 +1,26 @@
 #!/bin/sh
-# Forget the currently saved Wi-Fi network.
+# Forget the currently saved Wi-Fi network via privileged helper socket.
 # Used by factory reset (PR 2) to clear Wi-Fi credentials.
+# Call directly on socket (not HTTP API) so it works during reset flow.
 
 set -e
 
-# Call the backend API to forget the Wi-Fi network.
-# This is typically invoked after the reset service.
-curl -s -X POST http://127.0.0.1:8000/api/v1/network/wifi/forget \
-  -H "Authorization: Bearer internal" \
-  -w "\n" || echo "Wi-Fi forget request sent (may fail if not online)"
+SOCKET="/run/tskfrce-wifi.sock"
+
+if [ ! -S "$SOCKET" ]; then
+  echo "Helper socket not available"
+  exit 1
+fi
+
+# Get current SSID from helper
+current=$(echo '{"cmd":"status"}' | nc -w 1 -U "$SOCKET" 2>/dev/null || echo '{}')
+ssid=$(echo "$current" | jq -r '.ssid // empty' 2>/dev/null)
+
+if [ -z "$ssid" ]; then
+  echo "Not connected to any network"
+  exit 0
+fi
+
+# Call helper to forget the network
+echo "{\"cmd\":\"forget\",\"ssid\":\"$ssid\"}" | nc -w 1 -U "$SOCKET" 2>/dev/null || true
+echo "Forgot $ssid"
