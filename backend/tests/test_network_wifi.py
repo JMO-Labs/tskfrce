@@ -1,107 +1,102 @@
-"""Unit tests for network_wifi service with mocked nmcli."""
+"""Unit tests for network_wifi service (socket-based helper client)."""
 
 import pytest
 from app.services import network_wifi
-from app.services.network_wifi import (
-    _validate_password,
-    _validate_ssid,
-    forget,
-    join,
-    scan,
-)
 
 
 class TestValidation:
     def test_valid_ssid(self):
-        _validate_ssid("MyNetwork")  # Should not raise
+        network_wifi._validate_ssid("MyNetwork")  # Should not raise
 
     def test_ssid_too_long(self):
         long_ssid = "a" * 33
         with pytest.raises(ValueError, match="Invalid SSID"):
-            _validate_ssid(long_ssid)
+            network_wifi._validate_ssid(long_ssid)
 
     def test_ssid_empty(self):
         with pytest.raises(ValueError, match="Invalid SSID"):
-            _validate_ssid("")
+            network_wifi._validate_ssid("")
 
     def test_ssid_null_byte(self):
         with pytest.raises(ValueError, match="contains null"):
-            _validate_ssid("test\x00net")
+            network_wifi._validate_ssid("test\x00net")
 
     def test_valid_password(self):
-        _validate_password("password123")  # Should not raise
+        network_wifi._validate_password("password123")  # Should not raise
 
     def test_password_too_short(self):
         with pytest.raises(ValueError, match="8-64 bytes"):
-            _validate_password("short")
+            network_wifi._validate_password("short")
 
     def test_password_too_long(self):
         long_pass = "a" * 65
         with pytest.raises(ValueError, match="8-64 bytes"):
-            _validate_password(long_pass)
+            network_wifi._validate_password(long_pass)
+
+
+class TestCountryValidation:
+    def test_invalid_country_too_long(self):
+        with pytest.raises(ValueError):
+            network_wifi.set_country("USA")
+
+    def test_invalid_country_digits(self):
+        with pytest.raises(ValueError):
+            network_wifi.set_country("U1")
 
 
 class TestScan:
-    def test_scan_calls_nmcli(self, monkeypatch):
-        """Mock nmcli and verify scan parses output."""
+    def test_scan_calls_helper(self, monkeypatch):
+        """Mock socket and verify scan parses response."""
 
-        def mock_check_output(cmd, **kwargs):
-            assert cmd[0:3] == ["fake_nmcli", "dev", "wifi"]
-            return (
-                "SSID            SECURITY SIGNAL\n"
-                "MyNet           WPA2     80\n"
-                "OtherNet        WPA      60\n"
-            )
+        def mock_call_helper(cmd, **kwargs):
+            assert cmd == "scan"
+            return {
+                "networks": [
+                    {"ssid": "MyNet", "signal": 80, "security": "WPA2"},
+                    {"ssid": "OtherNet", "signal": 60, "security": "WPA2"},
+                ]
+            }
 
-        monkeypatch.setattr("subprocess.check_output", mock_check_output)
-        networks = scan(nmcli_exe="fake_nmcli")
+        monkeypatch.setattr(network_wifi, "_call_helper", mock_call_helper)
+        networks = network_wifi.scan()
         assert len(networks) == 2
         assert networks[0].ssid == "MyNet"
         assert networks[0].signal == 80
-        assert networks[1].signal == 60  # Sorted by signal
-
-    def test_scan_empty(self, monkeypatch):
-        """Scan with no networks."""
-
-        def mock_check_output(cmd, **kwargs):
-            return "SSID            SECURITY SIGNAL\n"
-
-        monkeypatch.setattr("subprocess.check_output", mock_check_output)
-        networks = scan(nmcli_exe="fake_nmcli")
-        assert networks == []
 
 
 class TestJoin:
-    def test_join_success(self, monkeypatch):
-        """Successful join returns True."""
-
-        def mock_run(cmd, **kwargs):
-            assert cmd[0:3] == ["fake_nmcli", "dev", "wifi"]
-            assert "connect" in cmd
-            assert "MyNet" in cmd
-
-        monkeypatch.setattr("subprocess.run", mock_run)
-        result = join("MyNet", "password123", nmcli_exe="fake_nmcli")
-        assert result is True
-
     def test_join_validates_ssid(self):
-        """Join rejects invalid SSID before calling nmcli."""
+        """Join rejects invalid SSID before calling helper."""
         with pytest.raises(ValueError):
-            join("", "password123")
+            network_wifi.join("", "password123")
 
     def test_join_validates_password(self):
-        """Join rejects invalid password before calling nmcli."""
+        """Join rejects invalid password before calling helper."""
         with pytest.raises(ValueError):
-            join("MyNet", "short")
+            network_wifi.join("MyNet", "short")
+
+    def test_join_success(self, monkeypatch):
+        """Successful join returns True (password NOT in argv)."""
+
+        def mock_call_helper(cmd, **kwargs):
+            assert cmd == "join"
+            assert kwargs["ssid"] == "MyNet"
+            assert kwargs["password"] == "password123"
+            # Socket-based: password is in JSON, not shell argv
+            return {"success": True}
+
+        monkeypatch.setattr(network_wifi, "_call_helper", mock_call_helper)
+        result = network_wifi.join("MyNet", "password123")
+        assert result is True
 
     def test_join_failure(self, monkeypatch):
-        """Failed nmcli call returns False."""
+        """Failed join returns False."""
 
-        def mock_run(cmd, **kwargs):
-            raise Exception("nmcli failed")
+        def mock_call_helper(cmd, **kwargs):
+            return {"success": False}
 
-        monkeypatch.setattr("subprocess.run", mock_run)
-        result = join("MyNet", "password123", nmcli_exe="fake_nmcli")
+        monkeypatch.setattr(network_wifi, "_call_helper", mock_call_helper)
+        result = network_wifi.join("MyNet", "password123")
         assert result is False
 
 
@@ -109,17 +104,18 @@ class TestForget:
     def test_forget_validates_ssid(self):
         """Forget rejects invalid SSID."""
         with pytest.raises(ValueError):
-            forget("")
+            network_wifi.forget("")
 
     def test_forget_success(self, monkeypatch):
         """Successful forget returns True."""
 
-        def mock_run(cmd, **kwargs):
-            assert "connection" in cmd
-            assert "delete" in cmd
+        def mock_call_helper(cmd, **kwargs):
+            assert cmd == "forget"
+            assert kwargs["ssid"] == "MyNet"
+            return {"success": True}
 
-        monkeypatch.setattr("subprocess.run", mock_run)
-        result = forget("MyNet", nmcli_exe="fake_nmcli")
+        monkeypatch.setattr(network_wifi, "_call_helper", mock_call_helper)
+        result = network_wifi.forget("MyNet")
         assert result is True
 
 
@@ -127,19 +123,47 @@ class TestStatus:
     def test_status_connected(self, monkeypatch):
         """Status when connected."""
 
-        def mock_check_output(cmd, **kwargs):
-            return "wlan0:connected\nlo:unmanaged\n"
+        def mock_call_helper(cmd, **kwargs):
+            return {"connected": True, "ssid": "MyNet", "signal": 75}
 
-        monkeypatch.setattr("subprocess.check_output", mock_check_output)
-        status_dict = network_wifi.status(nmcli_exe="fake_nmcli")
+        monkeypatch.setattr(network_wifi, "_call_helper", mock_call_helper)
+        status_dict = network_wifi.status()
         assert status_dict["connected"] is True
+        assert status_dict["ssid"] == "MyNet"
 
     def test_status_disconnected(self, monkeypatch):
         """Status when not connected."""
 
-        def mock_check_output(cmd, **kwargs):
-            return "wlan0:disconnected\n"
+        def mock_call_helper(cmd, **kwargs):
+            return {"connected": False, "ssid": None, "signal": 0}
 
-        monkeypatch.setattr("subprocess.check_output", mock_check_output)
-        status_dict = network_wifi.status(nmcli_exe="fake_nmcli")
+        monkeypatch.setattr(network_wifi, "_call_helper", mock_call_helper)
+        status_dict = network_wifi.status()
         assert status_dict["connected"] is False
+
+
+class TestHotspot:
+    def test_hotspot_up_success(self, monkeypatch):
+        """Start hotspot."""
+
+        def mock_call_helper(cmd, **kwargs):
+            assert cmd == "hotspot_up"
+            assert kwargs["ssid"] == "t@sk4ce-abcd"
+            assert kwargs["password"] == "password123"
+            assert kwargs["country"] == "US"
+            return {"success": True}
+
+        monkeypatch.setattr(network_wifi, "_call_helper", mock_call_helper)
+        result = network_wifi.hotspot_up("t@sk4ce-abcd", "password123", "US")
+        assert result is True
+
+    def test_hotspot_down_success(self, monkeypatch):
+        """Stop hotspot."""
+
+        def mock_call_helper(cmd, **kwargs):
+            assert cmd == "hotspot_down"
+            return {"success": True}
+
+        monkeypatch.setattr(network_wifi, "_call_helper", mock_call_helper)
+        result = network_wifi.hotspot_down()
+        assert result is True
