@@ -29,7 +29,15 @@ describe('PhoneGuide', () => {
     expect(screen.getByText(/Use device MAC/)).toBeInTheDocument()
     expect(screen.getAllByText(/Screen Time/)[0]).toBeInTheDocument()
     expect(screen.getByText(/Private Wi-Fi Address/)).toBeInTheDocument()
-    expect(screen.getAllByRole('checkbox')).toHaveLength(4)
+    expect(screen.getByText(/Switch to mobile data/)).toBeInTheDocument()
+    expect(screen.getAllByRole('checkbox')).toHaveLength(5)
+    expect(screen.queryByText('Done')).toBeNull() // no fixed "Done" that reads as done when unticked
+  })
+
+  test('links to the guide section, not the guide root', () => {
+    show()
+    expect(screen.getByRole('link', { name: /blocked phone still gets online/ }).getAttribute('href'))
+      .toMatch(/\/guide\/06-troubleshooting\.html.*#if-a-blocked-phone-still-gets-online$/)
   })
 
   test('ticking a step persists; closing marks the guide seen', () => {

@@ -194,7 +194,8 @@ The box can only block traffic that goes through home Wi-Fi. Two things on the p
 **Android (Google Family Link)**
 
 1. In Family Link, lock or restrict mobile data for the phone.
-2. On the phone, open the home Wi-Fi, then Privacy, and choose **Use device MAC**.
+2. On a Samsung phone, open Settings > Connections > Wi-Fi > **Intelligent Wi-Fi** and turn off **Switch to mobile data**. It sends apps over mobile data while Wi-Fi still shows connected. Keep mobile data locked in Family Link (step 1) so it cannot be turned back on.
+3. On the phone, open the home Wi-Fi, then Privacy, and choose **Use device MAC**.
 
 **iPhone (Screen Time)**
 

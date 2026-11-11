@@ -11,6 +11,7 @@ import { api } from '@/v2/api'
 import { DeviceDetail } from '@/v2/manage/DeviceDetail'
 import { deviceMenu } from '@/v2/manage/DeviceHead'
 import type { Device, DeviceEvent, Group, Kid } from '@/v2/types'
+import { markGuideSeen } from '@/v2/manage/phoneGuideStore'
 import { fakeRouter } from './helpers/fakeRouter'
 
 jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
@@ -158,6 +159,25 @@ describe('device detail, calm', () => {
     expect(screen.queryByText('Keep this phone on the box')).toBeNull() // still saving: the page stays usable
     release()
     expect(await screen.findByText('Keep this phone on the box')).toBeTruthy()
+  })
+
+  test('the phone guide stays closed when already seen', async () => {
+    localStorage.clear()
+    markGuideSeen(12)
+    show(dev({ owner_ids: [], status: 'unassigned' }), { open: 'details' })
+    await userEvent.click(within(screen.getByRole('group', { name: 'Owners' })).getByRole('button', { name: 'Maya' }))
+    await waitFor(() => expect(notifications.show).toHaveBeenCalledWith(expect.objectContaining({ message: 'Saved' })))
+    expect(screen.queryByText('Keep this phone on the box')).toBeNull()
+  })
+
+  test('the phone guide stays closed when saving the owner fails', async () => {
+    localStorage.clear()
+    apiMock.mockImplementation(async (_p, o) => { if (o?.method === 'PATCH') throw new Error('nope'); return {} })
+    show(dev({ owner_ids: [], status: 'unassigned' }), { open: 'details' })
+    await userEvent.click(within(screen.getByRole('group', { name: 'Owners' })).getByRole('button', { name: 'Maya' }))
+    await waitFor(() => expect(notifications.show).toHaveBeenCalled())
+    await new Promise((r) => setTimeout(r, 0))
+    expect(screen.queryByText('Keep this phone on the box')).toBeNull()
   })
 
   test('unknown open value shows calm', async () => {
