@@ -55,7 +55,7 @@ def set_homework(
     if now_utc.tzinfo is None:
         now_utc = now_utc.replace(tzinfo=UTC)
     now = now_utc.astimezone(UTC).replace(tzinfo=None)
-    pre = Prefetch(db, devices)
+    pre = Prefetch(db, devices, now=now_utc)
     until = now + timedelta(minutes=minutes or HOMEWORK_MINUTES)
     out = []
     for d in devices:
