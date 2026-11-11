@@ -12,7 +12,7 @@ G = "/api/v1/kid/games"
 @pytest.fixture(autouse=True)
 def _awake(monkeypatch):
     """These tests use the real clock; the asleep window has its own tests."""
-    monkeypatch.setattr(minigames, "asleep_until", lambda fam, now: None)
+    monkeypatch.setattr(minigames, "asleep_until", lambda db, fam, kid, now: None)
 
 
 def _saved(db, kid, n=1, seen=False):

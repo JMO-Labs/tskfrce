@@ -47,7 +47,7 @@ def start(db: Session, fam, kid: User, now_utc: datetime, rng=random) -> dict:
     cur = _started(db, kid.id)
     if cur:
         return started_out(cur, kid.age_group)
-    wake = minigames.asleep_until(fam, now_utc)
+    wake = minigames.asleep_until(db, fam, kid, now_utc)
     if wake:
         raise HTTPException(409, f"Games are asleep until {_clock(fam, wake)}.")
     game, _, slot = gc.pick(kid.age_group, rng)
@@ -208,7 +208,7 @@ def shelf(db: Session, fam, kid: User, now_utc: datetime) -> dict:
     since = _week_start(fam, now_utc)
     saved = db.query(GamePlay).filter_by(kid_id=kid.id, status="saved").all()
     cur = _started(db, kid.id)
-    wake = minigames.asleep_until(fam, now_utc)
+    wake = minigames.asleep_until(db, fam, kid, now_utc)
     prog = {p.game: p for p in db.query(GameProgress).filter_by(kid_id=kid.id)}
     left, top = minigames.cap_for(db, fam, kid.id, svc.today(db, now_utc))
     return {

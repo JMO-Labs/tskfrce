@@ -9,7 +9,7 @@ from app.services import minigames_play as mp
 from fastapi import HTTPException
 
 from tests.conftest import _make_user
-from tests.factories import make_run
+from tests.factories import make_rule, make_run
 
 DAY = date(2026, 10, 20)
 NOW = datetime(2026, 10, 21, 12, 0, tzinfo=UTC)
@@ -84,7 +84,8 @@ def test_start_twice_same_token(db, kid):
 def test_start_asleep(db, kid):
     _saved(db, kid)
     fam = get_family(db)
-    fam.bedtime_auto_at, fam.reset_time = "21:00", "06:00"
+    fam.reset_time = "06:00"
+    make_rule(db, kid_ids=[kid.id], times=(("07:00", "21:00"),))
     with pytest.raises(HTTPException) as e:
         mp.start(db, fam, kid, datetime(2026, 10, 20, 22, 30, tzinfo=UTC))
     assert (e.value.status_code, e.value.detail) == (409, "Games are asleep until 6:00 AM.")

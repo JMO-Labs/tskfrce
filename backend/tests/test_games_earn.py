@@ -6,7 +6,7 @@ from app.models.game import GamePlay
 from app.models.points import Points, PointsType
 from app.services import minigames as mg
 
-from tests.factories import make_run
+from tests.factories import make_rule, make_run
 
 DAY = date(2026, 10, 20)
 
@@ -143,20 +143,48 @@ def test_cap_for(db, parent, kid):
     assert mg.cap_for(db, fam, kid.id, DAY) == (0, 0)
 
 
-def test_asleep_until(db):
+def _utc(*a):
+    return datetime(2026, 10, 20, *a, tzinfo=UTC)  # a Tuesday
+
+
+def test_asleep_until_own_bedtime(db, kid):
+    fam = get_family(db)
+    fam.reset_time = "06:00"
+    make_rule(db, kid_ids=[kid.id], times=(("07:00", "21:00"),))
+    assert mg.asleep_until(db, fam, kid, _utc(22, 30)) == datetime(2026, 10, 21, 6, 0)
+    assert mg.asleep_until(db, fam, kid, _utc(3, 0)) == datetime(2026, 10, 20, 6, 0)
+    assert mg.asleep_until(db, fam, kid, _utc(12, 0)) is None
+
+
+def test_asleep_each_kid_own_bedtime(db, kid):
+    from app.models.user import UserRole
+
+    from tests.conftest import _make_user
+
+    sis = _make_user(db, "sis", UserRole.KID)
+    fam = get_family(db)
+    fam.reset_time = "06:00"
+    make_rule(db, kid_ids=[kid.id], times=(("07:00", "20:00"),))
+    make_rule(db, kid_ids=[sis.id], times=(("07:00", "22:00"),))
+    t = _utc(21, 0)
+    assert mg.asleep_until(db, fam, kid, t) == datetime(2026, 10, 21, 6, 0)
+    assert mg.asleep_until(db, fam, sis, t) is None
+
+
+def test_asleep_everyone_rule_and_weekday(db, kid):
+    fam = get_family(db)
+    fam.reset_time = "06:00"
+    make_rule(db, everyone=True, days="01234", times=(("07:00", "20:30"),))
+    make_rule(db, everyone=True, days="56", times=(("07:00", "22:00"),))
+    assert mg.asleep_until(db, fam, kid, _utc(21, 0)) == datetime(2026, 10, 21, 6, 0)
+    assert mg.asleep_until(db, fam, kid, datetime(2026, 10, 24, 21, 0, tzinfo=UTC)) is None
+
+
+def test_asleep_ignores_family_settings_without_rules(db, kid):
     fam = get_family(db)
     fam.bedtime_auto_at, fam.reset_time = "21:00", "06:00"
-
-    def utc(*a, tzinfo):
-        return datetime(2026, 10, 20, *a, tzinfo=tzinfo)
-
-    assert mg.asleep_until(fam, utc(22, 30, tzinfo=UTC)) == datetime(2026, 10, 21, 6, 0)
-    assert mg.asleep_until(fam, utc(3, 0, tzinfo=UTC)) == datetime(2026, 10, 20, 6, 0)
-    assert mg.asleep_until(fam, utc(12, 0, tzinfo=UTC)) is None
-    fam.quiet_start, fam.quiet_end = "13:00", "14:00"
-    assert mg.asleep_until(fam, utc(13, 30, tzinfo=UTC)) == datetime(2026, 10, 20, 14, 0)
     fam.quiet_start, fam.quiet_end = "22:00", "07:00"
-    assert mg.asleep_until(fam, utc(23, 0, tzinfo=UTC)) == datetime(2026, 10, 21, 7, 0)
+    assert mg.asleep_until(db, fam, kid, _utc(23, 0)) is None
 
 
 def test_saved_count_and_enabled(db, parent, kid):

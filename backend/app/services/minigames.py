@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
+from app.lock import hours
 from app.models.chores import ChoreRun
 from app.models.game import GamePlay
 from app.models.points import Points
@@ -117,23 +118,32 @@ def _hm(s: str) -> tuple[int, int]:
     return int(h), int(m)
 
 
-def asleep_until(fam, now_utc: datetime) -> datetime | None:
-    """End of the bedtime or quiet-hours window we are in, as naive UTC; else None."""
+def _bedtime(rules, kid_id: int, d: date) -> str | None:
+    """The kid's own bedtime on local date `d`: the end of their last allowed window, from
+    their Hours rules (their own and Everyone's). None when no rule gives them one."""
+    sets = hours.resolve(rules, {kid_id}, set(), d).allowed_sets
+    ends = [max((w.end for w in s if w.start < w.end), default=None) for s in sets]
+    ends = [e for e in ends if e]
+    return min(ends).strftime("%H:%M") if ends else None
+
+
+def asleep_until(db: Session, fam, kid, now_utc: datetime) -> datetime | None:
+    """End of the asleep window (kid's bedtime to the day reset) we are in, as naive UTC."""
     tz = ZoneInfo(fam.timezone)
     now = now_utc.astimezone(tz)
-    t = now.strftime("%H:%M")
-    ends = []
-    for start, end in ((fam.bedtime_auto_at, fam.reset_time), (fam.quiet_start, fam.quiet_end)):
-        if not start or not end or start == end:
-            continue
-        if start < end:
-            inside, next_day = start <= t < end, False
-        else:
-            inside, next_day = t >= start or t < end, t >= start
-        if inside:
-            h, m = _hm(end)
-            day = now.date() + timedelta(days=1 if next_day else 0)
-            ends.append(datetime(day.year, day.month, day.day, h, m, tzinfo=tz))
-    if not ends:
+    t, end = now.strftime("%H:%M"), fam.reset_time
+    d = now.date() if t >= end else now.date() - timedelta(days=1)
+    start = _bedtime(hours.load(db), kid.id, d)
+    if not start or not end or start == end:
         return None
-    return max(ends).astimezone(UTC).replace(tzinfo=None)
+    if start < end:
+        inside, next_day = start <= t < end, False
+    else:
+        inside, next_day = t >= start or t < end, t >= start
+    if not inside:
+        return None
+    h, m = _hm(end)
+    day = now.date() + timedelta(days=1 if next_day else 0)
+    return (
+        datetime(day.year, day.month, day.day, h, m, tzinfo=tz).astimezone(UTC).replace(tzinfo=None)
+    )
