@@ -3,6 +3,7 @@ import { useMediaQuery } from '@mantine/hooks'
 import { useRewards } from '@/v2/hooks/useRewards'
 import { useScreenTime } from '@/v2/hooks/useScreenTime'
 import { Chip } from '@/v2/parent/Chip'
+import { DetailHeader } from '@/v2/parent/DetailHeader'
 import { Icon } from '@/v2/parent/Icon'
 import { AffordDots } from './AffordDots'
 import { RewardDetail, rewardGlyph } from './RewardDetail'
@@ -22,16 +23,17 @@ export function RewardsCatalogue({ pick: urlPick, onPick }: { pick?: string; onP
   }, [small, urlPick])
   return (
     <div className="pk-detail">
-      <header className="pk-head">
-        <div className="pk-head-t">
-          <h2>Catalogue</h2>
-          <p className="rw-sub">What kids can spend points on. Circles show who can afford it now.</p>
-        </div>
-        <button type="button" className="p-btn" data-variant="accent" onClick={() => onPick('new')}>
-          <Icon name="add" />
-          New reward
-        </button>
-      </header>
+      <DetailHeader
+        media={<span className="pk-tile pk-tile-lg"><Icon name="redeem" size={26} /></span>}
+        title="Catalogue"
+        sub="What kids can spend points on. Circles show who can afford it now."
+        main={
+          <button type="button" className="p-btn" data-variant="accent" onClick={() => onPick('new')}>
+            <Icon name="add" />
+            New reward
+          </button>
+        }
+      />
       <div className="rw-cat">
         {rewards.map((r) => (
           <button key={r.id} type="button" className="rw-ci" data-selected={pick === String(r.id)} data-hidden={!r.visible || undefined} onClick={() => onPick(r.id)}>
@@ -48,10 +50,6 @@ export function RewardsCatalogue({ pick: urlPick, onPick }: { pick?: string; onP
             {r.visible && <AffordDots price={r.price} kids={kids} />}
           </button>
         ))}
-        <button type="button" className="rw-ci rw-add" data-selected={pick === 'new'} onClick={() => onPick('new')}>
-          <Icon name="add" />
-          New reward
-        </button>
       </div>
       <div ref={detail}>
         {pick === 'new' ? <RewardDetail key="new" onSelect={onPick} /> : picked && <RewardDetail key={picked.id} reward={picked} onSelect={onPick} />}

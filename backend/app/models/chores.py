@@ -48,6 +48,9 @@ class Chore(Base):
     title = Column(String(100), nullable=False)
     points = Column(Integer, nullable=False, default=10)
     needs_photo = Column(Boolean, nullable=False, default=False)
+    always_check = Column(Boolean, nullable=False, default=False, server_default="0")
+    gives_game = Column(Boolean, nullable=False, default=False, server_default="0")
+    makeup = Column(Boolean, nullable=False, default=False, server_default="0")
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -109,6 +112,9 @@ class ChoreRun(Base):
             "status IN ('todo','submitted','done','cancelled','skipped','missed')",
             name="ck_run_status",
         ),
+        CheckConstraint(
+            "approved_via IN ('parent','trust','bedtime','integration')", name="ck_run_via"
+        ),
         Index(
             "uq_run_kid_day",
             "assignment_id",
@@ -116,6 +122,7 @@ class ChoreRun(Base):
             "kid_id",
             unique=True,
             sqlite_where=text("kid_id IS NOT NULL"),
+            postgresql_where=text("kid_id IS NOT NULL"),
         ),
         Index(
             "uq_run_shared_day",
@@ -123,6 +130,7 @@ class ChoreRun(Base):
             "day",
             unique=True,
             sqlite_where=text("kid_id IS NULL"),
+            postgresql_where=text("kid_id IS NULL"),
         ),
     )
 
@@ -140,7 +148,13 @@ class ChoreRun(Base):
     hh_mult_x10 = Column(Integer, nullable=True)  # Happy Hour fixed at submit; NULL = x1
     approved_at = Column(DateTime, nullable=True)
     approved_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    spot_check = Column(Boolean, nullable=False, default=False, server_default="0")
+    approved_via = Column(String(11), nullable=True)  # parent|trust|bedtime|integration
     completed_at = Column(DateTime, nullable=True)
+    penalty_id = Column(
+        Integer, ForeignKey("penalties.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    makeup_slice = Column(Integer, nullable=True)  # earn-back this make-up run paid
     created_at = Column(DateTime, default=datetime.utcnow)
 
     assignment = relationship("ChoreAssignment")

@@ -124,8 +124,8 @@ describe('RequireParent states', () => {
     expect(screen.queryByText('secret')).toBeNull()
   })
 
-  test('an old step-8 save never reads "step 8 of 7"', async () => {
-    route({ '/setup': { needed: false }, '/setup/step': { step: 8 } })
+  test('a save past the last step never reads "step 9 of 7"', async () => {
+    route({ '/setup': { needed: false }, '/setup/step': { step: 9 } })
     auth({})
     renderGuard()
     expect(await screen.findByText('Taking you to setup, step 7 of 7…')).toBeTruthy()

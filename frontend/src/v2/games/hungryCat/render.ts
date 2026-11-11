@@ -1,0 +1,160 @@
+/** Hungry Cat: sprite management and effects. */
+
+export interface Assets {
+  cat_face: any
+  fish: any
+  fried_shrimp: any
+  cookie: any
+  socks: any
+  sparkles: any
+}
+
+export async function loadAssets(): Promise<Assets> {
+  const P = await import('pixi.js')
+  // Map asset names to their file paths (mix of png and webp)
+  const assets = {
+    cat_face: 'cat_face.webp',
+    fish: 'fish.webp',
+    fried_shrimp: 'fried_shrimp.png',
+    cookie: 'cookie.png',
+    socks: 'socks.png',
+    sparkles: 'sparkles.png',
+  } as const
+  const names = Object.keys(assets) as (keyof typeof assets)[]
+  const loaded = await Promise.all(names.map((n) => P.Assets.load(`/art/fluent/${assets[n]}`)))
+  return Object.fromEntries(names.map((n, i) => [n, loaded[i]])) as Assets
+}
+
+export interface SpriteItem {
+  sprite: any
+  vx: number
+  vy: number
+  life: number
+}
+
+// pixi is imported lazily in HungryCat.tsx, but we need to pass it here
+export function burst(
+  P: any,
+  x: number,
+  y: number,
+  txt: string,
+  col: number,
+  world: any,
+  assets: Assets,
+  still: boolean,
+  fxList: SpriteItem[],
+): void {
+  // sparkle particles
+  if (!still) {
+    for (let i = 0; i < 7; i++) {
+      const p = new P.Sprite(assets.sparkles)
+      p.anchor.set(0.5)
+      p.width = p.height = 18
+      p.x = x
+      p.y = y
+      const a = Math.random() * 6.28
+      const vx = Math.cos(a) * 3
+      const vy = Math.sin(a) * 3 - 2
+      world.addChild(p)
+      fxList.push({ sprite: p, vx, vy, life: 30 })
+    }
+  }
+
+  // floating text
+  const t = new P.Text({
+    text: txt,
+    style: {
+      fontFamily: 'Space Grotesk',
+      fontWeight: '700',
+      fontSize: 26,
+      fill: col,
+      stroke: { color: 0x1d2b53, width: 4 },
+    },
+  })
+  t.anchor.set(0.5)
+  t.x = x
+  t.y = y - 20
+  world.addChild(t)
+  fxList.push({ sprite: t, vx: 0, vy: -1.2, life: 40 })
+}
+
+export function updateFx(
+  fxList: SpriteItem[],
+  world: any,
+  dt: number,
+): void {
+  for (let i = fxList.length - 1; i >= 0; i--) {
+    const fx = fxList[i]
+    const s = fx.sprite
+    s.x += fx.vx * dt
+    s.y += fx.vy * dt
+
+    // gravity for sparkles
+    if (s.texture && s.texture.label === 'sparkles') {
+      fx.vy += 0.15 * dt
+    }
+
+    s.alpha = fx.life / 40
+    fx.life -= dt
+
+    if (fx.life <= 0) {
+      world.removeChild(s)
+      fxList.splice(i, 1)
+    }
+  }
+}
+
+export function applyShake(world: any, shake: number): void {
+  if (shake > 0) {
+    world.x = (Math.random() - 0.5) * shake
+    world.y = (Math.random() - 0.5) * shake
+  } else {
+    world.x = world.y = 0
+  }
+}
+
+export function mkCat(
+  P: any,
+  x: number,
+  y: number,
+  assets: Assets,
+  world: any,
+): { body: any; container: any; x: number } {
+  const c = new P.Container()
+  const s = new P.Sprite(assets.cat_face)
+  s.anchor.set(0.5, 1)
+  s.width = s.height = 84
+
+  const bowl = new P.Graphics()
+    .roundRect(-34, -6, 68, 26, 12)
+    .fill(0xff6b4a)
+    .stroke({ width: 3, color: 0x1d2b53 })
+    .ellipse(0, -6, 34, 7)
+    .fill(0xffd2c4)
+    .stroke({ width: 3, color: 0x1d2b53 })
+  bowl.y = -8
+  bowl.x = 34
+
+  c.addChild(s, bowl)
+  c.x = x
+  c.y = y
+  world.addChild(c)
+  return { body: s, container: c, x }
+}
+
+export function mkFood(
+  P: any,
+  x: number,
+  y: number,
+  kind: 'fish' | 'fried_shrimp' | 'cookie' | 'socks',
+  assets: Assets,
+  world: any,
+): any {
+  const s = new P.Sprite(assets[kind])
+  s.anchor.set(0.5)
+  s.width = s.height = kind === 'socks' ? 50 : 46
+  s.x = x
+  s.y = y
+  world.addChild(s)
+  return s
+}

@@ -1,6 +1,8 @@
 import { describe, expect, test } from '@jest/globals'
 import { render, screen } from '@testing-library/react'
-import { BellActions } from '@/v2/components/BellActions'
+import userEvent from '@testing-library/user-event'
+import { MantineProvider } from '@mantine/core'
+import { InboxRow } from '@/v2/components/InboxRow'
 import type { InboxItem } from '@/v2/hooks/useInbox'
 
 const n: InboxItem = {
@@ -8,11 +10,14 @@ const n: InboxItem = {
   run_id: 7, redemption_id: null, device_id: null, thread_id: null, points: 5, kid_id: 3, kid_name: 'Sam', glyph: null, pending: true,
 }
 
-describe('BellActions', () => {
-  test('integration_done shows Approve and Send back', () => {
+describe('InboxRow', () => {
+  test('integration_done: Approve is the one main button, Send back is in the menu', async () => {
     const f = () => {}
-    render(<BellActions n={n} busy={false} sending={false} note="" onNote={f} onApprove={f} onSendBack={f} onDecide={f} go={async () => {}} />)
-    expect(screen.getByRole('button', { name: /Approve \+5/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Send back' })).toBeInTheDocument()
+    render(<MantineProvider env="test"><InboxRow n={n} live busy={false} sending={false} note="" onNote={f} onApprove={f} onSendBack={f} onDecide={f} onDismiss={f} onLock={f} onOpen={f} go={async () => {}} /></MantineProvider>)
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Send back' })).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'More for Dishes' }))
+    expect(await screen.findByRole('menuitem', { name: 'Send back' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Dismiss' })).toBeInTheDocument()
   })
 })

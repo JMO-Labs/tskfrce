@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, test } from '@jest/globals'
 import type { Mock } from 'jest-mock'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MantineProvider } from '@mantine/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -38,6 +38,15 @@ const editor = (p: { rule?: HourRule; initial?: Partial<RuleBody> }) =>
 const pressed = (name: string) => screen.getByRole('button', { name }).getAttribute('aria-pressed')
 
 describe('RuleEditor', () => {
+  test('kids are a KidPicker group of pills', async () => {
+    editor({ initial: { category: 'other' } })
+    await userEvent.click(await screen.findByRole('switch', { name: 'Everyone' }))
+    const kids = within(screen.getByRole('group', { name: 'Kids' }))
+    expect(kids.getAllByRole('button').map((b) => b.textContent)).toEqual(['MMia', 'LLeo']) // avatar letter + name
+    await userEvent.click(kids.getByRole('button', { name: 'Mia' }))
+    expect(kids.getByRole('button', { name: 'Mia' }).getAttribute('aria-pressed')).toBe('true')
+  })
+
   test('picking School nights turns on Sun to Thu', async () => {
     editor({ initial: { category: 'other' } })
     await userEvent.click(await screen.findByRole('button', { name: 'School nights' }))

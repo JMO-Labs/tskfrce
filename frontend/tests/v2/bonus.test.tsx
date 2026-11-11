@@ -75,7 +75,7 @@ describe('PointsForm', () => {
       expect(apiMock).toHaveBeenCalledWith('/kids/3/points', { method: 'POST', body: { amount: 25, note: 'Helped out' } }),
     )
     await waitFor(() =>
-      expect(notifications.show).toHaveBeenCalledWith(expect.objectContaining({ message: 'Sent! Maya got +25' })),
+      expect(notifications.show).toHaveBeenCalledWith(expect.objectContaining({ message: 'Maya got +25' })),
     )
   })
 

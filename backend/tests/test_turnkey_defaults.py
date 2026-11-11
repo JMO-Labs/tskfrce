@@ -57,6 +57,7 @@ def test_default_events():
         "workaround",
         "summary",
         "boost",
+        "recap",
     )
 
 

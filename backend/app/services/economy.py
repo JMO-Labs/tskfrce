@@ -29,11 +29,23 @@ def balance(db: Session, kid_id: int) -> int:
 
 
 def deduct(
-    db: Session, kid_id: int, amount: int, note: str, by_id: int, run_id: int | None = None
+    db: Session,
+    kid_id: int,
+    amount: int,
+    note: str,
+    by_id: int,
+    run_id: int | None = None,
+    *,
+    reason: str = "deduction",
+    penalty_id: int | None = None,
+    notify: bool = True,
+    commit: bool = True,
 ) -> int:
-    """Take points off with a reason the kid sees; never below zero. Commits."""
+    """Take points off with a reason the kid sees; never below zero. Commits
+    (commit=False: the caller holds SPEND_LOCK and commits)."""
     with SPEND_LOCK:
-        db.commit()  # fresh snapshot: see other threads' debits
+        if commit:
+            db.commit()  # fresh snapshot: see other threads' debits
         take = min(amount, max(balance(db, kid_id), 0))
         if take:
             db.add(
@@ -41,18 +53,49 @@ def deduct(
                     user_id=kid_id,
                     points_type=PointsType.PENALTY,
                     amount=-take,
-                    reason="deduction",
+                    reason=reason,
                     description=note,
                     by_id=by_id,
                     run_id=run_id,
+                    penalty_id=penalty_id,
                     seen_by_kid=False,
                 )
             )
-            from app.services import kid_events  # late: kid_events -> chores -> economy
+            if notify:
+                from app.services import kid_events  # late: kid_events -> chores -> economy
 
-            kid_events.points_taken(db, kid_id, take, note, by_id)
-        db.commit()
+                kid_events.points_taken(db, kid_id, take, note, by_id)
+        if commit:
+            db.commit()
         return take
+
+
+def take_back(db: Session, run) -> dict[int, int]:
+    """Remove the run's positive rows; a kid's balance never ends below min(0, before).
+    Returns points removed per kid. Flushes only: the caller commits (inside SPEND_LOCK)."""
+    with SPEND_LOCK:
+        rows = db.query(Points).filter(Points.run_id == run.id, Points.amount > 0).all()
+        removed: dict[int, int] = {}
+        for p in rows:
+            removed[p.user_id] = removed.get(p.user_id, 0) + p.amount
+        before = {k: balance(db, k) for k in removed}
+        for p in rows:
+            db.delete(p)
+        db.flush()
+        for kid_id, was in before.items():
+            short = min(0, was) - balance(db, kid_id)
+            if short > 0:
+                db.add(
+                    Points(
+                        user_id=kid_id,
+                        points_type=PointsType.TRANSFER,  # earns no XP or weekly score
+                        amount=short,
+                        reason="adjustment",
+                        description="Balance can't go below zero",
+                    )
+                )
+        db.flush()
+        return removed
 
 
 def deadline_utc(fam: FamilySettings, chore_day: date, due_time: str | None) -> datetime | None:
@@ -109,6 +152,8 @@ def award_chore(db: Session, run: ChoreRun, fam: FamilySettings) -> int:
     Points are the chore's at this moment; the ledger row keeps them. Team chores
     split points and bonus evenly (remainder dropped).
     """
+    if run.penalty_id:
+        return 0
     kids = _recipients(run)
     if not kids:
         return 0
@@ -145,6 +190,10 @@ def award_chore(db: Session, run: ChoreRun, fam: FamilySettings) -> int:
             )
     for k, before in levels.items():
         level_check(db, k, before)
+    from app.services import goals_auto  # late: goals imports economy
+
+    for kid_id in kids:
+        goals_auto.auto_share(db, kid_id, base + bonus)
     return (base + bonus) * n
 
 

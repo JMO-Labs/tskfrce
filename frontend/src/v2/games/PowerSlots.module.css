@@ -1,0 +1,5 @@
+.pups { display: flex; gap: 8px; margin-top: 12px; }
+.pu { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 6px; border-radius: 14px; border: 2px solid var(--k-line); background: var(--k-card); color: var(--k-ink); font: 700 14px var(--font-display), 'Space Grotesk', system-ui, sans-serif; }
+button.pu { cursor: pointer; }
+.on { border-color: var(--k-ink); background: var(--k-sun); color: #1d2b53; box-shadow: var(--k-shadow); }
+.empty { flex: 0.4; border-style: dashed; background: transparent; color: var(--k-sub); }

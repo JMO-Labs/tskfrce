@@ -13,13 +13,13 @@ jest.mock('@/v2/manage/CelebratePreview', () => ({ CelebratePreview: ({ label }:
 
 const apiMock = api as unknown as Mock<(p: string, o?: { method?: string; body?: unknown }) => Promise<unknown>>
 const TODAY = new Date().toLocaleDateString('en-CA')
-const fam = { hh_auto_boost: true, streak_freeze: true, hh_default_mult_x10: 20, hh_default_minutes: 60 }
+const fam = { penalties_enabled: true, hh_auto_boost: true, streak_freeze: true, hh_default_mult_x10: 20, hh_default_minutes: 60 }
 const mia = { id: 1, full_name: 'Mia', username: 'mia', age_group: 'kid', celebrate: null }
-let s: { dismissed: string[]; fam: Record<string, unknown>; kids: unknown[]; active: unknown[]; quiet: boolean }
+let s: { goals: unknown; dismissed: string[]; fam: Record<string, unknown>; kids: unknown[]; active: unknown[]; quiet: boolean; trust: number | null; waiting: number }
 
 beforeEach(() => {
   localStorage.clear()
-  s = { dismissed: [], fam: { ...fam }, kids: [mia], active: [], quiet: false }
+  s = { goals: { settings: { on: false }, waiting: [], family: [], kids: [], done: [] }, dismissed: [], fam: { ...fam }, kids: [mia], active: [], quiet: false, trust: null, waiting: 0 }
   apiMock.mockReset()
   apiMock.mockImplementation(async (p, o) => {
     if (p === '/me/tips') return { dismissed: s.dismissed }
@@ -27,7 +27,8 @@ beforeEach(() => {
     if (p === '/family') return o?.method === 'PATCH' ? { ...s.fam, ...(o.body as object) } : s.fam
     if (p === '/kids') return s.kids
     if (p === '/happy-hour') return { active: s.active, recent: [] }
-    if (p === '/today') return { kids: [{ id: 1, name: 'Mia', quiet: s.quiet }] }
+    if (p === '/goals') return s.goals
+    if (p === '/today') return { kids: [{ id: 1, name: 'Mia', quiet: s.quiet }], try_trust_kid: s.trust, waiting_at_reset_days: s.waiting }
     return {}
   })
 })
@@ -45,6 +46,13 @@ test('celebrations card comes first, with Preview, Turn off and Got it', async (
   show()
   expect(await screen.findByText(/comic-book cheer/)).toBeInTheDocument()
   for (const n of ['Preview', 'Turn off for all kids', 'Got it']) expect(screen.getByRole('button', { name: n })).toBeInTheDocument()
+})
+
+test('the celebrations tip uses the sparkle, not the party popper (audit 25)', async () => {
+  show()
+  const tip = (await screen.findByText(/comic-book cheer/)).closest('section') as HTMLElement
+  expect(tip).toHaveTextContent('auto_awesome')
+  expect(tip).not.toHaveTextContent('celebration')
 })
 
 test('Got it dismisses through the tips API and the next card waits for tomorrow', async () => {
@@ -130,7 +138,7 @@ test('Preview leaves the card open', async () => {
 
 test('hidden when the feature is already off', async () => {
   s.kids = [{ ...mia, celebrate: 'off' }]
-  s.fam = { hh_auto_boost: false, streak_freeze: false }
+  s.fam = { penalties_enabled: true, hh_auto_boost: false, streak_freeze: false }
   s.dismissed = ['try.happyhour']
   show()
   await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/today'))
@@ -184,4 +192,132 @@ test('Not now hides the nudge for today without a tips dismissal', async () => {
   show()
   await new Promise((r) => setTimeout(r, 50))
   expect(screen.queryByText(/quiet couple/)).toBeNull()
+})
+
+
+test('trust card for a kid with 10 approved chores, once the older cards are seen', async () => {
+  s.dismissed = allSeen
+  s.trust = 1
+  show()
+  expect(await screen.findByText("Mia has 10+ approved chores. Trust mode lets Mia's chores approve themselves, with spot checks.")).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Turn on for Mia' }))
+  await waitFor(() => expect(patched('/kids/1', { trust_mode: true })).toBe(true))
+  await waitFor(() => expect(posted('/me/tips/try.trust/dismiss')).toBe(true))
+})
+
+test('acting on a card moves focus to the first kid row, not <body>', async () => {
+  s.dismissed = allSeen
+  s.trust = 1
+  const row = document.body.appendChild(document.createElement('div'))
+  row.innerHTML = '<button class="pt-krow"></button>'
+  show()
+  await userEvent.click(await screen.findByRole('button', { name: 'Got it' }))
+  await waitFor(() => expect(document.activeElement).toBe(row.querySelector('.pt-krow')))
+  row.remove()
+})
+
+test('trust card: Got it only dismisses', async () => {
+  s.dismissed = allSeen
+  s.trust = 1
+  show()
+  await userEvent.click(await screen.findByRole('button', { name: 'Got it' }))
+  await waitFor(() => expect(posted('/me/tips/try.trust/dismiss')).toBe(true))
+  expect(patched('/kids/1', { trust_mode: true })).toBe(false)
+})
+
+test('no trust card without a qualifying kid', async () => {
+  s.dismissed = allSeen
+  show()
+  await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/today'))
+  expect(screen.queryByText(/approved chores/)).toBeNull()
+})
+
+test('bedtime card after 3 days of waiting chores; Turn on patches bedtime_auto', async () => {
+  s.dismissed = [...allSeen, 'try.trust']
+  s.waiting = 3
+  show()
+  expect(await screen.findByText('Chores were still waiting at reset on 3 days. Bedtime auto-approve can clear them at 9:00 PM each night.')).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Turn on' }))
+  await waitFor(() => expect(patched('/family', { bedtime_auto: true, bedtime_auto_at: '21:00' })).toBe(true))
+  await waitFor(() => expect(posted('/me/tips/try.bedtime/dismiss')).toBe(true))
+})
+
+test('no bedtime card at 2 days, or when it is already on', async () => {
+  s.dismissed = [...allSeen, 'try.trust']
+  s.waiting = 2
+  show()
+  await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/today'))
+  expect(screen.queryByText(/still waiting at reset/)).toBeNull()
+})
+
+test('bedtime card stays off when auto-approve is on', async () => {
+  s.dismissed = [...allSeen, 'try.trust']
+  s.waiting = 5
+  s.fam = { ...fam, bedtime_auto: true }
+  show()
+  await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/today'))
+  expect(screen.queryByText(/still waiting at reset/)).toBeNull()
+})
+
+test('trust comes before bedtime, one card a day', async () => {
+  s.dismissed = allSeen
+  s.trust = 1
+  s.waiting = 3
+  show()
+  expect(await screen.findByText(/approved chores/)).toBeInTheDocument()
+  expect(screen.queryByText(/still waiting at reset/)).toBeNull()
+})
+
+test('bedtime card shows the real day count', async () => {
+  s.dismissed = [...allSeen, 'try.trust']
+  s.waiting = 5
+  show()
+  expect(await screen.findByText(/waiting at reset on 5 days\./)).toBeInTheDocument()
+})
+
+test('bedtime card: time follows the stored time, capped by the reset; a failed Turn on keeps the card', async () => {
+  s.dismissed = [...allSeen, 'try.trust']
+  s.waiting = 3
+  s.fam = { ...fam, reset_time: '20:00', bedtime_auto_at: '21:00' }
+  const base = apiMock.getMockImplementation()!
+  apiMock.mockImplementation(async (p, o) => {
+    if (p === '/family' && o?.method === 'PATCH') throw new Error('422')
+    return base(p, o)
+  })
+  show()
+  expect(await screen.findByText(/clear them at 7:45 PM each night/)).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Turn on' }))
+  await waitFor(() => expect(patched('/family', { bedtime_auto: true, bedtime_auto_at: '19:45' })).toBe(true))
+  expect(posted('/me/tips/try.bedtime/dismiss')).toBe(false)
+  expect(screen.getByRole('button', { name: 'Turn on' })).toBeInTheDocument()
+})
+
+const goalsOn = (over: Record<string, unknown[]> = {}) => {
+  s.goals = { settings: { on: true }, waiting: [], family: [], kids: [], done: [], ...over }
+}
+const beforeGoals = [...allSeen, 'try.trust', 'try.bedtime']
+
+test('goals card last, when goals are on and none exist; Add a goal opens the pane', async () => {
+  s.dismissed = beforeGoals
+  goalsOn()
+  show()
+  expect(await screen.findByText('Kids can save up for something big, like a bike or a family trip.')).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Add a goal' })).toHaveAttribute('href', '/kids?section=rewards&item=goals')
+  await userEvent.click(screen.getByRole('button', { name: 'Got it' }))
+  await waitFor(() => expect(posted('/me/tips/try.goals/dismiss')).toBe(true))
+})
+
+test.each([
+  ['goals are off', () => (s.goals = { settings: { on: false }, waiting: [], family: [], kids: [], done: [] })],
+  ['a kid goal exists', () => goalsOn({ kids: [{ id: 1 }] })],
+  ['a done goal exists', () => goalsOn({ done: [{ id: 1 }] })],
+  ['a family goal exists', () => goalsOn({ family: [{ id: 1 }] })],
+  ['a goal is waiting', () => goalsOn({ waiting: [{ id: 1 }] })],
+])('no goals card when %s', async (_n, set) => {
+  s.dismissed = beforeGoals
+  set()
+  show()
+  await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/goals'))
+  await new Promise((r) => setTimeout(r, 50))
+  expect(screen.queryByText(/save up for something big/)).toBeNull()
 })

@@ -71,7 +71,7 @@ export const wrap = (ui: ReactNode) => (
   <QueryClientProvider
     client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
   >
-    <MantineProvider theme={fridgeTheme}>{ui}</MantineProvider>
+    <MantineProvider theme={fridgeTheme} env="test">{ui}</MantineProvider>
   </QueryClientProvider>
 )
 
@@ -124,7 +124,7 @@ export function setupLibrary() {
 export const list = () => screen.getByTestId('list')
 export const detail = () => screen.getByTestId('detail')
 export const who = () =>
-  within(detail()).getByRole('region', { name: 'Who and when' })
+  within(detail()).getByRole('region', { name: 'Who & when' })
 export const show = async (q: Record<string, string>) => {
   mockRoute.query = q
   render(wrap(<KidsPage />))

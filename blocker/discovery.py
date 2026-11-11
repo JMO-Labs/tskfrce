@@ -30,7 +30,7 @@ def resolve_hostname(ip: str) -> str | None:
 def _scapy_send(kind: str, cfg: Config):
     """Real scapy I/O. Returns (answered, unanswered) where answered holds
     (sent, rcv) pairs and rcv exposes `.ip` and `.mac`."""
-    from scapy.all import ARP, Ether, ICMPv6EchoRequest, IPv6, get_if_addr, srp
+    from blocker.scapy_lite import ARP, Ether, ICMPv6EchoRequest, IPv6, get_if_addr, srp
 
     iface = cfg.lan_iface or None
     if kind == "arp":

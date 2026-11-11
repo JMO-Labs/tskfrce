@@ -31,13 +31,13 @@ export function MorePage({ onLogout }: { onLogout: () => void }) {
         </div>
         {blocker.data?.online === false && (
           <span className="p-chip" data-tone="amb">
-            <Icon name="router" size={16} />
+            <Icon name="router" size={12} />
             Box offline
           </span>
         )}
         {blocker.data?.online === true && (
           <span className="p-chip" data-tone="acc">
-            <Icon name="check_circle" size={16} />
+            <Icon name="check_circle" size={12} />
             Box healthy
           </span>
         )}
@@ -60,6 +60,12 @@ export function MorePage({ onLogout }: { onLogout: () => void }) {
             </li>
           ))}
         </ul>
+      </div>
+      <div className="p-more-section">
+        <Link href="/recap" className="p-more-link">
+          <Icon name="insights" />
+          Weekly recap
+        </Link>
       </div>
       <div className="p-more-section">
         <Link href={HELP_URL} target="_blank" rel="noopener noreferrer" className="p-more-link">

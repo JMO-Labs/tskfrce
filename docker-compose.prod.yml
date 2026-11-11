@@ -13,6 +13,7 @@ services:
       ENVIRONMENT: production
       DEBUG: "false"
       DATA_DIR: /app/data
+      DATABASE_URL: ${DATABASE_URL:-}  # empty = SQLite in DATA_DIR; postgresql+psycopg://... for a server
       SECRET_KEY: ${SECRET_KEY:?run install.sh or set SECRET_KEY in .env}
       INTERNAL_TOKEN: ${INTERNAL_TOKEN:?run install.sh or set INTERNAL_TOKEN in .env}
       BOX_URL: ${BOX_URL:-}
@@ -30,6 +31,7 @@ services:
       CLAIM_CODE: ${CLAIM_CODE:-}
       NTFY_UPSTREAM_URL: ${NTFY_UPSTREAM_URL-https://ntfy.sh}
       NTFY_UPSTREAM_TOKEN: ${NTFY_UPSTREAM_TOKEN:-}
+      BLOCKER_URL: http://${TASK4CE_BRIDGE_GW:-172.29.50.1}:7777
     volumes:
       - task4ce_data:/app/data
       - ntfy_conf:/ntfy-conf
@@ -121,6 +123,7 @@ services:
       INTERNAL_TOKEN: ${INTERNAL_TOKEN:?run install.sh or set INTERNAL_TOKEN in .env}
       LAN_IFACE: ${LAN_IFACE:-}
       PORTAL_REDIRECT_URL: ${BOX_URL:-http://task4ce.local:3000}/kid
+      BLOCKER_BIND: 127.0.0.1,${TASK4CE_BRIDGE_GW:-172.29.50.1}
     restart: unless-stopped
 
   # HTTPS front on <id>.taskfrce.jmolabs.dev (scripts/enable-hostname.sh). Opt-in via COMPOSE_PROFILES=edge.

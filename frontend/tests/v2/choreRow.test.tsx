@@ -5,9 +5,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MantineProvider } from '@mantine/core'
 import { api } from '@/v2/api'
 import { choreSub, ChoreRow } from '@/v2/today/ChoreRow'
-import type { TodayChore, TodayKid } from '@/v2/types'
+import { useNeedsActions } from '@/v2/today/needsActions'
+import type { NeedsItem, TodayChore, TodayKid } from '@/v2/types'
 
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
+jest.mock('next/router', () => ({ useRouter: () => ({ push: jest.fn() }) }))
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
 
 const apiMock = api as unknown as Mock<(p: string, i?: unknown) => Promise<unknown>>
@@ -23,11 +25,15 @@ const base: TodayChore = {
 }
 const note = { label: 'Out of supplies', text: 'No more toilet spray', at: '2020-01-01T17:12:00Z', kid_name: 'Mia' }
 
-const row = (c: TodayChore) =>
+function Host({ c, waiting, bare }: { c: TodayChore; waiting?: NeedsItem; bare?: boolean }) {
+  const actions = useNeedsActions()
+  return <ChoreRow chore={c} kid={kid} isOpen={false} onToggle={() => undefined} waiting={waiting} actions={actions} bare={bare} />
+}
+const row = (c: TodayChore, waiting?: NeedsItem, bare?: boolean) =>
   render(
     <QueryClientProvider client={new QueryClient()}>
       <MantineProvider>
-        <ChoreRow chore={c} kid={kid} isOpen={false} onToggle={() => undefined} />
+        <Host c={c} waiting={waiting} bare={bare} />
       </MantineProvider>
     </QueryClientProvider>,
   )
@@ -35,6 +41,29 @@ const row = (c: TodayChore) =>
 beforeEach(() => apiMock.mockReset().mockResolvedValue({ timezone: 'UTC' }))
 
 describe('ChoreRow', () => {
+  test('a waiting chore swaps the Needs OK chip for Approve and a … menu, outside the row button', () => {
+    const w: NeedsItem = { type: 'chore', id: 11, kid_id: 1, kid_name: 'Mia', title: 'Clean bathroom' }
+    const { container } = row({ ...base, state: 'needs_you' }, w)
+    expect(screen.queryByText('Needs OK')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^More/ })).toBeInTheDocument()
+    expect(container.querySelector('button.pt-row button')).toBeNull()
+  })
+
+  test('bare rows drop the Approved and To do chips but keep Skipped', () => {
+    const done = row({ ...base, state: 'done' }, undefined, true)
+    expect(screen.queryByText('Approved')).toBeNull()
+    done.unmount()
+    row({ ...base, state: 'skipped' }, undefined, true)
+    expect(screen.getByText('Skipped')).toBeInTheDocument()
+  })
+
+  test('without waiting the Needs OK chip stays', () => {
+    row({ ...base, state: 'needs_you' })
+    expect(screen.getByText('Needs OK')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull()
+  })
+
   test('overdue row shows Overdue and the type glyph', () => {
     row(base)
     expect(screen.getByText('Overdue')).toBeInTheDocument()

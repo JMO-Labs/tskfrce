@@ -15,6 +15,8 @@ export interface Track {
   hhFirst: string | null
   streak: number
   level: number
+  /** trust level (0-2) last seen; null = trust mode off */
+  trust?: number | null
 }
 
 const MILESTONES = [3, 7, 14, 30]
@@ -51,7 +53,11 @@ export function detect(prev: Track | null, d: KidToday, now = Date.now(), inflig
     events.push({ kind: 'streak', key: `k:${streak}`, title: `${streak}-day streak!`, big: true })
   const level = d.progress?.level ?? prev?.level ?? 0
   if (prev && prev.level > 0 && level > prev.level) events.push({ kind: 'level', key: `l:${level}`, title: `Level ${level}!`, big: true })
-  return { events, next: { runs, hh: hh ?? prev?.hh ?? null, hhFirst: prev?.hhFirst ?? null, streak, level } }
+  const trust = d.trust?.level ?? null
+  // a raise since last seen (also on the next open); older stored tracks have no trust field and seed quietly
+  if (prev && prev.trust != null && trust != null && trust > prev.trust)
+    events.push({ kind: 'level', key: `t:${trust}`, title: `You're ${['New', 'Trusted', 'Proven'][trust]}!`, big: true })
+  return { events, next: { runs, hh: hh ?? prev?.hh ?? null, hhFirst: prev?.hhFirst ?? null, streak, level, trust } }
 }
 
 /** The kid's own "I'm done" tap. The first chore of a Happy Hour is a big moment. */

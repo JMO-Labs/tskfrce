@@ -6,12 +6,12 @@ certificates without holding a Cloudflare token), and serves `/find`.
 
 | Route | Purpose |
 | --- | --- |
-| `POST /api/ip` | Box reports its LAN IP; sets `<id>.taskfrce.jmolabs.dev` |
+| `POST /api/ip` | Box reports its LAN IP(s); sets A records for `<id>.<base>`, `<id>-2.<base>`, etc. Accepts `{"ip":"..."}` (single, backward-compat) or `{"networks":[{"ip":"...","label":"..."},...]}` (multiple) |
 | `POST /api/acme/present`, `/cleanup` | Add/remove the `_acme-challenge` TXT record |
-| `GET /find` | Kid-friendly page: type the sticker code, get redirected |
+| `GET /find?id=<code>` | Multiple networks: 302 redirect (single) or QR-code page (multiple). Unknown/offline: setup help. Rate-limited 20/hour per visitor IP. |
 
 Boxes authenticate with Basic auth (`<box-id>:<secret>`). KV (`BOXES`) stores
-`box:<id>` = sha256 hex of the secret, and `seen:<id>`.
+`box:<id>` = sha256 hex of the secret, `seen:<id>` (with `networks` array and `last_seen`), and rate-limit counts.
 
 ## Deploy (owner, once)
 

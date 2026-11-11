@@ -12,6 +12,9 @@ os.environ["INTERNAL_TOKEN"] = "labtoken"
 def lab_up():
     if not shutil.which("docker"):
         pytest.skip("docker not available")
+    # journey.py calls compose directly; the e2e image tag needs PW_VERSION to interpolate.
+    # Set here, not at import, so the default (docker-less) suite does not need jq.
+    os.environ["PW_VERSION"] = j.lab("pw-version", check=True).stdout.strip()
     # A lab that was already up belongs to the caller (CI's browser e2e runs on it next):
     # tearing it down here left `lab.sh e2e` with no parent container and a health timeout.
     ours = j.lab("running").returncode != 0

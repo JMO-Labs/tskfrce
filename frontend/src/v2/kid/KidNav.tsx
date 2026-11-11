@@ -2,18 +2,20 @@ import { useMediaQuery } from '@mantine/hooks'
 import { Icon } from '@/v2/parent/Icon'
 import type { AgeGroup } from '../types'
 
-export type KidTab = 'chores' | 'rewards' | 'chat' | 'alerts' | 'me'
-export type KidBadges = { chores: number; chat: number; alerts: number }
+export type KidTab = 'chores' | 'games' | 'rewards' | 'chat' | 'alerts' | 'me'
+export type KidBadges = { chores: number; chat: number; alerts: number; games?: number }
 type Item = [KidTab, string, string]
 
 const ITEMS: Record<AgeGroup, Item[]> = {
   little: [
     ['chores', 'Chores', 'checklist'],
+    ['games', 'Games', 'sports_esports'],
     ['rewards', 'Prizes', 'redeem'],
     ['me', 'Me', 'face'],
   ],
   kid: [
     ['chores', 'Chores', 'checklist'],
+    ['games', 'Games', 'sports_esports'],
     ['rewards', 'Rewards', 'redeem'],
     ['chat', 'Chat', 'chat'],
     ['alerts', 'Alerts', 'notifications'],
@@ -21,8 +23,9 @@ const ITEMS: Record<AgeGroup, Item[]> = {
   ],
   teen: [
     ['chores', 'Chores', 'checklist'],
+    ['games', 'Games', 'sports_esports'],
     ['rewards', 'Rewards', 'redeem'],
-    ['chat', 'Chat', 'forum'],
+    ['chat', 'Chat', 'chat'],
     ['alerts', 'Alerts', 'notifications'],
     ['me', 'Me', 'person'],
   ],
@@ -35,17 +38,20 @@ export function KidNav({
   onTab,
   badges,
   avatar,
+  gamesOn = false,
 }: {
   mode: AgeGroup
   tab: KidTab
   onTab: (t: KidTab) => void
   badges: KidBadges
   avatar: string | null
+  /** minigames switched on for this kid: shows the Games tab */
+  gamesOn?: boolean
 }) {
   const wide = useMediaQuery('(min-width: 768px)')
   const kind = mode === 'little' ? 'little' : wide ? 'rail' : 'bar'
   const button = ([t, label, icon]: Item) => {
-    const n = t === 'chores' || t === 'chat' || t === 'alerts' ? badges[t] : 0
+    const n = t === 'chores' || t === 'chat' || t === 'alerts' || t === 'games' ? badges[t] ?? 0 : 0
     const on = tab === t
     return (
       <button
@@ -65,7 +71,7 @@ export function KidNav({
       </button>
     )
   }
-  const items = ITEMS[mode]
+  const items = ITEMS[mode].filter(([t]) => t !== 'games' || gamesOn)
   return (
     <nav className="k-nav" data-kind={kind} data-mode={mode} aria-label="Kid menu">
       {kind === 'rail' && (

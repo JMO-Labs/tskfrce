@@ -10,9 +10,9 @@ interface TabItem {
   badge?: number
 }
 
-/** Settings and the notifications page are reached from More on a phone. */
+/** Settings is reached from More on a phone; the notifications page hangs off Today ("‹ Today"). */
 const current = (path: string, href: string) =>
-  path === href || (href === '/more' && (path.startsWith('/settings') || path === '/notifications'))
+  path === href || (href === '/' && path === '/notifications') || (href === '/more' && path.startsWith('/settings'))
 
 export function TabBar() {
   const router = useRouter()
@@ -23,7 +23,7 @@ export function TabBar() {
     { href: '/', label: 'Today', icon: 'home' },
     { href: '/devices', label: 'Devices', icon: 'devices' },
     { href: '/kids', label: 'Kids', icon: 'group' },
-    { href: '/chat', label: 'Chat', icon: 'forum', badge: unread > 0 ? unread : undefined },
+    { href: '/chat', label: 'Chat', icon: 'chat', badge: unread > 0 ? unread : undefined },
     { href: '/more', label: 'More', icon: 'more_vert' },
   ]
 

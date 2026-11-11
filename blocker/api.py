@@ -46,8 +46,11 @@ def _state(h: _Handler) -> tuple[int, dict]:
     macs = body.get("blocked")
     if not isinstance(macs, list):
         return 400, {"error": "'blocked' must be a list of MAC addresses."}
+    homework = body.get("homework")
+    if homework is not None and not isinstance(homework, dict):
+        return 400, {"error": "'homework' must be an object."}
     try:
-        result = h.server.state.set_blocked(macs)  # type: ignore[attr-defined]
+        result = h.server.state.set_state(macs, homework)  # type: ignore[attr-defined]
     except ValueError as e:
         return 400, {"error": str(e)}
     return 200, {"ok": True, "count": len(result)}

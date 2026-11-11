@@ -6,7 +6,7 @@ test.describe('parent journeys', () => {
 
   test('send back needs a note, approve clears the item', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('tab', { name: /Needs you/ }).click()
+    await page.getByRole('button', { name: /^Needs you/ }).click()
     const needs = page.getByRole('region', { name: 'Needs you' })
     await expect(needs).toContainText('E2E sweep')
 
@@ -21,7 +21,7 @@ test.describe('parent journeys', () => {
     await expect(needs.getByText('E2E sweep')).toHaveCount(0)
 
     // approving the other one clears it too
-    const card = needs.locator('.p-needs-item').filter({ hasText: 'E2E dishes' })
+    const card = needs.locator('.p-arow').filter({ hasText: 'E2E dishes' })
     await card.getByRole('button', { name: 'Approve', exact: true }).click()
     await expect(needs.getByText('E2E dishes')).toHaveCount(0)
   })
@@ -38,14 +38,17 @@ test.describe('parent journeys', () => {
       // the editor swaps from the open chore to the empty form after the route change
       await expect(page.getByRole('heading', { name: 'New chore' })).toBeVisible()
       await page.getByLabel('Chore name', { exact: true }).fill('E2E race')
+      await page.locator('[data-focus-head="steps"]').click()
       for (const s of ['First step', 'Second step']) {
         await page.getByLabel('Add a step').fill(s)
         await page.getByLabel('Add a step').press('Enter')
       }
       await page.getByRole('button', { name: 'Save chore' }).click()
+      await expect(page).toHaveURL(/item=\d+/) // the editor swaps from the empty form to the saved chore
 
       // saving a new chore opens it; assign it to both kids as a race
-      const who = page.getByRole('region', { name: 'Who and when' })
+      await page.locator('[data-focus-head="who"]').click()
+      const who = page.getByRole('region', { name: 'Who & when' })
       await who.getByRole('button', { name: `Race A ${tag}` }).click()
       await who.getByRole('button', { name: `Race B ${tag}` }).click()
       await who.getByText('First one wins', { exact: true }).click()
@@ -53,7 +56,9 @@ test.describe('parent journeys', () => {
       const card = page.getByRole('button', { name: /^E2E race/ }).first()
       await expect(card).toContainText('2 steps')
 
-      await page.getByRole('button', { name: 'Duplicate' }).click()
+      await page.getByRole('button', { name: 'More' }).click()
+      await page.getByRole('menuitem', { name: 'Duplicate' }).click()
+      await page.locator('[data-focus-head="basics"]').click() // the copy opens calm
       const name = page.getByLabel('Chore name', { exact: true })
       await expect(name).toHaveValue('E2E race (copy)') // wait for the editor to switch to the copy
       await name.fill('E2E race edited')
@@ -82,11 +87,12 @@ test.describe('parent journeys', () => {
       await page.getByRole('button', { name: /Bonus Kid/ }).click()
       // desktop shows the first kid until the shallow route lands; Bonus before that opens Pat's form
       await expect(page.getByRole('heading', { name: 'Bonus Kid', level: 2 })).toBeVisible()
-      await page.getByRole('button', { name: 'Bonus', exact: true }).click()
+      await page.getByRole('button', { name: 'More', exact: true }).click()
+      await page.getByRole('menuitem', { name: 'Bonus', exact: true }).click()
       await page.getByLabel(/Points \(1 to 500\)/).fill('5')
       await page.getByLabel('Why?').fill('Great teamwork')
       await page.getByRole('button', { name: 'Send points' }).click()
-      await expect(page.getByText(/Sent! Bonus Kid got \+5/)).toBeVisible()
+      await expect(page.getByText(/Bonus Kid got \+5/)).toBeVisible()
     } finally {
       await k.undo()
       await api.dispose()
@@ -98,10 +104,10 @@ test.describe('parent journeys', () => {
     const before = (await (await api.get('/api/proxy/family')).json()).screen_time_price
     try {
       // screen time lives under Rewards (spec §11 errata 1)
-      await page.goto('/kids?section=rewards&item=screen')
-      const how = page.getByRole('region', { name: 'How it works' })
-      await how.getByLabel('Price (points per 15 min)').fill(String(before + 1))
-      await how.getByRole('button', { name: 'Save' }).click()
+      await page.goto('/kids?section=rewards&item=screen&open=price')
+      // every rule saves as you leave the field: no Save button
+      await page.getByLabel('Points per 15 min').fill(String(before + 1))
+      await page.getByLabel('Points per 15 min').press('Enter')
       await expect
         .poll(async () => (await (await api.get('/api/proxy/family')).json()).screen_time_price)
         .toBe(before + 1)

@@ -68,7 +68,12 @@ def test_state_shape_covered_and_listen_only(client, db):
     db.get(Vlan, 20).covered = True
     db.commit()
     s = client.get(STATE, headers=tok()).json()
-    assert s == {"blocked": [MAC["mac"]], "listen_only": False, "covered_vlans": [20, 30]}
+    assert s == {
+        "blocked": [MAC["mac"]],
+        "homework": {},
+        "listen_only": False,
+        "covered_vlans": [20, 30],
+    }
     get_family(db).listen_only = True
     db.commit()
     s = client.get(STATE, headers=tok()).json()

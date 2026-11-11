@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useApproveAll, useDecideRedemption, usePendingRedemptions } from '@/v2/hooks/useRewards'
+import { Chip } from '@/v2/parent/Chip'
+import { DetailHeader } from '@/v2/parent/DetailHeader'
 import { Icon } from '@/v2/parent/Icon'
 import { EmptyState, ErrorPanel, Skeleton } from '@/v2/parent/states'
 import type { PendingRedemption } from '@/v2/types'
@@ -89,27 +91,18 @@ export function RewardsRequests({ onHistory }: { onHistory: () => void }) {
     })
   return (
     <div className="pk-detail">
-      <header className="pk-head">
-        <div className="pk-head-t">
-          <h2>Requests</h2>
-          <div className="p-header-chips">
-            {pending.data && (
-              <span className="p-header-chip" data-tone="lav">
-                <Icon name="hourglass_top" size={16} />
-                {list.length} waiting
-              </span>
-            )}
-            <span className="p-header-chip">
-              <Icon name="stars" size={16} />
-              Points paid on approve
-            </span>
-          </div>
-        </div>
-        <button type="button" className="p-btn" disabled={!list.length || approveAll.isPending} onClick={all}>
-          <Icon name="done_all" />
-          Approve all
-        </button>
-      </header>
+      <DetailHeader
+        media={<span className="pk-tile pk-tile-lg"><Icon name="inbox" size={26} /></span>}
+        title="Requests"
+        sub="Points are paid when you approve."
+        chips={pending.data ? <Chip tone="lav" icon="hourglass_empty">{list.length} waiting</Chip> : undefined}
+        main={
+          <button type="button" className="p-btn" disabled={!list.length || approveAll.isPending} onClick={all}>
+            <Icon name="done_all" />
+            Approve all
+          </button>
+        }
+      />
       {pending.isPending ? (
         <Skeleton />
       ) : pending.isError ? (

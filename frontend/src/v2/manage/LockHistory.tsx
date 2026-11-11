@@ -2,7 +2,7 @@ import { Icon } from '@/v2/parent/Icon'
 import type { DeviceEvent } from '@/v2/types'
 import { historyText, whenLabel } from './activityText'
 
-/** Activity tab "Lock history": locked / opened rows, newest first. */
+/** Activity row "Lock history": locked / opened rows, newest first. */
 export function LockHistory({ history, timeZone, now }: { history: DeviceEvent[]; timeZone?: string; now: number }) {
   return (
     <section className="pk-panel da-log" aria-label="Lock history">
@@ -11,20 +11,22 @@ export function LockHistory({ history, timeZone, now }: { history: DeviceEvent[]
         Lock history
       </h3>
       {history.length === 0 ? (
-        <p className="pk-hint pk-empty">No locks yet.</p>
+        <p className="pk-hint pk-empty">No locks yet. Locks and opens show here.</p>
       ) : (
-        history.map((e) => {
-          const t = historyText(e)
-          return (
-            <div key={e.id} className="pk-kv">
-              <span>
-                <Icon name={t.icon} size={16} />
-                {t.title}
-              </span>
-              <b>{whenLabel(e.at, timeZone, now)}</b>
-            </div>
-          )
-        })
+        <div className="da-lh">
+          {history.map((e) => {
+            const t = historyText(e)
+            return (
+              <div key={e.id} className="pk-kv">
+                <span>
+                  <span className="da-tile"><Icon name={t.icon} size={16} /></span>
+                  {t.title}
+                </span>
+                <b>{whenLabel(e.at, timeZone, now)}</b>
+              </div>
+            )
+          })}
+        </div>
       )}
     </section>
   )

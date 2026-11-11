@@ -1,10 +1,12 @@
 import { Icon } from '../parent/Icon'
 import { ProgressHeader } from '../components/ProgressHeader'
 import type { CelebrateLevel, Progress } from '../types'
+import type { KidTrust } from '../trustTypes'
 import { FunSettings } from './FunSettings'
 import type { KidAge } from './modes/types'
 import { IntegrationWidgets } from '../integrations/WidgetFrame'
 import { FamilySection } from './FamilySection'
+import { TrustChip } from './TrustChip'
 
 /** Kid "Me" tab: name card with XP, Customize (not in preview), family, and "Not me" on shared devices. */
 export function MePage({
@@ -20,6 +22,7 @@ export function MePage({
   mode = 'kid',
   celebrate = 'full',
   freezes,
+  trust,
 }: {
   name: string
   avatar: string | null
@@ -33,6 +36,7 @@ export function MePage({
   mode?: KidAge
   celebrate?: CelebrateLevel
   freezes?: number | null
+  trust?: KidTrust | null
 }) {
   return (
     <section className="me-view">
@@ -40,6 +44,7 @@ export function MePage({
       {progress && (
         <div className="me-card">
           <ProgressHeader name={name} avatar={avatar} kid progress={progress} />
+          <TrustChip trust={trust} mode={mode} />
           {!preview && (
             <button type="button" className="r-btn" data-customize onClick={onLocker}>
               <Icon name="palette" />

@@ -105,6 +105,7 @@ def chore_days_many(db: Session, kid_ids: list[int], today: date) -> dict[int, d
         .filter(
             kid.in_(kid_ids),
             ChoreRun.status.notin_(["cancelled", "skipped"]),
+            ChoreRun.penalty_id.is_(None),
             ChoreRun.day >= start,
         )
         .all()

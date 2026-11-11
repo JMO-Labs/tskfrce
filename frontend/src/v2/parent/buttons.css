@@ -24,9 +24,11 @@
   white-space: nowrap;
 }
 
-[data-look='parent'] .p-btn:hover {
-  border-color: var(--p-ink);
-  background: var(--p-soft);
+@media (hover: hover) {
+  [data-look='parent'] .p-btn:hover {
+    border-color: var(--p-ink);
+    background: var(--p-soft);
+  }
 }
 
 [data-look='parent'] .p-btn[data-variant='accent'] {
@@ -35,8 +37,10 @@
   color: #292928;
 }
 
-[data-look='parent'] .p-btn[data-variant='accent']:hover {
-  opacity: 0.9;
+@media (hover: hover) {
+  [data-look='parent'] .p-btn[data-variant='accent']:hover {
+    opacity: 0.9;
+  }
 }
 
 [data-look='parent'] .p-btn[data-variant='ink'] {
@@ -45,8 +49,10 @@
   color: var(--p-card);
 }
 
-[data-look='parent'] .p-btn[data-variant='ink']:hover {
-  opacity: 0.9;
+@media (hover: hover) {
+  [data-look='parent'] .p-btn[data-variant='ink']:hover {
+    opacity: 0.9;
+  }
 }
 
 [data-look='parent'] .p-btn[data-variant='red'] {
@@ -54,8 +60,10 @@
   border-color: color-mix(in srgb, var(--p-red) 40%, var(--p-line));
 }
 
-[data-look='parent'] .p-btn[data-variant='red']:hover {
-  background: color-mix(in srgb, var(--p-red) 10%, transparent);
+@media (hover: hover) {
+  [data-look='parent'] .p-btn[data-variant='red']:hover {
+    background: color-mix(in srgb, var(--p-red) 10%, transparent);
+  }
 }
 
 [data-look='parent'] .p-btn .ms {
@@ -63,15 +71,10 @@
 }
 
 /* keyboard focus, pressed, disabled and in-flight states (shared by every .p-btn) */
-[data-look='parent'] .p-btn:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
+[data-look='parent'] .p-btn:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 [data-look='parent'] .p-btn:active:not(:disabled) { transform: scale(0.97); }
-[data-look='parent'] .p-btn:disabled {
-  background: var(--p-soft);
-  border-color: var(--p-line);
-  color: var(--p-sub);
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+/* disabled keeps the variant's own fill, faded (mockup .btn:disabled) */
+[data-look='parent'] .p-btn:disabled { opacity: 0.45; cursor: default; }
 [data-look='parent'] .p-btn[data-loading='true'] { position: relative; pointer-events: none; color: transparent; }
 [data-look='parent'] .p-btn[data-loading='true'] > * { opacity: 0; }
 [data-look='parent'] .p-btn[data-loading='true']::after {
@@ -90,12 +93,14 @@
 /* shared interactive states: one focus ring, pill + day hover/press/disabled (all parent screens) */
 [data-look='parent'] :is(.p-segmented-button, .pk-pill, .pk-day, .pk-ib, .pk-new, .pk-pick-btn, .pk-pick-cell, .p-glyph-item, .p-glyph-search, .p-device-item):focus-visible,
 .mantine-Modal-content :is(.p-btn, button):focus-visible {
-  outline: 2px solid var(--p-ink, #292928);
+  outline: 2px solid var(--p-focus, #292928);
   outline-offset: 2px;
 }
 [data-look='parent'] .pk-ib:focus-visible { outline-offset: 0; }
+/* safety net: any other parent control still shows the one ring. The whole selector is in :where(), so specificity is 0,1,0 (just :focus-visible) and every rule above wins */
+:where([data-look='parent'] :is(button, a[href], summary, [role='button'], [role='switch'], [role='tab'])):focus-visible { outline: 2px solid var(--p-focus, #292928); outline-offset: 2px; }
 [data-look='parent'] .p-btn[aria-busy='true'] { cursor: progress; }
-[data-look='parent'] .pk-pill:hover:not(:disabled) { border-color: var(--p-ink); }
+@media (hover: hover) { [data-look='parent'] .pk-pill:hover:not(:disabled) { border-color: var(--p-ink); } }
 [data-look='parent'] .pk-pill:active:not(:disabled),
 [data-look='parent'] .pk-day:active { transform: scale(0.96); }
 [data-look='parent'] .pk-pill:disabled { opacity: 0.5; cursor: not-allowed; }

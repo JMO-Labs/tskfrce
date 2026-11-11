@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, expect, test } from '@jest/globals'
 import { notifications } from '@mantine/notifications'
 import { ApiError } from '@/v2/api'
-import { retryIfOffline, toastFail, toastOk } from '@/v2/notify'
+import { retryIfOffline, toastFail, toastOk, UNDO_MS, withUndo } from '@/v2/notify'
 
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn(), hide: jest.fn() } }))
 
@@ -54,4 +54,18 @@ test('retryIfOffline only offers retry when the request never arrived', () => {
   const fn = jest.fn()
   expect(retryIfOffline(new TypeError('Failed to fetch'), fn)).toBe(fn)
   expect(retryIfOffline(new ApiError(500, 'boom'), fn)).toBeUndefined()
+})
+
+test('every Undo toast stays as long as the action waits, and a plain toast keeps the default', () => {
+  toastOk('Locked', { undo: jest.fn() })
+  expect(lastToast()).toMatchObject({ autoClose: UNDO_MS })
+  void withUndo(async () => {}, 'Approved +10')
+  expect(lastToast()).toMatchObject({ autoClose: UNDO_MS })
+  toastOk('Saved')
+  expect((lastToast() as { autoClose?: number }).autoClose).toBeUndefined()
+})
+
+test('a failure toast always has the same title, wherever it comes from', () => {
+  toastFail(new Error('Test did not block'))
+  expect(lastToast()).toMatchObject({ title: "That didn't work", message: 'Test did not block' })
 })

@@ -1,0 +1,44 @@
+/* Goals (kid): mockup .superpowers/mockups/goals-v1.html, kid tokens. */
+.kg-view { display: flex; flex-direction: column; gap: 14px; }
+.kg-head { margin: 0; font-size: 24px; font-weight: 700; }
+.kg-goal { background: var(--k-card); color: var(--k-ink); border: 2px solid var(--k-ink); box-shadow: var(--k-shadow); border-radius: 12px; padding: 12px; }
+.kg-goal[data-kind='fam'] { background: var(--k-lav); }
+.kg-goal[data-kind='full'] { background: var(--k-blue); }
+.kg-t { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.kg-t b { font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
+.kg-n { font-size: 13px; color: var(--k-sub); white-space: nowrap; }
+.kg-bar { height: 14px; border: 2px solid var(--k-ink); border-radius: 999px; background: var(--k-soft); overflow: hidden; margin: 8px 0; }
+.kg-bar i { display: block; height: 100%; background: var(--k-green); }
+.kg-acts { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; color: var(--k-sub); }
+.kg-chip { display: inline-block; font-size: 11px; font-weight: 600; border: 1.5px solid var(--k-ink); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: 2px; }
+.kg-btn, .kg-sbtn, .kg-chipbtn {
+  border: 2px solid var(--k-ink); background: var(--k-sun); color: var(--k-navy); border-radius: 8px; padding: 4px 10px; cursor: pointer;
+  font-family: var(--font-display), 'Space Grotesk', sans-serif; font-weight: 700; font-size: 13px; min-height: 32px;
+}
+.kg-btn[data-tone='plain'] { background: var(--k-card); color: var(--k-ink); }
+.kg-btn:disabled, .kg-chipbtn:disabled { background: var(--k-soft); color: var(--k-sub); border-color: var(--k-line); cursor: default; }
+.kg-link { background: none; border: 0; padding: 4px 0 0; color: var(--k-sub); font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; display: block; }
+.kg-suggest { border: 2px dashed var(--k-sub); background: none; border-radius: 12px; padding: 10px; text-align: center; color: var(--k-sub); font: inherit; font-size: 14px; cursor: pointer; }
+.kg-sheet { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 2px dashed var(--k-line); }
+.kg-step { display: flex; align-items: center; gap: 14px; }
+.kg-step b { font-size: 22px; min-width: 3ch; text-align: center; }
+.kg-row { display: flex; gap: 8px; }
+.kg-sub { margin: 0; font-size: 13px; color: var(--k-sub); }
+.kg-input { font: inherit; font-size: 15px; color: var(--k-ink); background: var(--k-card); border: 2px solid var(--k-ink); border-radius: 8px; padding: 6px 10px; min-height: 40px; }
+.kg-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.kg-sub2 { margin: 4px 0 0; font-size: 16px; font-weight: 700; }
+.kg-done { margin: 0; padding: 0; list-style: none; font-size: 14px; color: var(--k-sub); display: flex; flex-direction: column; gap: 4px; }
+
+/* Teen: compact */
+.kg-view[data-mode='teen'] { gap: 10px; }
+.kg-view[data-mode='teen'] .kg-goal { padding: 8px 10px; box-shadow: none; }
+/* Little: larger type and targets */
+.kg-view[data-mode='little'] .kg-head { font-size: 32px; }
+.kg-view[data-mode='little'] .kg-goal { border-width: 4px; border-radius: 24px; padding: 20px; }
+.kg-view[data-mode='little'] .kg-t b { font-size: 26px; }
+.kg-view[data-mode='little'] .kg-n, .kg-view[data-mode='little'] .kg-acts, .kg-view[data-mode='little'] .kg-sub { font-size: 18px; }
+.kg-view[data-mode='little'] .kg-bar { height: 22px; }
+.kg-view[data-mode='little'] .kg-btn, .kg-view[data-mode='little'] .kg-sbtn, .kg-view[data-mode='little'] .kg-chipbtn { font-size: 20px; min-height: 56px; padding: 6px 18px; border-radius: 16px; }
+.kg-view[data-mode='little'] .kg-suggest { font-size: 20px; padding: 18px; }
+[data-mantine-color-scheme='dark'] .kg-view[data-mode='little'] .kg-goal { box-shadow: 5px 5px 0 #000; }
+.kg-btn { white-space: nowrap; }

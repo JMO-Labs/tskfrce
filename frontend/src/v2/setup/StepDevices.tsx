@@ -1,92 +1,100 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
-import { Chip } from '../parent/Chip'
+import { useSaveQueue } from '../hooks/useSaveQueue'
 import { Icon } from '../parent/Icon'
-import { MakerLogo } from '../parent/MakerLogo'
+import { InfoPop } from '../parent/InfoPop'
+import { KidPicker, type PickerExtra } from '../parent/KidPicker'
+import { FocusArea, SummaryRow } from '../parent/SummaryRow'
+import { LoadFail, RowsSkeleton } from '../parent/states'
+import { useFocusParam } from '../parent/useFocusParam'
 import { DEVICE_TYPE_ICON, getDeviceType } from '../manage/deviceMeta'
 import { isPrivateMac } from '../manage/privateMac'
 import type { Device, Kid } from '../types'
 import styles from './devices.module.css'
-import tip from './stepCards.module.css'
 
 const GUEST = 'guest'
+const UNSURE = 'unsure'
+const EXTRAS: PickerExtra[] = [
+  { value: GUEST, label: 'Guest (never blocked)', short: 'Guest', icon: 'shield' },
+  { value: UNSURE, label: 'Not sure yet', icon: 'close' },
+]
+const validRow = (id: string) => id === 'need' || id === 'done'
 
-/** Step 5: discovery rows (type tile, name, maker, Private MAC chip) with an owner picker. */
+/** Step 6: devices split into "Need an owner" and "Done"; each device has one owner pop-over. */
 export function StepDevices({ kids }: { kids: Kid[] }) {
   const qc = useQueryClient()
+  const run = useSaveQueue()
+  const focus = useFocusParam('open', { valid: validRow, replace: true }) // the wizard step is not in the URL: no history entry for a row
   const list = useQuery({ queryKey: ['setup-devices'], queryFn: () => api<Device[]>('/devices'), refetchInterval: 5000, refetchIntervalInBackground: false })
-  const patch = useMutation({
-    mutationFn: (v: { id: number; status: Device['status']; owner_ids: number[] }) =>
-      api<Device>(`/devices/${v.id}`, { method: 'PATCH', body: { status: v.status, owner_ids: v.owner_ids } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['setup-devices'] }),
-  })
+
+  // The owner shown is always the server's; a failed save toasts and the next refetch shows the old owner again.
+  const save = (d: Device, status: Device['status'], owner_ids: number[]) =>
+    void run(() => api<Device>(`/devices/${d.id}`, { method: 'PATCH', body: { status, owner_ids } })).then(() => qc.invalidateQueries({ queryKey: ['setup-devices'] }))
 
   const change = (d: Device, vals: string[]) => {
-    const wasGuest = d.status === 'guest'
-    if (vals.includes(GUEST) && !wasGuest) return patch.mutate({ id: d.id, status: 'guest', owner_ids: [] })
-    const ids = vals.filter((v) => v !== GUEST).map(Number)
-    patch.mutate({ id: d.id, status: ids.length ? 'assigned' : 'unassigned', owner_ids: ids })
+    const v = vals[0]
+    if (v === GUEST) return save(d, 'guest', [])
+    if (v === undefined || v === UNSURE) return save(d, 'unassigned', [])
+    save(d, 'assigned', [Number(v)])
   }
 
-  const assigned = list.data?.filter((d) => d.status !== 'unassigned').length ?? 0
+  const devices = list.data ?? []
+  const need = devices.filter((d) => d.status === 'unassigned')
+  const done = devices.filter((d) => d.status !== 'unassigned')
+  const privateMacs = devices.filter((d) => isPrivateMac(d.mac)).length
+
+  const deviceRow = (d: Device) => {
+    const value = d.status === 'guest' ? [GUEST] : d.owner_ids.map(String)
+    return (
+      <div key={d.id} className={styles.dv} data-owned={value.length ? '' : undefined}>
+        <div className={styles.ic}>
+          <Icon name={DEVICE_TYPE_ICON[getDeviceType(d.name, d.vendor)]} size={20} />
+        </div>
+        <div className={styles.t2}>
+          <b className="p-kn" title={d.name}>{d.name}</b>
+          <small>{[d.vendor || 'Unknown maker', d.ip].filter(Boolean).join(' · ')}</small>
+        </div>
+        <KidPicker variant="pop" single kids={kids} extras={EXTRAS} value={value} label={`Owner for ${d.name}`} onChange={(v) => change(d, v)} />
+      </div>
+    )
+  }
+
+  const names = need.slice(0, 2).map((d) => d.name).join(', ')
   return (
     <>
-      {list.error && <p role="alert">Couldn&apos;t load devices. {list.error.message}</p>}
-      {patch.error && <p role="alert">Couldn&apos;t save that. {patch.error.message}</p>}
-      <div className={styles.card}>
-        <div className={styles.head}>
-          <span className={styles.pulse} aria-hidden="true" />
-          <b>Looking for devices…{list.data ? ` ${list.data.length} found` : ''}</b>
-          {list.data && list.data.length > 0 && <span>{assigned} of {list.data.length} assigned</span>}
-        </div>
-        {list.data?.map((d) => {
-          const value = d.status === 'guest' ? [GUEST] : d.owner_ids.map(String)
-          const toggle = (v: string) => change(d, value.includes(v) ? value.filter((x) => x !== v) : v === GUEST ? [GUEST] : [...value.filter((x) => x !== GUEST), v])
-          const sub = [d.vendor || 'Unknown maker', d.ip].filter(Boolean).join(' · ')
-          return (
-            <div key={d.id} className={styles.dv} role="group" aria-label={`Owner of ${d.name}`}>
-              <div className={styles.ic}>
-                <Icon name={DEVICE_TYPE_ICON[getDeviceType(d.name, d.vendor)]} size={20} />
-                {d.vendor && (
-                  <span className={styles.vb}>
-                    <MakerLogo vendor={d.vendor} size={11} />
-                  </span>
-                )}
-              </div>
-              <div className={styles.t2}>
-                <b title={d.name}>{d.name}</b>
-                <small>{sub}</small>
-              </div>
-              {isPrivateMac(d.mac) && (
-                <Chip tone="amb" icon="wifi">
-                  Private MAC
-                </Chip>
-              )}
-              <div className={styles.who}>
-                {kids.map((k) => (
-                  <button
-                    key={k.id}
-                    type="button"
-                    aria-pressed={value.includes(String(k.id))}
-                    disabled={patch.isPending}
-                    onClick={() => toggle(String(k.id))}
-                  >
-                    {k.avatar} {k.full_name}
-                  </button>
-                ))}
-                <button type="button" className={styles.guest} aria-pressed={value.includes(GUEST)} disabled={patch.isPending} onClick={() => toggle(GUEST)}>
-                  Guest
-                </button>
-              </div>
-            </div>
-          )
-        })}
+      {list.isError && !list.data && <LoadFail error={list.error} onRetry={() => void list.refetch()} />}
+      <div className={styles.head}>
+        <span className={styles.pulse} aria-hidden="true" />
+        <b>Looking for devices…{list.data ? ` ${list.data.length} found` : ''}</b>
       </div>
-      <div className={tip.tip}>
+      {list.isPending && <RowsSkeleton rows={2} />}
+      {devices.length > 0 && (
+        <FocusArea focus={focus} grouped>
+          <SummaryRow
+            id="need"
+            icon={<Icon name="warning" size={18} />}
+            title="Need an owner"
+            summary={`${need.length} left`}
+            line2={<span className={styles.l2}>{need.length ? `${names}${need.length > 2 ? ` +${need.length - 2} more` : ''}` : 'All devices have an owner'}</span>}
+            focus={focus}
+          >
+            {need.length ? need.map(deviceRow) : <p className={styles.none}>All set. Nice.</p>}
+          </SummaryRow>
+          <SummaryRow id="done" icon={<Icon name="check" size={18} />} title="Done" summary={String(done.length)} focus={focus}>
+            {done.length ? done.map(deviceRow) : <p className={styles.none}>No device has an owner yet.</p>}
+          </SummaryRow>
+        </FocusArea>
+      )}
+      {list.data && devices.length === 0 && <p className={styles.none}>No devices yet. Unlock a device and open a web page, or skip and add them later.</p>}
+      <div className={styles.tip}>
         <Icon name="info" size={20} />
-        <div>
-          <b>Not seeing a device?</b> Unlock it and open a web page so it talks to the network. iPhones and iPads: turn off “Private Wi-Fi Address” for your home Wi-Fi.
-        </div>
+        <span className={styles.grow}>Not seeing a device, or one keeps changing?</span>
+        <InfoPop label="More about missing or changing devices" width={320} target={<button type="button" className={styles.more}>More</button>}>
+          <p className={styles.pp}><b>Not seeing a device?</b> Unlock it and open a web page so it talks to the network.</p>
+          <p className={styles.pp}>
+            <b>Keeps changing?</b> {privateMacs > 0 && `${privateMacs} of these use a private Wi-Fi address. `}On iPhones and iPads, turn off “Private Wi-Fi Address” for your home Wi-Fi.
+          </p>
+        </InfoPop>
       </div>
     </>
   )

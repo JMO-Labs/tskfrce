@@ -1,6 +1,7 @@
 import { useToday } from '@/v2/hooks/useToday'
 import { Chip } from '@/v2/parent/Chip'
 import { Icon } from '@/v2/parent/Icon'
+import { ProgressRing } from '@/v2/parent/ProgressRing'
 import type { Kid, TodayKid } from '@/v2/types'
 import { initial, nameOf } from './choreMeta'
 
@@ -10,7 +11,7 @@ interface Props {
   onSelect: (id: number | 'new') => void
 }
 
-/** Kid cards (letter avatar, balance line, status chip) and the dashed "Add a kid" card. */
+/** Kid cards (letter avatar, balance line, today's progress ring, status chip) and the dashed "Add a kid" card. */
 export function KidsList({ kids, selected, onSelect }: Props) {
   const today = new Map<number, TodayKid>((useToday().data?.kids ?? []).map((t) => [t.id, t]))
   return (
@@ -24,7 +25,10 @@ export function KidsList({ kids, selected, onSelect }: Props) {
               {initial(nameOf(k))}
             </span>
             <span className="pk-card-t">
-              <b>{nameOf(k)}</b>
+              <span className="kl-line">
+                <b>{nameOf(k)}</b>
+                {t && <ProgressRing done={t.done ?? 0} total={t.total ?? 0} />}
+              </span>
               <small>{bits.filter(Boolean).join(' · ')}</small>
             </span>
             {t?.online_all ? (

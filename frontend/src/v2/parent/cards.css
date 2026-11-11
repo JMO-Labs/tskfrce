@@ -22,7 +22,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
+  padding: 3px 8px;
   border-radius: 6px;
   font-size: 9.5px;
   font-weight: 700;
@@ -170,8 +170,10 @@
   }
 }
 
-[data-look='parent'] .p-segmented-button:hover {
-  color: var(--p-ink);
+@media (hover: hover) {
+  [data-look='parent'] .p-segmented-button:hover {
+    color: var(--p-ink);
+  }
 }
 
 /* mockup 02 .tabs .on: solid ink pill, card text */
@@ -196,6 +198,6 @@
   display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px;
   background: transparent; color: inherit; cursor: pointer;
 }
-[data-look='parent'] .p-banner-x:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
+@media (hover: hover) { [data-look='parent'] .p-banner-x:hover { background: color-mix(in srgb, currentColor 10%, transparent); } }
 [data-look='parent'] .p-banner[data-tone='red'] .p-banner-x { color: var(--p-red); }
 [data-look='parent'] .p-banner-acts .p-btn { padding: 5px 10px; font-size: 12px; min-height: 0; }

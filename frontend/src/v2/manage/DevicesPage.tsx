@@ -29,7 +29,7 @@ function DevicesBody() {
   // the tab lives in the URL: device and group ids overlap, so ?item alone can't say which one it is
   const tab = first(query.tab) === 'groups' ? 'groups' : 'devices'
   const setTab = (t: 'devices' | 'groups') => {
-    const { item: _drop, tab: _t, ...rest } = query
+    const { item: _drop, tab: _t, open: _o, net: _n, ...rest } = query
     router.push({ pathname: router.pathname, query: t === 'groups' ? { ...rest, tab: t } : rest }, undefined, { shallow: true })
   }
   const small = useMediaQuery('(max-width: 767px)')
@@ -51,7 +51,7 @@ function DevicesBody() {
   }, [stale])
   // select a group (or null = drop ?item so the first item reopens)
   const pick = (id: number | null) => {
-    const { item: _drop, ...rest } = query
+    const { item: _drop, open: _o, ...rest } = query
     router.push({ pathname: router.pathname, query: id === null ? rest : { ...rest, item: id } }, undefined, { shallow: true })
   }
 
@@ -61,12 +61,13 @@ function DevicesBody() {
   const override = useOverride()
   const once = useSingleFlight()
   // detail buttons: lock until changed, unlock for 30 min, "schedule" = clear the override
-  const handleRequestOverride = (req: { kind: string; id: number; action: string }) =>
+  const handleRequestOverride = (req: { kind: string; id: number; action: string; minutes?: number }) =>
     once(() => override.mutateAsync({
       target: { kind: req.kind as OverrideTarget['kind'], id: req.id },
       previous: req.kind === 'device' ? all.find((d) => d.id === req.id)?.override : sharedOverride(all.filter((d) => d.group_ids.includes(req.id))),
       choice: req.action === 'lock' ? { action: 'lock', minutes: null }
         : req.action === 'unlock' ? { action: 'unlock', minutes: 30 }
+        : req.action === 'homework' ? { action: 'homework', minutes: req.minutes ?? 60 }
         : { action: 'clear' },
     }).catch(() => undefined))
 
@@ -85,6 +86,7 @@ function DevicesBody() {
   return (
     <ParentShell
       title="Devices"
+      back={tab === 'groups' ? 'Groups' : 'Devices'}
       list={
         devices.isPending ? (
           <Skeleton />

@@ -1,26 +1,22 @@
-import { useFamily } from '@/v2/hooks/useFamily'
-import { useResetState } from '@/v2/hooks/useResetState'
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/router'
-import { notifications } from '@mantine/notifications'
+import type { ReactNode } from 'react'
 import { useDisclosure } from '@mantine/hooks'
-import { useDeleteDevice, useExpired, usePatchDevice, useSaveGroup, useTestBlock, type DevicePatch } from '@/v2/hooks/useDevices'
-import { Chip } from '@/v2/parent/Chip'
-import { HeaderChips } from '@/v2/parent/HeaderChips'
+import { clockText } from '@/v2/clockText'
+import { useFamily } from '@/v2/hooks/useFamily'
+import { useDeleteDevice, useExpired } from '@/v2/hooks/useDevices'
 import { Icon } from '@/v2/parent/Icon'
-import { SegmentedControl, tabIds } from '@/v2/parent/SegmentedControl'
+import { FocusArea, SummaryRow } from '@/v2/parent/SummaryRow'
+import { useFocusParam } from '@/v2/parent/useFocusParam'
 import type { Device, Group, Kid } from '@/v2/types'
-import { ActionButton } from './ActionButton'
 import { ConfirmDelete } from './ConfirmDelete'
 import { DeviceActivity } from './DeviceActivity'
+import { DeviceHead } from './DeviceHead'
 import { DeviceNetwork } from './DeviceNetwork'
 import { DeviceRightNow } from './DeviceRightNow'
-import { OnlineWeek } from './OnlineWeek'
-import { ago, DEVICE_TYPE_ICON, getDeviceType } from './deviceMeta'
-import { KidPills } from './KidPills'
+import { ActivityLine, DetailsBody } from './DeviceRows'
+import { HomeworkActivity } from './HomeworkActivity'
 import { nameOf } from './choreMeta'
-import { toastFail, toastOk, toasted } from '../notify'
-import { useSingleFlight } from '@/v2/hooks/useSingleFlight'
+import { toastFail } from '../notify'
 
 interface Props {
   device: Device
@@ -28,236 +24,74 @@ interface Props {
   groups?: Group[]
   /** Called after the device is deleted. */
   onDeleted?: () => void
-  onRequestOverride: (req: { kind: string; id: number; action: string }) => void
+  onRequestOverride: (req: { kind: string; id: number; action: string; minutes?: number }) => void
   /** Override action in flight (lock / unlock / clear), if any. */
   pendingAction?: string | null
 }
 
-/** Device editor: header actions, Overview (details, owners, right now, online this week), Network and Activity tabs. */
-export function DeviceDetail({ device, kids, groups = [], onDeleted, onRequestOverride, pendingAction = null }: Props) {
-  const router = useRouter()
-  const patch = usePatchDevice()
-  const saveGroup = useSaveGroup()
-  const del = useDeleteDevice()
-  const test = useTestBlock()
-  const once = useSingleFlight()
-  const onceTest = useSingleFlight() // a slow test must not swallow the next save
-  const [tab, setTab] = useState<string | null>('overview')
-  const [name, setName] = useResetState(device.name)
-  const [confirm, { open, close }] = useDisclosure(false)
+const ROWS = ['now', 'details', 'network', 'activity']
+const ico = (name: string): ReactNode => <Icon name={name} size={18} />
 
+/** Device detail: header (status chip, main action, "…") over four rows that open one at a time. */
+export function DeviceDetail({ device, kids, groups = [], onDeleted, onRequestOverride, pendingAction = null }: Props) {
+  const del = useDeleteDevice()
+  const [confirm, { open, close }] = useDisclosure(false)
+  const rows = useFocusParam('open', { group: ['net'], valid: (id) => ROWS.includes(id) })
+  const family = useFamily().data
+  const tz = family?.timezone
   const guest = device.status === 'guest'
   const unknown = device.status === 'unassigned'
-  // learning mode (the default) leaves new devices online; strict mode blocks them
-  const family = useFamily().data
-  const blockNew = family?.new_devices_blocked ?? false
-  const owners = kids.filter((k) => device.owner_ids.includes(k.id))
-  const ownerLabel = guest ? 'Guest' : owners.length ? owners.map(nameOf).join(', ') : 'Unassigned'
-  const needsPins = device.needs_pins && owners.length > 0
+  // an override that ran out while the screen was open no longer counts
+  const ov = useExpired(device.override?.expires_at) ? null : device.override
+  const owned = device.owner_ids.length > 0 && !guest
+  const locked = ov?.action === 'lock' || (!device.online && !device.exempt && owned)
 
-  const save = (p: DevicePatch, done: string) => once(() => toasted(patch.mutateAsync({ id: device.id, patch: p }), done))
-  const rename = () => {
-    const n = name.trim()
-    if (!n) setName(device.name)
-    else if (n !== device.name) save({ name: n }, 'Renamed')
-  }
-  const toggleGroup = (g: Group) => {
-    const ids = g.device_ids.includes(device.id) ? g.device_ids.filter((i) => i !== device.id) : [...g.device_ids, device.id]
-    once(() => toasted(saveGroup.mutateAsync({ id: g.id, name: g.name, device_ids: ids }), 'Saved'))
-  }
-  const runTest = () =>
-    onceTest(() =>
-      test.mutateAsync(device.id).then(
-        (r) => (r.reason === 'ok' ? toastOk(r.message) : notifications.show({ message: r.message, color: 'fridgeRed' })),
-        toastFail,
-      ),
-    )
+  // a new device has no owner: start on Details, where the owner is picked
+  useEffect(() => { if (unknown && !rows.open) rows.openTo('details', { replace: true }) }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const ovLive = !useExpired(device.override?.expires_at) && device.override
-  const chips = [
-    ...(device.vendor ? [{ text: device.vendor, vendor: device.vendor }] : []),
-    { text: device.seen_now ? 'Online now' : `Last seen ${ago(device.last_seen)}`, tone: device.seen_now ? ('acc' as const) : ('plain' as const), icon: device.seen_now ? 'wifi' : 'schedule' },
-    ...(device.ip ? [{ text: device.ip, tone: 'mono' as const, icon: 'lan' }] : []),
-    { text: ownerLabel, icon: 'person' },
-  ]
-
-  const ownersPanel = (
-    <section className="pk-panel" data-tone={unknown ? 'amber' : undefined} aria-label="Owners">
-      <h3>
-        <Icon name={unknown ? 'help' : 'person'} size={18} />
-        {unknown ? "Who's this?" : 'Owners'}
-      </h3>
-      {unknown && (
-        <p className="pk-hint">
-          {blockNew
-            ? 'This device is new and blocked until you say whose it is.'
-            : 'This device is new. It stays online until you say whose it is.'}{' '}
-          Pick the kid to give it their rules, or mark it as a guest.
-        </p>
-      )}
-      <KidPills
-        kids={kids}
-        label="Owners"
-        value={device.owner_ids}
-        disabled={guest}
-        busy={patch.isPending}
-        onChange={(ids) => save({ owner_ids: ids }, 'Assigned')}
-      />
-      {needsPins && (
-        <div className="pk-note">
-          <p>{owners.map(nameOf).join(' and ')} share this device. Add PINs so they can&apos;t sign in as each other.</p>
-          <button type="button" className="p-btn" onClick={() => router.push(`/kids?section=kids&kid=${(owners.find((k) => !k.has_pin) ?? owners[0]).id}&pin=1`)}>
-            Set PINs
-          </button>
-        </div>
-      )}
-    </section>
-  )
-
-  const detailsPanel = (
-    <section className="pk-panel" aria-label="Details">
-      <h3>
-        <Icon name="info" size={18} />
-        Details
-      </h3>
-      <label className="pk-field">
-        <span className="pk-label">Name</span>
-        <input
-          className="pk-input"
-          aria-label="Device name"
-          maxLength={100}
-          aria-busy={patch.isPending || undefined}
-          value={name}
-          onChange={(e) => setName(e.currentTarget.value)}
-          onBlur={rename}
-          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-        />
-      </label>
-      {groups.length > 0 && (
-        <div className="pk-field">
-          <span className="pk-label">Groups</span>
-          <div className="pk-pills" role="group" aria-label="Groups">
-            {groups.map((g) => (
-              <button key={g.id} type="button" title={g.name} className="pk-pill pk-pill-plain" aria-pressed={g.device_ids.includes(device.id)} aria-disabled={saveGroup.isPending || undefined} onClick={() => !saveGroup.isPending && toggleGroup(g)}>
-                {g.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-      <div className="pk-switch">
-        <span id="guest-label">Guest (never blocked)</span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={guest}
-          aria-labelledby="guest-label"
-          aria-disabled={patch.isPending || undefined}
-          onClick={() => !patch.isPending && save({ status: !guest ? 'guest' : device.owner_ids.length ? 'assigned' : 'unassigned' }, 'Saved')}
-        />
-      </div>
-      {!guest && (
-        <>
-          <div className="pk-switch ph-sw-row">
-            <span id="exempt-label">Always allowed (never lock)</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={device.exempt}
-              aria-labelledby="exempt-label"
-              aria-describedby="exempt-hint"
-              aria-disabled={patch.isPending || undefined}
-              onClick={() => !patch.isPending && save({ exempt: !device.exempt }, 'Saved')}
-            />
-          </div>
-          <p className="pk-hint" id="exempt-hint">For a kid&apos;s device that should skip hours and chores, like a school laptop. A manual lock still applies.</p>
-        </>
-      )}
-    </section>
-  )
+  // Rename: open Details and ask its Name field to take focus (a counter, so it works when Details is already open)
+  const [nameFocus, setNameFocus] = useState(0)
+  const rename = () => { rows.openTo('details'); setNameFocus((n) => n + 1) }
+  const owners = guest ? 'Guest' : kids.filter((k) => device.owner_ids.includes(k.id)).map(nameOf).join(', ') || 'No owner yet'
+  const mine = groups.filter((g) => g.device_ids.includes(device.id)).map((g) => g.name)
+  const until = ov?.action === 'lock' ? (ov.expires_at ? `until ${clockText(ov.expires_at, tz)}` : 'until you unlock') : 'on schedule'
+  const nowText = locked ? `Locked · ${until}` : device.locks_at ? `Open · locks at ${clockText(device.locks_at, tz)}` : 'Open'
+  const alerts = device.alerts > 0 ? `${device.alerts} alert${device.alerts === 1 ? '' : 's'} this week` : 'No alerts this week'
 
   return (
-    <div className="pk-detail">
-      <header className="pk-head">
-        <span className="pk-tile pk-tile-lg">
-          <Icon name={DEVICE_TYPE_ICON[getDeviceType(device.name, device.vendor)]} size={30} />
-        </span>
-        <div className="pk-head-t">
-          <h2>{device.name}</h2>
-          <HeaderChips items={chips} />
-          {device.resisting && (
-            <div className="pk-chips">
-              <Chip tone="red" icon="gpp_maybe">
-                got around the lock
-              </Chip>
-            </div>
-          )}
-        </div>
-        <div className="pk-actions pk-actions-grid">
-          <ActionButton icon="lock" variant="red" busy={pendingAction === 'lock'} disabled={!!pendingAction} onClick={() => onRequestOverride({ kind: 'device', id: device.id, action: 'lock' })}>
-            Lock now
-          </ActionButton>
-          <ActionButton icon="lock_open" busy={pendingAction === 'unlock'} disabled={!!pendingAction} onClick={() => onRequestOverride({ kind: 'device', id: device.id, action: 'unlock' })}>
-            Unlock 30 min
-          </ActionButton>
-          {ovLive && (
-            <ActionButton icon="event_repeat" busy={pendingAction === 'clear'} disabled={!!pendingAction} onClick={() => onRequestOverride({ kind: 'device', id: device.id, action: 'schedule' })}>
-              Back to schedule
-            </ActionButton>
-          )}
-          <ActionButton icon="shield" label={`Test block on ${device.name}`} busy={test.isPending} onClick={runTest}>
-            {test.isPending ? 'Testing…' : 'Test block'}
-          </ActionButton>
-          <ActionButton icon="delete" variant="red" busy={del.isPending} onClick={open}>
-            Delete
-          </ActionButton>
-        </div>
-      </header>
-
-      <SegmentedControl
-        value={tab || 'overview'}
-        onChange={setTab}
-        label="Device sections"
-        tabs="device"
-        options={[
-          { value: 'overview', label: 'Overview' },
-          { value: 'network', label: 'Network' },
-          {
-            value: 'activity',
-            label: (
-              <>
-                Activity
-                {device.alerts > 0 && (
-                  <Chip tone="red" icon="notifications">
-                    {device.alerts}
-                  </Chip>
-                )}
-              </>
-            ),
-          },
-        ]}
+    <div className="pk-detail dv-detail">
+      <DeviceHead
+        device={device}
+        locked={locked}
+        ov={ov}
+        timeZone={tz}
+        blockNew={family?.new_devices_blocked ?? false}
+        pendingAction={pendingAction}
+        onOverride={(action, minutes) => onRequestOverride({ kind: 'device', id: device.id, action, minutes })}
+        onActivity={() => rows.openTo('activity')}
+        onRename={rename}
+        onDelete={open}
       />
 
-      {tab === 'overview' && (
-        <div className="pk-grid" role="tabpanel" id={tabIds('device', 'overview').panel} aria-labelledby={tabIds('device', 'overview').tab}>
-          {unknown ? ownersPanel : detailsPanel}
-          <div className="pk-col">
-            {unknown ? detailsPanel : ownersPanel}
-            <DeviceRightNow device={device} timeZone={family?.timezone} />
-          </div>
-          {!guest && <OnlineWeek device={device} />}
-        </div>
-      )}
-      {tab === 'network' && (
-        <div role="tabpanel" id={tabIds('device', 'network').panel} aria-labelledby={tabIds('device', 'network').tab}>
-          <DeviceNetwork device={device} timeZone={family?.timezone} />
-        </div>
-      )}
-      {tab === 'activity' && (
-        <div role="tabpanel" id={tabIds('device', 'activity').panel} aria-labelledby={tabIds('device', 'activity').tab}>
-          <DeviceActivity device={device} kids={kids} timeZone={family?.timezone} />
-        </div>
-      )}
+      <FocusArea focus={rows} label="Device">
+        <SummaryRow id="now" icon={ico('schedule')} title="Right now" summary={nowText} focus={rows}>
+          <DeviceRightNow device={device} timeZone={tz} />
+        </SummaryRow>
+        <SummaryRow id="details" icon={ico('tune')} title="Details" summary={[owners, mine.join(', ')].filter(Boolean).join(' · ')} focus={rows}>
+          <DetailsBody device={device} kids={kids} groups={groups} nameFocus={nameFocus} />
+        </SummaryRow>
+        <SummaryRow id="network" icon={ico('wifi')} title="Network" summary={device.ip ? <span className="pk-mono">{device.ip}</span> : 'Not seen yet'} focus={rows}>
+          <DeviceNetwork device={device} timeZone={tz} />
+        </SummaryRow>
+        <SummaryRow id="activity" icon={ico('trending_up')} title="Activity" summary={alerts} line2={guest ? undefined : <ActivityLine device={device} />} focus={rows}>
+          <DeviceActivity device={device} kids={kids} timeZone={tz} />
+        </SummaryRow>
+        {ov?.action === 'homework' && (
+          <SummaryRow id="homework" icon={ico('menu_book')} title="Homework activity" summary="Sites used during homework mode" focus={rows}>
+            <HomeworkActivity deviceId={device.id} />
+          </SummaryRow>
+        )}
+      </FocusArea>
 
       <ConfirmDelete
         opened={confirm}

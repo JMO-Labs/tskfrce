@@ -1,6 +1,6 @@
 """Parent API: today's chore runs, approve and send back."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,13 +13,14 @@ from app.models.family import get_family
 from app.models.points import Points
 from app.models.user import User
 from app.schemas.lock import utc_z
-from app.services import chat, economy
+from app.services import chat, economy, minigames, penalty_earnback
 from app.services import chore_actions as actions
 from app.services import chores as svc
 
 router = APIRouter(prefix="/api/v1/chores", tags=["chores"])
 
 NOT_WAITING = "This chore isn't waiting for approval."
+HANDLED = "That chore was already handled."
 
 
 def _waiting(db: Session, run_id: int) -> ChoreRun:
@@ -84,6 +85,8 @@ def run_detail(run_id: int, db: Session = Depends(get_db), _: User = Depends(req
 @router.post("/{run_id}/approve")
 def approve(run_id: int, db: Session = Depends(get_db), parent: User = Depends(require_parent)):
     r = _waiting(db, run_id)
+    if not actions.claim(db, r, "submitted", "done"):  # bedtime may have just approved it
+        raise HTTPException(409, HANDLED)
     actions.approve(db, r, parent.id)
     db.commit()
     return svc.chore_out(r, get_family(db))
@@ -99,6 +102,8 @@ def mark_done(run_id: int, db: Session = Depends(get_db), parent: User = Depends
         raise HTTPException(409, "This chore is already done or waiting for your OK.")
     if r.kid_id is None and r.assignment.mode == "race":
         raise HTTPException(409, "Race chores go to the kid who finishes first.")
+    if not actions.claim(db, r):  # the kid's /done may have landed since the check above
+        raise HTTPException(409, "That chore was already handled.")
     now = datetime.utcnow()
     actions.tick_all(r, parent.id, now)
     actions.submit(r, None, now)
@@ -122,12 +127,16 @@ def mark_not_done(run_id: int, db: Session = Depends(get_db), _: User = Depends(
     if r.status != "done":
         raise HTTPException(409, "This chore isn't done.")
     # ponytail: spent points can leave the balance below 0; badges already earned stay
+    if r.penalty_id:
+        penalty_earnback.on_reverted(db, r, datetime.now(UTC))
     db.query(Points).filter(Points.run_id == r.id, Points.amount > 0).delete()
     r.ticks.clear()
     r.status = "todo"
-    r.approved_at = r.completed_at = r.approved_by_id = None
+    r.approved_at = r.completed_at = r.approved_by_id = r.approved_via = None
+    r.spot_check = False
     r.submitted_at = r.submitted_by_id = r.hh_mult_x10 = None
     chat.system(db, r, "Marked not done")
+    minigames.revoke(db, r)
     db.commit()
     return svc.chore_out(r, get_family(db))
 
@@ -200,9 +209,11 @@ def send_back(
     run_id: int,
     body: SendBack,
     db: Session = Depends(get_db),
-    _: User = Depends(require_parent),
+    parent: User = Depends(require_parent),
 ):
     r = _waiting(db, run_id)
-    actions.send_back(db, r, body.note)
+    if not actions.claim(db, r, "submitted", "todo"):
+        raise HTTPException(409, HANDLED)
+    actions.send_back(db, r, body.note, parent.id)
     db.commit()
     return svc.chore_out(r, get_family(db))

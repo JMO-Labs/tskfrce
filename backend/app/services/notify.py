@@ -8,7 +8,6 @@ from datetime import UTC, datetime
 from urllib.parse import unquote, urlsplit
 from zoneinfo import ZoneInfo
 
-import apprise
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
@@ -42,9 +41,10 @@ EVENTS = {
     "overdue": "Overdue",
     "workaround": "Tried a workaround",
     "boost": "Auto Happy Hour started",
+    "recap": "Weekly recap",
 }
 SECURITY = {"resisting", "box_offline"}
-HELD = {"chore_ok", "kid_note", "reward_request", "new_device", "workaround"}
+HELD = {"chore_ok", "kid_note", "reward_request", "new_device", "workaround", "recap"}
 DEFAULT_EVENTS = (
     "chore_ok",
     "kid_note",
@@ -54,13 +54,15 @@ DEFAULT_EVENTS = (
     "workaround",
     "summary",
     "boost",
+    "recap",
 )
 KIND_EVENT = {
     "chore_submitted": "chore_ok",
     "integration_done": "chore_ok",
     "chore_note": "kid_note",
     "redemption_request": "reward_request",
-    "redemption_decided": "reward_request",  # parents only see this for auto approvals
+    "redemption_decided": "reward_request",
+    "homework_request": "reward_request",  # parents only see this for auto approvals
     "new_device": "new_device",
     "device_resisting": "resisting",
     "device_bypass": "resisting",
@@ -70,6 +72,7 @@ KIND_EVENT = {
     "level_up": "badge",
     "box_offline": "box_offline",
     "boost": "boost",
+    "recap": "recap",
 }
 
 _pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="apprise")
@@ -156,6 +159,8 @@ def deliver(
     """Send now. `lock_timeout` bounds the wait behind other deliveries (None = wait)."""
     if not apprise_lock.acquire(timeout=-1 if lock_timeout is None else lock_timeout):
         return False, TIMED_OUT
+    import apprise  # lazy: ~17MB, only once a family sends a notification
+
     try:
         ap = apprise.Apprise()
         with apprise.LogCapture(level=apprise.logging.WARNING, fmt="%(message)s") as cap:

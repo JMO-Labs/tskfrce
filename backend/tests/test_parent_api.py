@@ -59,15 +59,15 @@ def test_unlock_timer_expires(client, db, parent, kid, parent_headers, monkeypat
     d = mkdev(db)
     assign(client, parent_headers, d, kid)
     mkchore(db, parent, kid)  # pending chore -> offline
-    assert d.mac in tick(db, now)
+    assert d.mac in tick(db, now)[0]
     r = client.post(
         f"/api/v1/devices/{d.id}/override",
         json={"action": "unlock", "minutes": 1},
         headers=parent_headers,
     )
     assert r.status_code == 200
-    assert d.mac not in tick(db, now)
-    assert d.mac in tick(db, now + timedelta(minutes=2))
+    assert d.mac not in tick(db, now)[0]
+    assert d.mac in tick(db, now + timedelta(minutes=2))[0]
 
 
 def test_group_override_applies_to_members(client, db, parent_headers):
@@ -142,7 +142,15 @@ def test_today_shape(client, db, parent, kid, parent_headers):
     mkchore(db, parent, kid, "done", approved=False, title="c")  # not approved
     mkchore(db, parent, kid, "todo", title="d")
     j = client.get("/api/v1/today", headers=parent_headers).json()
-    assert set(j) == {"day", "pending_approvals", "new_devices", "needs_you", "kids"}
+    assert set(j) == {
+        "day",
+        "pending_approvals",
+        "new_devices",
+        "needs_you",
+        "kids",
+        "try_trust_kid",
+        "waiting_at_reset_days",
+    }
     assert j["day"] == "2026-10-20" and j["pending_approvals"] == 1
     assert len(j["new_devices"]) == 1
     k = j["kids"][0]

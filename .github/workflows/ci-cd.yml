@@ -2,12 +2,14 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, dev ]
     tags: [ 'v*' ]
   workflow_dispatch:
   pull_request:
-    branches: [ main ]
+    branches: [ main, dev, 'feat/**' ]
   merge_group:  # merge queue: the only place the network lab gates a merge
+  schedule:
+    - cron: '0 3 * * *'  # nightly Pi 4 2GB perf gate against dev; every other job stands down on schedule events
 
 # One run per PR/branch: a new push to a PR cancels its stale run. main/tags never cancel.
 concurrency:
@@ -19,7 +21,39 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  # Path filter: docs/site-only PRs skip the heavy jobs (skipped counts as success). PRs and pushes to dev are filtered; main/tags/merge_group run everything.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      py: ${{ github.event_name != 'schedule' && (!(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.py == 'true') }}
+      fe: ${{ github.event_name != 'schedule' && (!(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.fe == 'true') }}
+      pg: ${{ github.event_name != 'schedule' && (!(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.pg == 'true') }}
+      installer: ${{ github.event_name != 'schedule' && (!(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.installer == 'true') }}
+      # perf (~13 min): nightly, main-bound PRs, release tags, merge queue, manual runs, and PRs touching perf/**
+      perf: ${{ github.event_name == 'schedule' || github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'pull_request' && (github.base_ref == 'main' || steps.f.outputs.perf == 'true')) }}
+      sec: ${{ github.event_name != 'schedule' }}
+      dbs: ${{ (!(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.pg == 'true') && '["sqlite","postgres"]' || '["sqlite"]' }}
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      if: github.event_name == 'push'  # paths-filter diffs with git on push events
+    - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+      id: f
+      if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')
+      with:
+        filters: |
+          py: ['backend/**', 'blocker/**', 'examples/**', 'ruff.toml', '.github/workflows/ci-cd.yml']
+          fe: ['frontend/**', 'registry/**', '.github/workflows/ci-cd.yml']
+          pg: ['backend/alembic/**', 'backend/app/models/**', 'backend/app/core/database.py', 'backend/app/services/db_move.py', 'backend/app/utils/backup_db.py', 'backend/requirements.txt', '.github/workflows/ci-cd.yml']
+          installer: ['install.sh', 'scripts/**', 'edge/**', 'registry/scripts/**', 'docker-compose*.yml', '.github/workflows/ci-cd.yml']
+          perf: ['perf/**', 'scripts/tier.sh']
+
   lint:
+    needs: changes
+    if: needs.changes.outputs.py == 'true' || needs.changes.outputs.fe == 'true'
     runs-on: ubuntu-latest  # light job: GitHub-hosted (free, public repo); homelab keeps the CPU-heavy stages
     timeout-minutes: 20
     steps:
@@ -63,8 +97,17 @@ jobs:
       run: cd registry && npm ci && npm run typecheck && npm test
 
   test:
-    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
+    needs: changes
+    if: needs.changes.outputs.py == 'true'
+    runs-on: ubuntu-latest  # public repo: free 4-vCPU hosted runners, high concurrency; nothing here needs the home network
     timeout-minutes: 30
+    env:
+      # PRs to dev get the sqlite backend suite (with coverage) from wq-ci; skip the duplicate run here.
+      WQ_COVERS: ${{ github.event_name == 'pull_request' && github.base_ref == 'dev' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        db: ${{ fromJSON(needs.changes.outputs.dbs) }}  # postgres leg only when db/models/migrations/deps change
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
     - name: Set up Python
@@ -74,13 +117,36 @@ jobs:
         cache: pip
         cache-dependency-path: backend/requirements.txt
     - name: Install dependencies
-      run: pip install -r backend/requirements.txt pytest-xdist
+      if: matrix.db == 'postgres' || env.WQ_COVERS != 'true'
+      run: pip install -r backend/requirements.txt pytest-xdist markdown==3.10.2
+    - name: Start Postgres
+      if: matrix.db == 'postgres'
+      run: |
+        docker run -d --name ci-pg-${{ github.run_id }} -p 127.0.0.1:55432:5432 \
+          -e POSTGRES_PASSWORD=pg -e POSTGRES_DB=task4ce postgres:16-alpine
+        for _ in $(seq 60); do
+          docker exec ci-pg-${{ github.run_id }} pg_isready -U postgres -d task4ce && exit 0
+          sleep 1
+        done
+        exit 1
     - name: Run test suite
-      # tests are isolated (in-memory SQLite per test); xdist cuts ~10 min serial to ~2 min on 8 cores
+      if: matrix.db == 'postgres' || env.WQ_COVERS != 'true'
+      env:
+        TEST_DATABASE_URL: ${{ matrix.db == 'postgres' && 'postgresql+psycopg://postgres:pg@127.0.0.1:55432/task4ce' || '' }}
       run: cd backend && python -m pytest tests -q -n auto
+    - name: Run blocker test suite
+      if: matrix.db == 'sqlite'
+      run: |
+        pip install "scapy>=2.6" pytest pyyaml
+        python -m pytest blocker -q
+    - name: Stop Postgres
+      if: always() && matrix.db == 'postgres'
+      run: docker rm -f ci-pg-${{ github.run_id }}
 
   # Next 16 needs Node >= 20.9, so the jest suites and the production build run on 22.
   frontend-test:
+    needs: changes
+    if: needs.changes.outputs.fe == 'true'
     runs-on: ubuntu-latest  # light job: GitHub-hosted (free, public repo); homelab keeps the CPU-heavy stages
     timeout-minutes: 15
     steps:
@@ -91,6 +157,8 @@ jobs:
       run: cd frontend && npm ci && npm test -- --ci
 
   standalone:
+    needs: changes
+    if: needs.changes.outputs.fe == 'true'
     runs-on: ubuntu-latest  # needs no secrets; next build is too heavy for the home runner
     timeout-minutes: 15
     steps:
@@ -101,12 +169,14 @@ jobs:
       run: cd frontend && npm ci && npm run test:standalone
 
   installer:
+    needs: changes
+    if: needs.changes.outputs.installer == 'true'
     runs-on: ubuntu-latest  # light job: GitHub-hosted (free, public repo); homelab keeps the CPU-heavy stages
     timeout-minutes: 30
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
     - name: Shellcheck
-      run: shellcheck install.sh scripts/test-install.sh scripts/start.sh scripts/prep-box.sh edge/edge.sh edge/test-edge.sh scripts/enable-hostname.sh scripts/test-enable-hostname.sh registry/scripts/new-box.sh registry/scripts/test-new-box.sh
+      run: shellcheck install.sh scripts/test-install.sh scripts/start.sh scripts/prep-box.sh edge/edge.sh edge/test-edge.sh scripts/enable-hostname.sh scripts/test-enable-hostname.sh registry/scripts/new-box.sh registry/scripts/test-new-box.sh scripts/db-migrate.sh scripts/test-db-migrate.sh scripts/tier.sh
     - name: Installer smoke test
       run: bash scripts/test-install.sh
     - name: Edge tests
@@ -115,6 +185,8 @@ jobs:
       run: bash scripts/test-enable-hostname.sh
     - name: New-box test
       run: bash registry/scripts/test-new-box.sh
+    - name: DB migrate wrapper test
+      run: bash scripts/test-db-migrate.sh
 
   lab:
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
@@ -138,12 +210,14 @@ jobs:
       run: |
         echo '{"ipv6": true, "fixed-cidr-v6": "fd00:d0c::/64"}' | sudo tee /etc/docker/daemon.json
         sudo systemctl restart docker
+    - name: Lab static tests
+      run: cd blocker && python -m pytest tests/test_lab_compose.py tests/test_lab_pw_version.py -q
     - name: Lab integration tests
       run: |
         bash scripts/lab.sh up
         cd blocker && RUN_INTEGRATION=1 python -m pytest tests/lab -v  # leaves the lab up for e2e
     - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-      with: { node-version: '18', cache: 'npm', cache-dependency-path: frontend/package-lock.json }
+      with: { node-version: '22', cache: 'npm', cache-dependency-path: frontend/package-lock.json }
     # the e2e container sits on the offline lab network; it uses these node_modules
     - run: cd frontend && npm ci
     - name: Browser e2e
@@ -159,12 +233,57 @@ jobs:
         if-no-files-found: ignore
     - name: Lab logs on failure
       if: failure()
-      run: INTERNAL_TOKEN=labtoken docker compose -f lab/docker-compose.lab.yml --profile e2e logs --no-color  # e2e profile = frontend
+      run: PW_VERSION=$(bash scripts/lab.sh pw-version) INTERNAL_TOKEN=labtoken docker compose -f lab/docker-compose.lab.yml --profile e2e logs --no-color  # e2e profile = frontend
     - name: Lab teardown
       if: always()
       run: bash scripts/lab.sh down
 
+  # Pi 4 2GB tier (docs/superpowers/specs/2026-11-10-constrained-devices-design.md): fails on a target miss
+  # or on memory growth over a compressed soak. Needs the production frontend build, so not the home runner.
+  perf:
+    runs-on: ubuntu-latest
+    needs: changes  # no other job needs perf: it never blocks them
+    if: needs.changes.outputs.perf == 'true'
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      issues: write  # nightly failure issue
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      with:
+        ref: ${{ github.event_name == 'schedule' && 'dev' || '' }}  # schedule runs the default-branch workflow; test dev
+    - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+      with: { python-version: '3.11' }
+    - name: Bench math tests
+      run: pip install pytest && python -m pytest perf -q
+    - name: Pi 4 2GB gate
+      run: bash scripts/tier.sh pi4-2g gate
+    - name: Pi 4 2GB soak (10 min)
+      run: bash scripts/tier.sh pi4-2g up && bash scripts/tier.sh pi4-2g soak 10
+    - name: Tier teardown
+      if: always()
+      run: bash scripts/tier.sh pi4-2g down
+    - name: Upload perf results
+      if: always()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+      with:
+        name: perf-results
+        path: perf/results/*.json
+        if-no-files-found: ignore
+    - name: Open/update nightly failure issue
+      if: failure() && github.event_name == 'schedule'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        title="Nightly Pi 4 2GB perf gate failed"
+        n=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
+        if [ -n "$n" ]; then gh issue comment "$n" --body "Failed again: $RUN_URL"
+        else gh issue create --title "$title" --body "The nightly perf gate on dev failed: $RUN_URL"; fi
+
   security-scan:
+    needs: changes
+    if: needs.changes.outputs.sec == 'true'
     runs-on: ubuntu-latest  # light job: GitHub-hosted (free, public repo); homelab keeps the CPU-heavy stages
     timeout-minutes: 10
     permissions:

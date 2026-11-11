@@ -4,7 +4,7 @@ Used by the landing page (`site/index.html`). JPEG, at most 1400 px wide, under 
 
 - `today-hero.jpg` — parent Today, desktop (hero)
 - `today-parent.jpg` — parent Today, phone
-- `needs-you.jpg` — parent Today on a phone, **Needs you** tab (four sample requests injected into the /today response)
+- `needs-you.jpg` — parent Today on a phone, **Needs you** open (mocked API)
 - `kid-home.jpg` — kid chores, phone
 - `kid-locker.jpg` — kid Customize (Locker), phone
 

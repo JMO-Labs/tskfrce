@@ -57,7 +57,7 @@ class SiteParts:
 
 def detect_site_lan(iface: str, router: str) -> LanFacts:  # pragma: no cover - needs a LAN
     """Box MAC and the router's real MAC resolved on ``iface`` (v4 only)."""
-    from scapy.all import ARP, Ether, get_if_hwaddr, srp
+    from blocker.scapy_lite import ARP, Ether, get_if_hwaddr, srp
 
     ans, _ = srp(
         Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=router),

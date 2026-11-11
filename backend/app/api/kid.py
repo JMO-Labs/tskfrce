@@ -5,6 +5,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
 from pydantic import BaseModel, Field
+from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -20,7 +21,9 @@ from app.lock.state import Prefetch, device_facts
 from app.models.badge import BadgeAward
 from app.models.chores import ChoreRun, ChoreSeen
 from app.models.family import get_family
+from app.models.homework import HomeworkRequest
 from app.models.lock import Device, DeviceIPv6
+from app.models.penalty import Penalty
 from app.models.points import Points
 from app.models.reward import Redemption
 from app.models.user import User, UserRole
@@ -30,10 +33,15 @@ from app.services import (
     chat,
     chore_actions,
     economy,
+    goals_jail,
     happy_hour,
+    homework,
     inbox,
     kid_view,
+    minigames,
+    penalties,
     progression,
+    trust,
 )
 from app.services import chores as svc
 from app.services.chore_types import notes_for
@@ -144,7 +152,7 @@ def _locked(db: Session, kid: User, ip: str, now: datetime, counts: dict) -> boo
     dev = request_device(db, ip, all_devs)
     devs = [dev] if dev and kid in dev.owners else [d for d in all_devs if kid in d.owners]
     local = local_now(fam.timezone, now)
-    pre = Prefetch(db, devs, counts)
+    pre = Prefetch(db, devs, counts, now=now)
     return any(not is_online(device_facts(db, d, fam, now, pre), local) for d in devs)
 
 
@@ -200,14 +208,53 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
             }
             for r in runs
         ],
+        "games": {
+            "on": minigames.enabled(fam, kid),
+            **minigames.counts(db, kid.id),
+        },
         "points_balance": balances[kid.id],
         "points_held": economy.pending_cost(db, kid.id),
         "progress": prog,
+        "trust": trust.badge(kid),
         "timezone": fam.timezone,
         "happy_hour": (
             {"ends_at": utc_z(hh.ends_at), "multiplier": hh.mult_x10 / 10} if hh else None
         ),
+        **homework.kid_state(db, kid, now),
+        "penalties": _penalty_cards(db, kid.id),
+        "jail_cards": goals_jail.cards(db, kid.id),
     }
+
+
+def _penalty_cards(db: Session, kid_id: int) -> list[dict]:
+    """Active penalties, plus ended ones not yet seen that took nothing back to earn."""
+    rows = (
+        db.query(Penalty)
+        .filter(
+            Penalty.kid_id == kid_id,
+            or_(
+                Penalty.status == "active",
+                and_(
+                    Penalty.status == "ended",
+                    Penalty.seen_by_kid.is_(False),
+                    Penalty.back_total == 0,
+                ),
+            ),
+        )
+        .order_by(Penalty.created_at.desc(), Penalty.id.desc())
+        .all()
+    )
+    return [o | {"by_name": o["given_by"]} for o in penalties.out_many(db, rows)]
+
+
+@router.post("/penalties/{penalty_id}/seen", status_code=204)
+def penalty_seen(penalty_id: int, db: Session = Depends(get_db), kid: User = Depends(require_kid)):
+    p = db.get(Penalty, penalty_id)
+    if p is None or p.kid_id != kid.id:
+        raise HTTPException(404, "That penalty isn't yours.")
+    p.seen_by_kid = True
+    db.commit()
+    return Response(status_code=204)
 
 
 @router.patch("/me")
@@ -215,6 +262,25 @@ def patch_me(body: MePatch, db: Session = Depends(get_db), kid: User = Depends(r
     kid.celebrate = body.celebrate
     db.commit()
     return {"celebrate": kid.celebrate_level}
+
+
+@router.post("/homework")
+def ask_homework(db: Session = Depends(get_db), kid: User = Depends(require_kid)) -> dict:
+    if not homework.paused(db, kid, datetime.now(UTC)):
+        raise HTTPException(409, "Your internet is already on.")
+    if homework.pending(db, kid.id):
+        raise HTTPException(409, "You already asked. A parent will answer soon.")
+    if homework.recently_denied(db, kid.id, datetime.now(UTC)):
+        raise HTTPException(429, "A parent just said no. Try again in a few minutes.")
+    req = HomeworkRequest(kid_id=kid.id, status="pending")
+    db.add(req)
+    db.flush()
+    name = kid.full_name or kid.username
+    inbox.notify_parents(
+        db, "homework_request", "Homework time", f"{name} is asking for homework time"
+    )
+    db.commit()
+    return {"ok": True, "id": req.id}
 
 
 def _open_run(db: Session, kid: User, run_id: int) -> ChoreRun:
@@ -297,24 +363,31 @@ def done(chore_id: int, db: Session = Depends(get_db), kid: User = Depends(requi
         raise HTTPException(status_code=409, detail="Tick every step first.")
     if c.needs_photo and not svc.photo_count(r):
         raise HTTPException(status_code=409, detail="Add a photo first.")
+    if not chore_actions.claim(db, r):  # a racing finish already took it
+        raise HTTPException(status_code=409, detail="That chore is already done.")
     chore_actions.submit(r, kid.id, now)
-    inbox.notify_parents(
-        db,
-        "chore_submitted",
-        f"{kid.full_name} finished {c.title}",
-        "Take a look and approve it.",
-        run_id=r.id,
-    )
-    from app.integrations import events
+    verdict = trust.decide(db, r, trust.payees(r))
+    if verdict == "auto":
+        chore_actions.approve(db, r, None, via="trust")
+    else:
+        r.spot_check = verdict == "spot"
+        inbox.notify_parents(
+            db,
+            "chore_submitted",
+            f"{kid.full_name} finished {c.title}",
+            "Take a look and approve it.",
+            run_id=r.id,
+        )
+        from app.integrations import events
 
-    events.emit(
-        db, "request.created", [kid.id], chore_id=c.id, type="chore", id=r.id, title=c.title
-    )
+        events.emit(
+            db, "request.created", [kid.id], chore_id=c.id, type="chore", id=r.id, title=c.title
+        )
     db.commit()
     trigger()
     return {
         "id": r.id,
-        "status": "submitted_for_approval",
+        "status": "done" if verdict == "auto" else "submitted_for_approval",
         "submitted_for_approval_at": utc_z(r.submitted_at),
     }
 

@@ -129,15 +129,17 @@ Rule worth knowing: the "chore day" is computed in the family time zone (`lock/r
 | Layer | How to run | Notes |
 |---|---|---|
 | Backend unit and API | `cd backend && python -m pytest tests -q` | Includes migrations, integrity (every CHECK), flair CSS coverage. |
-| Python style | `ruff format --check backend blocker && ruff check backend blocker` | Run from the repo root; config in `ruff.toml`. Same as CI lint. |
-| Frontend | `cd frontend && npm test`, `npm run lint`, `npm run type-check` | Jest tests live in `frontend/tests/v2`. |
+| Python style | `ruff format --check backend blocker examples && ruff check backend blocker examples` | Run from the repo root; config in `ruff.toml`. Same as CI lint. |
+| Frontend | `cd frontend && npm test -- --ci`, `npm run lint`, `npm run type-check` | Jest tests live in `frontend/tests/v2`. |
 | Blocker unit | `python -m pytest blocker/tests -q` | Firewall rules, ARP, portal, identity. |
 | Lab journeys | `cd blocker && RUN_INTEGRATION=1 python -m pytest tests/lab -v` | Real ARP, nftables and portal in Docker; needs Linux Docker. |
 | Browser e2e | `bash scripts/lab.sh up && bash scripts/lab.sh e2e` | Playwright against the lab; screenshots in `frontend/e2e-artifacts`. |
 
-`scripts/lab.sh` also has helper commands (`block`, `unblock`, `check`, `check6`, `portal`, `resist`, `reset`, `resisting`, `test-block`, `token`, `device-id`). Run it without arguments for the usage line. Lab details: [lab/README.md](../lab/README.md).
+`scripts/lab.sh` also has helper commands (`block`, `unblock`, `check`, `check6`, `portal`, `resist`, `reset`, `resisting`, `test-block`, `token`, `device-id`, `pw-version`). Run it without arguments for the usage line. Lab details: [lab/README.md](../lab/README.md).
 
-CI (`.github/workflows/ci-cd.yml`): `lint` (ruff on backend and blocker, eslint, tsc), `test` (backend pytest), `installer` (shellcheck, install smoke test), `lab` (journeys + browser e2e, uploads screenshots), `security-scan` (Trivy), and image build and push on `main`.
+CI (`.github/workflows/ci-cd.yml`): `lint` (ruff on backend, blocker and examples, eslint, tsc, registry typecheck and tests), `test` (backend pytest, run twice in a matrix: once on SQLite and once on Postgres 16; the blocker tests run only in the SQLite leg), `frontend-test` (jest), `standalone` (production build guard), `installer` (shellcheck, install smoke test and the edge, hostname, new-box and db-migrate tests), `perf` (Pi 4 2GB gate and a 10-minute memory soak; fails on a missed target or memory growth; starts after `lint` and `test` pass), `lab` (journeys + browser e2e, uploads screenshots), `security-scan` (Trivy), and image build and push on `main` and `v*` tags. It runs on PRs into `main`, `dev` and `feat/**`, pushes to `main`/`dev`, `v*` tags, the merge queue and manual runs. `lab` is heavy (about 20-30 minutes), so it does not run on PR pushes: it runs only in the merge queue, on `v*` tags and on manual runs, one at a time repo-wide. Run it locally before a PR into `dev`. A new push to a PR cancels that PR's older run.
+
+Dependabot (`.github/dependabot.yml`) groups minor and patch bumps into one PR per ecosystem per week. `.github/workflows/dependabot-automerge.yml` turns on auto-merge for those PRs; GitHub merges them once the required checks are green. Major bumps are left for a human. Branch flow, exact local commands and commit rules: [CONTRIBUTING.md](../CONTRIBUTING.md). `backend/tests/test_contributing_doc.py` fails if CONTRIBUTING.md drifts from `ci-cd.yml`.
 
 `.github/workflows/pages.yml` deploys the website. When `site/`, `docs/guide/`, `docs/remote-access.md` or the build scripts change on `main`, it runs `python scripts/build_site.py` (markdown to HTML through `scripts/site_templates.py`) and publishes `site/`. After editing those docs, rebuild locally and commit the output. `node site/check.mjs` checks every page (usage is in its header).
 
@@ -145,6 +147,7 @@ CI (`.github/workflows/ci-cd.yml`): `lint` (ruff on backend and blocker, eslint,
 
 - **Home box:** `install.sh` installs Docker if asked, writes `.env`, and runs `docker-compose.prod.yml` (backend, frontend, ntfy, and the blocker through `COMPOSE_PROFILES=blocker`). Running it again updates the app and keeps `.env` and data. Smoke test: `scripts/test-install.sh`.
 - **Dev:** `docker-compose.yml` mounts the source and reloads. `scripts/start.sh` creates `.env` from `.env.example` and starts it.
+- **Move to Postgres (optional):** from the install dir run `bash scripts/db-migrate.sh postgresql://user:pass@host:5432/db`. It stops the backend, copies all data from SQLite into the (empty) Postgres database, then saves `.env` as `.env.bak-<UTC time>`, sets `DATABASE_URL` (mode 600, URL never printed) and restarts. If the copy fails, `.env` and the SQLite data are untouched, the app is restarted as before, and the script exits 1. The SQLite file is kept as a backup. Test: `scripts/test-db-migrate.sh`.
 - **Backend alone:** see [backend/README.md](../backend/README.md).
 
 ## Repository map

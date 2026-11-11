@@ -11,8 +11,9 @@ import { NotificationsPane } from '@/v2/manage/NotificationsPane'
 import { FamilyCard, GifsCard } from '@/v2/manage/FamilyCards'
 import { DeviceDetail } from '@/v2/manage/DeviceDetail'
 import type { Device, Family } from '@/v2/types'
+import { fakeRouter } from './helpers/fakeRouter'
 
-jest.mock('next/router', () => ({ useRouter: () => ({ query: {}, push: jest.fn(), replace: jest.fn() }) }))
+jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 
@@ -38,39 +39,34 @@ beforeAll(() => {
     disconnect() {}
   }
 })
+beforeEach(() => fakeRouter.reset('/x', { open: 'details' }))
 const serve = (map: Record<string, unknown>) => apiMock.mockReset().mockImplementation(async (p) => map[p] ?? {})
 
 describe('screen time pane (item 4)', () => {
-  test('off: only the switch shows', async () => {
+  test('off: only the switch and a hint show', async () => {
     serve({ '/screen-time': st() })
     wrap(<ScreenTimePane />)
-    await screen.findByRole('switch', { name: 'Kids can buy extra minutes' })
-    for (const n of ['Price (points per 15 min)', 'Max per day']) expect(screen.queryByLabelText(n)).toBeNull()
-    for (const n of ['Different prices for device groups', 'Approve automatically', 'Only during allowed hours']) expect(screen.queryByRole('switch', { name: n })).toBeNull()
-    expect(screen.queryByRole('region', { name: 'Per-kid limits' })).toBeNull()
+    const sw = await screen.findByRole('switch', { name: /kids can buy extra minutes/i })
+    expect(sw).not.toBeChecked()
+    for (const n of [/^Price/, /^Max per day/, /^Approve automatically/, /^Only during allowed hours/]) expect(screen.queryByRole('button', { name: n })).toBeNull()
+    for (const t of ['Rules', 'Kids']) expect(screen.queryByText(t)).toBeNull()
     expect(screen.getByText('Turn this on to let kids spend points on extra internet time.')).toBeTruthy()
-    expect(screen.getByText('Off')).toBeTruthy() // header: the On/Off chip only
     for (const t of ['20 pts = 15 min', 'Max 60 min/day']) expect(screen.queryByText(t)).toBeNull()
-    for (const n of ['What points buy', 'Bought today']) expect(screen.queryByRole('region', { name: n })).toBeNull()
   })
-  test('hidden values come back unchanged after off then on', async () => {
-    serve({ '/screen-time': st({ enabled: true, price: 35 }) })
+  test('turning it on sends enabled: true', async () => {
+    serve({ '/screen-time': st() })
     wrap(<ScreenTimePane />)
-    const sw = await screen.findByRole('switch', { name: 'Kids can buy extra minutes' })
-    await userEvent.click(sw)
-    expect(screen.queryByLabelText('Price (points per 15 min)')).toBeNull()
-    await userEvent.click(sw)
-    expect(screen.getByLabelText('Price (points per 15 min)')).toHaveValue('35')
+    await userEvent.click(await screen.findByRole('switch', { name: /kids can buy extra minutes/i }))
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/screen-time', { method: 'PATCH', body: { enabled: true } }))
   })
-  test('on: fields show and keep their values', async () => {
+  test('on: one line per rule keeps its value', async () => {
     serve({ '/screen-time': st({ enabled: true, price: 35, max_minutes_per_day: 60 }) })
     wrap(<ScreenTimePane />)
-    expect(await screen.findByLabelText('Price (points per 15 min)')).toHaveValue('35')
-    expect(screen.getByLabelText('Max per day')).toHaveValue('60')
-    expect(screen.getByRole('switch', { name: 'Approve automatically' })).toBeTruthy()
-    expect(screen.getByRole('region', { name: 'Per-kid limits' })).toBeTruthy()
-    for (const t of ['On', '35 pts = 15 min', 'Max 60 min/day']) expect(screen.getByText(t)).toBeTruthy()
-    for (const n of ['What points buy', 'Bought today']) expect(screen.getByRole('region', { name: n })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /^Price.*35 pts = 15 min/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Max per day.*60 min/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Approve automatically.*Off/ })).toBeTruthy()
+    expect(screen.getByRole('switch', { name: /kids can buy extra minutes/i })).toBeChecked()
+    for (const n of ['What points buy', 'Bought today', 'Per-kid limits']) expect(screen.queryByRole('region', { name: n })).toBeNull()
   })
 })
 
@@ -80,24 +76,25 @@ describe('notifications pane (item 6)', () => {
     wrap(<NotificationsPane />)
   }
   test('security toggle only when quiet hours on', async () => {
+    fakeRouter.reset('/settings', { section: 'notifications', open: 'quiet' })
     mount({})
     await screen.findByRole('switch', { name: 'Quiet hours' })
     expect(screen.queryByRole('switch', { name: 'Security alerts still send' })).toBeNull()
   })
   test('security toggle shows when on', async () => {
+    fakeRouter.reset('/settings', { section: 'notifications', open: 'quiet' })
     mount({ quiet_start: '21:30', quiet_end: '07:00' })
     expect(await screen.findByRole('switch', { name: 'Security alerts still send' })).toBeTruthy()
   })
-  test('App address is in a closed Advanced fold with help text', async () => {
+  test('App address is a row that opens to its help text', async () => {
     mount({})
-    const sum = await screen.findByText('Advanced')
-    expect(sum.closest('details')?.open).toBe(false)
-    expect(screen.getByText('Leave blank to use http://chores.local.')).toBeTruthy()
+    await userEvent.click(await screen.findByRole('button', { name: /App address/ }))
+    expect(await screen.findByText('Leave blank to use http://chores.local.')).toBeTruthy()
   })
   test('no quiet card without places', async () => {
     mount({}, [])
     await screen.findByText('No places yet')
-    expect(screen.queryByRole('region', { name: 'Quiet hours' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Quiet hours/ })).toBeNull()
   })
 })
 
@@ -113,12 +110,51 @@ describe('family cards (items 7, 8)', () => {
     expect(screen.getByLabelText('GIPHY key')).toBeTruthy()
     expect(screen.queryByText(/^Off\. Turn on/)).toBeNull()
   })
-  test('Early finish bonus cap sits in a closed Points rules fold', () => {
+  test('Family opens calm: three-row values are lines, no fields, no Network', () => {
+    fakeRouter.reset('/settings', { section: 'family' })
     wrap(<FamilyCard fam={fam()} />)
-    const d = screen.getByText('Points rules').closest('details')!
-    expect(d.open).toBe(false)
-    expect(d.contains(screen.getByLabelText('Early finish bonus cap'))).toBe(true)
-    expect(screen.queryByRole('heading', { name: 'Points' })).toBeNull() // the fold already names it
+    expect(screen.getByRole('button', { name: /^Household/ })).toBeTruthy()
+    expect(screen.getByText('S · UTC time · day resets 6:00 AM')).toBeTruthy()
+    expect(screen.getByText('No auto-approve · Recap on')).toBeTruthy()
+    expect(screen.getByText('Early bonus up to 5 pts · Streak freezes off')).toBeTruthy()
+    expect(screen.queryByLabelText('Early finish bonus cap')).toBeNull()
+    expect(screen.queryByLabelText('Family name')).toBeNull()
+    expect(screen.queryByText(/Network|Block new devices/)).toBeNull()
+  })
+  test('Points rules opens from ?open=pts and holds the cap', () => {
+    fakeRouter.reset('/settings', { section: 'family', open: 'pts' })
+    wrap(<FamilyCard fam={fam()} />)
+    expect(screen.getByLabelText('Early finish bonus cap')).toHaveValue('5')
+    expect(screen.queryByLabelText('Family name')).toBeNull()
+  })
+  test('Points rules row uses the circled star (audit 25)', () => {
+    fakeRouter.reset('/settings', { section: 'family' })
+    wrap(<FamilyCard fam={fam()} />)
+    const head = screen.getByText('Points rules').closest('button') as HTMLElement
+    expect(head.querySelector('[data-icon]')).toHaveAttribute('data-icon', 'stars')
+    expect(head.querySelector('[data-icon="star"]')).toBeNull()
+  })
+  test('a blank family name is not saved and says why; a bonus cap over 50 is not saved', async () => {
+    fakeRouter.reset('/settings', { section: 'family', open: 'hh' })
+    serve({})
+    const { unmount } = wrap(<FamilyCard fam={fam()} />)
+    await userEvent.clear(screen.getByLabelText('Family name'))
+    await userEvent.tab()
+    expect(screen.getByText('Give your family a name.')).toBeTruthy()
+    unmount()
+    fakeRouter.reset('/settings', { section: 'family', open: 'pts' })
+    wrap(<FamilyCard fam={fam()} />)
+    await userEvent.clear(screen.getByLabelText('Early finish bonus cap'))
+    await userEvent.type(screen.getByLabelText('Early finish bonus cap'), '99')
+    await userEvent.tab()
+    expect(screen.getByText('Must be 50 or less.')).toBeTruthy()
+    expect(apiMock.mock.calls.filter((c) => (c as unknown[])[1])).toEqual([])
+  })
+  test('an unknown ?open row is dropped', () => {
+    fakeRouter.reset('/settings', { section: 'family', open: 'net' })
+    wrap(<FamilyCard fam={fam()} />)
+    expect(fakeRouter.replace).toHaveBeenCalled()
+    expect(fakeRouter.query.open).toBeUndefined()
   })
 })
 
@@ -132,6 +168,7 @@ describe('device detail (item 11)', () => {
     serve({})
     wrap(<DeviceDetail device={dev()} kids={[]} onRequestOverride={() => {}} />)
     expect(screen.getByRole('switch', { name: /Always allowed/ })).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'About always allowed' }))
     await waitFor(() => expect(screen.getByText("For a kid's device that should skip hours and chores, like a school laptop. A manual lock still applies.")).toBeTruthy())
   })
 })

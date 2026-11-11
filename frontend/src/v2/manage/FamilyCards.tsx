@@ -1,20 +1,23 @@
 import { useState, type ReactNode } from 'react'
-import { Input, NativeSelect, NumberInput, PasswordInput, SegmentedControl, Switch, TextInput } from '@mantine/core'
-import { useBlocker } from '@/v2/hooks/useDevices'
+import { Input, PasswordInput, SegmentedControl, Switch } from '@mantine/core'
+import { useQueryClient } from '@tanstack/react-query'
 import { usePatchFamily } from '@/v2/hooks/useFamily'
 import { useSingleFlight } from '@/v2/hooks/useSingleFlight'
 import type { Family } from '@/v2/types'
 import { PasswordEye } from '@/v2/components/PasswordEye'
 import { toastFail, toastOk } from '../notify'
 import { PaneCard, PaneHead } from './PaneParts'
-import { Chip } from '@/v2/parent/Chip'
-import { Fold } from '@/v2/parent/Fold'
-import { ago } from './settingsMeta'
-
-function zones(current: string): string[] {
-  const all = (Intl as unknown as { supportedValuesOf?: (k: string) => string[] }).supportedValuesOf?.('timeZone') ?? []
-  return all.includes(current) ? all : [current, ...all]
-}
+import { DetailHeader } from '@/v2/parent/DetailHeader'
+import { Icon } from '@/v2/parent/Icon'
+import { FocusArea, SummaryRow } from '@/v2/parent/SummaryRow'
+import { useFocusParam } from '@/v2/parent/useFocusParam'
+import { useSaveQueue } from '@/v2/hooks/useSaveQueue'
+import { STYLE_LABEL } from '@/v2/presets/format'
+import { PresetSwitch } from '@/v2/presets/PresetSwitch'
+import { usePresets } from '@/v2/presets/usePresets'
+import { GamesBody, gamesLine } from './GamesRow'
+import { PenaltiesBody, penaltiesLine } from './PenaltiesBody'
+import { BedtimeBody, bedtimeLine, HouseholdBody, householdLine, PointsBody, pointsLine, type SaveFamily } from './FamilyRows'
 
 type Fields = Family & { giphy_api_key?: string }
 
@@ -72,78 +75,42 @@ const Switchy = ({ label, checked, onChange }: { label: string; checked: boolean
   </div>
 )
 
-/** Home box heartbeat as a status row (mockup: Network card). */
-function BoxRow() {
-  const box = useBlocker().data
-  if (!box) return null
-  return (
-    <div className="pn-kv pn-box">
-      <span>Home box</span>
-      <Chip tone={box.online ? 'acc' : 'amb'} icon={box.online ? 'check_circle' : 'router'}>
-        {box.online ? `Healthy${process.env.NEXT_PUBLIC_APP_VERSION ? ` · v${process.env.NEXT_PUBLIC_APP_VERSION}` : ''}` : `Offline — ${box.last_seen ? `last seen ${ago(box.last_seen)}` : 'never seen'}`}
-      </Chip>
-    </div>
-  )
-}
+const ROWS = ['style', 'hh', 'bed', 'pts', 'games', 'pen']
+const ico = (name: string) => <Icon name={name} size={18} />
 
+/** Settings › Family: calm rows; every change saves as it is made (pairs once complete). */
 export function FamilyCard({ fam }: { fam: Family }) {
+  const focus = useFocusParam('open', { valid: (id) => ROWS.includes(id) })
+  const patch = usePatchFamily()
+  const queue = useSaveQueue()
+  const qc = useQueryClient()
+  const save: SaveFamily = (p) => queue(() => patch.mutateAsync(typeof p === 'function' ? p(qc.getQueryData<Family>(['family']) ?? fam) : p))
+  const style = usePresets().data?.style
+  const line = (id: string, t: string) => (focus.isOpen(id) ? undefined : t) // the open row shows its form instead
   return (
-    <Pane title="Family" sub="The basics for your household." fam={fam}>
-      {({ val, set }) => (
-        <>
-          <PaneCard icon="home" title="Household">
-            <div className="pn-fields">
-              <TextInput
-                label="Family name"
-                value={val('name')}
-                error={val('name').trim() ? undefined : 'Give your family a name.'}
-                onChange={(e) => set({ name: e.currentTarget.value })}
-              />
-              <NativeSelect
-                label="Time zone"
-                data={zones(fam.timezone)}
-                value={val('timezone')}
-                onChange={(e) => set({ timezone: e.currentTarget.value })}
-              />
-              <TextInput
-                type="time"
-                label="Day resets at"
-                description="Chores start fresh at this time."
-                value={val('reset_time')}
-                onChange={(e) => set({ reset_time: e.currentTarget.value })}
-              />
-            </div>
-          </PaneCard>
-          <Fold title="Points rules">
-            <section className="pn-card" aria-label="Points rules">
-              <div className="pn-fields">
-                <NumberInput
-                  label="Early finish bonus cap"
-                  description="Most bonus points a kid can earn for finishing chores early."
-                  min={0}
-                  max={50}
-                  allowDecimal={false}
-                  value={val('early_bonus_cap')}
-                  onChange={(v) => typeof v === 'number' && set({ early_bonus_cap: v })}
-                />
-              </div>
-              <div className="pn-sp" />
-              <Switchy label="Streak freezes" checked={val('streak_freeze')} onChange={(v) => set({ streak_freeze: v })} />
-              <p className="pn-help pn-note">Kids earn a freeze every 7 days in a row; it covers one missed day.</p>
-            </section>
-          </Fold>
-          <PaneCard icon="shield" title="Network">
-            <Switchy
-              label="Block new devices until I assign them"
-              checked={val('new_devices_blocked')}
-              onChange={(v) => set({ new_devices_blocked: v })}
-            />
-            <p className="pn-help pn-note">New phones and laptops stay paused until you give them an owner.</p>
-            <BoxRow />
-          </PaneCard>
-        </>
-      )}
-    </Pane>
+    <section aria-label="Family" className="pn fam-rows">
+      <DetailHeader media={<span className="pk-tile pk-tile-lg"><Icon name="home" size={26} /></span>} title="Family" sub="The basics for your household." />
+      <FocusArea focus={focus} label="Family settings" grouped>
+        <SummaryRow id="style" icon={ico('tune')} title="Style" summary="" line2={line('style', STYLE_LABEL[style ?? 'balanced'])} focus={focus}>
+          <PresetSwitch />
+        </SummaryRow>
+        <SummaryRow id="hh" icon={ico('home')} title="Household" summary="" line2={line("hh", householdLine(fam))} focus={focus}>
+          <HouseholdBody fam={fam} save={save} />
+        </SummaryRow>
+        <SummaryRow id="bed" icon={ico('bedtime')} title="Bedtime & recap" summary="" line2={line("bed", bedtimeLine(fam))} focus={focus}>
+          <BedtimeBody fam={fam} save={save} />
+        </SummaryRow>
+        <SummaryRow id="pts" icon={ico('stars')} title="Points rules" summary="" line2={line("pts", pointsLine(fam))} focus={focus}>
+          <PointsBody fam={fam} save={save} />
+        </SummaryRow>
+        <SummaryRow id="games" icon={ico('sports_esports')} title="Minigames" summary="" line2={line('games', gamesLine(fam))} focus={focus}>
+          <GamesBody fam={fam} save={save} />
+        </SummaryRow>
+        <SummaryRow id="pen" icon={ico('gavel')} title="Penalties" summary="" line2={line('pen', penaltiesLine(fam))} focus={focus}>
+          <PenaltiesBody fam={fam} save={save} />
+        </SummaryRow>
+      </FocusArea>
+    </section>
   )
 }
 

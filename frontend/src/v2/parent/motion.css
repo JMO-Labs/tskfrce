@@ -64,30 +64,6 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────── */
-/* Skeleton shimmer animation */
-/* ─────────────────────────────────────────────────────────────────────────── */
-
-[data-look='parent'] .p-skeleton {
-  animation: shimmer 2s infinite;
-  background: linear-gradient(
-    90deg,
-    var(--p-soft) 0%,
-    var(--p-card) 50%,
-    var(--p-soft) 100%
-  );
-  background-size: 200% 100%;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-/* ─────────────────────────────────────────────────────────────────────────── */
 /* Progress bars and loading indicators */
 /* ─────────────────────────────────────────────────────────────────────────── */
 

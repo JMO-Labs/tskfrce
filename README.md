@@ -74,7 +74,7 @@ Or here's the short version:
    curl -fsSL https://jmo-labs.github.io/tskfrce/install.sh | sh
    ```
 
-3. [Do the first-time setup](https://jmo-labs.github.io/tskfrce/guide/03-first-setup.html): seven short steps for your family, kids, chores, devices and hours.
+3. [Do the first-time setup](https://jmo-labs.github.io/tskfrce/guide/03-first-setup.html): eight short steps (the last is optional) for your family, kids, chores, devices and hours.
 4. [Learn the everyday routine](https://jmo-labs.github.io/tskfrce/guide/04-everyday-use.html): approve chores, answer requests, give rewards.
 5. [Show your kids](https://jmo-labs.github.io/tskfrce/guide/05-for-kids.html): a one-page guide you can hand over.
 
@@ -103,8 +103,8 @@ Open http://localhost:3000; the first visit shows the setup wizard. The backend 
 
 ```bash
 cd backend && python -m pytest tests -q                 # backend
-cd backend && ruff format --check . && ruff check .     # Python style (as in CI)
-cd frontend && npm ci && npm test                       # jest
+ruff format --check backend blocker examples && ruff check backend blocker examples   # Python style (as in CI, repo root)
+cd frontend && npm ci && npm test -- --ci              # jest
 cd frontend && npm run lint && npm run type-check       # lint and types
 python -m pytest blocker/tests -q                       # blocker unit tests (repo root)
 ```
@@ -122,7 +122,8 @@ bash scripts/lab.sh down    # tear it down
 
 ### Conventions
 
-Semantic versioning and semantic commits. CI (`.github/workflows/ci-cd.yml`) runs lint, backend tests, the lab and a security scan; keep them green before pushing.
+Semantic versioning and semantic commits. CI (`.github/workflows/ci-cd.yml`) runs lint, backend tests and a security scan on every pull request, plus the lab for pull requests into main; keep them green before pushing.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the branch flow and the exact local checks. Notable changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

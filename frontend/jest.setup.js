@@ -1,4 +1,8 @@
 import '@testing-library/jest-dom/jest-globals'
+import { configure } from '@testing-library/react'
+
+// findBy/waitFor under a loaded CI box: the default 1 s is too tight for Mantine menus and dialogs
+configure({ asyncUtilTimeout: 4000 })
 import fs from 'fs'
 import path from 'path'
 
@@ -32,6 +36,12 @@ if (typeof document !== 'undefined') {
   document.documentElement.style.setProperty('--ease-out', 'cubic-bezier(0.25, 0.46, 0.45, 0.94)')
 }
 
+// jsdom lacks these; SummaryRow, InfoPop and Mantine need them
+if (typeof window !== 'undefined') {
+  window.matchMedia ??= (q) => ({ matches: false, media: q, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false })
+  Element.prototype.scrollIntoView ??= () => {}
+}
+
 // Mock Next.js router
 jest.mock('next/router', () => ({
   useRouter() {
@@ -49,3 +59,8 @@ jest.mock('next/router', () => ({
     }
   },
 }))
+
+// Mantine's SegmentedControl measures itself; jsdom has no ResizeObserver
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} }
+}

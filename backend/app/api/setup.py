@@ -113,7 +113,7 @@ class StepIn(BaseModel):
 def get_step(db: Session = Depends(get_db), _: User = Depends(require_parent)):
     """The wizard step an unfinished setup should resume at (None = nothing to resume)."""
     step = get_family(db).setup_step
-    # old step-8 saves count as finished
+    # anything past the last step counts as finished
     return {"step": step if step is None or step <= LAST_STEP else None}
 
 

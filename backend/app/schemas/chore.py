@@ -42,6 +42,8 @@ class ChoreIn(BaseModel):
     title: str = Field(min_length=1, max_length=100)
     points: int = Field(default=10, ge=0)
     needs_photo: bool = False
+    always_check: bool = False
+    gives_game: bool = False
     type_id: int | None = None  # None -> Other
     steps: list[Step] = Field(default_factory=list, max_length=20)
 
@@ -50,6 +52,8 @@ class ChorePatch(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=100)
     points: int | None = Field(default=None, ge=0)
     needs_photo: bool | None = None
+    always_check: bool | None = None
+    gives_game: bool | None = None
     type_id: int | None = None
     steps: list[Step] | None = Field(default=None, max_length=20)
 
@@ -97,6 +101,8 @@ class ChoreLibOut(BaseModel):
     title: str
     points: int
     needs_photo: bool
+    always_check: bool
+    gives_game: bool
     type_id: int
     steps: list[StepOut]
     assignments: list[AssignmentOut]

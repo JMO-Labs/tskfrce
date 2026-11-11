@@ -71,6 +71,12 @@ describe('KidApp', () => {
     expect(screen.getByText(text)).toBeInTheDocument()
   })
 
+  test('teen Chat tab uses the one-bubble chat glyph (audit 25)', () => {
+    renderApp(today('teen'))
+    const tab = screen.getAllByRole('button', { name: /^Chat/ })[0]
+    expect(tab.querySelector('.ms, [data-icon]')).toHaveTextContent(/^chat$/)
+  })
+
   test('Little has no Chat or Alerts nav', () => {
     renderApp(today('little'))
     expect(screen.getByRole('button', { name: /Prizes/ })).toBeInTheDocument()

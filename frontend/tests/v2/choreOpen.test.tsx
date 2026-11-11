@@ -64,6 +64,28 @@ const open = (c: TodayChore = chore) =>
   )
 
 describe('ChoreOpen', () => {
+  const self = (over: Partial<TodayChore>): TodayChore => ({ ...chore, state: 'done', approved_via: 'trust', earned_pts: 12, ...over })
+
+  test("team chore: Wasn't done does not quote one kid's share", async () => {
+    open(self({ mode: 'team' }))
+    await userEvent.click(await screen.findByRole('button', { name: /Wasn't done/ }))
+    expect(screen.getByText(/and the points it earned come off\./)).toBeInTheDocument()
+    expect(screen.queryByText(/12 points/)).toBeNull()
+  })
+
+  test("solo chore keeps the amount; a nameless kid reads as 'the kid'", async () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MantineProvider>
+          <ChoreOpen chore={self({})} kid={{ id: 1, chores: [], devices: [] } as unknown as TodayKid} />
+        </MantineProvider>
+      </QueryClientProvider>,
+    )
+    await userEvent.click(await screen.findByRole('button', { name: /Wasn't done/ }))
+    expect(screen.getByText(/goes back on the kid's list for today, and the 12 points it earned come off/)).toBeInTheDocument()
+    expect(screen.queryByText(/They/)).toBeNull()
+  })
+
   test('late step shows Late and a chained step its badge', async () => {
     open()
     expect(await screen.findByText('Late')).toBeInTheDocument()

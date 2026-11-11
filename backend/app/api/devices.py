@@ -10,10 +10,10 @@ from sqlalchemy.orm import Session, selectinload
 from app.api.deps import get_db, require_parent
 from app.lock import activity, blocker_client, hours
 from app.lock.loop import trigger
-from app.lock.overrides import clear_override, set_override
+from app.lock.overrides import clear_override, set_homework, set_override
 from app.lock.rules import block_reason, open_reason
 from app.lock.schedule import local_now
-from app.lock.state import Prefetch, device_facts
+from app.lock.state import Prefetch, device_facts, device_penalty
 from app.models.device_activity import DeviceEvent, DevicePresence
 from app.models.family import FamilySettings, get_family
 from app.models.hours import HourRuleTarget
@@ -65,6 +65,22 @@ def device_out(
     f = device_facts(db, d, fam, now, pre)
     now_local = local_now(fam.timezone, now)
     reason = block_reason(f, now_local)
+    pen = None
+    if reason == "penalty":
+        naive = now.replace(tzinfo=None)
+        q = pre.overrides[d.id] if pre else db.query(Override).filter(Override.device_id == d.id)
+        po = next(
+            (
+                o
+                for o in sorted(q, key=lambda o: (o.created_at, o.id), reverse=True)
+                if o.source == "penalty" and (o.expires_at is None or o.expires_at > naive)
+            ),
+            None,
+        )
+        pen = {"id": po.penalty_id, "ends_at": utc_z(po.expires_at)} if po else None
+        wk = device_penalty(db, d, now, pre)
+        if wk and (po is None or wk.id > (po.penalty_id or 0)):
+            pen = {"id": wk.id, "ends_at": utc_z(wk.ends_at)}
     online = reason is None
     alerts, changes = (stats or {}).get(d.id, (0, 0))
     lock_at = None
@@ -100,6 +116,7 @@ def device_out(
         "chores_done": sum(o.approved for o in f.owners),
         "chores_total": sum(o.total for o in f.owners),
         "locks_at": utc_z(lock_at),
+        "penalty": pen,
         "alerts": alerts,
     }
     if addresses:
@@ -210,11 +227,26 @@ def device_override(
     db: Session = Depends(get_db),
     parent: User = Depends(require_parent),
 ):
-    _device(db, device_id)
+    d = _device(db, device_id)
+    if body.action == "homework":
+        return homework(db, [d], body.minutes, parent, f"{d.name} is already online.", fan=False)
     set_override(db, [device_id], body.action, body.minutes, parent.id)
     db.commit()
     trigger()
     return {"ok": True}
+
+
+def homework(
+    db: Session, devices: list[Device], minutes: int | None, parent: User, none: str, fan=True
+) -> dict:
+    """Homework mode on the paused ones among `devices`; 409 `none` when none are paused."""
+    applied = set_homework(db, devices, minutes, parent.id, datetime.now(UTC))
+    if not applied:
+        raise HTTPException(409, none)
+    db.commit()
+    trigger()
+    out = {"ok": True, "expires_at": utc_z(min(o.expires_at for o in applied))}
+    return {**out, "devices": len(applied)} if fan else out
 
 
 @router.delete("/devices/{device_id}/override")
@@ -344,10 +376,16 @@ def group_override(
     parent: User = Depends(require_parent),
 ):
     g = _group(db, group_id)
+    if body.action == "homework":
+        return homework(db, g.devices, body.minutes, parent, _none_paused(g.name))
     set_override(db, [d.id for d in g.devices], body.action, body.minutes, parent.id)
     db.commit()
     trigger()
-    return {"ok": True}
+    return {"ok": True, "devices": len(g.devices)}
+
+
+def _none_paused(name: str) -> str:
+    return f"None of {name}'s devices are paused."
 
 
 @router.delete("/groups/{group_id}/override")

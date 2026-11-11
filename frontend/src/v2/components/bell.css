@@ -11,7 +11,7 @@
   color: var(--p-ink);
   cursor: pointer;
 }
-.p-bell:hover { background: var(--p-soft); }
+@media (hover: hover) { .p-bell:hover { background: var(--p-soft); } }
 .p-bell-count {
   position: absolute;
   top: -6px;
@@ -46,7 +46,8 @@
 }
 
 .p-bell-list[data-sheet] { max-height: none; height: calc(100dvh - 84px); }
-.p-bell-list[data-page] { max-height: none; background: var(--p-card); border: 1px solid var(--p-line); border-radius: 16px; }
+.p-bell-list[data-page] { max-height: none; gap: 8px; width: 100%; max-width: 640px; margin-inline: auto; }
+.p-bell-list[data-page] .p-bell-tabs, .p-bell-list[data-page] .p-bell-scroll { padding-left: 0; padding-right: 0; }
 
 .p-bell-head {
   display: flex;
@@ -63,7 +64,11 @@
 
 .p-bell-mark-read {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
   color: var(--p-sub);
   background: none;
   border: none;
@@ -71,8 +76,10 @@
   padding: 0;
 }
 
-.p-bell-mark-read:hover {
-  color: var(--p-ink);
+@media (hover: hover) {
+  .p-bell-mark-read:hover {
+    color: var(--p-ink);
+  }
 }
 
 .p-bell-tabs {
@@ -86,8 +93,8 @@
   font-weight: 600;
   padding: 5px 10px;
   border-radius: 999px;
-  color: var(--p-sub);
-  background: transparent;
+  color: var(--p-ink);
+  background: var(--p-soft);
   border: 1px solid var(--p-line);
   cursor: pointer;
 }
@@ -105,6 +112,9 @@
 }
 
 .p-bell-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-size: 10.5px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -113,75 +123,11 @@
   padding: 8px 8px 4px;
 }
 
-.p-bell-item {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  gap: 0 10px;
-  padding: 10px 8px;
-  border-radius: 12px;
-  position: relative;
-}
-
-.p-bell-x {
-  position: absolute; top: 6px; right: 4px;
-  width: 28px; height: 28px; display: grid; place-items: center;
-  border: 0; border-radius: 6px; background: none; color: var(--p-sub); cursor: pointer;
-  opacity: 0;
-}
-.p-bell-item:hover .p-bell-x, .p-bell-x:focus-visible { opacity: 1; }
-.p-bell-x:hover { color: var(--p-ink); background: var(--p-line); }
-@media (hover: none) { .p-bell-x { opacity: 1; } }
-.p-bell-item:hover::after, .p-bell-item:focus-within::after { display: none; }
-
-.p-bell-item:hover {
-  background: var(--p-soft);
-}
-
-.p-bell-item.unread::after {
-  content: '';
-  position: absolute;
-  right: 10px;
-  top: 16px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--p-acc);
-  box-shadow: 0 0 0 1.5px var(--p-ink);
-}
-/* touch shows the x all the time: the dot moves beside it, and the text keeps clear of both */
-@media (hover: none) { .p-bell-item.unread::after, .p-bell-item.unread:hover::after, .p-bell-item.unread:focus-within::after { display: block; right: 38px; } }
-
-.p-bell-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
-  display: grid;
-  place-items: center;
-  flex: none;
-  background: var(--p-soft);
-  color: var(--p-ink);
-  font-size: 18px;
-}
-
-.p-bell-icon.hi {
-  background: var(--p-redbg);
-  color: var(--p-red);
-}
-
-.p-bell-icon.md {
-  background: var(--p-amb);
-  color: var(--p-ambink);
-}
-
-.p-bell-icon.lv {
-  background: var(--p-lav);
-  color: var(--p-lav-ink);
-}
-
-.p-bell-icon.ok {
-  background: var(--p-acc);
-  color: #292928;
-}
+/* v3 rows: ActionRow inside one bordered card per group (mockup .list) */
+.p-bell-card { border: 1px solid var(--p-line); border-radius: 14px; background: var(--p-card); margin: 0 0 6px; }
+.p-bell-card > div + div { border-top: 1px solid var(--p-line); }
+.p-bell-card .p-arow-acts .p-btn:not(.p-ib) { padding: 4px 10px; font-size: 12px; min-height: 0; }
+.p-bell-card .p-arow-ty[data-tone='amb'] { background: var(--p-amb); color: var(--p-ambink); }
 
 .p-bell-text {
   display: block;
@@ -189,45 +135,26 @@
   background: none;
   border: 0;
   margin: 0;
-  font-family: inherit;
+  padding: 0;
+  font: inherit;
+  color: var(--p-ink);
   text-align: left;
   cursor: pointer;
   border-radius: 6px;
   min-width: 0;
   overflow-wrap: anywhere;
-  font-size: 13px;
-  font-weight: 600;
-  padding-right: 28px;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; /* the server sentence, two lines at most */
 }
+@media (hover: hover) { .p-bell-text:hover { text-decoration: underline; } }
+.p-bell-text:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
+.p-bell-ud { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--p-lav-ink); margin-right: 6px; vertical-align: 1px; }
+.p-bell-sendrow { padding-top: 0; min-height: 0; }
+.p-bell-sendrow .p-bell-note { flex: 1; min-width: 0; }
+.p-bell-setl, [data-look='parent'] a.p-bell-setl { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12.5px; font-weight: 700; color: var(--p-ink); text-decoration: none !important; }
+.p-bell-setl > span:last-child { text-decoration: underline; text-underline-offset: 3px; }
+.p-bell-setl:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; border-radius: 4px; }
+@media (max-width: 767px) { .p-bell-card .p-arow-acts .p-btn:not(.p-ib), .p-bell-sendrow .p-btn, .p-bell-note, .p-bell-older { min-height: 44px; } .p-bell-tab, .p-bell-mark-read, .p-bell-setl { min-height: 44px; } .p-bell-mark-read, .p-bell-setl { display: inline-flex; align-items: center; } }
 
-.p-bell-text:hover .p-bell-title { text-decoration: underline; }
-.p-bell-text:focus-visible { outline: 2px solid var(--p-acc); outline-offset: 2px; }
-/* touch: the dot sits left of the x, so the text clears both */
-@media (hover: none) { .p-bell-text { padding-right: 44px; } }
-
-.p-bell-title {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--p-ink);
-}
-
-.p-bell-sub {
-  display: block;
-  font-weight: 400;
-  color: var(--p-sub);
-  font-size: 11.5px;
-  margin-top: 1px;
-}
-
-.p-bell-actions {
-  grid-column: 2;
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.p-bell-actions:not(:empty) { margin-top: 7px; }
-.p-bell-actions .p-btn { padding: 4px 10px; font-size: 11.5px; min-height: 0; }
 .p-bell-note {
   width: 100%;
   padding: 6px 10px;
@@ -255,18 +182,18 @@
   color: var(--p-sub);
   text-decoration: none;
 }
-.p-bell-foot a:hover { color: var(--p-ink); }
-.p-bell-foot a:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; border-radius: 4px; }
+@media (hover: hover) { .p-bell-foot a:hover { color: var(--p-ink); } }
+.p-bell-foot a:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; border-radius: 4px; }
 
 /* phone sheet: title in the parent face (the list's own header is hidden there) */
 [data-look='parent'] .p-bell-drawer-title { font: 700 18px var(--font-parent), system-ui, sans-serif; color: var(--p-ink); text-transform: none; letter-spacing: 0; }
 [data-look='parent'] .p-bell-drawer-header { background: var(--p-card); border-bottom: 1px solid var(--p-line); }
 [data-look='parent'] .p-bell-drawer-content { background: var(--p-card); }
 [data-look='parent'] .p-bell-drawer-close { color: var(--p-ink); }
-[data-look='parent'] .p-bell-drawer-close:focus-visible { outline: 2px solid var(--p-ink); outline-offset: 2px; }
+[data-look='parent'] .p-bell-drawer-close:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 .p-bell-tab, .p-bell-mark-read { transition: background var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
-.p-bell-tab:not(.on):hover { background: var(--p-soft); color: var(--p-ink); }
+@media (hover: hover) { .p-bell-tab:not(.on):hover { background: var(--p-line); } }
 
 .p-bell-older { display: flex; flex: none; margin: 6px auto 10px; }
 .p-bell-scroll { overscroll-behavior: contain; }
-.p-bell-scroll:focus-visible { outline: 2px solid var(--p-ink); outline-offset: -2px; }
+.p-bell-scroll:focus-visible { outline: 2px solid var(--p-focus); outline-offset: -2px; }
