@@ -1,6 +1,6 @@
 """networks table and devices.network_id
 
-Revision ID: n0e1t2w3o4k5
+Revision ID: 0b953fcb092f
 Revises: d7e8f9a0b1c2
 Create Date: 2026-11-11 12:00:00.000000
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "n0e1t2w3o4k5"
+revision: str = "0b953fcb092f"
 down_revision: str | Sequence[str] | None = "d7e8f9a0b1c2"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
