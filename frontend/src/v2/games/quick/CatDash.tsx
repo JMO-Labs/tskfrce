@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Micro, MicroProps } from '../types'
 import s from './microD.module.css'
+import { Emo } from '../Emo';
 
 function CatDashGame({ level, rng, onDone, easier }: MicroProps) {
   const [treat] = useState(() => Math.floor(rng() * 3))
@@ -34,7 +35,7 @@ function CatDashGame({ level, rng, onDone, easier }: MicroProps) {
       <div className={s.lanes}>
         {[0, 1, 2].map((i) => (
           <div key={i} className={s.lane}>
-            {i === treat && <span className={s.treat} data-testid="treat" data-lane={i} style={{ animationDuration: `${fall}ms` }} aria-hidden><img src="/art/fluent/cat.webp" alt="cat" width={50} height={50} /></span>}
+            {i === treat && <span className={s.treat} data-testid="treat" data-lane={i} style={{ animationDuration: `${fall}ms` }} aria-hidden><Emo e="🍤" /></span>}
           </div>
         ))}
         <div className={s.cat} style={{ transform: `translateX(${(lane - 1) * 100}px)` }}>

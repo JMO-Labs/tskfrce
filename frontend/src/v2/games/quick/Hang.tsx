@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useElapsed } from '../useElapsed'
 import type { Micro, MicroProps } from '../types'
 import s from './microC.module.css'
+import { Emo } from '../Emo';
 
 const swing = (ms: number, level: number) => Math.sin((ms / 1000) * (1.5 + level * 0.4))
 
@@ -23,7 +24,7 @@ function HangGame({ level, onDone, easier }: MicroProps) {
         <div className={s.pole} />
         <div className={s.target} />
         <span className={s.hanger} style={{ left }} aria-hidden="true">
-          <img src="/art/fluent/banana.webp" alt="banana" width={50} height={50} />
+          <Emo e={frozen !== null ? '🧥' : '👕'} />
         </span>
       </div>
       <button type="button" className={`${s.kb} ${s.sun}`} onClick={drop}>

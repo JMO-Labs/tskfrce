@@ -1,128 +1,43 @@
-import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals'
+import { beforeEach, describe, expect, jest, test } from '@jest/globals'
 import { render, screen, waitFor } from '@testing-library/react'
 import { Mascot } from '@/v2/games/Mascot'
 
-// Mock fetch for SVG loading
-global.fetch = jest.fn()
+// Pixi needs WebGL, which jsdom lacks: the component must fall back to the static drawing.
+jest.mock('pixi.js', () => { throw new Error('no webgl in jsdom') })
+jest.mock('pixi-filters', () => ({}))
 
-beforeEach(() => {
-  ;(global.fetch as jest.Mock).mockReset()
-  // Mock matchMedia for prefers-reduced-motion
+const motion = (reduce: boolean) => {
   window.matchMedia = jest.fn().mockImplementation(query => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
-  }))
-})
+    matches: reduce, media: query, onchange: null,
+    addListener: jest.fn(), removeListener: jest.fn(),
+    addEventListener: jest.fn(), removeEventListener: jest.fn(), dispatchEvent: jest.fn(),
+  })) as unknown as typeof window.matchMedia
+}
 
-afterEach(() => {
-  jest.clearAllMocks()
-})
+describe('Mascot', () => {
+  beforeEach(() => motion(false))
 
-describe('Mascot component', () => {
-  test('renders SVG fallback when mascotSvg is provided without name', () => {
-    render(<Mascot state="idle" mascotSvg="/mascots/cat.svg" />)
-    const fallback = screen.getByTestId('mascot-fallback')
-    expect(fallback).toBeInTheDocument()
-    expect(fallback).toHaveAttribute('src', '/mascots/cat.svg')
+  test('reduced motion shows the static drawing, no canvas', () => {
+    motion(true)
+    render(<Mascot state="cheer" mascotName="axolotl" />)
+    const img = screen.getByTestId('mascot-fallback')
+    expect(img).toHaveAttribute('src', '/celebrate/mascots/axolotl.svg')
+    expect(screen.queryByTestId('mascot-pixi')).toBeNull()
   })
 
-  test('renders SVG fallback when mascotName is provided', async () => {
-    ;(global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'))
-
-    render(<Mascot state="idle" mascotName="cat-princess" />)
-
-    await waitFor(() => {
-      const fallback = screen.getByTestId('mascot-fallback')
-      expect(fallback).toBeInTheDocument()
-    })
+  test('starts as a Pixi host when motion is allowed', () => {
+    render(<Mascot state="idle" mascotName="trex" />)
+    expect(screen.getByTestId('mascot-pixi')).toBeInTheDocument()
   })
 
-  test('applies CSS animation class for cheer state (SVG fallback)', async () => {
-    ;(global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'))
-
-    const { rerender } = render(<Mascot state="idle" mascotName="cat-princess" />)
-
-    await waitFor(() => {
-      const fallback = screen.getByTestId('mascot-fallback')
-      expect(fallback).toBeInTheDocument()
-    })
-
-    rerender(<Mascot state="cheer" mascotName="cat-princess" />)
-
-    const fallback = screen.getByTestId('mascot-fallback')
-    expect(fallback.className).toContain('cheerAnimation')
+  test('falls back to the drawing when Pixi cannot start', async () => {
+    render(<Mascot state="dance" mascotName="trex" />)
+    await waitFor(() => expect(screen.getByTestId('mascot-fallback')).toHaveAttribute('src', '/celebrate/mascots/trex.svg'))
   })
 
-  test('applies CSS animation class for wince state (SVG fallback)', async () => {
-    ;(global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'))
-
-    const { rerender } = render(<Mascot state="idle" mascotName="cat-princess" />)
-
-    await waitFor(() => {
-      const fallback = screen.getByTestId('mascot-fallback')
-      expect(fallback).toBeInTheDocument()
-    })
-
-    rerender(<Mascot state="wince" mascotName="cat-princess" />)
-
-    const fallback = screen.getByTestId('mascot-fallback')
-    expect(fallback.className).toContain('winceAnimation')
-  })
-
-  test('applies CSS animation class for dance state (SVG fallback)', async () => {
-    ;(global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'))
-
-    const { rerender } = render(<Mascot state="idle" mascotName="cat-princess" />)
-
-    await waitFor(() => {
-      const fallback = screen.getByTestId('mascot-fallback')
-      expect(fallback).toBeInTheDocument()
-    })
-
-    rerender(<Mascot state="dance" mascotName="cat-princess" />)
-
-    const fallback = screen.getByTestId('mascot-fallback')
-    expect(fallback.className).toContain('danceAnimation')
-  })
-
-  test('respects prefers-reduced-motion and skips animations', () => {
-    window.matchMedia = jest.fn().mockImplementation(query => ({
-      matches: query === '(prefers-reduced-motion: reduce)',
-      media: query,
-      onchange: null,
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
-      addEventListener: jest.fn(),
-      removeEventListener: jest.fn(),
-      dispatchEvent: jest.fn(),
-    }))
-
-    render(<Mascot state="dance" mascotName="cat-princess" />)
-
-    const fallback = screen.getByTestId('mascot-fallback')
-    // Should not have animation class when reduced motion is preferred
-    expect(fallback.className).not.toContain('danceAnimation')
-  })
-
-  test('applies custom className to root element', async () => {
-    ;(global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'))
-
-    render(<Mascot state="idle" mascotName="cat-princess" className="custom-class" />)
-
-    await waitFor(() => {
-      const fallback = screen.getByTestId('mascot-fallback')
-      expect(fallback).toBeInTheDocument()
-    })
-
-    const fallback = screen.getByTestId('mascot-fallback')
-    // Note: img element won't have the className applied in the same way as a div wrapper would
-    // So we just verify the element exists
-    expect(fallback).toBeInTheDocument()
+  test('an explicit svg path wins over the name', () => {
+    motion(true)
+    render(<Mascot state="idle" mascotSvg="/x/cat.svg" />)
+    expect(screen.getByTestId('mascot-fallback')).toHaveAttribute('src', '/x/cat.svg')
   })
 })

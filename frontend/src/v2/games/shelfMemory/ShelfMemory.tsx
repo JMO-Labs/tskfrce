@@ -118,7 +118,7 @@ export function ShelfMemory({ level, age, seed, upgrades = [], powerUp = null, o
     <div>
       <div className={s.hud}>
         <span>🧠 {score}</span>
-        <Mascot state={mascotState} mascotName="owl-scholar" />
+        <Mascot state={mascotState} mascotName="axolotl" />
         <span>⏱ {clock(total - ms)}</span>
       </div>
       <p className={s.msg}>
