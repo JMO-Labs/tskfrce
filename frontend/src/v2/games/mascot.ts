@@ -191,8 +191,9 @@ export class MascotAnimator {
    * Get procedural vertex deformations (for MeshPlane grid deformation).
    * Returns array of {x, y} offsets indexed by row-major grid position.
    * Grid is 4x4 (16 vertices) laid out left-to-right, top-to-bottom.
+   * For now, returns empty for reduced motion or when not wired to mesh.
    */
-  getVertexOffsets(gridW: number, gridH: number): VertexOffset[] {
+  getVertexOffsets(gridW: number = 4, gridH: number = 4): VertexOffset[] {
     if (this.prefersReducedMotion) return Array(gridW * gridH).fill({ x: 0, y: 0 })
 
     const st = this.getStateTime()

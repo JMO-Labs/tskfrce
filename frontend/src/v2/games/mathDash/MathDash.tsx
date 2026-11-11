@@ -90,7 +90,7 @@ export function MathDash({ level, seed, age, upgrades = [], powerUp = null, onEn
     }
 
     if (mascotReactRef.current) clearTimeout(mascotReactRef.current)
-    mascotReactRef.current = setTimeout(() => setMascotState('idle'), correct ? 800 : 600)
+    mascotReactRef.current = setTimeout(() => setMascotState('idle'), correct ? 900 : 700)
     setSt((cur) => answerQ(cur, i, age, upgrades, rng))
   }
 

@@ -25,8 +25,8 @@ function FeedGame({ onDone, easier }: MicroProps) {
   return (
     <div className={s.stage}>
       <button type="button" className={`${s.bowl} ${n ? s.fed : ''}`} aria-label="Fish bowl, tap once" onClick={tap}>
-        <img src="/art/fluent/fish.webp" alt="fish" className={s.fish} />
-        {n > 0 && <img src="/art/fluent/sparkles.png" alt="sparkles" className={s.flake} />}
+        <img src="/art/fluent/fish.webp" alt="fish" className={s.fish} width={70} height={70} />
+        {n > 0 && <img src="/art/fluent/sparkles.png" alt="sparkles" className={s.flake} width={24} height={24} />}
       </button>
       <p className={s.hint}>Just once!</p>
     </div>

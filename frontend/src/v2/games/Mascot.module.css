@@ -1,10 +1,15 @@
-/* Mascot container and state-based animations */
+/* Mascot container: compact HUD display (60px icon-like) with crisp rendering */
 .root {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 200px;
+  width: 60px;
+  height: 60px;
   position: relative;
+  border-radius: 50%;
+  flex-shrink: 0;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 
 .riveCanvas {
@@ -12,11 +17,13 @@
   max-height: 100%;
 }
 
-/* SVG fallback animations */
+/* SVG fallback animations: GPU accelerated for smooth performance */
 .svgMascot {
   display: block;
   max-width: 100%;
   height: auto;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 /* Cheer animation: bounce + scale */

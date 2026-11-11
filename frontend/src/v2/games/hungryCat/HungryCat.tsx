@@ -158,7 +158,7 @@ export function HungryCat({ level, seed, onEnd, upgrades = [], powerUp = null, h
                 catsRef.current[0].body.scale.y = catsRef.current[0].body.scale.x * 0.75
                 setMascotState('cheer')
                 if (mascotReactRef.current) clearTimeout(mascotReactRef.current)
-                mascotReactRef.current = setTimeout(() => setMascotState('idle'), 800)
+                mascotReactRef.current = setTimeout(() => setMascotState('idle'), 900)
               } else {
                 burst(P, sprite.x, sprite.y, '-2', 0xff6b4a, world, assets, stillRef.current, fxRef.current)
                 if (!stillRef.current) shakeRef.current = 14
