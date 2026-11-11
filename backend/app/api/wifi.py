@@ -1,16 +1,18 @@
 """Parent API: Wi-Fi setup and management."""
 
-from pathlib import Path
-
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.api.deps import require_parent
 from app.services import country_code, network_wifi, setup_mode
 
+# Parent auth router
 router = APIRouter(
     prefix="/api/v1/network/wifi", tags=["wifi"], dependencies=[Depends(require_parent)]
 )
+
+# Setup mode router (unauthenticated, IP-restricted)
+setup_router = APIRouter(prefix="/api/v1/network/wifi/setup", tags=["wifi-setup"])
 
 
 class WifiNetwork(BaseModel):
@@ -115,55 +117,33 @@ def apply_country():
         raise HTTPException(500, f"Country apply failed: {e}")
 
 
-# Captive portal probe URL handlers (no auth required)
-# These redirect to the setup page while in setup mode
-_SETUP_TRIGGER = Path("/var/lib/tskfrce/setup-mode.active")
+def _is_hotspot_client(request: Request) -> bool:
+    """Check if client is from hotspot (10.42.0.0/24)."""
+    # Check X-Forwarded-For header (set by Caddy reverse proxy)
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    if forwarded_for:
+        client_ip = forwarded_for.split(",")[0].strip()
+    else:
+        client_ip = request.client.host if request.client else ""
+    # Check if IP is in 10.42.0.0/24 range (hotspot subnet)
+    try:
+        octets = [int(x) for x in client_ip.split(".")]
+        return octets[:3] == [10, 42, 0]
+    except (ValueError, IndexError):
+        return False
 
 
-def _is_setup_mode() -> bool:
-    """Check if setup mode is active."""
-    return _SETUP_TRIGGER.exists()
-
-
-@router.get("/hotspot-detect.html")
-def hotspot_detect_apple():
-    """Apple's captive portal probe."""
-    if _is_setup_mode():
-        return Response(
-            status_code=302,
-            headers={"Location": "http://10.42.0.1/setup"},
-        )
-    return Response(status_code=200, content="Success")
-
-
-@router.get("/generate_204")
-def generate_204_android():
-    """Android's captive portal probe."""
-    if _is_setup_mode():
-        return Response(
-            status_code=302,
-            headers={"Location": "http://10.42.0.1/setup"},
-        )
-    return Response(status_code=204)
-
-
-@router.get("/connecttest.txt")
-def connecttest_windows():
-    """Windows's captive portal probe (option 1)."""
-    if _is_setup_mode():
-        return Response(
-            status_code=302,
-            headers={"Location": "http://10.42.0.1/setup"},
-        )
-    return Response(status_code=200, content="Microsoft Connect Test")
-
-
-@router.get("/ncsi.txt")
-def ncsi_windows():
-    """Windows's captive portal probe (option 2)."""
-    if _is_setup_mode():
-        return Response(
-            status_code=302,
-            headers={"Location": "http://10.42.0.1/setup"},
-        )
-    return Response(status_code=200, content="Microsoft NCSI")
+@setup_router.post("/join", response_model=JoinResponse)
+def setup_join(request: Request, body: JoinRequest):
+    """Setup mode: join a Wi-Fi network (hotspot clients only)."""
+    if not _is_hotspot_client(request):
+        raise HTTPException(403, "Forbidden: only hotspot clients can join")
+    try:
+        success = network_wifi.join(body.ssid, body.password, timeout=60)
+        if success:
+            return {"status": "connected", "reason": None}
+        return {"status": "error", "reason": "connection_failed"}
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"Join failed: {e}")
