@@ -65,11 +65,13 @@ def test_render_redirects_dns_and_http_drops_https():
     assert "tcp dport 443 drop" in r
 
 
-def test_render_omits_dnat_when_no_portal_ip():
-    # No box IP -> omit dnat (an invalid target would reject the whole ruleset),
-    # but the device must still be blocked by the drop rules.
+def test_render_redirects_to_arrival_interface_when_no_portal_ip():
+    # Multi-network: no single box IP. `redirect` targets the IP of the interface the packet
+    # came in on, so each network gets its own portal; drops still block the device.
     r = render_ruleset({"192.168.1.50"}, set(), MAC, LAN, "", 80)
     assert "dnat" not in r
+    assert "ip saddr @blocked_v4 udp dport 53 redirect to :53" in r
+    assert "ip saddr @blocked_v4 tcp dport 80 redirect to :80" in r
     assert "ip saddr @blocked_v4 drop" in r
     assert "ether saddr @blocked_mac drop" in r
 
