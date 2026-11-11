@@ -77,6 +77,7 @@ def test_past_submitted_on_time_counts_as_on_time(client, db, parent, parent_hea
     _run(db, parent, kid, y, 16, status="submitted")  # handed in on time, not yet approved
     j = client.get(URL, headers=parent_headers).json()["week"]
     assert j["series"][-2] == {"day": y.isoformat(), "rate": 100, "done": 1, "total": 1}
+    assert j["when"][1][1] == 1  # handed in counts in the grid too, same as the rate
 
 
 def test_delta_vs_previous_week(client, db, parent, parent_headers):
