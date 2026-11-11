@@ -81,7 +81,10 @@ def test_setup_join_refused_when_hotspot_down(client, monkeypatch, via_proxy):
 def test_setup_join_from_hotspot_client(client, daemon, via_proxy):
     r = client.post(SETUP, json=BODY, headers={"X-Real-IP": "10.42.0.5"})
     assert r.status_code == 200, r.text
-    assert daemon[-1] == ("setup_join", {"ssid": "Home", "password": "x" * 10})
+    assert daemon[-1] == (
+        "setup_join",
+        {"ssid": "Home", "password": "x" * 10, "security": "wpa", "hidden": False},
+    )
 
 
 def test_join_refused_while_connecting_but_status_allowed(client, monkeypatch, via_proxy):
@@ -91,3 +94,21 @@ def test_join_refused_while_connecting_but_status_allowed(client, monkeypatch, v
     assert client.post(SETUP, json=BODY, headers=h).status_code == 409
     r = client.get("/api/v1/network/wifi/setup/status", headers=h)
     assert r.status_code == 200 and r.json()["phase"] == "connecting"
+
+
+def test_settings_join_open_hidden_needs_no_password(client, parent_headers, daemon):
+    body = {"ssid": "Guest", "security": "open", "hidden": True}
+    r = client.post("/api/v1/network/wifi/join", headers=parent_headers, json=body)
+    assert r.status_code == 200
+    assert daemon[-1] == (
+        "join",
+        {"ssid": "Guest", "password": "", "security": "open", "hidden": True},
+    )
+
+
+def test_unknown_security_type_is_422(client, parent_headers, daemon):
+    body = {"ssid": "Home", "password": "x" * 10, "security": "wep"}
+    assert (
+        client.post("/api/v1/network/wifi/join", headers=parent_headers, json=body).status_code
+        == 422
+    )

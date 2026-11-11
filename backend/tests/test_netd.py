@@ -150,3 +150,29 @@ def test_no_antispoof_rule_means_no_hotspot(nmcli, monkeypatch, tmp_path):
     monkeypatch.setattr(netd, "antispoof", lambda dev: False)
     assert netd.hotspot_up() == {"success": False, "error": "antispoof_failed"}
     assert not any("up" in c for c in nmcli.calls if c[0] == "nmcli")
+
+
+def _kf(nmcli, ssid):
+    return (nmcli.dir / f"{netd.wifi_name(ssid)}.nmconnection").read_text()
+
+
+def test_open_network_has_no_security_section(nmcli):
+    assert netd.handle({"cmd": "join", "ssid": "Cafe", "password": "ignored!", "security": "open"})[
+        "success"
+    ]
+    kf = _kf(nmcli, "Cafe")
+    assert "[wifi-security]" not in kf and "psk=" not in kf
+
+
+def test_wpa3_only_and_hidden(nmcli):
+    netd.handle(
+        {"cmd": "join", "ssid": "Attic", "password": PSK, "security": "sae", "hidden": True}
+    )
+    kf = _kf(nmcli, "Attic")
+    assert "key-mgmt=sae" in kf and "hidden=true" in kf
+
+
+@pytest.mark.parametrize("bad", [{"security": "wep"}, {"security": "wpa", "hidden": "yes"}])
+def test_bad_security_options_rejected(nmcli, bad):
+    req = {"cmd": "join", "ssid": "Home", "password": PSK, **bad}
+    assert netd.handle(req) == {"error": "bad_security"} and nmcli.calls == []

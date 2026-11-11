@@ -1,6 +1,7 @@
 """Wi-Fi API: parent Settings routes, plus the captive setup page's hotspot-only routes."""
 
 import ipaddress
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -20,7 +21,9 @@ HOTSPOT_NET = ipaddress.ip_network("10.42.0.0/24")
 
 class JoinRequest(BaseModel):
     ssid: str
-    password: str
+    password: str = ""
+    security: Literal["wpa", "sae", "open"] = "wpa"
+    hidden: bool = False
 
 
 class ForgetRequest(BaseModel):
@@ -53,7 +56,7 @@ def scan_wifi() -> dict:
 @router.post("/join")
 def join_wifi(body: JoinRequest) -> dict:
     """Join from Settings. On failure the box returns to the previous network."""
-    return _daemon(network_wifi.join, body.ssid, body.password)
+    return _daemon(network_wifi.join, body.ssid, body.password, body.security, body.hidden)
 
 
 @router.post("/forget")
@@ -94,4 +97,4 @@ def setup_status(request: Request) -> dict:
 @setup_router.post("/join")
 def setup_join(request: Request, body: JoinRequest) -> dict:
     _hotspot_only(request)
-    return _daemon(network_wifi.setup_join, body.ssid, body.password)
+    return _daemon(network_wifi.setup_join, body.ssid, body.password, body.security, body.hidden)
