@@ -100,7 +100,7 @@ services:
       # Host network: reach the app over loopback
       BACKEND_URL: ${BLOCKER_BACKEND_URL:-http://127.0.0.1:8000}
       INTERNAL_TOKEN: ${INTERNAL_TOKEN:?set INTERNAL_TOKEN in .env}
-      LAN_IFACE: ${LAN_IFACE:-eth0}
+      LAN_IFACE: ${LAN_IFACE:-}
       PORTAL_REDIRECT_URL: ${BOX_URL:-http://task4ce.local:3000}/kid
     restart: unless-stopped
 
