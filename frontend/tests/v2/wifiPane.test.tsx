@@ -63,6 +63,14 @@ describe('WifiPane', () => {
     expect(screen.getByText('Region')).toBeInTheDocument()
   })
 
+  test('scan button is enabled before the first scan (disabled query stays isPending in TanStack v5)', () => {
+    const { useWifiScan } = jest.requireMock('@/v2/hooks/useWifi') as { useWifiScan: jest.Mock }
+    useWifiScan.mockReturnValue({ data: undefined, isPending: true, isFetching: false, isError: false, refetch: jest.fn() })
+    wrap(<WifiPane />)
+    expect(screen.getByRole('button', { name: /Scan/i })).toBeEnabled()
+    expect(screen.queryByText('Scanning...')).toBeNull()
+  })
+
   test('scan button exists and is clickable', () => {
     wrap(<WifiPane />)
     const scanBtn = screen.getByRole('button', { name: /Scan/i })
