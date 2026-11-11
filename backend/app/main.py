@@ -36,6 +36,7 @@ from app.api.family import router as family_router
 from app.api.flair import router as flair_router
 from app.api.goals import router as goals_router
 from app.api.happy_hour import router as happy_hour_router
+from app.api.homework import router as homework_router
 from app.api.hours import router as hours_router
 from app.api.inbox import router as notifications_router
 from app.api.integration_local import router as integration_local_router
@@ -52,6 +53,7 @@ from app.api.kids import router as kids_router
 from app.api.network import router as network_router
 from app.api.notify import router as notify_router
 from app.api.password_reset import router as password_reset_router
+from app.api.penalties import router as penalties_router
 from app.api.presets import router as presets_router
 from app.api.recap import router as recap_router
 from app.api.rewards import redemptions_router
@@ -167,6 +169,7 @@ fastapi_app.include_router(device_activity_router)
 fastapi_app.include_router(hours_router)
 fastapi_app.include_router(kids_router)
 fastapi_app.include_router(trust_router)
+fastapi_app.include_router(penalties_router)
 fastapi_app.include_router(recap_router)
 fastapi_app.include_router(kid_push_router)
 fastapi_app.include_router(kid_enroll_parent_router)
@@ -191,6 +194,7 @@ fastapi_app.include_router(tips_router)
 fastapi_app.include_router(integrations_router)
 fastapi_app.include_router(integration_widgets_router)
 fastapi_app.include_router(integration_local_router)
+fastapi_app.include_router(homework_router)
 
 # Create the final app with ASGI middleware
 app = MetricsMiddleware(fastapi_app)

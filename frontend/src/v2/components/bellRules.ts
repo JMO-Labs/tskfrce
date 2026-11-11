@@ -38,6 +38,8 @@ export const severity = (n: InboxItem): { name: string; tone: Tone } => {
       return { name: 'redeem', tone: 'lv' }
     case 'boost':
       return { name: 'bolt', tone: 'ok' }
+    case 'homework_request':
+      return { name: 'menu_book', tone: 'lv' }
     case 'level_up':
       return { name: 'military_tech', tone: 'ok' }
     case 'badge_earned':

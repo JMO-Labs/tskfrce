@@ -184,7 +184,21 @@ On by default. A kid earns one freeze for every 7 days in a row and can hold 2. 
 
 Cards on **Today** introduce each of these features, at most one new card a day. Dismiss one and it stays gone. The celebrations card has **Turn off for all kids**. That switches celebrations off for your current kids only; kids you add later start with celebrations on.
 
-### Where the settings live
+### Penalties
+
+A penalty takes something away, says why, and lets the kid earn part of it back. It is always your tap; t@sk4ce never gives one on its own. It is off until you turn it on: **Settings → Family → Penalties**. A card on **Today** and setup step 8 also offer it.
+
+- **Give one.** Tap **Give penalty** in the **...** menu on a kid (**Today**), on a chore you are reviewing, on a **Wasn't done** sheet, or on a bypass alert. For something outside the app ("fighting with sister"), use the kid's menu.
+- **The sheet.** Pick **Small**, **Medium**, **Big** or **Custom**, then **Give penalty**. Each line below the bar (what is taken, earn-back, reason) has a **change** link that opens just that line. The reason is optional and the kid sees it. If the kid had a penalty in the last 7 days, the next size up is picked and the sheet says "2nd this week". You can change it.
+- **Sizes.** Defaults: Small takes 20 points, Medium blocks the kid's devices for 1 day, Big for 3 days. Edit them in **Settings → Family → Penalties**. **Custom** can take points, banked screen time, or block a device or group (up to 14 days). Points and banked time stop at zero.
+- **Earn-back.** Choose none, half or all. The kid does make-up chores to get it back: points return, banked time comes back, or a block ends sooner. You pick the make-up chores from a list in **Settings** and can change them for each penalty. Make-up chores always wait for your approval, even in trust mode, and pay nothing else: no points, tickets, streak or badges.
+- **On the kid's card.** The kid sees one card on their chores list: what was lost, your reason, an earn-back meter and the make-up chores. A points-only penalty with no earn-back shows once. Kids never see each other's penalties.
+- **Forgive, cancel, shorten.** Open the kid's page to see active penalties. **Forgive** ends it now and keeps the record. **Cancel** undoes it, giving back what was taken. **Shorten** (blocks only) ends a block earlier. A blocked device also shows **Blocked by penalty** with **Forgive**. Unfinished make-up chores are cancelled when a penalty ends.
+- **Whole family.** Choose **Penalty for everyone** to give the same penalty to every kid. Each kid gets their own penalty, so earn-back is separate.
+
+A block only stops the device's internet. The kid can still open the t@sk4ce kid app, see their card and do make-up chores.
+
+## Where the settings live
 
 - **Kids & chores → Rewards → Happy Hour**: lengths, multiplier, auto boost and weekly surprise.
 - **Settings → Family → Points rules → Streak freezes**.
@@ -285,6 +299,20 @@ You should see: the price on the group. Leave it empty and the group uses the fa
 The box sees devices, not apps. Two apps on one tablet can't have different prices. See [Troubleshooting](06-troubleshooting.md#why-cant-i-price-youtube-differently-from-homework-on-the-same-tablet).
 
 If the home box stops checking in, a red **Home box offline** message appears at the top. See [Troubleshooting](06-troubleshooting.md#the-app-says-home-box-offline).
+
+## Homework mode
+
+Homework mode opens only the school sites on a device that is paused, for a set time.
+
+1. Open a paused device or a group, tap **…** and pick **Homework 30 min**, **1 hour**, **90 min** or **2 hours**. Or wait for a kid to tap **Ask for homework time** and answer in **Needs you**: **Approve** gives 1 hour, and the row's **…** has the other lengths and **Decline**.
+2. Add sites in **Settings → Homework**. "Allowed for everyone" adds to the built-in list. "Never during homework" always wins.
+3. For one kid only, open **Kids & chores**, pick the kid and open the **Homework sites** row.
+
+While homework mode is on, the device's status chip says **Homework** (tap it for **Back to schedule**), and the **Homework activity** row shows what was used, so you can block a site or add one.
+
+If you say no to a request, your kid can ask again after 5 minutes.
+
+**Limits.** Big school sites share their servers with other sites (Google, Microsoft, Cloudflare). A determined kid can sometimes reach another site that sits on the same servers. The **Homework activity** row is how you spot that: look for names you don't recognise, then block them or end homework early.
 
 ## Hours
 

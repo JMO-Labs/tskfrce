@@ -13,7 +13,7 @@ jest.mock('@/v2/manage/CelebratePreview', () => ({ CelebratePreview: ({ label }:
 
 const apiMock = api as unknown as Mock<(p: string, o?: { method?: string; body?: unknown }) => Promise<unknown>>
 const TODAY = new Date().toLocaleDateString('en-CA')
-const fam = { hh_auto_boost: true, streak_freeze: true, hh_default_mult_x10: 20, hh_default_minutes: 60 }
+const fam = { penalties_enabled: true, hh_auto_boost: true, streak_freeze: true, hh_default_mult_x10: 20, hh_default_minutes: 60 }
 const mia = { id: 1, full_name: 'Mia', username: 'mia', age_group: 'kid', celebrate: null }
 let s: { goals: unknown; dismissed: string[]; fam: Record<string, unknown>; kids: unknown[]; active: unknown[]; quiet: boolean; trust: number | null; waiting: number }
 
@@ -131,7 +131,7 @@ test('Preview leaves the card open', async () => {
 
 test('hidden when the feature is already off', async () => {
   s.kids = [{ ...mia, celebrate: 'off' }]
-  s.fam = { hh_auto_boost: false, streak_freeze: false }
+  s.fam = { penalties_enabled: true, hh_auto_boost: false, streak_freeze: false }
   s.dismissed = ['try.happyhour']
   show()
   await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/today'))

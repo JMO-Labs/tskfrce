@@ -119,7 +119,7 @@ describe('optional extras step (Tweak)', () => {
     await screen.findByRole('button', { name: 'Show code for Ava' })
     expect(apiMock).toHaveBeenCalledWith('/kids/7', { method: 'PATCH', body: { trust_mode: true } })
     expect(apiMock).toHaveBeenCalledWith('/family', { method: 'PATCH', body: { bedtime_auto: true } })
-    expect(apiMock).toHaveBeenCalledWith('/presets/apply', { method: 'POST', body: { style: 'balanced', kids: { 7: null }, skip: ['chores', 'bedtime', 'trust', 'goals'] } })
+    expect(apiMock).toHaveBeenCalledWith('/presets/apply', { method: 'POST', body: { style: 'balanced', kids: { 7: null }, skip: ['chores', 'bedtime', 'trust', 'goals', 'penalties'] } })
   })
 
   test('Goals is on in Tweak; switching it off saves on:false and the plan leaves it alone', async () => {
@@ -129,6 +129,15 @@ describe('optional extras step (Tweak)', () => {
     await user.click(screen.getByRole('button', { name: 'Next' }))
     await screen.findByRole('button', { name: 'Show code for Ava' })
     expect(apiMock).toHaveBeenCalledWith('/goals/settings', { method: 'PATCH', body: { on: false } })
+  })
+
+  test('Penalties switch in Tweak patches penalties_enabled; the plan leaves it alone', async () => {
+    const user = userEvent.setup()
+    await toExtras(user)
+    await user.click(screen.getByRole('switch', { name: 'Penalties' }))
+    await user.click(screen.getByRole('button', { name: 'Next' }))
+    await screen.findByRole('button', { name: 'Show code for Ava' })
+    expect(apiMock).toHaveBeenCalledWith('/family', { method: 'PATCH', body: { penalties_enabled: true } })
   })
 
   test('Next on Extras with all off patches nothing', async () => {

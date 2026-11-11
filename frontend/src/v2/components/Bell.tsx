@@ -13,7 +13,7 @@ import { Icon } from '../parent/Icon'
 import { toastFail, toastOk } from '../notify'
 import { api } from '../api'
 import { isAlert, isNeedsYou, isToday } from './bellRules'
-import { InboxRow } from './InboxRow'
+import { InboxPenaltyRow } from './InboxPenaltyRow'
 import { useEscClose, useInboxLock } from './useInboxLock'
 import { MenuPortalContext } from '../parent/MoreMenu'
 
@@ -119,7 +119,7 @@ export function List({ onGo, sheet, page }: { onGo: () => void; sheet?: boolean;
     return to ? router.push(to) : Promise.resolve()
   }
   const row = (n: InboxItem, today: boolean) => (
-    <InboxRow
+    <InboxPenaltyRow
       key={n.id}
       n={n}
       live={today || n.pending}

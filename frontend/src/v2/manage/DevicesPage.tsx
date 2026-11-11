@@ -61,12 +61,13 @@ function DevicesBody() {
   const override = useOverride()
   const once = useSingleFlight()
   // detail buttons: lock until changed, unlock for 30 min, "schedule" = clear the override
-  const handleRequestOverride = (req: { kind: string; id: number; action: string }) =>
+  const handleRequestOverride = (req: { kind: string; id: number; action: string; minutes?: number }) =>
     once(() => override.mutateAsync({
       target: { kind: req.kind as OverrideTarget['kind'], id: req.id },
       previous: req.kind === 'device' ? all.find((d) => d.id === req.id)?.override : sharedOverride(all.filter((d) => d.group_ids.includes(req.id))),
       choice: req.action === 'lock' ? { action: 'lock', minutes: null }
         : req.action === 'unlock' ? { action: 'unlock', minutes: 30 }
+        : req.action === 'homework' ? { action: 'homework', minutes: req.minutes ?? 60 }
         : { action: 'clear' },
     }).catch(() => undefined))
 

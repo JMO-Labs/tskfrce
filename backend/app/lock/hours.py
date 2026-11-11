@@ -191,6 +191,31 @@ def locks_at(allowed_sets, off, now_local: datetime) -> datetime | None:
     return None
 
 
+def next_transition(allowed_sets, off, now_local: datetime) -> datetime | None:
+    """First whole minute within 24 h where the state changes, else None.
+
+    State changes when either _allowing() or in_off() value changes.
+    """
+    # ponytail: minute scan (1440 steps); window edges are whole minutes
+    if not allowed_sets and not off:
+        return None
+
+    t = now_local.replace(second=0, microsecond=0)
+    current_allowing = _allowing(allowed_sets, off, t)
+    current_in_off = any(in_window(w, t) for w in off)
+    current_state = (current_allowing, current_in_off)
+
+    for _ in range(24 * 60):
+        t += timedelta(minutes=1)
+        new_allowing = _allowing(allowed_sets, off, t)
+        new_in_off = any(in_window(w, t) for w in off)
+        new_state = (new_allowing, new_in_off)
+        if new_state != current_state:
+            return t
+
+    return None
+
+
 def today_category(rules, d: date) -> str | None:
     """Kind of day from Everyone's allowed rules; falls back to per-kid/group rules when none."""
     live = [r for r in rules if r.kind == "allowed" and active_on(r, d)]

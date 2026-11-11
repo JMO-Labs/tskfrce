@@ -11,7 +11,7 @@ export interface OverrideTarget {
 export type OverrideChoice = { action: OverrideAction; minutes: number | null } | { action: 'clear' }
 
 const BASE = { device: 'devices', kid: 'kids', group: 'groups' } as const
-const TOAST = { lock: 'Locked', unlock: 'Unlocked', clear: 'Back on schedule' }
+const TOAST = { lock: 'Locked', unlock: 'Unlocked', homework: 'Homework mode on until {time}.', clear: 'Back on schedule' }
 
 const send = (target: OverrideTarget, choice: OverrideChoice) => {
   const url = `/${BASE[target.kind]}/${target.id}/override`
@@ -44,9 +44,14 @@ export function useOverride() {
   }
   return useMutation({
     mutationFn: ({ target, choice }: { target: OverrideTarget; choice: OverrideChoice; previous?: Override | null }) => send(target, choice),
-    onSuccess: (_d, { target, choice, previous }) => {
-      const undo = choice.action === 'lock' ? () => send(target, undoChoice(previous)).then(() => toastOk('Undone'), toastFail).finally(refresh) : undefined
-      toastOk(TOAST[choice.action], { undo })
+    onSuccess: (data: unknown, { target, choice, previous }) => {
+      if (choice.action === 'homework' && data && typeof data === 'object' && 'expires_at' in data) {
+        const time = new Date((data as Override).expires_at!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        toastOk(TOAST.homework.replace('{time}', time), { undo: () => send(target, undoChoice(previous)).then(() => toastOk('Undone'), toastFail).finally(refresh) })
+      } else {
+        const undo = choice.action === 'lock' ? () => send(target, undoChoice(previous)).then(() => toastOk('Undone'), toastFail).finally(refresh) : undefined
+        toastOk(TOAST[choice.action], { undo })
+      }
       refresh()
     },
     onError: toastFail,
