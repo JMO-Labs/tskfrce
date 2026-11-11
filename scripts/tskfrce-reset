@@ -56,7 +56,7 @@ fi
 if [[ "$SET_PIN" == "true" ]]; then
     echo "Setting new parent PIN (no data loss, bumps session epoch)..."
     if [[ -z "$NEW_PIN" ]]; then
-        read -sp "Enter new PIN: " NEW_PIN
+        read -rsp "Enter new PIN: " NEW_PIN
         echo ""
     fi
     if [[ -z "$NEW_PIN" ]] || [[ ${#NEW_PIN} -lt 4 ]]; then
