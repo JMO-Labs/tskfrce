@@ -19,7 +19,7 @@ env:
 
 jobs:
   lint:
-    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
+    runs-on: ubuntu-latest  # light job: GitHub-hosted (free, public repo); homelab keeps the CPU-heavy stages
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -80,7 +80,7 @@ jobs:
 
   # Next 16 needs Node >= 20.9, so the jest suites and the production build run on 22.
   frontend-test:
-    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
+    runs-on: ubuntu-latest  # light job: GitHub-hosted (free, public repo); homelab keeps the CPU-heavy stages
     timeout-minutes: 15
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -100,7 +100,7 @@ jobs:
       run: cd frontend && npm ci && npm run test:standalone
 
   installer:
-    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
+    runs-on: ubuntu-latest  # light job: GitHub-hosted (free, public repo); homelab keeps the CPU-heavy stages
     timeout-minutes: 30
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -161,7 +161,7 @@ jobs:
       run: bash scripts/lab.sh down
 
   security-scan:
-    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
+    runs-on: ubuntu-latest  # light job: GitHub-hosted (free, public repo); homelab keeps the CPU-heavy stages
     timeout-minutes: 10
     permissions:
       contents: read
