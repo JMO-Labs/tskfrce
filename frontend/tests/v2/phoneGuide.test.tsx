@@ -1,4 +1,3 @@
-import { beforeEach, describe, expect, test } from '@jest/globals'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MantineProvider } from '@mantine/core'
 import { PhoneGuide } from '@/v2/manage/PhoneGuide'
