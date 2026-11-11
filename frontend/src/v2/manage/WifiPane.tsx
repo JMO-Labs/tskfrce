@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Checkbox, Modal, NativeSelect, PasswordInput, TextInput } from '@mantine/core'
 import { Icon } from '@/v2/parent/Icon'
 import { useWifiStatus, useWifiScan, useWifiJoin, useWifiForget, useWifiCountry, type WifiNetwork } from '@/v2/hooks/useWifi'
 import { PaneCard, PaneHead } from './PaneParts'
@@ -24,7 +25,6 @@ interface JoinDialogState {
   password: string
   security: string
   hidden: boolean
-  showPassword: boolean
 }
 
 export function WifiPane() {
@@ -41,8 +41,9 @@ export function WifiPane() {
     password: '',
     security: 'wpa',
     hidden: false,
-    showPassword: false,
   })
+
+  const close = () => setDialog({ ...dialog, open: false })
 
   const handleScan = async () => {
     setListOpen(!listOpen)
@@ -63,7 +64,7 @@ export function WifiPane() {
       security: dialog.security,
       hidden: dialog.hidden || false,
     })
-    setDialog({ open: false, ssid: '', password: '', security: 'wpa', hidden: false, showPassword: false })
+    setDialog({ open: false, ssid: '', password: '', security: 'wpa', hidden: false })
   }
 
   const handleForget = () => {
@@ -170,108 +171,37 @@ export function WifiPane() {
         </button>
       </PaneCard>
 
-      {/* Dialog */}
-      {dialog.open && (
-        <div className="wifi-modal-overlay" onClick={() => setDialog({ ...dialog, open: false })}>
-          <div className="wifi-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="wifi-modal-header">
-              <h3>Join Network</h3>
-              <button
-                type="button"
-                className="wifi-modal-close"
-                onClick={() => setDialog({ ...dialog, open: false })}
-                aria-label="Close"
-              >
-                <Icon name="x" size={24} />
-              </button>
-            </div>
-
-            <div className="wifi-form-group">
-              <label htmlFor="ssid">Network Name (SSID)</label>
-              <input
-                id="ssid"
-                type="text"
-                placeholder="Network name"
-                value={dialog.ssid}
-                onChange={(e) => setDialog({ ...dialog, ssid: e.target.value })}
-                className="wifi-input"
-              />
-            </div>
-
-            <div className="wifi-form-group">
-              <label htmlFor="security">Security</label>
-              <select
-                id="security"
-                value={dialog.security}
-                onChange={(e) => setDialog({ ...dialog, security: e.target.value })}
-                className="wifi-input"
-              >
-                {SECURITY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {dialog.security !== 'open' && (
-              <div className="wifi-form-group">
-                <label htmlFor="password">Password</label>
-                <div className="wifi-password-wrap">
-                  <input
-                    id="password"
-                    type={dialog.showPassword ? 'text' : 'password'}
-                    placeholder="8–63 characters"
-                    value={dialog.password}
-                    onChange={(e) => setDialog({ ...dialog, password: e.target.value })}
-                    className="wifi-input"
-                  />
-                  <button
-                    type="button"
-                    className="wifi-toggle-pwd"
-                    onClick={() => setDialog({ ...dialog, showPassword: !dialog.showPassword })}
-                    aria-label="Toggle password visibility"
-                  >
-                    <Icon name={dialog.showPassword ? 'eye_off' : 'eye'} size={16} />
-                  </button>
-                </div>
-                <div className="pn-help">8–63 characters</div>
-              </div>
-            )}
-
-            <div className="wifi-form-group">
-              <label className="wifi-checkbox">
-                <input
-                  type="checkbox"
-                  checked={dialog.hidden}
-                  onChange={(e) => setDialog({ ...dialog, hidden: e.target.checked })}
-                />
-                <span>Hidden network</span>
-              </label>
-            </div>
-
-            <div className="wifi-modal-actions">
-              <button
-                type="button"
-                className="p-btn"
-                onClick={() => setDialog({ ...dialog, open: false })}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="p-btn"
-                data-variant="accent"
-                onClick={handleJoin}
-                disabled={!dialog.ssid || join.isPending}
-                aria-busy={join.isPending}
-              >
-                Join
-              </button>
-            </div>
+      <Modal opened={dialog.open} onClose={close} title="Join network" centered zIndex={300} styles={{ title: { fontWeight: 700, color: 'var(--p-ink)' } }}>
+        <form
+          className="pn-form"
+          onSubmit={(e) => {
+            e.preventDefault()
+            handleJoin()
+          }}
+        >
+          <TextInput label="Network name (SSID)" value={dialog.ssid} onChange={(e) => setDialog({ ...dialog, ssid: e.currentTarget.value })} />
+          <NativeSelect label="Security" data={SECURITY_OPTIONS} value={dialog.security} onChange={(e) => setDialog({ ...dialog, security: e.currentTarget.value })} />
+          {dialog.security !== 'open' && (
+            <PasswordInput
+              label="Password"
+              description="8–63 characters"
+              value={dialog.password}
+              onChange={(e) => setDialog({ ...dialog, password: e.currentTarget.value })}
+              autoComplete="off"
+              data-autofocus
+            />
+          )}
+          <Checkbox label="Hidden network" checked={dialog.hidden} onChange={(e) => setDialog({ ...dialog, hidden: e.currentTarget.checked })} />
+          <div className="pn-row">
+            <button type="button" className="p-btn" onClick={close}>
+              Cancel
+            </button>
+            <button type="submit" className="p-btn" data-variant="accent" disabled={!dialog.ssid || join.isPending} aria-busy={join.isPending}>
+              Join
+            </button>
           </div>
-        </div>
-      )}
+        </form>
+      </Modal>
     </div>
   )
 }
