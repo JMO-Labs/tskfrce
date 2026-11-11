@@ -1,0 +1,14 @@
+[Unit]
+Description=t@sk4ce network daemon (Wi-Fi join, setup hotspot, fallback)
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/lib/tskfrce/tskfrce-netd.py serve
+Restart=always
+RestartSec=5
+SyslogIdentifier=tskfrce-netd
+
+[Install]
+WantedBy=multi-user.target

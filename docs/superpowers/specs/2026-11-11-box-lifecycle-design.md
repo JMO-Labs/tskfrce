@@ -120,3 +120,34 @@ it and rolls back to the previous network if the join fails within 60 s.
    then the PR.
 4. **Beta guard test:** an updater unit test asserts that an `eval` channel
    never resolves to a stable tag.
+
+## Amendments (owner, 2026-11-11, later the same day)
+
+Found during the build. These override anything above.
+
+- **A1 Forgot PIN.** The sticker code resets the PIN. After that, all parents get an alert (ntfy and a
+  Today note), every session ends (`token_epoch` is bumped), and PIN recovery locks until a parent
+  re-arms it. `sudo tskfrce-reset --pin` on the box always works.
+- **A2 Networks.** Any mix of networks: wired only, Wi-Fi only, both, or several VLANs. Nothing assumes
+  one. An interface counts only if it is physical Ethernet, Wi-Fi or a VLAN and has a private IPv4
+  address (10/8, 172.16/12, 192.168/16). Excluded: `lo`, `docker*`, `br-*`, `veth*`, `virbr*`, VPNs
+  (`wg*`, `tailscale*`, `tun*`), the hotspot subnet 10.42.0.0/24, link-local addresses and CGNAT
+  (100.64/10). `LAN_IFACE` becomes optional: unset means auto-detect.
+- **A3 Blocker binding.** DNS (:53) and the portal (:80) bind each LAN address, never `0.0.0.0` and
+  never the hotspot subnet. They are re-evaluated every 30 s and when a link changes.
+- **A4 Hotspot.** The hotspot owns 10.42.0.1. The edge's captive page is `/wifi-setup`, served only to
+  10.42.0.0/24 clients. Only factory-image boxes (with an edge) have it. Settings → Wi-Fi works
+  everywhere.
+- **A5 Network tags.** Each network gets an automatic label ("Wired", the SSID, or `VLAN <id>`) that
+  parents can rename. Devices show the label as a chip, with a filter. Settings → Networks has an
+  "Enforce here" switch per network, on by default.
+- **A6 Every network reported.** The box reports all of its LAN addresses with labels. The registry
+  keeps one DNS record per network (`<id>`, `<id>-2`, …) plus `last_seen`, and removes stale records.
+- **A7 Permanent sticker QR.** "Open my box" becomes `https://taskfrce.jmolabs.dev/find?c=<code>`.
+  On one network it redirects. On several it shows a button and a QR per network. If the box has not
+  been seen for 15 minutes, it shows setup help (cable, or the setup Wi-Fi and the password on the
+  sticker) and a "Try again" button.
+- **A8 `/find` hardening.** Rate-limited per visitor IP. An unknown code and an offline box get the
+  same page. The box ID is never shown. QR codes are drawn by an inlined MIT-licensed JS library,
+  with no external calls.
+- **A9 Shipping.** A3 and A4 go in PR 3 (#130). A2, A5, A6, A7 and A8 are PR 4 (Python blocker first).
