@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { MoreMenu } from '../parent/MoreMenu'
 import { Icon } from '../parent/Icon'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { api } from '../api'
 import { toastFail } from '../notify'
 import { useDismissSuggestion, useHideSuggestions, useMuteSuggestion, useSuggestions, type Suggestion } from '../hooks/useSuggestions'
 
@@ -13,6 +15,11 @@ export function SuggestionsCard() {
   const dismiss = useDismissSuggestion()
   const mute = useMuteSuggestion()
   const hide = useHideSuggestions()
+  const qc = useQueryClient()
+  const act = useMutation({
+    mutationFn: (to: string) => api(to, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries(),
+  })
   const items = data?.items ?? []
   if (data?.hidden || items.length === 0) return null
   const fail = { onError: toastFail }
@@ -30,7 +37,11 @@ export function SuggestionsCard() {
               <b>{s.title}</b>
               <span>{s.body}</span>
               <div className="pt-sugg-a">
-                <Link className="p-btn" data-variant="ink" href={s.action.to}>{s.action.label}</Link>
+                {s.action.kind === 'post' ? (
+                  <button type="button" className="p-btn" data-variant="ink" disabled={act.isPending} onClick={() => act.mutate(s.action.to, fail)}>{s.action.label}</button>
+                ) : (
+                  <Link className="p-btn" data-variant="ink" href={s.action.to}>{s.action.label}</Link>
+                )}
                 <button type="button" className="p-btn" onClick={() => dismiss.mutate(s, fail)}>Dismiss</button>
                 {s.tier !== SYSTEM && (
                   <button type="button" className="p-btn" onClick={() => mute.mutate(s.rule, fail)}>Not for us</button>
