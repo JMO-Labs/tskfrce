@@ -162,7 +162,7 @@ class InterfaceManager:
     def set_targets(self, by_iface: dict[str, dict[str, TargetAddrs]]) -> None:
         """Set enforcement targets per interface."""
         with self._lock:
-            for iface, (redir, watch) in self._managers.items():
+            for iface, (_, redir, watch) in self._managers.items():
                 devs = by_iface.get(iface, {})
                 redir.set_targets(devs)
                 if watch is not None:
@@ -172,7 +172,7 @@ class InterfaceManager:
         """Return set of MACs currently resisting enforcement."""
         with self._lock:
             macs: set[str] = set()
-            for _, (_, watch) in self._managers.items():
+            for _, (_, _, watch) in self._managers.items():
                 if watch is not None:
                     macs.update(watch.counter.resisting())
             return macs
@@ -181,7 +181,7 @@ class InterfaceManager:
         """Return (gateway_macs, gateway_ips) to never enforce/spoof."""
         with self._lock:
             macs, ips = set(), set()
-            for _, (redir, _) in self._managers.items():
+            for _, (_, redir, _) in self._managers.items():
                 try:
                     lan = redir._lanfacts()
                     if lan.gateway_mac:

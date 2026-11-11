@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_parent
 from app.models.network import Network
-from app.schemas.common import HTTPError
 
 router = APIRouter(prefix="/api/v1/networks", tags=["networks"], dependencies=[Depends(require_parent)])
 
