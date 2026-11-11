@@ -34,9 +34,7 @@ def blocker_down(db: Session, now: datetime) -> list[dict]:
         if not live
         else 'No network is set to "Enforce here", so nothing is being blocked.'
     )
-    return [
-        _w("blocker.down", "Kid limits aren't being enforced", why, "Open Devices", "/devices")
-    ]
+    return [_w("blocker.down", "Kid limits aren't being enforced", why, "Open Devices", "/devices")]
 
 
 def blocker_bind(db: Session, now: datetime) -> list[dict]:
