@@ -353,12 +353,22 @@ def test_chore_skipped_ignores_inactive_assignment(db, client, parent, kid, pare
     assert not any(k.startswith("chore.skipped") for k in _keys(client, parent_headers))
 
 
+def _orphan(db, table, col):
+    """Point every row at a nonexistent user (FK enforcement off just for this)."""
+    from sqlalchemy import text
+
+    db.commit()
+    db.execute(text("PRAGMA foreign_keys=OFF"))
+    db.execute(text(f"UPDATE {table} SET {col}=9999"))
+    db.commit()
+    db.execute(text("PRAGMA foreign_keys=ON"))
+
+
 def test_chore_skipped_ignores_missing_kid(db, client, parent, kid, parent_headers):
     _quiet(db, parent, kid)
     _, a = make_chore(db, parent, "Dishes", kids=[kid])
     _runs(db, a, kid, ["skipped"] * 3)
-    db.query(ChoreRun).update({ChoreRun.kid_id: 9999})
-    db.commit()
+    _orphan(db, "chore_runs", "kid_id")
     assert client.get(U, headers=parent_headers).status_code == 200
     assert not any(k.startswith("chore.skipped") for k in _keys(client, parent_headers))
 
@@ -377,8 +387,7 @@ def test_goal_close_skips_missing_kid(db, client, parent, kid, parent_headers):
     db.add(GoalContribution(goal_id=g.id, kid_id=kid.id, amount=4, kind="save"))
     db.commit()
     assert any(k.startswith("goal.close") for k in _keys(client, parent_headers))
-    g.kid_id = 9999
-    db.commit()
+    _orphan(db, "goals", "kid_id")
     assert not any(k.startswith("goal.close") for k in _keys(client, parent_headers))
 
 
