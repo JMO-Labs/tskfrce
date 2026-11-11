@@ -1,6 +1,8 @@
 """Box-health suggestions: updates, edge certificate, power outages."""
 
+import os
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
@@ -71,7 +73,8 @@ def _cert_expiry() -> datetime | None:
     from cryptography import x509
 
     soonest = None
-    for f in sorted((box_power.data_dir() / "lego" / "certificates").glob("*.crt")):
+    edge = Path(os.environ.get("EDGE_DATA_DIR") or settings.EDGE_DATA_DIR)
+    for f in sorted((edge / "lego" / "certificates").glob("*.crt")):
         try:
             end = x509.load_pem_x509_certificate(f.read_bytes()).not_valid_after_utc
         except (OSError, ValueError):

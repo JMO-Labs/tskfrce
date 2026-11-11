@@ -12,6 +12,7 @@ U = "/api/v1/suggestions"
 @pytest.fixture(autouse=True)
 def _env(tmp_path, monkeypatch):
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("EDGE_DATA_DIR", str(tmp_path / "edge"))
     monkeypatch.delenv("UPDATE_CHANNEL", raising=False)
 
 
@@ -61,7 +62,7 @@ def test_update_result_records_rollback_health(client, internal_headers, parent_
     assert not updates._read_state().get("rollback_unhealthy")
 
 
-def _cert(tmp_path, days):
+def _cert(tmp_path, days, root="edge"):
     from cryptography import x509
     from cryptography.hazmat.primitives import hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import ec
@@ -80,7 +81,7 @@ def _cert(tmp_path, days):
         .not_valid_after(now + timedelta(days=days))
         .sign(key, hashes.SHA256())
     )
-    d = tmp_path / "lego" / "certificates"
+    d = tmp_path / root / "lego" / "certificates"
     d.mkdir(parents=True)
     (d / "box.example.crt").write_bytes(c.public_bytes(serialization.Encoding.PEM))
 
@@ -95,9 +96,15 @@ def test_cert_fine(client, parent_headers, tmp_path):
     assert "cert.expiring" not in _items(client, parent_headers)
 
 
+def test_cert_read_from_edge_volume_not_backend_data(client, parent_headers, tmp_path):
+    # lego writes into the edge container's volume; the backend's DATA_DIR never has certs
+    _cert(tmp_path, 5, root=".")
+    assert "cert.expiring" not in _items(client, parent_headers)
+
+
 def test_cert_missing_or_unreadable_skipped(client, parent_headers, tmp_path):
     assert "cert.expiring" not in _items(client, parent_headers)
-    d = tmp_path / "lego" / "certificates"
+    d = tmp_path / "edge" / "lego" / "certificates"
     d.mkdir(parents=True)
     (d / "bad.crt").write_text("not a cert")
     assert "cert.expiring" not in _items(client, parent_headers)

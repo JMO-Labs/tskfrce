@@ -145,6 +145,8 @@ class Settings(BaseSettings):
 
     # File upload settings
     DATA_DIR: Path = Path("./data")
+    # Edge container's volume (read-only): lego writes TLS certs to <EDGE_DATA_DIR>/lego/certificates
+    EDGE_DATA_DIR: Path = Path("./edge")
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
 
     # WebSocket settings
