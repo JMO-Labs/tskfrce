@@ -84,6 +84,23 @@ def setup_needed(db: Session = Depends(get_db)):
     }
 
 
+def _limit_username_check(request: Request) -> None:
+    limit(f"username-check:{client_ip(request)}", 10, 60)
+
+
+@router.get("/username-available", dependencies=[Depends(_limit_username_check)])
+def username_available(u: str = "", db: Session = Depends(get_db)):
+    """Check if a username is available (during setup or if unclaimed). Only works if setup is in progress."""
+    # Check if setup is finished (owner_set and setup_step is None)
+    fam = db.get(FamilySettings, 1) if owner_set(db) else None
+    if fam and fam.setup_step is None:
+        raise HTTPException(status.HTTP_409_CONFLICT, DONE)
+    if not u or len(u) < 3 or len(u) > 50 or not all(c.isalnum() or c in '._-' for c in u):
+        return {"available": False}
+    taken = db.query(User.id).filter(User.username == u).first() is not None
+    return {"available": not taken}
+
+
 class ClaimIn(BaseModel):
     code: str = Field(max_length=32)
 

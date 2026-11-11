@@ -127,3 +127,51 @@ def test_finished_setup_step_is_locked(client, db):
     assert r.status_code == 409 and r.json()["detail"] == "Setup is already finished."
     assert get_family(db).setup_step is None
     assert client.put("/api/v1/setup/step", json={"step": None}, headers=h).status_code == 200
+
+
+def test_username_available_before_setup(client):
+    """Username check works before setup is complete."""
+    r = client.get("/api/v1/setup/username-available?u=alice")
+    assert r.status_code == 200
+    assert r.json() == {"available": True}
+
+
+def test_username_taken_during_setup(client, db):
+    """Username check detects taken usernames."""
+    client.post("/api/v1/setup", json=BODY)
+    r = client.get("/api/v1/setup/username-available?u=rich")
+    assert r.status_code == 200
+    assert r.json() == {"available": False}
+
+
+def test_username_available_new_one_during_setup(client, db):
+    """Username check works for new usernames after setup."""
+    client.post("/api/v1/setup", json=BODY)
+    r = client.get("/api/v1/setup/username-available?u=alice")
+    assert r.status_code == 200
+    assert r.json() == {"available": True}
+
+
+def test_username_check_after_setup_done(client, db):
+    """Username check blocked after setup is completely done."""
+    client.post("/api/v1/setup", json=BODY)
+    get_family(db).setup_step = None
+    db.commit()
+    r = client.get("/api/v1/setup/username-available?u=bob")
+    assert r.status_code == 409
+
+
+def test_username_validation_rules(client):
+    """Username check validates format."""
+    # Too short
+    r = client.get("/api/v1/setup/username-available?u=ab")
+    assert r.json() == {"available": False}
+    # Too long
+    r = client.get("/api/v1/setup/username-available?u=" + "a" * 51)
+    assert r.json() == {"available": False}
+    # Invalid chars
+    r = client.get("/api/v1/setup/username-available?u=alice@home")
+    assert r.json() == {"available": False}
+    # Empty
+    r = client.get("/api/v1/setup/username-available?u=")
+    assert r.json() == {"available": False}
