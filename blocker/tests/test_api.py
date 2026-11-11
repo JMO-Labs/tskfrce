@@ -120,5 +120,3 @@ def test_test_block_bad_mac_is_400():
     finally:
         server.shutdown()
         server.server_close()
-
-
