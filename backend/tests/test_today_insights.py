@@ -70,6 +70,15 @@ def test_on_time_series_and_when_grid(client, db, parent, parent_headers):
     assert j["goal"] == 75
 
 
+def test_past_submitted_on_time_counts_as_on_time(client, db, parent, parent_headers):
+    _setup(db)
+    kid = _make_user(db, "leo", UserRole.KID)
+    y = DAY - timedelta(days=1)
+    _run(db, parent, kid, y, 16, status="submitted")  # handed in on time, not yet approved
+    j = client.get(URL, headers=parent_headers).json()["week"]
+    assert j["series"][-2] == {"day": y.isoformat(), "rate": 100, "done": 1, "total": 1}
+
+
 def test_delta_vs_previous_week(client, db, parent, parent_headers):
     _setup(db)
     kid = _make_user(db, "leo", UserRole.KID)

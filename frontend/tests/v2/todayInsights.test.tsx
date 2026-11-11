@@ -88,6 +88,13 @@ describe('WeekCard', () => {
     expect(screen.getByText(/first week/i)).toBeInTheDocument()
     expect(screen.queryByText('0%')).not.toBeInTheDocument()
   })
+  it('shows a calm note, not the first-week copy, when history exists but nothing is due', () => {
+    const { container } = render(<WeekCard week={{ ...week, rate: null, delta: null, has_history: true }} />)
+    expect(screen.getByText(/nothing due this week/i)).toBeInTheDocument()
+    expect(screen.queryByText(/first week/i)).not.toBeInTheDocument()
+    expect(container.querySelector('[data-trend]')).not.toBeNull()
+  })
+
   it('omits the delta when there is no previous week', () => {
     render(<WeekCard week={{ ...week, delta: null }} />)
     expect(screen.queryByText(/vs last week/)).not.toBeInTheDocument()

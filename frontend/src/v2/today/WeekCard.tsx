@@ -82,14 +82,18 @@ export function WeekCard({ week }: { week: InsightWeek }) {
         <Icon name="insights" />
         This week
       </h3>
-      {!week.has_history || week.rate == null ? (
+      {!week.has_history ? (
         <p className="pi-empty">Your first week shows up here once chores start getting done. Nothing to worry about yet.</p>
       ) : (
         <>
           <div className="pi-hero">
-            <b>{week.rate}%</b>
+            {week.rate == null ? (
+              <b>Nothing due this week</b>
+            ) : (
+              <b>{week.rate}%</b>
+            )}
             <span>
-              of chores done on time
+              {week.rate != null && 'of chores done on time'}
               {week.delta != null && (
                 <>
                   {' · '}

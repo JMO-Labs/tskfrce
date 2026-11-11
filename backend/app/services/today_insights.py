@@ -75,7 +75,7 @@ def week(db: Session, today: date, tz: ZoneInfo) -> dict:
             continue  # still has time: not late yet
         c = per.setdefault(r.day, [0, 0])
         c[1] += 1
-        c[0] += r.status == "done" and _on_time(r, tz)
+        c[0] += r.status in ("done", "submitted") and _on_time(r, tz)
     days = [today - timedelta(days=i) for i in range(SERIES_DAYS - 1, -1, -1)]
     series = [
         {
