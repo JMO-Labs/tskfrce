@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Set up your t@sk4ce box</title>
+    <style>
+      :root {
+        --bg: #fff;
+        --text: #000;
+        --border: #e0e0e0;
+        --button-bg: #2563eb;
+        --button-text: #fff;
+        --error: #dc2626;
+        --success: #16a34a;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1a1a1a;
+          --text: #e0e0e0;
+          --border: #333;
+          --button-bg: #3b82f6;
+          --button-text: #fff;
+        }
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        padding: 16px;
+        min-height: 100vh;
+      }
+
+      .container {
+        max-width: 400px;
+        margin: 0 auto;
+        background: var(--bg);
+        border-radius: 12px;
+        padding: 24px;
+        border: 1px solid var(--border);
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 28px;
+      }
+
+      .header h1 {
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+
+      .header p {
+        font-size: 14px;
+        opacity: 0.7;
+      }
+
+      .networks {
+        margin-bottom: 24px;
+      }
+
+      .network-list {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .network-item {
+        padding: 12px;
+        border-bottom: 1px solid var(--border);
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background 0.2s;
+      }
+
+      .network-item:last-child {
+        border-bottom: none;
+      }
+
+      .network-item:hover {
+        background: var(--border);
+      }
+
+      .network-name {
+        font-weight: 500;
+      }
+
+      .network-signal {
+        font-size: 12px;
+        opacity: 0.7;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-group label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 6px;
+      }
+
+      .form-group input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 14px;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      .form-group input:focus {
+        outline: none;
+        border-color: var(--button-bg);
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+      }
+
+      .status {
+        text-align: center;
+        padding: 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        margin-bottom: 20px;
+      }
+
+      .status.joining {
+        background: rgba(37, 99, 235, 0.1);
+        color: var(--button-bg);
+      }
+
+      .status.connected {
+        background: rgba(22, 163, 74, 0.1);
+        color: var(--success);
+      }
+
+      .status.error {
+        background: rgba(220, 38, 38, 0.1);
+        color: var(--error);
+      }
+
+      .button {
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .button-primary {
+        background: var(--button-bg);
+        color: var(--button-text);
+      }
+
+      .button-primary:hover {
+        opacity: 0.9;
+      }
+
+      .button-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .help-text {
+        font-size: 12px;
+        opacity: 0.6;
+        margin-top: 16px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Connect to Wi-Fi</h1>
+        <p>Select your home network and enter the password</p>
+      </div>
+
+      <div id="status" class="status status-joining" style="display: none">
+        <span id="statusText">Connecting...</span>
+      </div>
+
+      <div class="networks">
+        <label style="font-size: 12px; font-weight: 500; display: block; margin-bottom: 8px"
+          >Available Networks</label
+        >
+        <div class="network-list" id="networkList">
+          <div class="network-item">
+            <div>
+              <div class="network-name">MyHomeWifi</div>
+              <div class="network-signal">Strong (80%)</div>
+            </div>
+            <span>📡</span>
+          </div>
+          <div class="network-item">
+            <div>
+              <div class="network-name">GuestNetwork</div>
+              <div class="network-signal">Fair (60%)</div>
+            </div>
+            <span>📡</span>
+          </div>
+          <div class="network-item">
+            <div>
+              <div class="network-name">NeighborNet</div>
+              <div class="network-signal">Weak (40%)</div>
+            </div>
+            <span>📡</span>
+          </div>
+        </div>
+      </div>
+
+      <form onsubmit="handleConnect(event)">
+        <div class="form-group">
+          <label for="ssid">Network Name</label>
+          <input type="text" id="ssid" placeholder="MyHomeWifi" required />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="••••••••" required />
+        </div>
+
+        <button type="submit" class="button button-primary">Connect</button>
+      </form>
+
+      <div class="help-text">
+        Your phone will return to your home network. Scan the "Open my box" QR to
+        continue setup.
+      </div>
+    </div>
+
+    <script>
+      function handleConnect(event) {
+        event.preventDefault();
+        const ssid = document.getElementById("ssid").value;
+        const password = document.getElementById("password").value;
+
+        // Show status
+        const statusEl = document.getElementById("status");
+        const statusText = document.getElementById("statusText");
+        statusEl.style.display = "block";
+        statusEl.className = "status status-joining";
+        statusText.textContent = "Connecting...";
+
+        // Simulate connection (in real app, call /api/v1/network/wifi/join)
+        setTimeout(() => {
+          statusEl.className = "status status-connected";
+          statusText.textContent = "Connected! Open my box to continue.";
+        }, 2000);
+      }
+
+      // Example: click network to fill SSID
+      document.querySelectorAll(".network-item").forEach((item) => {
+        item.addEventListener("click", () => {
+          const name = item.querySelector(".network-name").textContent;
+          document.getElementById("ssid").value = name;
+          document.getElementById("password").focus();
+        });
+      });
+    </script>
+  </body>
+</html>

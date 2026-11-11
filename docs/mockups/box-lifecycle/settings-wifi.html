@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Settings — Wi-Fi</title>
+    <style>
+      :root {
+        --bg: #fff;
+        --text: #000;
+        --border: #e0e0e0;
+        --button-bg: #2563eb;
+        --button-text: #fff;
+        --success: #16a34a;
+        --gray: #6b7280;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1a1a1a;
+          --text: #e0e0e0;
+          --border: #333;
+          --button-bg: #3b82f6;
+          --button-text: #fff;
+          --gray: #9ca3af;
+        }
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        padding: 16px;
+        min-height: 100vh;
+      }
+
+      .container {
+        max-width: 500px;
+        margin: 0 auto;
+      }
+
+      .header {
+        margin-bottom: 24px;
+      }
+
+      .header h1 {
+        font-size: 24px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+
+      .header p {
+        font-size: 14px;
+        color: var(--gray);
+      }
+
+      .section {
+        margin-bottom: 28px;
+      }
+
+      .section-title {
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: var(--gray);
+        margin-bottom: 12px;
+        padding: 0 4px;
+      }
+
+      .card {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px;
+        background: var(--bg);
+        margin-bottom: 12px;
+      }
+
+      .network-current {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .network-info h3 {
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+
+      .network-signal {
+        font-size: 13px;
+        color: var(--gray);
+      }
+
+      .network-badge {
+        background: rgba(22, 163, 74, 0.1);
+        color: var(--success);
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      .button {
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+        margin-bottom: 12px;
+      }
+
+      .button-primary {
+        background: var(--button-bg);
+        color: var(--button-text);
+      }
+
+      .button-primary:hover {
+        opacity: 0.9;
+      }
+
+      .button-secondary {
+        background: transparent;
+        color: var(--button-bg);
+        border: 1px solid var(--button-bg);
+      }
+
+      .button-secondary:hover {
+        background: var(--border);
+      }
+
+      .form-group {
+        margin-bottom: 16px;
+      }
+
+      .form-group label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 6px;
+      }
+
+      .form-group input,
+      .form-group select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 14px;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      .form-group input:focus,
+      .form-group select:focus {
+        outline: none;
+        border-color: var(--button-bg);
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+      }
+
+      .network-list {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .network-item {
+        padding: 12px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .network-item:last-child {
+        border-bottom: none;
+      }
+
+      .network-item:hover {
+        background: var(--border);
+      }
+
+      .network-name {
+        font-weight: 500;
+        font-size: 14px;
+      }
+
+      .network-signal {
+        font-size: 12px;
+        color: var(--gray);
+      }
+
+      .collapsible {
+        display: none;
+      }
+
+      .collapsible.open {
+        display: block;
+      }
+
+      .help-text {
+        font-size: 12px;
+        color: var(--gray);
+        margin-top: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Wi-Fi Settings</h1>
+        <p>Manage your box's Wi-Fi connection</p>
+      </div>
+
+      <!-- Current Network -->
+      <div class="section">
+        <div class="section-title">Current Network</div>
+        <div class="card network-current">
+          <div class="network-info">
+            <h3>MyHomeWifi</h3>
+            <div class="network-signal">Connected — 75% signal</div>
+          </div>
+          <div class="network-badge">Connected</div>
+        </div>
+      </div>
+
+      <!-- Country (IP mode only) -->
+      <div class="section">
+        <div class="section-title">Region</div>
+        <div class="card">
+          <div class="form-group">
+            <label for="country">Country Code</label>
+            <select id="country">
+              <option value="US">United States (US)</option>
+              <option value="GB">United Kingdom (GB)</option>
+              <option value="CA">Canada (CA)</option>
+              <option value="AU">Australia (AU)</option>
+              <option value="FR">France (FR)</option>
+              <option value="DE">Germany (DE)</option>
+            </select>
+            <div class="help-text">
+              Affects available Wi-Fi channels and power limits.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Change Network -->
+      <div class="section">
+        <div class="section-title">Join Different Network</div>
+
+        <div class="card">
+          <button class="button button-secondary" onclick="toggleNetworkList()">
+            Scan Networks
+          </button>
+
+          <div class="collapsible" id="networkList">
+            <div class="network-list">
+              <div class="network-item">
+                <div>
+                  <div class="network-name">MyHomeWifi</div>
+                  <div class="network-signal">Strong (80%)</div>
+                </div>
+                <span>📡</span>
+              </div>
+              <div class="network-item">
+                <div>
+                  <div class="network-name">GuestNetwork</div>
+                  <div class="network-signal">Fair (60%)</div>
+                </div>
+                <span>📡</span>
+              </div>
+              <div class="network-item">
+                <div>
+                  <div class="network-name">Other-5G</div>
+                  <div class="network-signal">Good (70%)</div>
+                </div>
+                <span>📡</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="collapsible" id="passwordForm">
+            <div style="margin-top: 16px">
+              <div class="form-group">
+                <label for="newPassword">Password</label>
+                <input type="password" id="newPassword" placeholder="••••••••" />
+              </div>
+              <button class="button button-primary" onclick="handleJoin()">
+                Connect
+              </button>
+              <div class="help-text">
+                If connection fails, we'll revert to your previous network after 60
+                seconds.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Forget Network -->
+      <div class="section">
+        <div class="card">
+          <button class="button button-secondary" style="color: #dc2626; border-color: #dc2626">
+            Forget Current Network
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function toggleNetworkList() {
+        const list = document.getElementById("networkList");
+        const form = document.getElementById("passwordForm");
+        list.classList.toggle("open");
+        if (!form.classList.contains("open")) {
+          form.classList.add("open");
+        }
+      }
+
+      function handleJoin() {
+        alert(
+          "In the real app, this would attempt to join the selected network with a 60-second rollback window."
+        );
+      }
+
+      document.querySelectorAll(".network-item").forEach((item) => {
+        item.addEventListener("click", () => {
+          const name = item.querySelector(".network-name").textContent;
+          // Simulate selecting the network
+          alert(`Selected: ${name}`);
+        });
+      });
+    </script>
+  </body>
+</html>
