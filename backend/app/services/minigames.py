@@ -127,13 +127,9 @@ def _bedtime(rules, kid_id: int, d: date) -> str | None:
     return min(ends).strftime("%H:%M") if ends else None
 
 
-def asleep_until(db: Session, fam, kid, now_utc: datetime) -> datetime | None:
-    """End of the asleep window (kid's bedtime to the day reset) we are in, as naive UTC."""
-    tz = ZoneInfo(fam.timezone)
-    now = now_utc.astimezone(tz)
-    t, end = now.strftime("%H:%M"), fam.reset_time
-    d = now.date() if t >= end else now.date() - timedelta(days=1)
-    start = _bedtime(hours.load(db), kid.id, d)
+def _wake(now: datetime, start: str | None, end: str | None, tz) -> datetime | None:
+    """End of the start..end window (may wrap midnight) if `now` is inside it, else None."""
+    t = now.strftime("%H:%M")
     if not start or not end or start == end:
         return None
     if start < end:
@@ -144,6 +140,18 @@ def asleep_until(db: Session, fam, kid, now_utc: datetime) -> datetime | None:
         return None
     h, m = _hm(end)
     day = now.date() + timedelta(days=1 if next_day else 0)
-    return (
-        datetime(day.year, day.month, day.day, h, m, tzinfo=tz).astimezone(UTC).replace(tzinfo=None)
-    )
+    return datetime(day.year, day.month, day.day, h, m, tzinfo=tz)
+
+
+def asleep_until(db: Session, fam, kid, now_utc: datetime) -> datetime | None:
+    """End of the asleep window we are in, as naive UTC: the kid's own bedtime to the day
+    reset, or the family quiet hours (the later wake wins when both apply)."""
+    tz = ZoneInfo(fam.timezone)
+    now = now_utc.astimezone(tz)
+    d = now.date() if now.strftime("%H:%M") >= fam.reset_time else now.date() - timedelta(days=1)
+    ends = [
+        _wake(now, _bedtime(hours.load(db), kid.id, d), fam.reset_time, tz),
+        _wake(now, fam.quiet_start, fam.quiet_end, tz),
+    ]
+    ends = [e for e in ends if e]
+    return max(ends).astimezone(UTC).replace(tzinfo=None) if ends else None

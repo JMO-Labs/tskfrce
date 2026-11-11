@@ -180,11 +180,32 @@ def test_asleep_everyone_rule_and_weekday(db, kid):
     assert mg.asleep_until(db, fam, kid, datetime(2026, 10, 24, 21, 0, tzinfo=UTC)) is None
 
 
-def test_asleep_ignores_family_settings_without_rules(db, kid):
+def test_asleep_ignores_auto_approve_time(db, kid):
     fam = get_family(db)
     fam.bedtime_auto_at, fam.reset_time = "21:00", "06:00"
-    fam.quiet_start, fam.quiet_end = "22:00", "07:00"
     assert mg.asleep_until(db, fam, kid, _utc(23, 0)) is None
+
+
+def test_quiet_hours_sleep_without_rules(db, kid):
+    fam = get_family(db)
+    fam.quiet_start, fam.quiet_end = "13:00", "14:00"
+    assert mg.asleep_until(db, fam, kid, _utc(13, 30)) == datetime(2026, 10, 20, 14, 0)
+    assert mg.asleep_until(db, fam, kid, _utc(15, 0)) is None
+    fam.quiet_start, fam.quiet_end = "22:00", "07:00"
+    assert mg.asleep_until(db, fam, kid, _utc(23, 0)) == datetime(2026, 10, 21, 7, 0)
+    assert mg.asleep_until(db, fam, kid, _utc(3, 0)) == datetime(2026, 10, 20, 7, 0)
+
+
+def test_bedtime_and_quiet_hours_both_apply(db, kid):
+    fam = get_family(db)
+    fam.reset_time = "06:00"
+    fam.quiet_start, fam.quiet_end = "13:00", "14:00"
+    make_rule(db, kid_ids=[kid.id], times=(("07:00", "21:00"),))
+    assert mg.asleep_until(db, fam, kid, _utc(13, 30)) == datetime(2026, 10, 20, 14, 0)
+    assert mg.asleep_until(db, fam, kid, _utc(22, 0)) == datetime(2026, 10, 21, 6, 0)
+    assert mg.asleep_until(db, fam, kid, _utc(16, 0)) is None
+    fam.quiet_start, fam.quiet_end = "22:00", "07:00"  # overlap: the later wake wins
+    assert mg.asleep_until(db, fam, kid, _utc(23, 0)) == datetime(2026, 10, 21, 7, 0)
 
 
 def test_saved_count_and_enabled(db, parent, kid):
