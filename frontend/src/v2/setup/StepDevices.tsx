@@ -185,7 +185,7 @@ export function StepDevices({ kids }: { kids: Kid[] }) {
         </button>
         {showPrivateHelp && (
           <div className={styles.helpContent}>
-            <p>Unlock it and open a web page to claim it, or we'll assign it later.</p>
+            <p>Unlock it and open a web page to claim it, or we&rsquo;ll assign it later.</p>
             {privateDevices.length > 0 && <p>{privateDevices.length} of these use a private Wi-Fi address</p>}
           </div>
         )}
