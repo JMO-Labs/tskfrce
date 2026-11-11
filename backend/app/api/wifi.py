@@ -97,6 +97,13 @@ def setup_status(request: Request) -> dict:
     return _hotspot_only(request, allow_connecting=True).get("setup", {})
 
 
+@setup_router.get("/scan")
+def setup_scan(request: Request) -> dict:
+    """Networks the box can see, for the captive page's picker (hotspot clients only)."""
+    _hotspot_only(request)
+    return {"networks": _daemon(network_wifi.scan)}
+
+
 @setup_router.post("/join")
 def setup_join(
     request: Request,
