@@ -23,7 +23,7 @@ def _pair(ip, mac):
 
 
 def _send(arp=(), ndp=()):
-    def send(kind, cfg):
+    def send(kind, cfg, iface=None):
         return ([_pair(*r) for r in (arp if kind == "arp" else ndp)], [])
 
     return send
@@ -109,3 +109,17 @@ def test_run_discovery_calls_on_seen(tmp_path, reported, monkeypatch):
 def test_real_scapy_send_path(tmp_path):
     cfg = _cfg(tmp_path)
     assert isinstance(scan_once(cfg), list)
+
+
+def test_scan_reports_enriched_seen_so_backend_learns_gateway(tmp_path, reported):
+    from dataclasses import replace
+
+    arp = [("192.168.1.1", "aa:bb:cc:00:00:01")]
+    scan_once(
+        _cfg(tmp_path),
+        send=_send(arp),
+        resolve=lambda ip: None,
+        enrich=lambda s: replace(s, gateway_mac="aa:bb:cc:00:00:01", box_mac="de:ad:be:ef:00:00"),
+    )
+    assert reported[0].gateway_mac == "aa:bb:cc:00:00:01"
+    assert reported[0].body()["box_mac"] == "de:ad:be:ef:00:00"

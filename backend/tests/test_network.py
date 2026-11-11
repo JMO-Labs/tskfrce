@@ -73,6 +73,7 @@ def test_state_shape_covered_and_listen_only(client, db):
         "homework": {},
         "listen_only": False,
         "covered_vlans": [20, 30],
+        "network_enforce": {},
     }
     get_family(db).listen_only = True
     db.commit()

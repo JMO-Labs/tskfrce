@@ -100,8 +100,8 @@ export function StepDevices({ kids }: { kids: Kid[] }) {
             aria-label={owner ? `Owner for ${displayName}: ${ownerName}` : `Owner for ${displayName}`}
             onClick={() => setOpenPopupId(isOpen ? null : d.id)}
           >
-            {d.owner_ids.length === 0 && <Icon name="plus" size={16} />}
-            <span>Owner for {displayName}{ownerName ? `: ${ownerName}` : ""}</span>
+            <Icon name={owner ? "person" : "add"} size={16} />
+            <span>{ownerName || "Owner"}</span>
           </button>
         </div>
         {isOpen && (

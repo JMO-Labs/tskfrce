@@ -1,4 +1,4 @@
-import { describe, test, expect, jest, beforeEach } from '@jest/globals'
+import { describe, test, expect, beforeEach } from '@jest/globals'
 import type { ReactNode } from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MantineProvider } from '@mantine/core'
@@ -13,7 +13,7 @@ jest.mock('@/v2/notify', () => ({
 
 jest.mock('@/v2/hooks/useWifi', () => ({
   useWifiStatus: jest.fn(() => ({
-    data: { is_connected: false, current_ssid: null, signal_strength: null },
+    data: { online: true, connected: false, ssid: null, signal: 0, hotspot_active: false, country: 'US' },
     isPending: false,
     isError: false,
   })),
@@ -61,6 +61,27 @@ describe('WifiPane', () => {
   test('displays region selector', () => {
     wrap(<WifiPane />)
     expect(screen.getByText('Region')).toBeInTheDocument()
+  })
+
+  test('scan button is enabled before the first scan (disabled query stays isPending in TanStack v5)', () => {
+    const { useWifiScan } = jest.requireMock('@/v2/hooks/useWifi') as { useWifiScan: jest.Mock }
+    useWifiScan.mockReturnValue({ data: undefined, isPending: true, isFetching: false, isError: false, refetch: jest.fn() })
+    wrap(<WifiPane />)
+    expect(screen.getByRole('button', { name: /Scan/i })).toBeEnabled()
+    expect(screen.queryByText('Scanning...')).toBeNull()
+  })
+
+  test('picking a network opens the join dialog and submits ssid + password', async () => {
+    const mutate = jest.fn()
+    const { useWifiJoin, useWifiScan } = jest.requireMock('@/v2/hooks/useWifi') as Record<string, jest.Mock>
+    useWifiScan.mockReturnValue({ data: [{ ssid: 'TestNet', signal: 75, security: 'wpa' }], isFetching: false, isError: false, refetch: jest.fn() })
+    useWifiJoin.mockReturnValue({ mutate, isPending: false })
+    wrap(<WifiPane />)
+    fireEvent.click(screen.getByRole('button', { name: /Scan/i }))
+    fireEvent.click(screen.getByRole('button', { name: /TestNet/ }))
+    fireEvent.change(await screen.findByLabelText(/^Password/), { target: { value: 'secret123' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Join' }))
+    expect(mutate).toHaveBeenCalledWith({ ssid: 'TestNet', password: 'secret123', security: 'wpa', hidden: false })
   })
 
   test('scan button exists and is clickable', () => {

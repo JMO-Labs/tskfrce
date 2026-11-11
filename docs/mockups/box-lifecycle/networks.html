@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings › Networks</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1d;
+            line-height: 1.5;
+        }
+        @media (prefers-color-scheme: dark) {
+            body { background: #1d1d1d; color: #f5f5f7; }
+        }
+
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header {
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e5e5e7;
+        }
+        @media (prefers-color-scheme: dark) { .header { border-color: #424245; } }
+
+        h1 { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
+        .subtitle { font-size: 15px; color: #86868b; }
+        @media (prefers-color-scheme: dark) { .subtitle { color: #a1a1a6; } }
+
+        .network-item {
+            background: #fff;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid #e5e5e7;
+        }
+        @media (prefers-color-scheme: dark) {
+            .network-item { background: #2c2c2e; border-color: #424245; }
+        }
+
+        .network-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+
+        .network-info h3 {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .network-details {
+            font-size: 13px;
+            color: #86868b;
+            line-height: 1.4;
+        }
+        @media (prefers-color-scheme: dark) { .network-details { color: #a1a1a6; } }
+
+        .edit-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #007aff;
+            cursor: pointer;
+            margin-top: 8px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: rgba(0, 122, 255, 0.1);
+        }
+
+        .label-input {
+            display: none;
+            margin-top: 8px;
+        }
+        .label-input.active {
+            display: flex;
+            gap: 8px;
+        }
+
+        .label-input input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #d5d5d7;
+            border-radius: 6px;
+            font-size: 15px;
+            background: #fff;
+            color: #1d1d1d;
+        }
+        @media (prefers-color-scheme: dark) {
+            .label-input input {
+                background: #424245;
+                border-color: #555558;
+                color: #f5f5f7;
+            }
+        }
+
+        .label-input button {
+            padding: 8px 16px;
+            background: #007aff;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .label-input button:hover {
+            background: #0051d5;
+        }
+
+        .enforce-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .switch {
+            position: relative;
+            width: 50px;
+            height: 28px;
+            background: #ccc;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .switch.active {
+            background: #34c759;
+        }
+
+        .switch-knob {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 24px;
+            height: 24px;
+            background: #fff;
+            border-radius: 12px;
+            transition: left 0.3s;
+        }
+        .switch.active .switch-knob {
+            left: 24px;
+        }
+
+        .enforce-label {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .enforce-label-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: #1d1d1d;
+        }
+        @media (prefers-color-scheme: dark) { .enforce-label-title { color: #f5f5f7; } }
+
+        .enforce-label-desc {
+            font-size: 12px;
+            color: #86868b;
+        }
+        @media (prefers-color-scheme: dark) { .enforce-label-desc { color: #a1a1a6; } }
+
+        .device-count {
+            display: inline-block;
+            background: #f5f5f7;
+            color: #1d1d1d;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        @media (prefers-color-scheme: dark) {
+            .device-count { background: #424245; color: #f5f5f7; }
+        }
+
+        .note { font-size: 13px; color: #86868b; margin-top: 20px; padding: 12px; background: #f5f5f7; border-radius: 8px; }
+        @media (prefers-color-scheme: dark) {
+            .note { background: #2c2c2e; color: #a1a1a6; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Networks</h1>
+            <p class="subtitle">Manage enforcement per network</p>
+        </div>
+
+        <div class="network-item">
+            <div class="network-header">
+                <div class="network-info">
+                    <h3>Wired (eno2)</h3>
+                    <div class="network-details">
+                        Subnet: 192.168.1.0/24<br>
+                        <span class="device-count">3 devices</span>
+                    </div>
+                    <div class="edit-label">✎ Rename</div>
+                    <div class="label-input">
+                        <input type="text" value="Wired (eno2)" placeholder="Network name">
+                        <button>Save</button>
+                    </div>
+                </div>
+            </div>
+            <div class="enforce-toggle">
+                <div class="switch active">
+                    <div class="switch-knob"></div>
+                </div>
+                <div class="enforce-label">
+                    <div class="enforce-label-title">Enforce here</div>
+                    <div class="enforce-label-desc">Blocks apply to this network</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="network-item">
+            <div class="network-header">
+                <div class="network-info">
+                    <h3>WiFi-Home (wlo1)</h3>
+                    <div class="network-details">
+                        Subnet: 192.168.1.0/24<br>
+                        <span class="device-count">7 devices</span>
+                    </div>
+                    <div class="edit-label">✎ Rename</div>
+                    <div class="label-input">
+                        <input type="text" value="WiFi-Home (wlo1)" placeholder="Network name">
+                        <button>Save</button>
+                    </div>
+                </div>
+            </div>
+            <div class="enforce-toggle">
+                <div class="switch active">
+                    <div class="switch-knob"></div>
+                </div>
+                <div class="enforce-label">
+                    <div class="enforce-label-title">Enforce here</div>
+                    <div class="enforce-label-desc">Blocks apply to this network</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="network-item">
+            <div class="network-header">
+                <div class="network-info">
+                    <h3>Guest VLAN 100</h3>
+                    <div class="network-details">
+                        Subnet: 10.0.100.0/24<br>
+                        <span class="device-count">2 devices</span>
+                    </div>
+                    <div class="edit-label">✎ Rename</div>
+                    <div class="label-input">
+                        <input type="text" value="Guest VLAN 100" placeholder="Network name">
+                        <button>Save</button>
+                    </div>
+                </div>
+            </div>
+            <div class="enforce-toggle">
+                <div class="switch">
+                    <div class="switch-knob"></div>
+                </div>
+                <div class="enforce-label">
+                    <div class="enforce-label-title">Enforce here</div>
+                    <div class="enforce-label-desc">Blocks disabled on this network</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="note">
+            <strong>Auto labels:</strong> "Wired" for Ethernet, interface name for Wi-Fi, "VLAN ID" for tagged VLANs. Rename to something more meaningful for your family.
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('.edit-label').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const input = this.parentElement.querySelector('.label-input');
+                input.classList.toggle('active');
+                if (input.classList.contains('active')) {
+                    input.querySelector('input').focus();
+                }
+            });
+        });
+
+        document.querySelectorAll('.switch').forEach(sw => {
+            sw.addEventListener('click', function() {
+                this.classList.toggle('active');
+            });
+        });
+    </script>
+</body>
+</html>

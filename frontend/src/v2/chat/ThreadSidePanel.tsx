@@ -1,11 +1,12 @@
 import Link from 'next/link'
+import { KidAv } from '@/v2/KidAv'
 import { useRouter } from 'next/router'
 import { viewAs } from '@/v2/kid/viewAs'
 import { Icon } from '@/v2/parent/Icon'
 import { Chip } from '@/v2/parent/Chip'
 import { useToday } from '@/v2/hooks/useToday'
 import { useAuthImage } from '@/v2/today/PhotoViewer'
-import { KidFacts, initial } from '@/v2/today/KidFacts'
+import { KidFacts } from '@/v2/today/KidFacts'
 import { statusChip } from '@/v2/today/statusChip'
 import { useClock, useNow } from '@/v2/today/useClock'
 import { noteText } from '@/v2/today/ChoreNote'
@@ -43,7 +44,7 @@ function KidCard({ kid }: { kid: TodayKid }) {
   return (
     <div className="pc-card">
       <div className="pc-kid">
-        <span className="pc-kid-av" aria-hidden>{kid.avatar || initial(kid.name)}</span>
+        {kid.avatar ? <span className="pc-kid-av" aria-hidden>{kid.avatar}</span> : <KidAv id={kid.id} name={kid.name} className="pc-kid-av" />}
         <span>
           <b>{kid.name ?? 'Kid'}</b>
           <small>Level {kid.progress?.level ?? 1}{kid.progress?.title ? ` · ${kid.progress.title}` : ''}</small>

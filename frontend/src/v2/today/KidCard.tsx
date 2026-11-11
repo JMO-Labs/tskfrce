@@ -5,7 +5,8 @@ import { InfoPop } from '../parent/InfoPop'
 import type { Focus } from '../parent/useFocusParam'
 import type { TodayKid } from '../types'
 import { KidDay, LockPill } from './KidDay'
-import { KidFacts, initial } from './KidFacts'
+import { KidFacts } from './KidFacts'
+import { useKidBadge } from '@/v2/KidAv'
 
 /**
  * Kid card on Today: avatar (details pop-over) and a row button that focuses the kid.
@@ -17,6 +18,7 @@ export function KidCard({ kid, focus, children }: { kid: TodayKid; focus: Focus;
   const body = useRef<HTMLDivElement>(null)
   useEffect(() => { if (open) body.current?.focus({ preventScroll: true }) }, [open]) // opening moves focus into the body
   const name = kid.name ?? 'Kid'
+  const badge = useKidBadge(kid.id, kid.name)
   const waitingN = kid.needs_you_count ?? 0
   return (
     <div className="pt-kcard" data-open={open ? '' : undefined}>
@@ -25,8 +27,8 @@ export function KidCard({ kid, focus, children }: { kid: TodayKid; focus: Focus;
           label={`${name} details`}
           width={260}
           target={
-            <button type="button" className="pt-kav" aria-label={`${name} details`}>
-              {initial(kid.name)}
+            <button type="button" className="pt-kav" style={badge.style} aria-label={`${name} details`}>
+              {badge.label}
             </button>
           }
         >
