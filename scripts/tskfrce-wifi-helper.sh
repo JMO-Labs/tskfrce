@@ -10,6 +10,11 @@ SOCKET="/run/tskfrce-wifi.sock"
 log() { echo "[$(date +'%H:%M:%S')] $*" | systemd-cat -t tskfrce-wifi -p info; }
 err() { echo "[$(date +'%H:%M:%S')] ERROR: $*" | systemd-cat -t tskfrce-wifi -p err; }
 
+get_wifi_device() {
+  # Discover wifi device name (no hard-coded wlan0)
+  nmcli -t -f DEVICE,TYPE dev 2>/dev/null | awk -F: '$2=="wifi"{print $1; exit}'
+}
+
 init_socket() {
   mkdir -p "$(dirname "$SOCKET")"
   rm -f "$SOCKET"
@@ -91,7 +96,7 @@ cmd_join() {
   fi
 
   # Create passwd-file (0600) with PSK - never in argv
-  local passwdfile
+  local passwdfile wifi_device
   passwdfile=$(mktemp)
   chmod 0600 "$passwdfile"
   # shellcheck disable=SC2064
@@ -99,17 +104,25 @@ cmd_join() {
 
   echo "802-11-wireless-security.psk:$password" >"$passwdfile"
 
+  # SECURITY: Discover wifi device, use fixed con-name, pass SSID only as property
+  # Prevents argument injection: con-name is always "tskfrce-join", SSID via ssid= property
+  wifi_device=$(get_wifi_device)
+  if [ -z "$wifi_device" ]; then
+    echo '{"error":"no wifi device found"}' >"$SOCKET"
+    return
+  fi
+
   # Use nmcli connection add (clean keyfile generation, no hand-built profile)
   # Then activate with passwd-file (PSK in file, not argv)
-  if nmcli connection add type wifi con-name "$ssid" ifname wlan0 ssid "$ssid" \
-    wifi-sec.key-mgmt wpa-psk 2>/dev/null && \
-     nmcli connection up id "$ssid" passwd-file "$passwdfile" 2>/dev/null; then
+  if nmcli connection add type wifi con-name tskfrce-join ifname "$wifi_device" \
+    ssid "$ssid" wifi-sec.key-mgmt wpa-psk 2>/dev/null && \
+     nmcli connection up id tskfrce-join passwd-file "$passwdfile" 2>/dev/null; then
     echo '{"success":true}' >"$SOCKET"
     log "Joined $ssid"
-    nmcli connection delete "$ssid" 2>/dev/null || true
+    nmcli connection delete id tskfrce-join 2>/dev/null || true
   else
     echo '{"success":false}' >"$SOCKET"
-    nmcli connection delete "$ssid" 2>/dev/null || true
+    nmcli connection delete id tskfrce-join 2>/dev/null || true
   fi
 }
 
@@ -147,8 +160,8 @@ cmd_status() {
     done <<<"$output"
   fi
 
-  # Check if hotspot is active (flag file exists)
-  if [ -f /var/lib/tskfrce/hotspot.active ]; then
+  # Check if hotspot is active (derive from live NM state)
+  if nmcli -t -f NAME con show --active 2>/dev/null | grep -qx tskfrce-setup; then
     hotspot_active="true"
   fi
 
@@ -160,7 +173,7 @@ cmd_status() {
 }
 
 cmd_hotspot_up() {
-  local ssid password country passwdfile
+  local ssid password country passwdfile wifi_device
   ssid=$(echo "$1" | jq -r '.ssid // empty')
   password=$(echo "$1" | jq -r '.password // empty')
   country=$(echo "$1" | jq -r '.country // "US"')
@@ -184,6 +197,13 @@ cmd_hotspot_up() {
     return
   fi
 
+  # SECURITY: Discover wifi device, use fixed con-name
+  wifi_device=$(get_wifi_device)
+  if [ -z "$wifi_device" ]; then
+    echo '{"error":"no wifi device found"}' >"$SOCKET"
+    return
+  fi
+
   # Set regulatory domain
   iw reg set "$country" 2>/dev/null || true
 
@@ -196,14 +216,12 @@ cmd_hotspot_up() {
   echo "802-11-wireless-security.psk:$password" >"$passwdfile"
 
   # Create hotspot connection (WPA2, 2.4 GHz channel 6) via nmcli connection add
+  # SECURITY: con-name is fixed "tskfrce-setup", SSID via ssid= property (no argument injection)
   # PSK in passwd-file, NOT argv
-  if nmcli connection add type wifi con-name tskfrce-setup ifname wlan0 \
+  if nmcli connection add type wifi con-name tskfrce-setup ifname "$wifi_device" \
     mode ap ssid "$ssid" wifi-sec.key-mgmt wpa-psk 802-11-wireless.band bg \
     802-11-wireless.channel 6 2>/dev/null && \
      nmcli connection up id tskfrce-setup passwd-file "$passwdfile" 2>/dev/null; then
-    # Create hotspot.active flag (for backend to detect setup mode is active)
-    mkdir -p /var/lib/tskfrce
-    touch /var/lib/tskfrce/hotspot.active
     echo '{"success":true}' >"$SOCKET"
     log "Hotspot started: $ssid"
     return
@@ -214,8 +232,6 @@ cmd_hotspot_up() {
 cmd_hotspot_down() {
   if nmcli con down tskfrce-setup 2>/dev/null; then
     nmcli con delete tskfrce-setup 2>/dev/null || true
-    # Remove hotspot.active flag
-    rm -f /var/lib/tskfrce/hotspot.active
     echo '{"success":true}' >"$SOCKET"
     log "Hotspot stopped"
   else

@@ -1,5 +1,6 @@
 """Parent API: Wi-Fi setup and management."""
 
+import hmac
 import ipaddress
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -7,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from app.api.deps import require_parent
 from app.core.client_ip import client_ip
+from app.core.config import settings
 from app.services import country_code, network_wifi, setup_mode
 
 # Parent auth router
@@ -125,10 +127,12 @@ def _verify_hotspot_request(request: Request) -> None:
     # SECURITY: Use client_ip() helper (handles trusted proxy correctly)
     ip = client_ip(request)
 
-    # SECURITY: Require X-Edge-Token (reuse main site's token mechanism)
+    # SECURITY: Validate X-Edge-Token with constant-time comparison
     token = request.headers.get("X-Edge-Token", "")
-    if not token:
-        raise HTTPException(403, "Missing X-Edge-Token")
+    if not settings.EDGE_TOKEN:
+        raise HTTPException(503, "Setup mode not configured")
+    if not hmac.compare_digest(token, settings.EDGE_TOKEN):
+        raise HTTPException(403, "Invalid or missing X-Edge-Token")
 
     # SECURITY: Verify IP is in hotspot subnet (10.42.0.0/24)
     try:
