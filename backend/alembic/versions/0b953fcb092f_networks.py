@@ -1,7 +1,7 @@
 """networks table and devices.network_id
 
 Revision ID: 0b953fcb092f
-Revises: d7e8f9a0b1c2
+Revises: 51c08de5743c
 Create Date: 2026-11-11 12:00:00.000000
 """
 
@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "0b953fcb092f"
-down_revision: str | Sequence[str] | None = "b3n4o5p6q7r8"
+down_revision: str | Sequence[str] | None = "51c08de5743c"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -35,7 +35,7 @@ def upgrade() -> None:
             sa.Column(
                 "network_id",
                 sa.Integer(),
-                sa.ForeignKey("networks.id", ondelete="SET NULL"),
+                sa.ForeignKey("networks.id", name="fk_devices_network_id", ondelete="SET NULL"),
                 nullable=True,
             )
         )
