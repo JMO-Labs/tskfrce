@@ -21,6 +21,10 @@ class FamilySettings(Base):
     __table_args__ = (
         CheckConstraint("gif_rating IN ('g','pg')", name="ck_family_gif_rating"),
         CheckConstraint(
+            "games_earn IN ('every','daily','random','custom')", name="ck_family_games_earn"
+        ),
+        CheckConstraint("games_cap_pct BETWEEN 0 AND 50", name="ck_family_games_cap"),
+        CheckConstraint(
             "accent IN ('neon','sun','tangerine','bubblegum','lilac','sky','aqua','mint','peach','ice')",
             name="ck_family_accent",
         ),
@@ -89,6 +93,10 @@ class FamilySettings(Base):
     goal_screen_minutes = Column(Integer, nullable=False, default=60, server_default="60")
     goal_jail_on = Column(Boolean, nullable=False, default=False, server_default="0")
     goal_jail_price = Column(Integer, nullable=False, default=500, server_default="500")
+    games_on = Column(Boolean, nullable=False, default=True, server_default="1")
+    games_earn = Column(String(6), nullable=False, default="every", server_default="every")
+    games_cap_pct = Column(Integer, nullable=False, default=10, server_default="10")
+    games_board = Column(Boolean, nullable=False, default=True, server_default="1")
     penalties_enabled = Column(Boolean, nullable=False, default=False, server_default="0")
     penalty_sizes = Column(Text, nullable=True)  # JSON; NULL = defaults
     makeup_chores = Column(Text, nullable=True)  # JSON; NULL = defaults

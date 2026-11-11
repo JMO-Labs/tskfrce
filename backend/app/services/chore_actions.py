@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session, object_session
 
 from app.models.chores import ChoreRun, RunStepTick
 from app.models.family import get_family
-from app.services import badges, chat, happy_hour, kid_events, trust
+from app.services import badges, chat, happy_hour, kid_events, minigames, trust
 from app.services import chores as svc
 from app.services.economy import _recipients, award_chore
 
@@ -51,6 +51,7 @@ def approve(db: Session, run: ChoreRun, by_id: int | None, via: str = "parent") 
         from app.services import penalty_earnback
 
         penalty_earnback.on_approved(db, run)
+    minigames.earn(db, run, fam)  # skips make-up (penalty) runs itself
     chat.system(db, run, f"Approved · +{pts}")
     badges.check_for_run(db, run, fam)
     if via != "integration":

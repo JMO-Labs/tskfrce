@@ -21,6 +21,7 @@ class PointsType(str, Enum):
     PENALTY = "penalty"
     TRANSFER = "transfer"
     REDEMPTION = "redemption"
+    GAME = "game"
 
 
 class Points(Base):
@@ -41,7 +42,7 @@ class Points(Base):
     __table_args__ = (
         CheckConstraint("run_id IS NULL OR redemption_id IS NULL", name="ck_points_one_ref"),
         CheckConstraint(
-            "reason IN ('chore','early_bonus','team_share','redemption','bonus','adjustment','deduction','goal_save','goal_return','penalty')",
+            "reason IN ('chore','early_bonus','team_share','redemption','bonus','adjustment','deduction','goal_save','goal_return','penalty','game')",
             name="ck_points_reason",
         ),
     )

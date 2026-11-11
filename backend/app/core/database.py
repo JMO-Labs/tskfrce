@@ -188,6 +188,8 @@ def _import_all_models():
             DeviceGroup,
             DevicePresence,
             FamilySettings,
+            GamePlay,
+            GameProgress,
             HomeworkActivity,
             HomeworkRequest,
             HomeworkSite,

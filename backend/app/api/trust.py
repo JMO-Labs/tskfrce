@@ -14,7 +14,7 @@ from app.models.family import get_family
 from app.models.points import Points
 from app.models.user import User, UserRole
 from app.schemas.lock import utc_z
-from app.services import chat, economy, inbox, penalty_earnback, trust
+from app.services import chat, economy, inbox, minigames, penalty_earnback, trust
 from app.services import chores as svc
 
 router = APIRouter(prefix="/api/v1", tags=["trust"], dependencies=[Depends(require_parent)])
@@ -62,6 +62,7 @@ def take_back(
                 raise HTTPException(409, "This chore was already taken back.")
             db.refresh(r)
             economy.take_back(db, r)
+            minigames.revoke(db, r)
             if r.penalty_id:
                 penalty_earnback.on_reverted(db, r, datetime.now(UTC))
             kids = trust.payees(r)

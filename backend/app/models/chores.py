@@ -49,6 +49,7 @@ class Chore(Base):
     points = Column(Integer, nullable=False, default=10)
     needs_photo = Column(Boolean, nullable=False, default=False)
     always_check = Column(Boolean, nullable=False, default=False, server_default="0")
+    gives_game = Column(Boolean, nullable=False, default=False, server_default="0")
     makeup = Column(Boolean, nullable=False, default=False, server_default="0")
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)

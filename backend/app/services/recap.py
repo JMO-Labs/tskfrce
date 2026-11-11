@@ -7,14 +7,17 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.core.logging import get_logger
+from app.models.badge import BadgeAward
 from app.models.chores import ChoreRun
 from app.models.family import get_family
+from app.models.game import GamePlay
 from app.models.points import Points, PointsType
 from app.models.reward import Redemption
 from app.models.trust import TrustEvent
 from app.models.user import User, UserRole
 from app.services import chores as svc
 from app.services import economy, inbox, progression
+from app.services.games_catalog import BADGE_KEYS
 from app.services.recap_flags import MIN_STREAK, flags
 
 log = get_logger(__name__)
@@ -137,6 +140,28 @@ def week_of(db: Session, week_start: date | None = None, now_utc: datetime | Non
         .group_by(TrustEvent.kid_id)
         .all()
     )
+    played = dict(
+        db.query(GamePlay.kid_id, func.count())
+        .filter(
+            GamePlay.kid_id.in_(ids),
+            GamePlay.status == "done",
+            GamePlay.finished_at >= lo,
+            GamePlay.finished_at < hi,
+        )
+        .group_by(GamePlay.kid_id)
+        .all()
+    )
+    game_badges = dict(
+        db.query(BadgeAward.kid_id, func.count())
+        .filter(
+            BadgeAward.kid_id.in_(ids),
+            BadgeAward.badge_key.in_(BADGE_KEYS),
+            BadgeAward.earned_at >= lo,
+            BadgeAward.earned_at < hi,
+        )
+        .group_by(BadgeAward.kid_id)
+        .all()
+    )
     for k in kids:
         x = b[k.id]
         name = k.full_name or k.username
@@ -163,6 +188,8 @@ def week_of(db: Session, week_start: date | None = None, now_utc: datetime | Non
                 "points_spent": spent.get(k.id, 0),
                 "screen_minutes_bought": mins.get(k.id, 0),
                 "streak": now_streak,
+                "games": played.get(k.id, 0),
+                "game_badges": game_badges.get(k.id, 0),
                 "enough_history": history,
             }
         )
@@ -171,6 +198,14 @@ def week_of(db: Session, week_start: date | None = None, now_utc: datetime | Non
     if totals[-1] and all(totals[-1] > t for t in totals[:-1]):
         out["family_line"] = "Best week in a month."
     return out
+
+
+def games_line(name: str, n: int, b: int) -> str | None:
+    """ "Maya played 2 games and earned 1 badge"; None when no games were played."""
+    if n <= 0:
+        return None
+    text = f"{name} played {n} game{'s' * (n != 1)}"
+    return f"{text} and earned {b} badge{'s' * (b != 1)}" if b else text
 
 
 def _body(lines: list[str], limit: int = 300) -> str:
@@ -202,4 +237,5 @@ def send(db: Session, now_utc: datetime) -> None:
         return
     data = week_of(db, local.date() - timedelta(days=6), now_utc)
     lines = [f["text"] for k in data["kids"] for f in k["flags"]]
+    lines += [t for k in data["kids"] if (t := games_line(k["name"], k["games"], k["game_badges"]))]
     inbox.notify_parents(db, "recap", f"Your week at {fam.name}"[:120], _body(lines))

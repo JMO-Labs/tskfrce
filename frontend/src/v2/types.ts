@@ -107,6 +107,8 @@ export interface Kid extends KidTrustFields {
   preset_style?: 'relaxed' | 'balanced' | 'strict' | null
   /** the kid's own pick; null = mode default */
   celebrate?: CelebrateLevel | null
+  /** minigames switch for this kid */
+  games_on?: boolean
 }
 
 /** GET/PATCH /family */
@@ -132,6 +134,12 @@ export interface Family extends FamilyExtrasFields, FamilyPenaltyFields {
   hh_weekly_surprise: boolean
   hh_auto_boost: boolean
   streak_freeze: boolean
+  games_on?: boolean
+  games_earn?: 'every' | 'daily' | 'random' | 'custom'
+  games_cap_pct?: number
+  games_board?: boolean
+  /** finished plays, all kids, all time (GET only) */
+  games_rounds?: number
 }
 
 /** GET /chore-types item */
@@ -304,6 +312,7 @@ export interface Assignment {
 
 /** GET /chores: a chore in the library with its assignments */
 export interface LibChore extends ChoreTrustFields {
+  gives_game?: boolean
   id: number
   title: string
   points: number
@@ -347,6 +356,8 @@ export interface KidChore extends TodayChore {
 
 export interface KidToday extends KidTodayPenaltyFields {
   locked: boolean
+  /** minigames: on for this kid, unplayed plays, plays not yet announced */
+  games?: { on: boolean; saved: number; fresh: number }
   chores: KidChore[]
   points_balance: number
   /** points tied up in requests a parent has not answered yet */

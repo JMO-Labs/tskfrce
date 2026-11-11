@@ -14,6 +14,7 @@ export interface KidBody {
   trust_mode?: boolean
   trust_level?: 0 | 1 | 2
   chores_lock?: boolean
+  games_on?: boolean
 }
 
 export const useKids = (enabled = true) => useQuery({ queryKey: ['kids'], queryFn: () => api<Kid[]>('/kids'), enabled })

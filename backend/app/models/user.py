@@ -89,6 +89,7 @@ class User(Base):
     chores_lock = Column(Boolean, nullable=False, default=True, server_default="1")
     push_topic = Column(String(40), nullable=True, unique=True)
     alert_topic = Column(String(64), nullable=True)  # upstream ntfy topic, 192-bit
+    games_on = Column(Boolean, nullable=False, default=True, server_default="1")
     last_active_at = Column(DateTime, nullable=True)  # naive UTC; touched at most every 5 min
 
     # Relationships
