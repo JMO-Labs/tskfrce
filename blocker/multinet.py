@@ -6,14 +6,13 @@ Similar to SiteManager but for base interfaces instead of VLANs.
 
 from __future__ import annotations
 
-import ipaddress
 import logging
 import threading
+import time
 from dataclasses import replace
 from typing import Any
 
-from blocker.arp import RedirectionManager, TargetAddrs
-from blocker.backend import Seen
+from blocker.arp import LanFacts, RedirectionManager, TargetAddrs
 from blocker.config import Config
 from blocker.discovery import run_discovery
 from blocker.ifaces import lan_addrs
@@ -22,10 +21,51 @@ from blocker.resist import ResistanceCounter, ResistanceWatch
 log = logging.getLogger(__name__)
 
 
+def detect_iface_gateway(iface: str) -> LanFacts:
+    """Detect gateway for a specific interface using ARP."""
+    import subprocess
+
+    from blocker.scapy_lite import ARP, Ether, get_if_hwaddr, srp
+
+    # Get default gateway IP for this interface
+    try:
+        result = subprocess.run(
+            ["ip", "-4", "route", "show", "default", "dev", iface],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        lines = result.stdout.strip().split("\n")
+        if not lines or not lines[0]:
+            log.warning("no default route on %s", iface)
+            return LanFacts(gateway_ip=None, gateway_mac=None, box_mac=get_if_hwaddr(iface))
+        gateway_ip = lines[0].split()[2]  # "default via <ip> dev <iface>"
+    except Exception:
+        log.exception("failed to detect gateway on %s", iface)
+        return LanFacts(gateway_ip=None, gateway_mac=None, box_mac=get_if_hwaddr(iface))
+
+    # Resolve gateway MAC via ARP
+    try:
+        ans, _ = srp(
+            Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=gateway_ip),
+            iface=iface,
+            timeout=2,
+            retry=1,
+            verbose=0,
+        )
+        gw_mac = ans[0][1][ARP].hwsrc.lower() if ans else None
+    except Exception:
+        log.exception("ARP failed on %s for %s", iface, gateway_ip)
+        gw_mac = None
+
+    return LanFacts(gateway_ip=gateway_ip, gateway_mac=gw_mac, box_mac=get_if_hwaddr(iface))
+
+
 class InterfaceManager:
     """Auto-detect and manage per-interface discovery/redirect/resist.
 
-    Designed for when LAN_IFACE is unset. Each (iface, ip) pair gets one redirection manager.
+    Designed for when LAN_IFACE is unset. Each interface gets one redirection manager,
+    and discovery is spawned in a separate thread (started only if discovery succeeds).
     """
 
     def __init__(
@@ -39,9 +79,9 @@ class InterfaceManager:
         self._on_seen = on_seen or (lambda s: None)
         self._lan_cidrs = lan_cidrs or []
         self._lock = threading.Lock()
-        # iface -> {RedirectionManager, ResistanceWatch}
-        self._managers: dict[str, tuple[RedirectionManager, ResistanceWatch | None]] = {}
-        self._stop = threading.Event()
+        # iface -> (stop_event, RedirectionManager, ResistanceWatch)
+        self._managers: dict[str, tuple[threading.Event, RedirectionManager, ResistanceWatch | None]] = {}
+        self._global_stop = threading.Event()
 
     def sync(self) -> None:
         """Update managers for current set of interfaces."""
@@ -51,7 +91,8 @@ class InterfaceManager:
 
             # Stop managers for gone interfaces
             for iface in old_ifaces - want_ifaces:
-                redir, watch = self._managers.pop(iface)
+                stop_ev, redir, watch = self._managers.pop(iface)
+                stop_ev.set()
                 try:
                     redir.stop_all()
                 except Exception:
@@ -64,26 +105,39 @@ class InterfaceManager:
 
             # Start managers for new interfaces
             for iface in want_ifaces - old_ifaces:
+                stop_ev = threading.Event()
                 try:
                     cfg_iface = replace(self.cfg, lan_iface=iface)
-                    redir = RedirectionManager(cfg_iface)
-                    counter = ResistanceCounter(redir._lanfacts(), lan_cidrs=self._lan_cidrs)
+                    # Detect gateway on this specific interface
+                    lan = detect_iface_gateway(iface)
+                    redir = RedirectionManager(cfg_iface, lan=lan)
+                    counter = ResistanceCounter(lan, lan_cidrs=self._lan_cidrs)
                     watch = ResistanceWatch(cfg_iface, counter)
-                    # Spawn discovery for this interface
+                    self._managers[iface] = (stop_ev, redir, watch)
+
+                    # Spawn discovery for this interface in its own thread
                     threading.Thread(
-                        target=lambda i=iface, s=self._stop: run_discovery(
-                            self.cfg, s, self._on_seen, iface=i
-                        ),
+                        target=self._run_discovery,
+                        args=(iface, stop_ev),
                         daemon=True,
                     ).start()
-                    self._managers[iface] = (redir, watch)
-                    log.info("started enforcement on interface %s", iface)
+                    log.info("started enforcement on interface %s (gateway %s)", iface, lan.gateway_ip)
                 except Exception:
                     log.exception("failed to start enforcement on %s", iface)
 
+    def _run_discovery(self, iface: str, stop: threading.Event) -> None:
+        """Run discovery on one interface until stop is set."""
+        try:
+            run_discovery(self.cfg, stop, self._on_seen, iface=iface)
+        except Exception:
+            log.exception("discovery on %s crashed", iface)
+            with self._lock:
+                if iface in self._managers:
+                    self._managers[iface][0].set()  # stop_ev
+
     def run(self, stop: threading.Event) -> None:
         """Sync interface changes every 30 seconds until stop is set."""
-        self._stop = stop
+        self._global_stop = stop
         while not stop.is_set():
             try:
                 self.sync()
@@ -93,7 +147,8 @@ class InterfaceManager:
         # Cleanup
         with self._lock:
             for iface in list(self._managers):
-                redir, watch = self._managers.pop(iface)
+                stop_ev, redir, watch = self._managers.pop(iface)
+                stop_ev.set()
                 try:
                     redir.stop_all()
                 except Exception:

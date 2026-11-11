@@ -113,8 +113,8 @@ class Service:
         self._clock = clock
         self._lan_cidrs = lan_cidrs or DEFAULT_LAN_CIDRS
         self._sites = sites or SiteManager(cfg, on_seen=self._on_seen, lan_cidrs=self._lan_cidrs)
-        # Multi-interface manager: used when LAN_IFACE is unset; None otherwise
-        self._multinet: InterfaceManager | None = None
+        # Multi-interface manager: created early, activated only if LAN_IFACE is unset
+        self._multinet = InterfaceManager(cfg, on_seen=self._on_seen, lan_cidrs=self._lan_cidrs)
         self._portal_ip = portal_ip
         self._watch = watch
         self._report = report
@@ -153,7 +153,7 @@ class Service:
         with self._lock:
             lan = self._lan()
             site_macs, site_ips = self._sites.infra()
-            multinet_macs, multinet_ips = (self._multinet.infra() if self._multinet else (set(), set()))
+            multinet_macs, multinet_ips = (self._multinet.infra() if not self.cfg.lan_iface else (set(), set()))
             infra = site_macs | multinet_macs | (
                 {m.lower() for m in (lan.gateway_mac, lan.gateway_mac6, lan.box_mac) if m}
                 if lan
@@ -189,10 +189,13 @@ class Service:
             except Exception:
                 log.exception("firewall apply failed")
             self._ip_mac = {ip: mac for mac, t in devs.items() for ip in (t.ip, *t.ip6) if ip}
-            if self._multinet is not None:
-                # Multi-interface mode: group by interface
+            if not self.cfg.lan_iface:
+                # Multi-interface mode: group by interface, but also handle VLANs
                 by_iface = self._by_iface(devs, unsafe)
                 self._multinet.set_targets(by_iface)
+                # VLANs still run separately; sites manage their own targets
+                _, by_vid = self._by_segment(devs, unsafe)
+                self._sites.set_targets(by_vid)
             else:
                 # Single interface mode: use existing logic
                 base, by_vid = self._by_segment(devs, unsafe)
@@ -350,7 +353,7 @@ class Service:
         self._wiring.tick(rerender=self._apply)
         # Always report the full set (even empty) so the backend can clear.
         resisting = self._sites.resisting()
-        if self._multinet is not None:
+        if not self.cfg.lan_iface:
             resisting |= self._multinet.resisting()
         elif self._watch is not None:
             resisting |= self._watch.counter.resisting()
@@ -438,8 +441,7 @@ class Service:
             # Single interface: run discovery on it directly
             self._spawn(lambda: run_discovery(self.cfg, self._stop, self._on_seen))
         else:
-            # Multi-interface: auto-detect and manage all interfaces
-            self._multinet = InterfaceManager(self.cfg, on_seen=self._on_seen, lan_cidrs=self._lan_cidrs)
+            # Multi-interface: auto-detect and manage all interfaces via _multinet
             self._spawn(lambda: self._multinet.run(self._stop))
         if self.cfg.lan_iface or self.cfg.mirror_iface:
             self._spawn(lambda: self._vlan.run(self._stop))

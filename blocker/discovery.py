@@ -88,12 +88,14 @@ def run_discovery(
     stop: threading.Event,
     on_seen: Callable[[Seen], None] | None = None,
     vid: int | None = None,
+    iface: str | None = None,
 ) -> None:
+    """Run periodic ARP/NDP discovery. Pass iface to override cfg.lan_iface."""
     while not stop.is_set():
         try:
-            for seen in scan_once(cfg, vid=vid):
+            for seen in scan_once(cfg, vid=vid, iface=iface):
                 if on_seen:
                     on_seen(seen)
         except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
-            log.warning("scan failed: %s", e)
+            log.warning("scan on %s failed: %s", iface or cfg.lan_iface, e)
         stop.wait(cfg.scan_interval + random.uniform(0, min(2.0, cfg.scan_interval * 0.1)))
