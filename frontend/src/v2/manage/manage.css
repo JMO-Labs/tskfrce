@@ -151,7 +151,10 @@
 [data-look='parent'] .pn-ev:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
 [data-look='parent'] .pn-warnline { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--p-ambink); }
 [data-look='parent'] .pn-kv { padding: 8px 0; font-size: 13px; border-top: 1px solid var(--p-line); }
-[data-look='parent'] .pn-acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+[data-look='parent'] .pn-kv-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+[data-look='parent'] .pn-kv-key { font-weight: 600; color: var(--p-ink); }
+[data-look='parent'] .pn-kv-val { color: var(--p-sub); text-align: right; }
+[data-look='parent'] .pn-acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; padding-top: 8px; }
 [data-look='parent'] .pn-h + .pn-kv { border-top: 0; }
 [data-look='parent'] .pn-kv .mantine-Switch-label { color: var(--p-sub); font-size: 13px; }
 [data-look='parent'] .pn-kv .mantine-Switch-root:has(.mantine-Switch-description) .mantine-Switch-label { color: var(--p-ink); font-size: 14px; font-weight: 600; }
