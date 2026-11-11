@@ -1,6 +1,5 @@
 """Updates API tests."""
 
-import json
 from pathlib import Path
 
 

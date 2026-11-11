@@ -69,7 +69,7 @@ def _read_state() -> dict:
     }
 
 
-def _write_state(data: dict, install_channel: str = None) -> None:
+def _write_state(data: dict, install_channel: str | None = None) -> None:
     """Write update state with eval→stable guard (defense in depth).
 
     If install channel is eval, reject writes of stable or requested_major.
@@ -137,7 +137,7 @@ def patch_updates(body: UpdatesPatch, db: Session = Depends(get_db)) -> UpdatesO
             raise HTTPException(400, f"Major version {requested} not available")
         state["requested_major"] = requested
         _write_state(state, install_channel)
-        trigger(force=True)
+        trigger()
 
     if body.channel is not None:
         # Guard: eval install cannot switch to stable
