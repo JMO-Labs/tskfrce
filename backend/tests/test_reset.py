@@ -169,9 +169,7 @@ class TestTokenEpochRevocation:
 
         # Issue a token at epoch 0
         initial_epoch = fam.token_epoch
-        token = auth.create_access_token(
-            data={"sub": str(parent.id), "token_epoch": initial_epoch}
-        )
+        token = auth.create_access_token(data={"sub": str(parent.id), "token_epoch": initial_epoch})
 
         # Verify token works (epoch matches)
         user = auth.get_current_user(token)
@@ -194,9 +192,7 @@ class TestTokenEpochRevocation:
 
         # Issue token at epoch 0
         initial_epoch = fam.token_epoch
-        token = auth.create_access_token(
-            data={"sub": str(parent.id), "token_epoch": initial_epoch}
-        )
+        token = auth.create_access_token(data={"sub": str(parent.id), "token_epoch": initial_epoch})
         assert auth.get_current_user(token) is not None
 
         # Simulate PIN change: bump epoch
@@ -213,9 +209,7 @@ class TestTokenEpochRevocation:
 
         # Issue token at epoch 0
         initial_epoch = fam.token_epoch
-        token = auth.create_access_token(
-            data={"sub": str(parent.id), "token_epoch": initial_epoch}
-        )
+        token = auth.create_access_token(data={"sub": str(parent.id), "token_epoch": initial_epoch})
         assert auth.get_current_user(token) is not None
 
         # Simulate forgot-PIN: bump epoch
@@ -253,7 +247,12 @@ class TestTokenEpochRevocation:
         # Issue refresh token at epoch 0
         initial_epoch = fam.token_epoch
         refresh_token = auth.create_refresh_token(
-            data={"sub": str(parent.id), "username": parent.username, "email": parent.email, "token_epoch": initial_epoch}
+            data={
+                "sub": str(parent.id),
+                "username": parent.username,
+                "email": parent.email,
+                "token_epoch": initial_epoch,
+            }
         )
 
         # Verify it works (check_epoch passes)

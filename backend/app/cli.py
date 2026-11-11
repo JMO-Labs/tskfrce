@@ -81,7 +81,9 @@ def main(argv: list[str]) -> int:
         return set_pin_cmd()
     if len(argv) == 2 and argv[0] == "migrate-to":
         return migrate_to(argv[1])
-    print("Usage: python -m app.cli reset-password <parent-username> | set-pin | migrate-to <postgres-url>")
+    print(
+        "Usage: python -m app.cli reset-password <parent-username> | set-pin | migrate-to <postgres-url>"
+    )
     return 2
 
 

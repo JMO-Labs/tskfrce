@@ -21,10 +21,10 @@ logger = get_logger(__name__)
 # DELETE live credentials: kid_enroll_tokens, pending_invites, password_reset.
 # Token_epoch invalidates old JWTs (no need to keep them).
 KEEP_TABLES = {
-    "family_settings",      # family name, timezone, config, token_epoch
-    "family_keys",          # box ID, secret, domain
-    "used_invites",         # DENYLIST: prevent replayed invite tokens
-    "alembic_version",      # migration tracking
+    "family_settings",  # family name, timezone, config, token_epoch
+    "family_keys",  # box ID, secret, domain
+    "used_invites",  # DENYLIST: prevent replayed invite tokens
+    "alembic_version",  # migration tracking
 }
 
 
@@ -60,8 +60,10 @@ def reset_app_data(db: Session, unblock: bool = True) -> str | None:
 
             # For unclaimed boxes (no CLAIM_CODE), generate setup token
             from app.core.config import settings
+
             if not settings.CLAIM_CODE:
                 import secrets
+
                 setup_token = secrets.token_urlsafe(32)
                 # TODO: Store setup_token in a new table for one-use validation
 

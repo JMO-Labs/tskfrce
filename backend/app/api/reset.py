@@ -183,6 +183,7 @@ def forgot_pin(
         # Notify parent via Today inbox
         try:
             from app.services.notify import notify_parents
+
             notify_parents(
                 db,
                 "Parent PIN was reset with the box code.",

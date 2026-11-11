@@ -246,6 +246,7 @@ class AuthService:
         # Check token_epoch only for parent/admin (kids not affected)
         if user.role == UserRole.PARENT or user.is_superuser:
             from app.models.family import get_family
+
             token_epoch_claim = payload.get("token_epoch", 0)
             fam = get_family(self.db)
             if fam and token_epoch_claim != fam.token_epoch:
