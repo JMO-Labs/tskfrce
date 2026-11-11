@@ -6,7 +6,7 @@
 - Open your pull request into `dev`.
 - Only the owner merges and releases `dev` → `main`. Never push to `main`.
 
-CI (`.github/workflows/ci-cd.yml`) runs on PRs into `main`, `dev` and `feat/**`, pushes to `main`/`dev` and `v*` tags. The `lab` job runs only for PRs into `main`, pushes to `main` and tags, so run the lab checks below locally before opening a PR into `dev`.
+CI (`.github/workflows/ci-cd.yml`) runs on PRs into `main`, `dev` and `feat/**`, pushes to `main`/`dev` and `v*` tags. The `lab` job runs only in the merge queue, on release tags and on manual runs, so run the lab checks below locally before opening a PR into `dev`.
 
 ## Local checks
 

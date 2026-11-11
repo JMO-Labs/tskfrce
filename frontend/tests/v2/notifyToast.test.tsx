@@ -1,11 +1,13 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { expect, test } from '@jest/globals'
+import { beforeEach, expect, test } from '@jest/globals'
 import { notifications } from '@mantine/notifications'
 import { ApiError } from '@/v2/api'
 import { retryIfOffline, toastFail, toastOk, UNDO_MS, withUndo } from '@/v2/notify'
 
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn(), hide: jest.fn() } }))
+
+beforeEach(() => jest.clearAllMocks())
 
 test('view-as-kid refusal is a neutral toast, not an error', () => {
   toastFail(new ApiError(403, 'Preview only. Log in as Bobby to do this.'))

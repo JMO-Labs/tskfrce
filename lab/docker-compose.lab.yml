@@ -79,6 +79,7 @@ services:
       E2E_API_URL: http://10.99.0.3:8000  # device seeding goes straight to the backend
       E2E_INTERNAL_TOKEN: labtoken
       E2E_BACKEND_URL: http://10.99.0.3:8000  # notifications.spec kid-device seeding
+      CI:  # passthrough: playwright.config.ts enables retries/trace only in CI
       E2E_KID_RUN:  # passed through from lab/e2e_run.py
       E2E_KID_TOKEN:
       E2E_JPEG:
