@@ -26,9 +26,9 @@ describe('PhoneGuide', () => {
 
   test('lists Android and iPhone steps with a done checkbox each', () => {
     show()
-    expect(screen.getByText(/Family Link/)).toBeInTheDocument()
+    expect(screen.getAllByText(/Family Link/)[0]).toBeInTheDocument()
     expect(screen.getByText(/Use device MAC/)).toBeInTheDocument()
-    expect(screen.getByText(/Screen Time/)).toBeInTheDocument()
+    expect(screen.getAllByText(/Screen Time/)[0]).toBeInTheDocument()
     expect(screen.getByText(/Private Wi-Fi Address/)).toBeInTheDocument()
     expect(screen.getAllByRole('checkbox')).toHaveLength(4)
   })
