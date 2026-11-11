@@ -1,7 +1,7 @@
 /** Hungry Cat: sprite management and effects. */
 
 export interface Assets {
-  cat: any
+  cat_face: any
   fish: any
   fried_shrimp: any
   cookie: any
@@ -11,9 +11,17 @@ export interface Assets {
 
 export async function loadAssets(): Promise<Assets> {
   const P = await import('pixi.js')
-  const f = (n: string) => `/files/fluent/${n}_3d.png`
-  const names = ['cat', 'fish', 'fried_shrimp', 'cookie', 'socks', 'sparkles'] as const
-  const loaded = await Promise.all(names.map((n) => P.Assets.load(f(n))))
+  // Map asset names to their file paths (mix of png and webp)
+  const assets = {
+    cat_face: 'cat_face.webp',
+    fish: 'fish.webp',
+    fried_shrimp: 'fried_shrimp.png',
+    cookie: 'cookie.png',
+    socks: 'socks.png',
+    sparkles: 'sparkles.png',
+  } as const
+  const names = Object.keys(assets) as (keyof typeof assets)[]
+  const loaded = await Promise.all(names.map((n) => P.Assets.load(`/art/fluent/${assets[n]}`)))
   return Object.fromEntries(names.map((n, i) => [n, loaded[i]])) as Assets
 }
 
@@ -113,7 +121,7 @@ export function mkCat(
   world: any,
 ): { body: any; container: any; x: number } {
   const c = new P.Container()
-  const s = new P.Sprite(assets.cat)
+  const s = new P.Sprite(assets.cat_face)
   s.anchor.set(0.5, 1)
   s.width = s.height = 84
 
