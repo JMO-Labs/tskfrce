@@ -21,6 +21,7 @@ from blocker.backend import (
     fetch_state,
     report_hits,
     report_homework_activity,
+    report_networks,
     report_resisting,
     report_workarounds,
 )
@@ -29,7 +30,8 @@ from blocker.discovery import run_discovery
 from blocker.hits import HitCounter
 from blocker.homework import HomeworkGate
 from blocker.hw_wiring import HomeworkWiring
-from blocker.ifaces import PerAddress
+from blocker.ifaces import PerAddress, lan_addrs
+from blocker.multinet import InterfaceManager
 from blocker.portal import run_dns, run_http
 from blocker.resist import ResistanceCounter, ResistanceWatch, Tally
 from blocker.signals import Signals
@@ -103,12 +105,17 @@ class Service:
         self._fetch_state = fetch_state
         self._listen_only = False
         self._vid_of: dict[str, int | None] = {}  # mac -> vlan it was last seen on
+        self._iface_of: dict[str, str | None] = {}  # mac -> interface it was last seen on
         # (mac, vid) -> addresses + time: a MAC seen on another segment stays enforced on each
         self._seg_seen: dict[tuple[str, int | None], tuple[TargetAddrs, float]] = {}
+        # (mac, iface) -> addresses + time: a MAC seen on another interface stays enforced on each
+        self._iface_seen: dict[tuple[str, str | None], tuple[TargetAddrs, float]] = {}
         self._sleep = sleep
         self._clock = clock
         self._lan_cidrs = lan_cidrs or DEFAULT_LAN_CIDRS
         self._sites = sites or SiteManager(cfg, on_seen=self._on_seen, lan_cidrs=self._lan_cidrs)
+        # Multi-interface manager: created early, activated only if LAN_IFACE is unset
+        self._multinet = InterfaceManager(cfg, on_seen=self._on_seen, lan_cidrs=self._lan_cidrs)
         self._portal_ip = portal_ip
         self._watch = watch
         self._report = report
@@ -147,11 +154,13 @@ class Service:
         with self._lock:
             lan = self._lan()
             site_macs, site_ips = self._sites.infra()
-            infra = site_macs | (
+            multinet_macs, multinet_ips = (self._multinet.infra() if not self.cfg.lan_iface else (set(), set()))
+            infra = site_macs | multinet_macs | (
                 {m.lower() for m in (lan.gateway_mac, lan.gateway_mac6, lan.box_mac) if m}
                 if lan
                 else set()
             )
+            unsafe_extra = site_ips | multinet_ips
             # listen-only: nothing is paused anywhere (discovery continues)
             blocked = set() if self._listen_only else set(self.store.current()) | self._probing
             skipped = {m for m in blocked if m.lower() in infra}
@@ -162,7 +171,7 @@ class Service:
             # Never spoof an address that isn't safely one device's: the gateway's
             # own IP or the box/portal IP. Stripping it here keeps it out of the firewall sets, the
             # redirect targets and the watch — and off the restore path.
-            unsafe = self._unsafe_ips(lan) | site_ips
+            unsafe = self._unsafe_ips(lan) | site_ips | unsafe_extra
             devs, stripped = self._strip_unsafe(devs, unsafe)
             if stripped:
                 log.warning("refusing unsafe gateway-side addresses: %s", sorted(stripped))
@@ -181,11 +190,20 @@ class Service:
             except Exception:
                 log.exception("firewall apply failed")
             self._ip_mac = {ip: mac for mac, t in devs.items() for ip in (t.ip, *t.ip6) if ip}
-            base, by_vid = self._by_segment(devs, unsafe)
-            self._redir.set_targets(base)
-            if self._watch is not None:
-                self._watch.set_watched(base)
-            self._sites.set_targets(by_vid)
+            if not self.cfg.lan_iface:
+                # Multi-interface mode: group by interface, but also handle VLANs
+                by_iface = self._by_iface(devs, unsafe)
+                self._multinet.set_targets(by_iface)
+                # VLANs still run separately; sites manage their own targets
+                _, by_vid = self._by_segment(devs, unsafe)
+                self._sites.set_targets(by_vid)
+            else:
+                # Single interface mode: use existing logic
+                base, by_vid = self._by_segment(devs, unsafe)
+                self._redir.set_targets(base)
+                if self._watch is not None:
+                    self._watch.set_watched(base)
+                self._sites.set_targets(by_vid)
 
     def _by_segment(self, devs: dict[str, TargetAddrs], unsafe: set[str]):
         """Split targets per segment. A MAC is redirected on every segment it was seen on within
@@ -207,6 +225,29 @@ class Service:
                 (base if vid is None else by_vid.setdefault(vid, {}))[m] = a
         self._seg_seen = {k: v for k, v in self._seg_seen.items() if now - v[1] <= ADDR_TTL}
         return base, by_vid
+
+    def _by_iface(self, devs: dict[str, TargetAddrs], unsafe: set[str]):
+        """Split targets per interface."""
+        now = self._clock()
+        by_iface: dict[str, dict[str, TargetAddrs]] = {}
+        for m, latest in devs.items():
+            last_iface = self._iface_of.get(m)
+            ifaces = {iface: a for (mac, iface), (a, at) in self._iface_seen.items()
+                     if mac == m and iface is not None and now - at <= ADDR_TTL}
+            if last_iface is not None:
+                ifaces[last_iface] = latest
+            elif not ifaces:
+                try:
+                    for iface in {i for i, _ in lan_addrs()}:
+                        ifaces[iface] = latest
+                except Exception:
+                    pass
+            for iface, a in ifaces.items():
+                if iface != last_iface:
+                    a = self._strip_unsafe({m: a}, unsafe)[0][m]
+                by_iface.setdefault(iface, {})[m] = a
+        self._iface_seen = {k: v for k, v in self._iface_seen.items() if now - v[1] <= ADDR_TTL}
+        return by_iface
 
     def _mac_for_ip(self, ip: str) -> str | None:
         return self._ip_mac.get(ip)
@@ -281,7 +322,9 @@ class Service:
             self._devices[seen.mac] = TargetAddrs(mac=seen.mac, ip=seen.ip, ip6=tuple(seen.ipv6))
             self._seen_at[seen.mac] = self._clock()
             self._vid_of[seen.mac] = seen.vid
+            self._iface_of[seen.mac] = seen.iface
             self._seg_seen[(seen.mac, seen.vid)] = (self._devices[seen.mac], self._clock())
+            self._iface_seen[(seen.mac, seen.iface)] = (self._devices[seen.mac], self._clock())
         if seen.mac in self.store.current():
             self._apply(self.store.current())
 
@@ -313,7 +356,12 @@ class Service:
         # Local `until` first: must not depend on the backend reports below succeeding.
         self._wiring.tick(rerender=self._apply)
         # Always report the full set (even empty) so the backend can clear.
-        self._report(self.cfg, self._watch.counter.resisting() | self._sites.resisting())
+        resisting = self._sites.resisting()
+        if not self.cfg.lan_iface:
+            resisting |= self._multinet.resisting()
+        elif self._watch is not None:
+            resisting |= self._watch.counter.resisting()
+        self._report(self.cfg, resisting)
         h = self.hits.drain()
         if h:
             self._report_hits(self.cfg, h)
@@ -321,6 +369,8 @@ class Service:
         w = self.workarounds.drain()
         if w:
             self._report_workarounds(self.cfg, w)
+        if not self.cfg.lan_iface and (nets := self._multinet.networks()):
+            report_networks(self.cfg, nets)
 
     def _resist_loop(self) -> None:
         while not self._stop.wait(self.cfg.resist_interval):
@@ -393,7 +443,12 @@ class Service:
             self._watch = ResistanceWatch(self.cfg, counter)
         self._spawn(self._reconcile_loop)
         self._spawn(self._resist_loop)
-        self._spawn(lambda: run_discovery(self.cfg, self._stop, self._on_seen))
+        if self.cfg.lan_iface:
+            # Single interface: run discovery on it directly
+            self._spawn(lambda: run_discovery(self.cfg, self._stop, self._on_seen))
+        else:
+            # Multi-interface: auto-detect and manage all interfaces via _multinet
+            self._spawn(lambda: self._multinet.run(self._stop))
         if self.cfg.lan_iface or self.cfg.mirror_iface:
             self._spawn(lambda: self._vlan.run(self._stop))
         self._spawn(lambda: self.signals.run_dhcp(self._stop))

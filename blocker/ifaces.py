@@ -53,6 +53,7 @@ def lan_addrs() -> list[tuple[str, str]]:
         r = subprocess.run(
             ["ip", "-j", "-d", "-4", "addr", "show", "up"],
             capture_output=True,
+            check=False,
             text=True,
             timeout=5,
         )

@@ -74,12 +74,20 @@ def test_perf_off_the_critical_path(wf, on):
         needs = [needs] if isinstance(needs, str) else needs
         assert "perf" not in needs, name
     cond = wf["jobs"]["changes"]["outputs"]["perf"]
-    for term in ["'schedule'", "'merge_group'", "'workflow_dispatch'", "refs/tags/v", "base_ref == 'main'"]:
+    for term in [
+        "'schedule'",
+        "'merge_group'",
+        "'workflow_dispatch'",
+        "refs/tags/v",
+        "base_ref == 'main'",
+    ]:
         assert term in cond
     assert wf["jobs"]["perf"]["if"] == "needs.changes.outputs.perf == 'true'"
 
 
-@pytest.mark.parametrize("job", ["lint", "test", "frontend-test", "standalone", "installer", "security-scan"])
+@pytest.mark.parametrize(
+    "job", ["lint", "test", "frontend-test", "standalone", "installer", "security-scan"]
+)
 def test_schedule_runs_only_perf(wf, job):
     outs = wf["jobs"]["changes"]["outputs"]
     cond = wf["jobs"][job]["if"]
