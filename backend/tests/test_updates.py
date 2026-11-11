@@ -80,9 +80,9 @@ def test_internal_kid_session_endpoint_requires_token(client):
     assert resp.status_code == 403
 
 
-def test_internal_today_note_endpoint_requires_token(client):
-    """POST /internal/today-note without token returns 401."""
-    resp = client.post("/internal/today-note", json={"note": "test"})
+def test_internal_update_result_requires_token(client):
+    """POST /internal/update-result without the internal token is refused."""
+    resp = client.post("/internal/update-result", json={"result": "success"})
     assert resp.status_code == 403
 
 
@@ -119,3 +119,57 @@ def test_eval_respects_off_channel(client, parent_headers, monkeypatch):
     # Verify it stays off when read
     status = client.get("/api/v1/updates", headers=parent_headers).json()
     assert status["channel"] == "off"
+
+
+@pytest.fixture
+def internal_headers():
+    from app.core.config import settings
+
+    return {"X-Internal-Token": settings.INTERNAL_TOKEN}
+
+
+def test_update_state_forces_eval_on_eval_install(client, internal_headers, monkeypatch):
+    monkeypatch.setenv("UPDATE_CHANNEL", "eval")
+    r = client.get("/internal/update-state", headers=internal_headers)
+    assert r.status_code == 200 and r.json() == {"channel": "eval", "requested_major": None}
+
+
+def test_kid_session_active_follows_running_timers(client, db, internal_headers):
+    from datetime import UTC, datetime, timedelta
+
+    from app.models.lock import Device, Override
+
+    assert client.get("/internal/kid-session-active", headers=internal_headers).json() == {
+        "active": False
+    }
+    dev = Device(mac="aa:bb:cc:00:00:01", name="tablet")
+    db.add(dev)
+    db.flush()
+    db.add(
+        Override(
+            device_id=dev.id,
+            action="unlock",
+            source="manual",
+            expires_at=datetime.now(UTC).replace(tzinfo=None) + timedelta(minutes=20),
+        )
+    )
+    db.commit()
+    assert client.get("/internal/kid-session-active", headers=internal_headers).json() == {
+        "active": True
+    }
+
+
+def test_update_result_records_and_notifies_parents(
+    client, db, parent, parent_headers, internal_headers
+):
+    r = client.post(
+        "/internal/update-result",
+        headers=internal_headers,
+        json={"result": "failed", "version": "2.15.0", "old_version": "2.14.0"},
+    )
+    assert r.status_code == 200
+    assert client.get("/api/v1/updates", headers=parent_headers).json()["last_result"] == "failed"
+    from app.models.inbox import Notification
+
+    n = db.query(Notification).filter(Notification.kind == "box_update").one()
+    assert "2.15.0" in n.title and "2.14.0" in (n.body or "")

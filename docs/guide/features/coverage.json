@@ -1,0 +1,50 @@
+{
+  "release": "2.13.0",
+  "items": [
+    {
+      "item": "Less parent work: trust mode, bedtime auto-approve and a weekly recap.",
+      "guides": [
+        "less-parent-work.md"
+      ]
+    },
+    {
+      "item": "Parent declutter: calm screens and shared widgets.",
+      "guides": [
+        "calm-screens.md"
+      ]
+    },
+    {
+      "item": "Goals: kids save toward parent-priced goals (own or family), with suggestions, chip-ins, a mascot party on fulfilment, an extra-screen-time goal that grants free minutes, and a \"Get out of jail free\" card that cancels a penalty.",
+      "guides": [
+        "goals.md"
+      ]
+    },
+    {
+      "item": "Penalties with earn-back: small/medium/big or custom, make-up chores that shrink a penalty, family penalties that take from or raise a family goal.",
+      "guides": [],
+      "gap": "penalties and earn-back have only passing mentions (goals.md, calm-screens.md)"
+    },
+    {
+      "item": "Homework mode: study-site allow lists while internet is otherwise paused.",
+      "guides": [
+        "homework.md"
+      ]
+    },
+    {
+      "item": "Setup presets: one \"How strict?\" choice (per kid if wanted) sets chores, hours and extras by age; switch later without overwriting a parent's edits.",
+      "guides": [],
+      "gap": "no feature guide for setup presets (\"How strict?\")"
+    },
+    {
+      "item": "Minigames: chores earn quick games; 20 quick-fire games plus Hungry Cat, Math Dash, Pack the Box and Shelf Memory, upgrades, power-ups and a weekly board. Games sleep at each kid's bedtime and in family quiet hours. New look: Fluent 3D art and \"living sticker\" mascots (PixiJS, loaded only when a game opens).",
+      "guides": [
+        "minigames.md"
+      ]
+    },
+    {
+      "item": "Constrained devices: optional Postgres (`DATABASE_URL`), one-command SQLite→Postgres move, tier harness and CI perf gate; CI runs the backend on SQLite and Postgres.",
+      "guides": [],
+      "gap": "no constrained-devices or Postgres guide"
+    }
+  ]
+}
