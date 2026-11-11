@@ -133,7 +133,7 @@ def _verify_hotspot_request(request: Request) -> None:
     # SECURITY: Verify IP is in hotspot subnet (10.42.0.0/24)
     try:
         addr = ipaddress.ip_address(ip)
-        if not addr in ipaddress.ip_network("10.42.0.0/24"):
+        if addr not in ipaddress.ip_network("10.42.0.0/24"):
             raise HTTPException(403, "Client IP outside hotspot subnet")
     except ValueError:
         raise HTTPException(403, "Invalid client IP")
