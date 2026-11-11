@@ -3,6 +3,7 @@ import { Icon } from '../parent/Icon'
 import { useKidRewards, useRedeem } from '../hooks/useKidRewards'
 import { ScreenFor, optKey } from './ScreenFor'
 import type { KidAge } from './modes/types'
+import { KidGoals } from './KidGoals'
 
 const STEPS = [15, 30, 45, 60, 75, 90, 105, 120]
 const opts = (left: number | null) => {
@@ -55,6 +56,7 @@ export function RewardsSection({ onExpired, mode = 'kid' }: { onExpired: () => v
           <b>{free}</b> points
         </span>
       </h1>
+      <KidGoals onExpired={onExpired} mode={mode} />
       {held > 0 && <p className="r-sub">{`${held} ${held === 1 ? 'point is' : 'points are'} held for requests a parent hasn't answered yet.`}</p>}
       <div className="r-list">
         {d.screen_time_enabled && (

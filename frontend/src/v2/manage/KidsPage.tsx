@@ -23,6 +23,8 @@ import { RewardsHistory } from './RewardsHistory'
 import { RewardsNav } from './RewardsNav'
 import { RewardsRequests } from './RewardsRequests'
 import { HappyHourPane } from './HappyHourPane'
+import { GoalsPane } from './GoalsPane'
+import { GoalSettingsPane } from './GoalSettingsPane'
 import { ScreenTimePane } from './ScreenTimePane'
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
@@ -95,6 +97,10 @@ function KidsBody() {
         <ScreenTimePane />
       ) : item === 'happy' ? (
         <HappyHourPane />
+      ) : item === 'goals' ? (
+        <GoalsPane onSettings={() => pick('goal-settings')} />
+      ) : item === 'goal-settings' ? (
+        <GoalSettingsPane onBack={() => pick('goals')} />
       ) : item === 'history' ? (
         <RewardsHistory />
       ) : null,

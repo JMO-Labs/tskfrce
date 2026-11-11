@@ -111,7 +111,7 @@ class Override(Base):
     __tablename__ = "overrides"
     __table_args__ = (
         CheckConstraint("action IN ('lock','unlock','homework')", name="ck_override_action"),
-        CheckConstraint("source IN ('manual','bonus')", name="ck_override_source"),
+        CheckConstraint("source IN ('manual','bonus','penalty')", name="ck_override_source"),
     )
 
     id = Column(Integer, primary_key=True)
@@ -121,6 +121,7 @@ class Override(Base):
     expires_at = Column(DateTime, nullable=True)  # UTC
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    penalty_id = Column(Integer, ForeignKey("penalties.id", ondelete="CASCADE"), nullable=True)
 
 
 class Vlan(Base):

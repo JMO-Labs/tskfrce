@@ -9,6 +9,7 @@ import { askOnFirstClick, useOsNotify } from '../osNotify'
 import type { KidToday } from '../types'
 import { AlertsMoved } from './AlertsMoved'
 import { CelebrationLayer } from './celebrate/CelebrationLayer'
+import { GoalParty } from './celebrate/GoalParty'
 import { useCelebrationTriggers } from './celebrate/triggers'
 import { useCelebrate } from './celebrate/useCelebrate'
 import { useFreezeNotice } from './freezeNotice'
@@ -17,6 +18,7 @@ import { Locker } from './Locker'
 import { kidSort, tally } from './kidChips'
 import { KidNav, type KidTab } from './KidNav'
 import { HappyHourBanner } from './HappyHourBanner'
+import { PenaltyCards } from './PenaltyCard'
 import { MePage } from './MePage'
 import { KidMode } from './modes/KidMode'
 import { LittleMode } from './modes/LittleMode'
@@ -71,7 +73,8 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
       window.removeEventListener(OPEN_CHAT_LIST_EVENT, show)
     }
   }, [chat])
-  const cel = useCelebrate({ level: d.celebrate ?? (mode === 'teen' ? 'small' : 'full'), mode, kidLevel: d.progress?.level ?? 1, hold: holdCelebrations })
+  const [partyShowing, setPartyShowing] = useState(false)
+  const cel = useCelebrate({ level: d.celebrate ?? (mode === 'teen' ? 'small' : 'full'), mode, kidLevel: d.progress?.level ?? 1, hold: holdCelebrations || partyShowing })
   const submit = useCelebrationTriggers(d, kidId, cel.fire, !preview)
   useFreezeNotice(d.progress?.frozen, kidId, !preview)
   const onDone = (id: number) => {
@@ -125,6 +128,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
       <>
         {children}
         <HappyHourBanner hh={d.happy_hour} onGo={goChore} />
+        <PenaltyCards list={d.penalties} done={done} />
         <Mode
           d={d}
           focusId={focusId}
@@ -155,6 +159,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
         )}
       </main>
       <CelebrationLayer cel={cel} balance={d.points_balance} />
+      {!preview && <GoalParty onExpired={onExit} celebrate={d.celebrate ?? (mode === 'teen' ? 'small' : 'full')} onShowing={setPartyShowing} />}
     </div>
   )
 }

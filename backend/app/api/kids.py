@@ -216,6 +216,7 @@ _REASON_LABEL = {
     "bonus": "Bonus",
     "adjustment": "Adjustment",
     "deduction": "Points taken",
+    "penalty": "Penalty",
 }
 
 

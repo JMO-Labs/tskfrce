@@ -11,6 +11,7 @@ from app.lock.schedule import local_now
 from app.models.family import FamilySettings, get_family
 from app.models.homework import HomeworkActivity
 from app.models.lock import Device, Override
+from app.models.penalty import Penalty
 from app.services import chores
 
 HOMEWORK_ACTIVITY_DAYS = 7  # activity names stay on the box this long
@@ -20,6 +21,30 @@ def _naive_utc(now: datetime) -> datetime:
     if now.tzinfo is not None:
         now = now.astimezone(UTC).replace(tzinfo=None)
     return now
+
+
+def whole_kid_penalties(db: Session, now: datetime, kid_ids=None) -> dict[int, Penalty]:
+    """kid id -> newest live "all of the kid's devices" block penalty (one query)."""
+    q = db.query(Penalty).filter(
+        Penalty.kind == "block",
+        Penalty.all_devices.is_(True),
+        Penalty.status == "active",
+        Penalty.ends_at > _naive_utc(now),
+    )
+    if kid_ids is not None:
+        q = q.filter(Penalty.kid_id.in_(kid_ids))
+    return {p.kid_id: p for p in q.order_by(Penalty.id)}  # newest id wins
+
+
+def device_penalty(
+    db: Session, device: Device, now: datetime, pre: "Prefetch | None" = None
+) -> Penalty | None:
+    """Whole-kid penalty covering this device (none for exempt devices)."""
+    if device.exempt:
+        return None
+    wk = pre.whole_kid if pre else whole_kid_penalties(db, now, [o.id for o in device.owners])
+    hits = [wk[o.id] for o in device.owners if o.id in wk]
+    return max(hits, key=lambda p: p.id) if hits else None
 
 
 def _aware_utc(now: datetime) -> datetime:
@@ -43,6 +68,7 @@ class Prefetch:
         ):
             self.overrides[o.device_id].append(o)
         self.rules = hours.load(db)
+        self.whole_kid = whole_kid_penalties(db, datetime.now(UTC))
         self.counts = counts or {}
 
 
@@ -89,6 +115,8 @@ def device_facts(
         chores_apply=fam.chores_lock and all(g.chore_lock for g in device.groups),
         override=override_for_block,
         bonus_active=any(o.source == "bonus" for o in live),
+        penalty=any(o.source == "penalty" for o in live)
+        or device_penalty(db, device, now_utc, pre) is not None,
         new_devices_blocked=fam.new_devices_blocked,
         points_unlock_early=fam.points_unlock_early,
         bonus_any_hours=not fam.screen_only_allowed_hours,
@@ -117,6 +145,9 @@ def tick(db: Session, now_utc: datetime) -> tuple[list[str], dict]:
         screen_bank.settle(db, fam, now_utc)
         chores.run_reset(db, now_local.date())
     now = _naive_utc(now_utc)
+    from app.services import penalty_earnback  # services import this module
+
+    penalty_earnback.expire(db, now)
     db.query(Override).filter(Override.expires_at.isnot(None), Override.expires_at <= now).delete()
     db.commit()
     devices = db.query(Device).all()

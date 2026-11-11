@@ -8,9 +8,8 @@ from pathlib import Path
 from sqlalchemy import create_engine, inspect
 
 BACKEND = Path(__file__).resolve().parent.parent
-PREFIXES = (
+PREFIXES = (  # "goals" is reused by v2.10 savings goals
     "tasks",
-    "goals",
     "gamification",
     "lists",
     "media",
@@ -29,7 +28,6 @@ LEGACY_TABLES = {
     "task_tags",
     "task_tag_associations",
     "task_dependencies",
-    "goals",
     "goal_progress",
     "achievements",
     "user_achievements",
@@ -85,3 +83,5 @@ def test_legacy_tables_dropped(tmp_path):
     assert {"thread_messages", "users"} == {f["referred_table"] for f in fks}
     assert "task_id" not in {c["name"] for c in insp.get_columns("chore_photos")}
     assert "task_id" not in {c["name"] for c in insp.get_columns("threads")}
+    # "goals" is reused by v2.10 savings goals (a fresh table, not the legacy one)
+    assert "target" in {c["name"] for c in insp.get_columns("goals")}

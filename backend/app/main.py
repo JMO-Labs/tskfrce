@@ -34,6 +34,7 @@ from app.api.device_activity import router as device_activity_router
 from app.api.devices import router as devices_router
 from app.api.family import router as family_router
 from app.api.flair import router as flair_router
+from app.api.goals import router as goals_router
 from app.api.happy_hour import router as happy_hour_router
 from app.api.homework import router as homework_router
 from app.api.hours import router as hours_router
@@ -45,12 +46,14 @@ from app.api.internal import router as internal_router
 from app.api.kid import router as kid_router
 from app.api.kid_enroll import kid_router as kid_enroll_kid_router
 from app.api.kid_enroll import parent_router as kid_enroll_parent_router
+from app.api.kid_goals import router as kid_goals_router
 from app.api.kid_push import router as kid_push_router
 from app.api.kid_rewards import router as kid_rewards_router
 from app.api.kids import router as kids_router
 from app.api.network import router as network_router
 from app.api.notify import router as notify_router
 from app.api.password_reset import router as password_reset_router
+from app.api.penalties import router as penalties_router
 from app.api.recap import router as recap_router
 from app.api.rewards import redemptions_router
 from app.api.rewards import router as rewards_router
@@ -165,16 +168,19 @@ fastapi_app.include_router(device_activity_router)
 fastapi_app.include_router(hours_router)
 fastapi_app.include_router(kids_router)
 fastapi_app.include_router(trust_router)
+fastapi_app.include_router(penalties_router)
 fastapi_app.include_router(recap_router)
 fastapi_app.include_router(kid_push_router)
 fastapi_app.include_router(kid_enroll_parent_router)
 fastapi_app.include_router(kid_enroll_kid_router)
 fastapi_app.include_router(kid_router)
 fastapi_app.include_router(kid_rewards_router)
+fastapi_app.include_router(kid_goals_router)
 fastapi_app.include_router(family_router)
 fastapi_app.include_router(network_router)
 fastapi_app.include_router(notify_router)
 fastapi_app.include_router(rewards_router)
+fastapi_app.include_router(goals_router)
 fastapi_app.include_router(screen_time_router)
 fastapi_app.include_router(happy_hour_router)
 fastapi_app.include_router(badges_router)

@@ -1,4 +1,5 @@
 import type { CelebrateLevel } from './funTypes'
+import type { DevicePenaltyFields, FamilyPenaltyFields, KidTodayPenaltyFields } from './penaltyTypes'
 import type { KidScreen } from './rewardTypes'
 import type { ChoreTrustFields, FamilyExtrasFields, KidTrust, KidTrustFields, RunTrustFields, TodayTryFields } from './trustTypes'
 /** Shapes of the v2 backend responses (backend/app/api/{family,kid,devices,kids,hours,chores,setup}.py). */
@@ -19,7 +20,7 @@ export interface Override {
 }
 
 /** GET /devices item (device_out) */
-export interface Device {
+export interface Device extends DevicePenaltyFields {
   id: number
   name: string
   mac: string
@@ -109,7 +110,7 @@ export interface Kid extends KidTrustFields {
 /** GET/PATCH /family */
 export type AccentKey = 'neon' | 'sun' | 'tangerine' | 'bubblegum' | 'lilac' | 'sky' | 'aqua' | 'mint' | 'peach' | 'ice'
 
-export interface Family extends FamilyExtrasFields {
+export interface Family extends FamilyExtrasFields, FamilyPenaltyFields {
   name: string
   timezone: string
   reset_time: string
@@ -242,7 +243,7 @@ export interface TodayKid {
 
 /** Item in GET /today needs_you. */
 export interface NeedsItem extends RunTrustFields {
-  type: 'chore' | 'redo' | 'screen_time' | 'reward' | 'note' | 'integration' | 'homework'
+  type: 'chore' | 'redo' | 'screen_time' | 'reward' | 'note' | 'integration' | 'homework' | 'goal_full' | 'goal_suggested'
   id: number
   kid_id: number | null
   kid_name: string | null
@@ -340,7 +341,7 @@ export interface KidChore extends TodayChore {
   points_now?: number
 }
 
-export interface KidToday {
+export interface KidToday extends KidTodayPenaltyFields {
   locked: boolean
   chores: KidChore[]
   points_balance: number

@@ -25,7 +25,7 @@ from app.models.points import Points
 from app.models.reward import Redemption, Reward
 from app.models.user import User, UserRole
 from app.schemas.lock import FamilyPatch, utc_z
-from app.services import bedtime, boost, inbox, progression, push, trust
+from app.services import bedtime, boost, goals_out, inbox, penalties, progression, push, trust
 from app.services import chores as svc
 
 router = APIRouter(prefix="/api/v1", tags=["family"], dependencies=[Depends(require_parent)])
@@ -68,6 +68,9 @@ def _fam_out(fam) -> dict:
         "bedtime_auto": fam.bedtime_auto,
         "bedtime_auto_at": fam.bedtime_auto_at,
         "recap_weekly": fam.recap_weekly,
+        "penalties_enabled": fam.penalties_enabled,
+        "penalty_sizes": penalties.sizes(fam),
+        "makeup_chores": penalties.makeup_list(fam),
     }
 
 
@@ -98,8 +101,8 @@ def patch_family(body: FamilyPatch, db: Session = Depends(get_db)):
     for k, v in body.model_dump(exclude_unset=True).items():
         if k == "giphy_api_key" and v is not None:
             fam.giphy_api_key = v.strip() or None
-        elif k == "quick_replies" and v is not None:
-            fam.quick_replies = json.dumps(v)
+        elif k in ("quick_replies", "penalty_sizes", "makeup_chores") and v is not None:
+            setattr(fam, k, json.dumps(v))
         elif v is not None:
             setattr(fam, k, v)
     db.commit()
@@ -193,6 +196,7 @@ def _needs_you(
         for h in db.query(HomeworkRequest).filter_by(status="pending")
     ]
     items.sort(key=lambda x: x["submitted_at"] or "")
+    items += goals_out.needs(db, names)
     for r in runs:
         if inbox.is_pending_note(r):
             kid_id = (svc.run_kid_ids(r) or [None])[0]
