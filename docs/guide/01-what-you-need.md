@@ -17,9 +17,9 @@ Good choices:
 |---|---|---|
 | Raspberry Pi 4 or 5, or an old laptop | 2 GB or more | Yes, comfortable. |
 | Raspberry Pi 3B+ | 1 GB | Yes. A bit slower, but every feature works. |
-| Raspberry Pi Zero 2 W | 512 MB | Possible, but tight. Pages open in about a second or three and the first start takes about 20 seconds. |
+| Raspberry Pi Zero 2 W | 512 MB | Possible, but tight. Pages open in well under a second when idle and slow down when busy; the first start takes about 20 seconds. |
 
-We measured all of these (see the [performance notes](https://github.com/JMO-Labs/tskfrce/blob/main/docs/perf/2026-11-profile.md)). The app and its helpers use roughly 230 MB when idle, so even the smallest box has room. There is no separate "lite" version: small boxes run the same app.
+We measured all of these (see the [performance notes](https://github.com/JMO-Labs/tskfrce/blob/dev/docs/perf/2026-11-profile.md)). The app and its helpers use roughly 230 MB when idle, so even the smallest box has room. There is no separate "lite" version: small boxes run the same app.
 
 Small boxes **download** t@sk4ce ready-made, which is quick. If the download fails, the installer builds it on the box instead. That needs about 4 GB of memory, so on a small box fix the download problem and run the installer again.
 
