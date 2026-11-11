@@ -9,7 +9,7 @@
     "start": "NODE_ENV=production node server.js",
     "start:next": "NODE_OPTIONS='--require ./relay-preload.js' next start",
     "test:standalone": "next build && node scripts/standalone-relay-check.js",
-    "lint": "eslint .",
+    "lint": "eslint --cache --cache-location node_modules/.cache/eslint/ .",
     "type-check": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
