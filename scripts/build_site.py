@@ -312,11 +312,12 @@ def add_copy_buttons(html):
         # Plain text of the code, kept in a data attribute (an inline JS string broke on quotes)
         code_text = html_lib.unescape(re.sub(r"<[^>]+>", "", code)).strip()
         attr = html_lib.escape(code_text, quote=True)
+        pre_open = prefix.replace("<pre>", '<pre tabindex="0">')
         button = (
             f'<div class="code-block-wrapper">'
             f'<button class="copy-btn" type="button" data-copy="{attr}" '
             f'onclick="copyToClipboard(this.dataset.copy, this)">📋 Copy</button>'
-            f"{prefix.replace('<pre>', '<pre tabindex=\"0\">')}{code}{suffix}"
+            f"{pre_open}{code}{suffix}"
             f"</div>"
         )
         return button
