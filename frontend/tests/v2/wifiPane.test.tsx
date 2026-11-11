@@ -13,7 +13,7 @@ jest.mock('@/v2/notify', () => ({
 
 jest.mock('@/v2/hooks/useWifi', () => ({
   useWifiStatus: jest.fn(() => ({
-    data: { is_connected: false, current_ssid: null, signal_strength: null },
+    data: { online: true, connected: false, ssid: null, signal: 0, hotspot_active: false, country: 'US' },
     isPending: false,
     isError: false,
   })),

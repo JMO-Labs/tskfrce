@@ -52,6 +52,7 @@ def scan_once(
     send: Callable = _scapy_send,
     resolve: Callable[[str], str | None] = resolve_hostname,
     vid: int | None = None,
+    enrich: Callable[[Seen], Seen] = lambda s: s,
 ) -> list[Seen]:
     v4: dict[str, str] = {}
     for _, rcv in send("arp", cfg)[0]:
@@ -68,13 +69,15 @@ def scan_once(
     for mac, ip in v4.items():
         hostname = resolve(ip)
         vendor = vendor_for(mac)
-        seen = Seen(
-            mac=mac,
-            ip=ip,
-            ipv6=v6.get(mac, [])[:MAX_IPV6],
-            hostname=hostname[:MAX_STR] if hostname else hostname,
-            vendor=vendor[:MAX_STR] if vendor else vendor,
-            vid=vid,
+        seen = enrich(
+            Seen(
+                mac=mac,
+                ip=ip,
+                ipv6=v6.get(mac, [])[:MAX_IPV6],
+                hostname=hostname[:MAX_STR] if hostname else hostname,
+                vendor=vendor[:MAX_STR] if vendor else vendor,
+                vid=vid,
+            )
         )
         report_seen(cfg, seen)
         seen_list.append(seen)
@@ -86,10 +89,11 @@ def run_discovery(
     stop: threading.Event,
     on_seen: Callable[[Seen], None] | None = None,
     vid: int | None = None,
+    enrich: Callable[[Seen], Seen] = lambda s: s,
 ) -> None:
     while not stop.is_set():
         try:
-            for seen in scan_once(cfg, vid=vid):
+            for seen in scan_once(cfg, vid=vid, enrich=enrich):
                 if on_seen:
                     on_seen(seen)
         except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running

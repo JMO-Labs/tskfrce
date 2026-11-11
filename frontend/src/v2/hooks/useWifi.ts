@@ -9,16 +9,20 @@ export interface WifiNetwork {
   hidden?: boolean
 }
 
+/** Mirrors tskfrce-netd `status` (backend passes it through unchanged). */
 export interface WifiStatus {
-  current_ssid: string | null
-  signal_strength: number | null
-  is_connected: boolean
+  online: boolean
+  connected: boolean
+  ssid: string | null
+  signal: number
+  hotspot_active: boolean
+  country: string | null
 }
 
 export const useWifiStatus = () =>
   useQuery({
     queryKey: ['wifi', 'status'],
-    queryFn: () => api<WifiStatus>('/v1/network/wifi/status'),
+    queryFn: () => api<WifiStatus>('/network/wifi/status'),
     refetchInterval: 15_000,
     refetchIntervalInBackground: false,
   })
@@ -26,7 +30,7 @@ export const useWifiStatus = () =>
 export const useWifiScan = () =>
   useQuery({
     queryKey: ['wifi', 'scan'],
-    queryFn: () => api<WifiNetwork[]>('/v1/network/wifi/scan'),
+    queryFn: async () => (await api<{ networks: WifiNetwork[] }>('/network/wifi/scan', { method: 'POST' })).networks,
     enabled: false,
     staleTime: 30_000,
   })
@@ -35,7 +39,7 @@ export const useWifiJoin = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ ssid, password, security, hidden }: { ssid: string; password?: string; security: string; hidden?: boolean }) =>
-      api('/v1/network/wifi/join', {
+      api('/network/wifi/join', {
         method: 'POST',
         body: { ssid, password, security, hidden },
       }),
@@ -50,7 +54,7 @@ export const useWifiJoin = () => {
 export const useWifiForget = () => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: () => api('/v1/network/wifi/forget', { method: 'POST' }),
+    mutationFn: (ssid: string) => api('/network/wifi/forget', { method: 'POST', body: { ssid } }),
     onSuccess: () => {
       toastOk('Network forgotten')
       qc.invalidateQueries({ queryKey: ['wifi'] })
@@ -63,7 +67,7 @@ export const useWifiCountry = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (country: string) =>
-      api(`/v1/network/wifi/country`, { method: 'POST', body: { country } }),
+      api(`/network/wifi/country`, { method: 'POST', body: { country } }),
     onSuccess: () => {
       toastOk('Region updated')
       qc.invalidateQueries({ queryKey: ['wifi'] })

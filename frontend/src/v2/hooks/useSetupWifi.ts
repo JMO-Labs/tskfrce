@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/v2/api'
 
 export interface SetupWifiStatus {
-  state: 'idle' | 'connecting' | 'connected' | 'failed'
+  phase: 'idle' | 'connecting' | 'connected' | 'failed'
   error?: 'wrong_password' | 'failed'
   ssid?: string
 }
@@ -12,17 +12,17 @@ export const useSetupWifiStatus = (enabled = true) => {
   const [shouldPoll, setShouldPoll] = useState(enabled)
   const query = useQuery({
     queryKey: ['setup', 'wifi', 'status'],
-    queryFn: () => api<SetupWifiStatus>('/v1/network/wifi/setup/status'),
+    queryFn: () => api<SetupWifiStatus>('/network/wifi/setup/status'),
     enabled: shouldPoll,
     refetchInterval: shouldPoll ? 2_000 : false,
   })
 
   useEffect(() => {
-    if (query.data?.state === 'connected' || query.data?.state === 'failed') {
+    if (query.data?.phase === 'connected' || query.data?.phase === 'failed') {
       const timer = setTimeout(() => setShouldPoll(false), 0)
       return () => clearTimeout(timer)
     }
-  }, [query.data?.state])
+  }, [query.data?.phase])
 
   return query
 }
@@ -31,7 +31,7 @@ export const useSetupWifiJoin = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ ssid, password, security, hidden }: { ssid: string; password?: string; security: string; hidden?: boolean }) =>
-      api('/v1/network/wifi/setup/join', {
+      api('/network/wifi/setup/join', {
         method: 'POST',
         body: { ssid, password, security, hidden },
       }),
@@ -42,6 +42,7 @@ export const useSetupWifiJoin = () => {
 export const useSetupWifiScan = () =>
   useQuery({
     queryKey: ['setup', 'wifi', 'scan'],
-    queryFn: () => api<Array<{ ssid: string; signal: number; security: string }>>('/v1/network/wifi/setup/scan'),
+    queryFn: async () =>
+      (await api<{ networks: Array<{ ssid: string; signal: number; security: string }> }>('/network/wifi/setup/scan')).networks,
     staleTime: 30_000,
   })
