@@ -75,44 +75,37 @@ cmd_join() {
     return
   fi
 
-  # SECURITY: password NEVER in argv (not visible in /proc/*/cmdline)
-  # Method: create .nmconnection profile file (mode 0600), pass file path to nmcli
-  # Commands: nmcli connection load <file> && nmcli connection up id=<ssid> && nmcli connection delete <ssid>
-  # All PSK is in the ephemeral profile file, never in command line arguments
-  local connfile
-  connfile=$(mktemp --suffix=.nmconnection)
-  chmod 0600 "$connfile"
+  # SECURITY: Reject control chars (0x00-0x1f, 0x7f) in SSID and password
+  # Prevents newline injection and other control-char attacks
+  local ssid_clean password_clean
+  ssid_clean=$(echo "$ssid" | tr -d '[:cntrl:]')
+  password_clean=$(echo "$password" | tr -d '[:cntrl:]')
+
+  if [ "$ssid_clean" != "$ssid" ]; then
+    echo '{"error":"ssid contains control characters"}' >"$SOCKET"
+    return
+  fi
+  if [ "$password_clean" != "$password" ]; then
+    echo '{"error":"password contains control characters"}' >"$SOCKET"
+    return
+  fi
+
+  # Create passwd-file (0600) with PSK - never in argv
+  local passwdfile
+  passwdfile=$(mktemp)
+  chmod 0600 "$passwdfile"
   # shellcheck disable=SC2064
-  trap "rm -f '$connfile'" RETURN
+  trap "rm -f '$passwdfile'" RETURN
 
-  cat >"$connfile" <<EOF
-[connection]
-id=$ssid
-type=wifi
-interface-name=wlan0
-autoconnect=false
+  echo "802-11-wireless-security.psk:$password" >"$passwdfile"
 
-[wifi]
-ssid=$ssid
-
-[wifi-security]
-key-mgmt=wpa-psk
-psk=$password
-
-[ipv4]
-method=auto
-
-[ipv6]
-method=auto
-EOF
-
-  # Activate the connection (password is in file, NOT argv)
-  # nmcli command line: nmcli connection load <file> && nmcli connection up id=<ssid>
-  if nmcli connection load "$connfile" 2>/dev/null && \
-     nmcli connection up id="$ssid" 2>/dev/null; then
+  # Use nmcli connection add (clean keyfile generation, no hand-built profile)
+  # Then activate with passwd-file (PSK in file, not argv)
+  if nmcli connection add type wifi con-name "$ssid" ifname wlan0 ssid "$ssid" \
+    wifi-sec.key-mgmt wpa-psk 2>/dev/null && \
+     nmcli connection up id "$ssid" passwd-file "$passwdfile" 2>/dev/null; then
     echo '{"success":true}' >"$SOCKET"
     log "Joined $ssid"
-    # Clean up the connection
     nmcli connection delete "$ssid" 2>/dev/null || true
   else
     echo '{"success":false}' >"$SOCKET"
@@ -138,10 +131,11 @@ cmd_forget() {
 }
 
 cmd_status() {
-  local output ssid state
+  local output ssid state hotspot_active
   output=$(nmcli -t -f NAME,STATE dev show 2>/dev/null || true)
   ssid=""
   state="disconnected"
+  hotspot_active="false"
 
   if [ -n "$output" ]; then
     while IFS=: read -r name dev_state; do
@@ -153,15 +147,20 @@ cmd_status() {
     done <<<"$output"
   fi
 
+  # Check if hotspot is active (flag file exists)
+  if [ -f /var/lib/tskfrce/hotspot.active ]; then
+    hotspot_active="true"
+  fi
+
   if [ "$state" = "connected" ]; then
-    echo "{\"connected\":true,\"ssid\":\"$ssid\",\"signal\":0}" >"$SOCKET"
+    echo "{\"connected\":true,\"ssid\":\"$ssid\",\"signal\":0,\"hotspot_active\":$hotspot_active}" >"$SOCKET"
   else
-    echo "{\"connected\":false,\"ssid\":null,\"signal\":0}" >"$SOCKET"
+    echo "{\"connected\":false,\"ssid\":null,\"signal\":0,\"hotspot_active\":$hotspot_active}" >"$SOCKET"
   fi
 }
 
 cmd_hotspot_up() {
-  local ssid password country
+  local ssid password country passwdfile
   ssid=$(echo "$1" | jq -r '.ssid // empty')
   password=$(echo "$1" | jq -r '.password // empty')
   country=$(echo "$1" | jq -r '.country // "US"')
@@ -171,18 +170,43 @@ cmd_hotspot_up() {
     return
   fi
 
+  # SECURITY: Reject control chars in SSID and password
+  local ssid_clean password_clean
+  ssid_clean=$(echo "$ssid" | tr -d '[:cntrl:]')
+  password_clean=$(echo "$password" | tr -d '[:cntrl:]')
+
+  if [ "$ssid_clean" != "$ssid" ]; then
+    echo '{"error":"ssid contains control characters"}' >"$SOCKET"
+    return
+  fi
+  if [ "$password_clean" != "$password" ]; then
+    echo '{"error":"password contains control characters"}' >"$SOCKET"
+    return
+  fi
+
   # Set regulatory domain
   iw reg set "$country" 2>/dev/null || true
 
-  # Create hotspot connection (WPA2, 2.4 GHz channel 6)
-  if nmcli con add type wifi ifname wlan0 con-name tskfrce-setup \
-    ssid "$ssid" mode ap password "$password" 802-11-wireless.band bg \
-    802-11-wireless.channel 6 2>/dev/null; then
-    if nmcli con up tskfrce-setup 2>/dev/null; then
-      echo '{"success":true}' >"$SOCKET"
-      log "Hotspot started: $ssid"
-      return
-    fi
+  # Create passwd-file (0600) for hotspot PSK
+  passwdfile=$(mktemp)
+  chmod 0600 "$passwdfile"
+  # shellcheck disable=SC2064
+  trap "rm -f '$passwdfile'" RETURN
+
+  echo "802-11-wireless-security.psk:$password" >"$passwdfile"
+
+  # Create hotspot connection (WPA2, 2.4 GHz channel 6) via nmcli connection add
+  # PSK in passwd-file, NOT argv
+  if nmcli connection add type wifi con-name tskfrce-setup ifname wlan0 \
+    mode ap ssid "$ssid" wifi-sec.key-mgmt wpa-psk 802-11-wireless.band bg \
+    802-11-wireless.channel 6 2>/dev/null && \
+     nmcli connection up id tskfrce-setup passwd-file "$passwdfile" 2>/dev/null; then
+    # Create hotspot.active flag (for backend to detect setup mode is active)
+    mkdir -p /var/lib/tskfrce
+    touch /var/lib/tskfrce/hotspot.active
+    echo '{"success":true}' >"$SOCKET"
+    log "Hotspot started: $ssid"
+    return
   fi
   echo '{"success":false}' >"$SOCKET"
 }
@@ -190,6 +214,8 @@ cmd_hotspot_up() {
 cmd_hotspot_down() {
   if nmcli con down tskfrce-setup 2>/dev/null; then
     nmcli con delete tskfrce-setup 2>/dev/null || true
+    # Remove hotspot.active flag
+    rm -f /var/lib/tskfrce/hotspot.active
     echo '{"success":true}' >"$SOCKET"
     log "Hotspot stopped"
   else

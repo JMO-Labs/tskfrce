@@ -18,20 +18,56 @@ class TestValidation:
             network_wifi._validate_ssid("")
 
     def test_ssid_null_byte(self):
-        with pytest.raises(ValueError, match="contains null"):
+        """Null byte is a control character, rejected."""
+        with pytest.raises(ValueError, match="control characters"):
             network_wifi._validate_ssid("test\x00net")
+
+    def test_ssid_newline_injection(self):
+        """SECURITY: Reject newline in SSID (keyfile injection attack)."""
+        with pytest.raises(ValueError, match="control characters"):
+            network_wifi._validate_ssid("test\nnetwork")
+
+    def test_ssid_control_chars(self):
+        """SECURITY: Reject all control characters (0x00-0x1f, 0x7f)."""
+        with pytest.raises(ValueError, match="control characters"):
+            network_wifi._validate_ssid("test\x1fnet")
+        with pytest.raises(ValueError, match="control characters"):
+            network_wifi._validate_ssid("test\x7fnet")
 
     def test_valid_password(self):
         network_wifi._validate_password("password123")  # Should not raise
 
+    def test_valid_password_hex_64(self):
+        """64-byte password must be hex."""
+        hex_64 = "a" * 64
+        network_wifi._validate_password(hex_64)  # Should not raise
+
     def test_password_too_short(self):
-        with pytest.raises(ValueError, match="8-64 bytes"):
+        with pytest.raises(ValueError, match="8-63 or 64 bytes"):
             network_wifi._validate_password("short")
 
     def test_password_too_long(self):
         long_pass = "a" * 65
-        with pytest.raises(ValueError, match="8-64 bytes"):
+        with pytest.raises(ValueError, match="8-63 or 64 bytes"):
             network_wifi._validate_password(long_pass)
+
+    def test_password_newline_injection(self):
+        """SECURITY: Reject newline in password (keyfile injection attack)."""
+        with pytest.raises(ValueError, match="control characters"):
+            network_wifi._validate_password("password\n123")
+
+    def test_password_control_chars(self):
+        """SECURITY: Reject control characters in password."""
+        with pytest.raises(ValueError, match="control characters"):
+            network_wifi._validate_password("password\x1f123")
+        with pytest.raises(ValueError, match="control characters"):
+            network_wifi._validate_password("password\x7f123")
+
+    def test_password_64_non_hex(self):
+        """64-byte password must be hex (lowercase, uppercase, or digits)."""
+        non_hex_64 = "z" * 64
+        with pytest.raises(ValueError, match="hex-encoded"):
+            network_wifi._validate_password(non_hex_64)
 
 
 class TestCountryValidation:

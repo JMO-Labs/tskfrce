@@ -33,17 +33,33 @@ def _call_helper(cmd: str, **kwargs) -> dict:
 
 
 def _validate_ssid(ssid: str) -> None:
-    """Validate SSID: ≤32 UTF-8 bytes, no null."""
-    if not ssid or len(ssid.encode("utf-8")) > 32:
+    """Validate SSID: 1-32 UTF-8 bytes, no control chars."""
+    ssid_bytes = ssid.encode("utf-8")
+    if not ssid or len(ssid_bytes) > 32:
         raise ValueError("Invalid SSID: must be 1-32 bytes")
-    if "\x00" in ssid:
-        raise ValueError("Invalid SSID: contains null byte")
+    # Reject control characters (0x00-0x1f, 0x7f)
+    for byte in ssid_bytes:
+        if byte < 0x20 or byte == 0x7F:
+            raise ValueError("Invalid SSID: contains control characters")
 
 
 def _validate_password(password: str) -> None:
-    """Validate password: 8-64 UTF-8 bytes."""
-    if len(password.encode("utf-8")) < 8 or len(password.encode("utf-8")) > 64:
-        raise ValueError("Password must be 8-64 bytes")
+    """Validate password: 8-63 printable ASCII or 64 hex."""
+    pwd_bytes = password.encode("utf-8")
+    pwd_len = len(pwd_bytes)
+
+    if pwd_len < 8 or pwd_len > 64:
+        raise ValueError("Password must be 8-63 or 64 bytes")
+
+    # Reject control characters (0x00-0x1f, 0x7f)
+    for byte in pwd_bytes:
+        if byte < 0x20 or byte == 0x7F:
+            raise ValueError("Password contains control characters")
+
+    # If 64 bytes, must be hex (0-9, a-f, A-F)
+    if pwd_len == 64:
+        if not all(c in "0123456789abcdefABCDEF" for c in password):
+            raise ValueError("64-byte password must be hex-encoded")
 
 
 def scan() -> list[Network]:
