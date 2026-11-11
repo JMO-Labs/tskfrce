@@ -36,6 +36,19 @@ A red message at the top says **Home box offline** and "It went quiet at ...". I
 
 The most common cause is a wrong network name in the `.env` file. Type `ip route show default`. The word right after `dev` (for example `eth0`) is the network name. Open the file with `nano .env`, fix the `LAN_IFACE=` line, save (Ctrl+O, Enter) and leave (Ctrl+X). Then run `docker compose -f docker-compose.prod.yml up -d blocker`.
 
+## The box runs an old version
+
+You updated, but the app looks the same as before, or a new feature is missing.
+
+1. In the Terminal on the box, go to the folder (`cd ~/task4ce`) and type `grep TASK4CE_TAG .env`.
+   You should see: `TASK4CE_TAG=latest` or a number like `TASK4CE_TAG=2.13.0`.
+2. If it is a **number**, the box is pinned to that version on purpose. To move on, run the install line from [Install](02-install.md) again (it goes back to `latest`), or run it with `TASK4CE_REF=v<new number>` in front of `sh` to pick a newer release.
+3. If it says `latest`, download the newest files and restart: type `docker compose -f docker-compose.prod.yml pull` and then `docker compose -f docker-compose.prod.yml up -d`.
+   You should see: `Pulled`, then `Started`.
+4. If there is no `TASK4CE_TAG` line (a box installed before this was added), run the install line again. It adds the line.
+
+Your family, chores and settings are kept. See [Keeping it running](02-install.md#keeping-it-running).
+
 ## A device isn't being paused
 
 Work through these in order:

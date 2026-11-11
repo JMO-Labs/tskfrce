@@ -78,7 +78,7 @@ jobs:
         cache: pip
         cache-dependency-path: backend/requirements.txt
     - name: Install dependencies
-      run: pip install -r backend/requirements.txt pytest-xdist
+      run: pip install -r backend/requirements.txt pytest-xdist markdown==3.10.2
     - name: Start Postgres
       if: matrix.db == 'postgres'
       run: |
