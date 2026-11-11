@@ -31,6 +31,8 @@
     "http-proxy-middleware": "^4.2.1",
     "material-symbols": "^0.48.2",
     "next": "^16.4.4",
+    "pixi.js": "^8.22.0",
+    "pixi-filters": "^6.1.5",
     "postcss": "^8.5.32",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
@@ -39,6 +41,9 @@
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
+    "@rive-app/canvas": "latest",
+    "@rive-app/react-canvas": "latest",
+    "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.8",

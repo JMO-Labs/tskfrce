@@ -4,8 +4,10 @@ import type { AgeGroup } from '../types'
 
 export type GameKind = 'quick' | 'think'
 
-export interface GameTile { key: string; name: string; kind: GameKind; icon: string; stars: number; rounds: number; best: number }
+export interface GameTile { key: string; name: string; kind: GameKind; icon: string; stars: number; rounds: number; best: number; upgrades?: number }
 export interface BoardRow { kid_id: number; name: string; avatar: string | null; stars: number; me: boolean }
+
+export interface PowerUp { key: string; name: string; icon: string }
 
 export interface StartedPlay {
   play_id: number
@@ -15,6 +17,11 @@ export interface StartedPlay {
   level: number
   slots: string[]
   slot: number
+  /** unlocked upgrade keys for this game */
+  upgrades: string[]
+  /** quick-fire only: per-microgame upgrade keys */
+  micro_upgrades?: Record<string, string[]>
+  power_ups: PowerUp[]
 }
 
 export interface GamesShelf {
@@ -30,7 +37,7 @@ export interface GamesShelf {
 }
 
 export interface GamePart { game: string; ok: boolean; ms: number }
-export interface FinishBody { token: string; score: number; parts: GamePart[] | null }
+export interface FinishBody { token: string; score: number; parts: GamePart[] | null; power_up: string | null }
 export interface GameBadge { key: string; name: string; icon: string; tier: number }
 export interface FinishResult {
   stars: number
@@ -42,6 +49,9 @@ export interface FinishResult {
   new_best: boolean
   badges: GameBadge[]
   saved: number
+  upgrade: { name: string; have: number; need: number } | null
+  unlocked: string | null
+  bonus: PowerUp | null
 }
 
 export interface MicroProps {
@@ -51,6 +61,8 @@ export interface MicroProps {
   rng: () => number
   /** call once: true = cleared. The runner ignores later calls and owns the countdown. */
   onDone: (ok: boolean) => void
+  /** 'steady' upgrade: widen tolerance or ask for less */
+  easier?: boolean
 }
 
 export interface Micro {

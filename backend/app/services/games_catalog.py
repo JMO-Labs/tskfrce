@@ -25,6 +25,9 @@ GAMES: dict[str, GameDef] = {
             "quickfire", "Quick-fire", "quick", "⚡", ALL_AGES, 45 * 150, 3, 150, (500, 1100, 1800)
         ),
         GameDef("hungry-cat", "Hungry Cat", "think", "🐱", ALL_AGES, 300, 3, 4, (10, 25, 40)),
+        GameDef("math-dash", "Math Dash", "think", "🧮", ALL_AGES, 120, 3, 1.5, (10, 20, 30)),
+        GameDef("pack-the-box", "Pack the Box", "think", "📦", ALL_AGES, 30, 5, 0.3, (2, 4, 7)),
+        GameDef("shelf-memory", "Shelf Memory", "think", "🧠", ALL_AGES, 80, 5, 1, (8, 16, 28)),
     )
 }
 MICRO = (
@@ -36,6 +39,58 @@ BADGE_KEYS = ("arcade_ace", "triple_star", "try_it_all", "house_record", "cat_sn
 START_LEVEL = {"little": 1, "kid": 2, "teen": 3}
 MAX_PARTS, MAX_MISSES = 45, 3
 PART_MS = (150, 6000)
+
+
+UPGRADE_NAMES = {
+    "extra_time": "Extra time",
+    "spare_heart": "Spare heart",
+    "calm_start": "Calm start",
+    "slow_start": "Slower food",
+    "big_bowl": "Bigger bowl",
+    "hint": "Hint",
+    "streak_saver": "Streak saver",
+    "preview": "Peek",
+    "rotate_free": "Free spin",
+    "longer_look": "Longer look",
+    "fewer_items": "Tidy shelf",
+    "steady": "Steady",
+}
+MICRO_UPGRADES = ("extra_time", "slow_start", "steady")
+UPGRADES: dict[str, tuple[str, str, str]] = {
+    "quickfire": ("extra_time", "spare_heart", "calm_start"),
+    "hungry-cat": ("slow_start", "big_bowl", "extra_time"),
+    "math-dash": ("extra_time", "hint", "streak_saver"),
+    "pack-the-box": ("extra_time", "preview", "rotate_free"),
+    "shelf-memory": ("extra_time", "longer_look", "fewer_items"),
+}
+STAR_NEED, CLEAR_NEED = (6, 15, 30), (5, 15, 30)
+POWER_UPS: dict[str, dict[str, tuple[str, str]]] = {
+    "quickfire": {"heart_plus": ("Heart+", "❤️"), "slow_mo": ("Slow-mo", "🐢")},
+    "hungry-cat": {"magnet": ("Magnet", "🧲"), "multiply": ("Multiply", "✖️2")},
+    "math-dash": {"freeze": ("Freeze", "❄️"), "fifty": ("50/50", "✂️")},
+    "pack-the-box": {"undo": ("Undo", "↩️"), "shrink": ("Shrink", "🔽")},
+    "shelf-memory": {"peek": ("Peek", "👀"), "lock": ("Lock", "🔒")},
+}
+
+
+def _track(game: str) -> tuple[tuple[str, ...], tuple[int, int, int]]:
+    if game.startswith("qf:"):
+        return MICRO_UPGRADES, CLEAR_NEED
+    return UPGRADES[game], STAR_NEED
+
+
+def upgrades_for(game: str, have: int) -> list[str]:
+    """Upgrades unlocked at `have` stars (or clears for `qf:<key>`)."""
+    names, need = _track(game)
+    return [u for u, n in zip(names, need, strict=True) if have >= n]
+
+
+def next_upgrade(game: str, have: int) -> dict | None:
+    names, need = _track(game)
+    for u, n in zip(names, need, strict=True):
+        if have < n:
+            return {"name": UPGRADE_NAMES[u], "have": have, "need": n}
+    return None
 
 
 def part_score(ms: int) -> int:

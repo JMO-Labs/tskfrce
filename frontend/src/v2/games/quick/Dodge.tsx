@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Micro, MicroProps } from '../types'
 import s from './microB.module.css'
+import { Emo } from '../Emo';
 
 const MASCOTS = ['trex', 'lizard-sombrero', 'dog-cowboy', 'axolotl', 'cat-princess', 'sloth-cool']
 
-function DodgeGame({ level, rng, onDone }: MicroProps) {
+function DodgeGame({ level, rng, onDone, easier }: MicroProps) {
   const [{ lane, mascot }] = useState(() => ({ lane: Math.floor(rng() * 3), mascot: MASCOTS[Math.floor(rng() * MASCOTS.length)] }))
   const [pos, setPos] = useState(1)
   const posRef = useRef(1)
@@ -24,7 +25,7 @@ function DodgeGame({ level, rng, onDone }: MicroProps) {
       if (done.current) return
       done.current = true
       onDone(posRef.current !== lane)
-    }, 1200 - level * 100)
+    }, (1200 - level * 100) * (easier ? 1.1 : 1))
     return () => { window.removeEventListener('keydown', onKey); clearTimeout(t) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -37,11 +38,11 @@ function DodgeGame({ level, rng, onDone }: MicroProps) {
               {i === lane && (<>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img className={s.mascot} src={`/celebrate/mascots/${mascot}.svg`} alt="Sleeping friend" />
-                <span className={s.zz} aria-hidden>💤</span>
+                <span className={s.zz} aria-hidden><Emo e="💤" /></span>
               </>)}
             </div>
           ))}
-          <div className={s.vac} style={{ transform: `translateX(${pos * 100}%)` }} aria-hidden>🤖</div>
+          <div className={s.vac} style={{ transform: `translateX(${pos * 100}%)` }} aria-hidden><Emo e="🤖" /></div>
         </div>
         <div className={s.ctl}>
           <button type="button" className={`${s.kb} ${s.sun}`} aria-label="Left" onClick={() => move(-1)}>◀ Left</button>

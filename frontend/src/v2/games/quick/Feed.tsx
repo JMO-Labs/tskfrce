@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Micro, MicroProps } from '../types'
 import s from './microD.module.css'
 
-function FeedGame({ onDone }: MicroProps) {
+function FeedGame({ onDone, easier }: MicroProps) {
   const taps = useRef(0)
   const done = useRef(false)
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -14,7 +14,7 @@ function FeedGame({ onDone }: MicroProps) {
     taps.current += 1
     setN(taps.current)
     if (taps.current === 1) {
-      timer.current = setTimeout(() => { done.current = true; onDone(true) }, 700)
+      timer.current = setTimeout(() => { done.current = true; onDone(true) }, easier ? 630 : 700)
     } else {
       clearTimeout(timer.current)
       done.current = true
@@ -25,8 +25,8 @@ function FeedGame({ onDone }: MicroProps) {
   return (
     <div className={s.stage}>
       <button type="button" className={`${s.bowl} ${n ? s.fed : ''}`} aria-label="Fish bowl, tap once" onClick={tap}>
-        <span aria-hidden>🐟</span>
-        {n > 0 && <span className={s.flake} aria-hidden>✨</span>}
+        <img src="/art/fluent/fish.webp" alt="fish" className={s.fish} width={70} height={70} />
+        {n > 0 && <img src="/art/fluent/sparkles.png" alt="sparkles" className={s.flake} width={24} height={24} />}
       </button>
       <p className={s.hint}>Just once!</p>
     </div>

@@ -1,0 +1,104 @@
+/* Mascot container: compact HUD display (60px icon-like) with crisp rendering */
+.root {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  position: relative;
+  border-radius: 50%;
+  flex-shrink: 0;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+.riveCanvas {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* SVG fallback animations: GPU accelerated for smooth performance */
+.svgMascot {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Cheer animation: bounce + scale */
+@keyframes cheer {
+  0% {
+    transform: scale(0.9) translateY(0);
+  }
+  50% {
+    transform: scale(1.1) translateY(-10px);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+  }
+}
+
+.cheerAnimation {
+  animation: cheer 0.6s ease-in-out;
+}
+
+/* Wince animation: shake + opacity dip */
+@keyframes wince {
+  0% {
+    transform: translateX(0) scaleX(1);
+    opacity: 1;
+  }
+  25% {
+    transform: translateX(-4px) scaleX(0.98);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateX(4px) scaleX(0.98);
+    opacity: 0.8;
+  }
+  75% {
+    transform: translateX(-2px) scaleX(0.99);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(0) scaleX(1);
+    opacity: 1;
+  }
+}
+
+.winceAnimation {
+  animation: wince 0.5s ease-in-out;
+}
+
+/* Dance animation: rotate + vertical bob */
+@keyframes dance {
+  0% {
+    transform: rotate(0deg) translateY(0);
+  }
+  25% {
+    transform: rotate(-8deg) translateY(-20px);
+  }
+  50% {
+    transform: rotate(0deg) translateY(0);
+  }
+  75% {
+    transform: rotate(8deg) translateY(-20px);
+  }
+  100% {
+    transform: rotate(0deg) translateY(0);
+  }
+}
+
+.danceAnimation {
+  animation: dance 0.8s ease-in-out;
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .cheerAnimation,
+  .winceAnimation,
+  .danceAnimation {
+    animation: none;
+  }
+}

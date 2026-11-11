@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { useElapsed } from '../useElapsed'
 import type { Micro, MicroProps } from '../types'
 import s from './microC.module.css'
+import { Emo } from '../Emo';
 
 const H = 200
 
-function CatchGame({ level, onDone }: MicroProps) {
+function CatchGame({ level, onDone, easier }: MicroProps) {
   const dur = 1200 - level * 100
-  const win = Math.max(110, 180 - level * 15)
+  const win = Math.max(110, 180 - level * 15) * (easier ? 1.1 : 1)
   const [t0] = useState(() => Date.now())
   const done = useRef(false)
   const ms = useElapsed()
@@ -26,7 +27,7 @@ function CatchGame({ level, onDone }: MicroProps) {
   return (
     <div className={s.stage}>
       <div className={s.sky} aria-hidden="true">
-        <span className={s.key} style={{ top: `${top}px` }}>🔑</span>
+        <span className={s.key} style={{ top: `${top}px` }}><Emo e="🔑" /></span>
         <div className={s.ground} />
       </div>
       <button

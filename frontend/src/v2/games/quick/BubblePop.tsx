@@ -10,13 +10,13 @@ const COLOURS = [
   { name: 'purple', c: '#8b5cf6' },
 ]
 
-function BubblePopGame({ level, rng, onDone }: MicroProps) {
+function BubblePopGame({ level, rng, onDone, easier }: MicroProps) {
   const done = useRef(false)
   const [setup] = useState(() => {
     const target = COLOURS[Math.floor(rng() * COLOURS.length)]
     const others = COLOURS.filter((c) => c !== target)
     const want = 2 + (rng() < 0.5 ? 1 : 0)
-    const total = 6 + level
+    const total = 6 + level - (easier ? 1 : 0)
     const list = Array.from({ length: total }, (_, i) => (i < want ? target : others[Math.floor(rng() * others.length)]))
     return { target, want, list: list.sort(() => rng() - 0.5) }
   })

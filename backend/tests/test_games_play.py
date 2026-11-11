@@ -5,6 +5,7 @@ from app.models.family import get_family
 from app.models.game import GamePlay, GameProgress
 from app.models.points import Points, PointsType
 from app.models.user import UserRole
+from app.services import games_catalog as gc
 from app.services import minigames_play as mp
 from fastapi import HTTPException
 
@@ -148,7 +149,7 @@ def test_shelf_board(db, parent, kid):
         ("Sis", 1, False),
     ]
     assert s["family_rounds"] == 3
-    assert {g["key"] for g in s["games"]} == {"quickfire", "hungry-cat"}
+    assert {g["key"] for g in s["games"]} == set(gc.GAMES)
     assert s["cap"]["max"] >= 1
     fam.games_board = False
     assert mp.shelf(db, fam, kid, NOW)["board"] is None

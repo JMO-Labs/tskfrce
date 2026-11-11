@@ -5,10 +5,10 @@ import s from './microA.module.css'
 type Phase = 'wait' | 'fake' | 'now'
 const LABEL: Record<Phase, string> = { wait: 'Wait…', fake: 'NOT YET', now: 'NOW!' }
 
-function QuickDrawGame({ level, rng, onDone }: MicroProps) {
+function QuickDrawGame({ level, rng, onDone, easier }: MicroProps) {
   const done = useRef(false)
   const [phase, setPhase] = useState<Phase>('wait')
-  const [delay] = useState(() => 500 + Math.floor(rng() * 900))
+  const [delay] = useState(() => Math.round((500 + Math.floor(rng() * 900)) * (easier ? 0.9 : 1)))
   useEffect(() => {
     const ids = [setTimeout(() => setPhase('now'), delay)]
     if (level >= 3) {

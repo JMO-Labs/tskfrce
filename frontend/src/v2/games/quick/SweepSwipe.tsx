@@ -9,8 +9,9 @@ const GLYPH: Record<Dir, string> = { up: '↑', down: '↓', left: '←', right:
 const KEYS: Record<string, Dir> = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }
 const OPP: Record<Dir, Dir> = { up: 'down', down: 'up', left: 'right', right: 'left' }
 const MIN = 40
+const MIN_EASY = 36
 
-function SweepSwipeGame({ level, rng, onDone }: MicroProps) {
+function SweepSwipeGame({ level, rng, onDone, easier }: MicroProps) {
   const done = useRef(false)
   const start = useRef<[number, number] | null>(null)
   const [dir] = useState<Dir>(() => DIRS[Math.floor(rng() * 4)])
@@ -39,7 +40,7 @@ function SweepSwipeGame({ level, rng, onDone }: MicroProps) {
     const dx = e.clientX - start.current[0]
     const dy = e.clientY - start.current[1]
     start.current = null
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < MIN) return
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < (easier ? MIN_EASY : MIN)) return
     answer(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up')
   }
   return (

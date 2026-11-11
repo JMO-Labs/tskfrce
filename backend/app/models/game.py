@@ -57,3 +57,15 @@ class GameProgress(Base):
     best_stars = Column(Integer, nullable=False, default=0, server_default="0")
     stars_total = Column(Integer, nullable=False, default=0, server_default="0")
     clears = Column(Integer, nullable=False, default=0, server_default="0")
+
+
+class GamePowerUp(Base):
+    """A wheel-bonus power-up a kid holds for one game until used."""
+
+    __tablename__ = "game_power_ups"
+
+    id = Column(Integer, primary_key=True)
+    kid_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    game = Column(String(32), nullable=False)
+    key = Column(String(16), nullable=False)
+    won_at = Column(DateTime, nullable=False)
