@@ -122,6 +122,7 @@ class Service:
         self._lock = threading.Lock()
         self._probing: set[str] = set()  # MACs overlaid by test_block; guarded by _lock
         self._stop = threading.Event()
+        self.failed = False  # set when the control API cannot start; main exits non-zero
         self._api = None
         self._api_servers: list = []  # For multi-bind API servers
         self.signals = Signals(cfg)
@@ -411,9 +412,7 @@ class Service:
         # Create API servers for each bind host. If bind_hosts is set, use multi-bind with retry.
         if self.cfg.bind_hosts:
             self._spawn(
-                lambda: self._start_api_multi(
-                    list(self.cfg.bind_hosts), self.cfg.blocker_port
-                )
+                lambda: self._start_api_multi(list(self.cfg.bind_hosts), self.cfg.blocker_port)
             )
         else:
             self._api = make_api(
@@ -453,7 +452,8 @@ class Service:
                 log.info("API server started on loopback %s:%d", host, server.server_address[1])
             except OSError:
                 log.exception("failed to bind API to loopback %s; stopping service", host)
-                self._stop.set()
+                self.failed = True
+                self.stop()  # heal + delete table, then main exits non-zero so Docker restarts us
                 return
 
         # Retry non-loopback hosts with individual backoff threads
@@ -479,7 +479,11 @@ class Service:
                 )
                 self._api_servers.append(server)
                 self._spawn(server.serve_forever)
-                log.info("API server started on bridge %s:%d (after retry)", host, server.server_address[1])
+                log.info(
+                    "API server started on bridge %s:%d (after retry)",
+                    host,
+                    server.server_address[1],
+                )
                 return
             except OSError as e:
                 log.warning("failed to bind API to %s (will retry in %.1fs): %s", host, backoff, e)
@@ -533,3 +537,5 @@ def main() -> None:
     for sig in (signal.SIGTERM, signal.SIGINT):
         signal.signal(sig, lambda *_: svc.stop())
     svc.run()
+    if svc.failed:
+        raise SystemExit(1)
