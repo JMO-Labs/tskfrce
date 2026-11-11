@@ -154,8 +154,11 @@ def test_api_power_up_flow(client, db, kid, kid_headers):
         f"{G}/finish", json={"token": "tok", "score": 20, "power_up": "magnet"}, headers=kid_headers
     )
     assert ok.status_code == 200
-    assert {"upgrade", "unlocked", "bonus"} <= ok.json().keys()
-    assert db.query(GamePowerUp).filter_by(kid_id=kid.id, key="magnet").count() == 0
+    body = ok.json()
+    assert {"upgrade", "unlocked", "bonus"} <= body.keys()
+    # the held magnet is used up; the random end-of-round bonus may hand out a fresh one
+    rewon = 1 if (body["bonus"] or {}).get("key") == "magnet" else 0
+    assert db.query(GamePowerUp).filter_by(kid_id=kid.id, key="magnet").count() == rewon
 
 
 def test_migration_round_trip(tmp_path):
