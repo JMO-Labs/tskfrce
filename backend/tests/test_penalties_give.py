@@ -78,6 +78,16 @@ def test_give_block_all_devices(db, parent, kid):
     assert late.mac in state.desired_blocked(db, NOW)
 
 
+@pytest.mark.parametrize("year", [2020, 2090])
+def test_block_all_devices_uses_passed_now_not_wall_clock(db, parent, kid, year):
+    """Regression: lock state must follow `now`, whatever the real clock says."""
+    now = datetime(year, 6, 1, 15, 0, tzinfo=UTC)
+    a = _dev(db, 1, kid)
+    penalties.give(db, [kid.id], _block(), parent, now)
+    assert a.mac in state.desired_blocked(db, now)
+    assert a.mac not in state.desired_blocked(db, now + timedelta(minutes=1441))
+
+
 def test_give_block_device_and_group_only_kids_devices(db, parent, kid):
     sib = _make_user(db, "sis", UserRole.KID)
     mine, theirs = _dev(db, 1, kid), _dev(db, 2, sib)

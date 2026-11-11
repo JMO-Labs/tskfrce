@@ -36,7 +36,7 @@ Tap a kid to see their day: how many chores are done, their points, streak and t
 
 When more than one thing is waiting, **Approve all** approves them in one go.
 
-A chore a kid finished stays here until you answer it, even after the daily reset. If it is from an earlier day, it shows that day. Approving it later pays the kid as normal, with any Happy Hour bonus from when it was finished. (Before 2.7.0 these were dropped at the reset and the kid got nothing.)
+A chore a kid finished stays here until you answer it, even after the daily reset. If it is from an earlier day, it shows that day. Approving it later pays the kid as normal, with any Happy Hour bonus from when it was finished. (Before 2.13.0 these were dropped at the reset and the kid got nothing.)
 
 ### Approve a chore or send it back
 
@@ -177,6 +177,10 @@ Kids save points toward something bigger, like a bike, a game or a family trip. 
 - An **extra screen time** goal grants free minutes straight away when you tap **Fulfilled**: the kid's devices are unlocked for that long. It needs screen time banking.
 - **Goal settings** (the link at the bottom) turns Goals on or off and sets whether kids can suggest goals or take points back, whether kids see what siblings gave, automatic saving (a share of each approved chore goes to the kid's chosen goal), how many goals each age can have, and the built-in goals: extra screen time (needs screen time banking) and Get out of jail free.
 
+**Create a goal.** Tap **+ New goal**. Under **Goal type**, choose a custom goal (pick an emoji, a **Name** and a **Price, points**) or a built-in one. Then choose who it is for: one kid or several kids. Custom goals can also be for the whole **Family**. The price is what kids must save before the goal is full.
+
+**Rewards for goals.** Fill the meter and tap **Fulfilled**: the kid gets the mascot party, and you hand over the real prize (a bike, a trip). Two built-in goals give a reward by themselves. **Extra screen time** grants free minutes. **Get out of jail free** gives the kid one card. A kid with a card sees **Use Get out of jail free** on a penalty card. Playing it cancels that penalty, even one that ended in the last 7 days. Each card works once. Turn it on in **Goal settings** (needs Penalties on); **Price, points** sets its cost. If you turn Penalties off, kids' cards are hidden.
+
 ### Minigames
 
 Kids earn quick games for chores and play them in the **Games** tab. Set the rules in **Settings → Family → Minigames**.
@@ -207,6 +211,22 @@ A penalty takes something away, says why, and lets the kid earn part of it back.
 - **On the kid's card.** The kid sees one card on their chores list: what was lost, your reason, an earn-back meter and the make-up chores. A points-only penalty with no earn-back shows once. Kids never see each other's penalties.
 - **Forgive, cancel, shorten.** Open the kid's page to see active penalties. **Forgive** ends it now and keeps the record. **Cancel** undoes it, giving back what was taken. **Shorten** (blocks only) ends a block earlier. A blocked device also shows **Blocked by penalty** with **Forgive**. Unfinished make-up chores are cancelled when a penalty ends.
 - **Whole family.** Choose **Penalty for everyone** to give the same penalty to every kid. Each kid gets their own penalty, so earn-back is separate.
+
+#### Add a penalty, step by step
+
+1. Turn Penalties on: **Settings → Family → Penalties**.
+2. On **Today**, tap the **...** menu on the kid and choose **Give penalty**.
+3. Pick **Small**, **Medium**, **Big** or **Custom**. Use the **change** links to adjust what is taken, the earn-back or the reason.
+4. Tap **Give penalty**. The kid sees a card on their chores list right away.
+
+#### Block time ("jail") and how it ends
+
+A block is the penalty people call jail: the kid's devices (or a group) lose internet for the time you set. The kid can still use the t@sk4ce kid app. A block ends when any of these happens:
+
+- The time runs out. **Blocked by penalty until …** on the device shows when.
+- The kid finishes make-up chores. With earn-back, each one takes time off the block.
+- You tap **Forgive** or **Cancel** on the kid's page, or **Forgive** on the blocked device. **Shorten** ends it earlier.
+- The kid plays a **Get out of jail free** card (see [Goals](#goals)). It cancels the penalty at once and you get a notice.
 
 A block only stops the device's internet. The kid can still open the t@sk4ce kid app, see their card and do make-up chores.
 

@@ -2,7 +2,8 @@ import type { Env } from './index'
 
 function guard(env: Env, name: string): void {
   const base = env.BASE_DOMAIN.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  if (!new RegExp(`^(_acme-challenge\\.)?[a-z0-9]{6}\\.${base}$`).test(name)) throw new Error('name out of scope')
+  // Allow: <id>, <id>-2, <id>-3, ..., <id>-8 for up to 8 networks, and _acme-challenge.<id>
+  if (!new RegExp(`^(_acme-challenge\\.)?[a-z0-9]{6}(-[2-8])?\\.${base}$`).test(name)) throw new Error('name out of scope')
 }
 
 const api = (env: Env) => `https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/dns_records`
@@ -33,12 +34,17 @@ export async function createRecord(env: Env, cfFetch: typeof fetch, type: 'TXT',
   await call(env, cfFetch, api(env), 'POST', { type, name, content, ttl: 60, proxied: false })
 }
 
-export async function deleteRecord(env: Env, cfFetch: typeof fetch, type: 'TXT', name: string, content: string): Promise<void> {
+export async function deleteRecord(env: Env, cfFetch: typeof fetch, type: 'TXT' | 'A', name: string, content?: string): Promise<void> {
   guard(env, name)
   const q = `${api(env)}?type=${type}&name=${encodeURIComponent(name)}`
   const list = await call(env, cfFetch, q, 'GET')
   const unq = (v: unknown) => String(v).replace(/^"(.*)"$/, '$1')
-  for (const r of list.result ?? []) if (unq(r.content) === content) await call(env, cfFetch, `${api(env)}/${r.id}`, 'DELETE')
+  for (const r of list.result ?? []) {
+    // For TXT records, match content; for A records, delete all matching the name
+    if (type === 'A' || (content && unq(r.content) === content)) {
+      await call(env, cfFetch, `${api(env)}/${r.id}`, 'DELETE')
+    }
+  }
 }
 
 export function isPrivateV4(ip: string): boolean {

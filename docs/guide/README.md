@@ -12,6 +12,8 @@ Read the pages in order the first time. It takes about 20 minutes.
 6. [Troubleshooting](06-troubleshooting.md): when something looks wrong.
 7. [FAQ](07-faq.md): quick answers.
 
+Want the detail on one feature? See the [feature guides](features/README.md).
+
 Optional: [Remote access](../remote-access.md), to check in when you are away from home.
 
 Building an integration? See the [integrations protocol](../integrations/protocol-v1.md).
