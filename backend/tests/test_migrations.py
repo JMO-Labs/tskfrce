@@ -135,7 +135,7 @@ def test_goal_jail_card_migration_round_trips(tmp_path):
     cols = lambda: {c["name"] for c in inspect(create_engine(url)).get_columns("goals")}  # noqa: E731
     alembic("upgrade", "head")
     assert {"played_at", "penalty_id"} <= cols()
-    alembic("downgrade", "-1")
+    alembic("downgrade", "d7e8f9a0b1c2")  # jail card parent (presets)
     assert not {"played_at", "penalty_id"} & cols()
     alembic("upgrade", "head")
     assert {"played_at", "penalty_id"} <= cols()

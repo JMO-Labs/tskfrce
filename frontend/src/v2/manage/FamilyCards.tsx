@@ -105,6 +105,7 @@ export function FamilyCard({ fam }: { fam: Family }) {
         </SummaryRow>
         <SummaryRow id="games" icon={ico('sports_esports')} title="Minigames" summary="" line2={line('games', gamesLine(fam))} focus={focus}>
           <GamesBody fam={fam} save={save} />
+        </SummaryRow>
         <SummaryRow id="pen" icon={ico('gavel')} title="Penalties" summary="" line2={line('pen', penaltiesLine(fam))} focus={focus}>
           <PenaltiesBody fam={fam} save={save} />
         </SummaryRow>
