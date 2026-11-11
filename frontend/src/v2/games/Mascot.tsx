@@ -55,20 +55,17 @@ export const Mascot: React.FC<MascotProps> = ({ state, mascotName: pm, name, mas
   const appRef = useRef<Application | null>(null)
   const animatorRef = useRef<MascotAnimator>(new MascotAnimator())
   const rafRef = useRef<number | null>(null)
-  const [useFallback, setUseFallback] = useState(false)
-  const [reducedMotion, setReducedMotion] = useState(false)
+  const [useFallback, setUseFallback] = useState(() => !mascotName && !!mascotSvg)
+  const [reducedMotion, setReducedMotion] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    setReducedMotion(mq.matches)
     const cb = (e: MediaQueryListEvent) => setReducedMotion(e.matches)
     mq.addEventListener('change', cb)
     return () => mq.removeEventListener('change', cb)
   }, [])
-
-  useEffect(() => {
-    if (!mascotName && mascotSvg) setUseFallback(true)
-  }, [mascotName, mascotSvg])
 
   useEffect(() => {
     if (reducedMotion || useFallback || !containerRef.current || !mascotName) return
