@@ -152,7 +152,7 @@ def _locked(db: Session, kid: User, ip: str, now: datetime, counts: dict) -> boo
     dev = request_device(db, ip, all_devs)
     devs = [dev] if dev and kid in dev.owners else [d for d in all_devs if kid in d.owners]
     local = local_now(fam.timezone, now)
-    pre = Prefetch(db, devs, counts)
+    pre = Prefetch(db, devs, counts, now=now)
     return any(not is_online(device_facts(db, d, fam, now, pre), local) for d in devs)
 
 
