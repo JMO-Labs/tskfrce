@@ -108,15 +108,24 @@ alert_and_note() {
 main() {
   say "=== Update check ==="
 
-  local channel
-  # Read channel from JSON state file (prefer), fallback to .env UPDATE_CHANNEL
+  local channel install_channel
+  # Get install-time channel (immutable, from .env)
+  install_channel=$(env_value UPDATE_CHANNEL)
+  [ -z "$install_channel" ] && install_channel="stable"
+
+  # Read channel from state file
   if [ -f "$STATE_FILE" ]; then
     channel=$(grep -o '"channel":\s*"[^"]*"' "$STATE_FILE" | cut -d'"' -f4)
   fi
-  [ -z "$channel" ] && channel=$(env_value UPDATE_CHANNEL)
-  [ -z "$channel" ] && channel="stable"
+  [ -z "$channel" ] && channel="$install_channel"
 
-  say "Update channel: $channel"
+  # Defense in depth: if install is eval, ONLY allow eval
+  if [ "$install_channel" = "eval" ] && [ "$channel" != "eval" ]; then
+    say "WARN: Non-eval channel in state on eval install; forcing eval"
+    channel="eval"
+  fi
+
+  say "Install: $install_channel, Update channel: $channel"
 
   if [ "$channel" = "off" ]; then
     say "Updates are off; skipping"

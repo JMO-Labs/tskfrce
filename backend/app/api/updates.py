@@ -57,8 +57,10 @@ def _read_state() -> dict:
             return json.loads(path.read_text())
     except Exception:
         pass
+    # Default state defaults channel to install-time channel (defense in depth)
+    install_ch = _get_install_channel()
     return {
-        "channel": "stable",
+        "channel": install_ch,
         "auto": True,
         "last_result": None,
         "last_version": None,
@@ -67,8 +69,23 @@ def _read_state() -> dict:
     }
 
 
-def _write_state(data: dict) -> None:
-    """Write update state to JSON file."""
+def _write_state(data: dict, install_channel: str = None) -> None:
+    """Write update state with eval→stable guard (defense in depth).
+
+    If install channel is eval, reject writes of stable or requested_major.
+    """
+    if install_channel is None:
+        install_channel = _get_install_channel()
+
+    # Guard: eval installs cannot have stable channel or major pull
+    if install_channel == "eval":
+        if data.get("channel") == "stable":
+            raise ValueError("Eval channel cannot write stable channel")
+        if data.get("requested_major"):
+            raise ValueError("Eval channel cannot request major version")
+        # Force channel to eval if it somehow got set to something else
+        data["channel"] = "eval"
+
     try:
         path = _state_file()
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -108,23 +125,26 @@ def patch_updates(body: UpdatesPatch, db: Session = Depends(get_db)) -> UpdatesO
     state = _read_state()
     install_channel = _get_install_channel()
 
-    if body.channel is not None:
-        # Hard rule: eval install cannot switch to stable (owner mandate)
-        if install_channel == "eval" and body.channel == "stable":
-            raise HTTPException(409, "Eval channel cannot switch to stable")
-        if body.channel not in {"stable", "eval", "off"}:
-            raise HTTPException(400, "Channel must be 'stable', 'eval', or 'off'")
-        state["channel"] = body.channel
-        _write_state(state)
-
+    # Guard: eval boxes cannot pull major versions
     if body.pull_major is not None:
+        if install_channel == "eval":
+            raise HTTPException(409, "Eval channel cannot pull major versions")
         current = int(__version__.split(".")[0])
         requested = int(body.pull_major)
         if requested <= current:
             raise HTTPException(400, f"Major version {requested} not available")
         state["requested_major"] = requested
-        _write_state(state)
+        _write_state(state, install_channel)
         trigger(force=True)
+
+    if body.channel is not None:
+        # Guard: eval install cannot switch to stable
+        if install_channel == "eval" and body.channel == "stable":
+            raise HTTPException(409, "Eval channel cannot switch to stable")
+        if body.channel not in {"stable", "eval", "off"}:
+            raise HTTPException(400, "Channel must be 'stable', 'eval', or 'off'")
+        state["channel"] = body.channel
+        _write_state(state, install_channel)
 
     return get_updates(db)
 

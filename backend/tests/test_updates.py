@@ -82,3 +82,25 @@ def test_internal_today_note_endpoint_requires_token(client):
     """POST /internal/today-note without token returns 401."""
     resp = client.post("/internal/today-note", json={"note": "test"})
     assert resp.status_code == 401
+
+
+def test_eval_cannot_pull_major(client, parent_headers, monkeypatch):
+    """Hard rule: eval boxes cannot pull major versions (409, state stays eval)."""
+    # Mock install-time channel as eval
+    monkeypatch.setenv("HOME", "/tmp")
+    tmp_env = Path("/tmp/.env")
+    tmp_env.write_text("UPDATE_CHANNEL=eval\n")
+
+    resp = client.patch(
+        "/api/v1/updates",
+        headers=parent_headers,
+        json={"pull_major": "3"},
+    )
+    assert resp.status_code == 409
+    assert "cannot" in resp.json()["detail"].lower()
+
+    # Verify state stayed eval
+    status = client.get("/api/v1/updates", headers=parent_headers).json()
+    assert status["channel"] == "eval"
+
+    tmp_env.unlink()
