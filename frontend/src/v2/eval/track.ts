@@ -1,7 +1,7 @@
 import { api, KID_TOKEN_KEY } from '@/v2/api'
 import { tokenManager } from '@/services/tokenManager'
 
-export type EvalEvent = 'screen_view' | 'wizard_step' | 'wizard_done' | 'form_abandoned' | 'error_shown'
+export type EvalEvent = 'screen_view' | 'feature' | 'wizard_step' | 'wizard_done' | 'form_abandoned' | 'error_shown'
 type Props = Record<string, string | number>
 interface Pending { name: EvalEvent; props: Props }
 

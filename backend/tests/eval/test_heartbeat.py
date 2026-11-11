@@ -30,7 +30,7 @@ def _runs(db, parent, kid, statuses, submitted=()):
 
 def test_build_has_every_key(eval_on, db):
     out = heartbeat.build(db, date(2026, 10, 24))
-    assert set(out) == set(heartbeat.KEYS) and len(out) == 13
+    assert set(out) == set(heartbeat.KEYS) and len(out) == 14
     assert all(v == 0 for v in out.values())
 
 

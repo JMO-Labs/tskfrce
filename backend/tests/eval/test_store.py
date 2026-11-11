@@ -62,3 +62,18 @@ def test_prune_age(eval_on):
     store.enqueue("feedback", {}, now=0)
     assert store.prune(15 * 86400) == 1
     assert [r.kind for r in store.due(15 * 86400)] == ["feedback"]
+
+
+def test_daily_cap_drops_oldest_and_counts(eval_on):
+    for i in range(store.DAILY_CAP + 3):
+        store.enqueue("umami", {"i": i}, now=1000.0 + i)
+    rows = store.due(10**9, limit=10_000)
+    assert len(rows) == store.DAILY_CAP
+    assert rows[0].body == {"i": 3} and rows[-1].body == {"i": store.DAILY_CAP + 2}
+    assert store.counters(store.local_day())["dropped"] == 3
+
+
+def test_cap_ignores_non_umami(eval_on):
+    for i in range(store.DAILY_CAP + 2):
+        store.enqueue("feedback", {"i": i})
+    assert len(store.due(10**10, limit=10_000)) == store.DAILY_CAP + 2

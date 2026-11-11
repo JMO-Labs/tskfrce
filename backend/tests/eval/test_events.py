@@ -72,3 +72,27 @@ def test_clean_malformed_inputs():
 
 def test_clean_error_kind_trailing_newline():
     assert events.clean("error_shown", {"kind": "network\n"}) == {"kind": "other"}
+
+
+def test_clean_feature():
+    assert events.clean("feature", {"area": "goals", "action": "open", "x": "Mia"}) == {
+        "area": "goals",
+        "action": "open",
+    }
+    assert events.clean("feature", {"area": "Mia", "action": "open"}) is None
+    assert events.clean("feature", {"area": "goals", "action": "nuke"}) is None
+    assert events.clean("feature", {"area": "wifi"}) is None
+    assert events.clean("feature", {"area": ["goals"], "action": "open"}) is None
+
+
+def test_clean_screen_view_section():
+    ok = events.clean("screen_view", {"route": "/settings", "section": "wifi"})
+    assert ok == {"route": "/settings", "section": "wifi"}
+    assert events.clean("screen_view", {"route": "/kid", "section": "rewards"}) == {
+        "route": "/kid",
+        "section": "rewards",
+    }
+    assert events.clean("screen_view", {"route": "/settings", "section": "MyWifi"}) == {
+        "route": "/settings"
+    }
+    assert events.clean("screen_view", {"route": "/wifi-setup"}) == {"route": "/wifi-setup"}
