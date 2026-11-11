@@ -14,30 +14,80 @@ const json = (o: unknown, status = 200) =>
 const postIp: Route = async ({ req, env, cf }) => {
   const id = await authBox(req, env)
   if (!id) return json({ error: 'unauthorized' }, 401)
-  const body = (await req.json().catch(() => null)) as { ip?: unknown } | null
-  const ip = body?.ip
-  if (typeof ip !== 'string' || !isPrivateV4(ip)) return json({ error: 'ip must be private IPv4' }, 400)
-  await upsertRecord(env, cf, 'A', `${id}.${env.BASE_DOMAIN}`, ip)
+  const body = (await req.json().catch(() => null)) as { ip?: unknown; networks?: unknown } | null
+
+  let networks: Array<{ ip: string; label: string }> | null = null
+  let firstIp: string | null = null
+
+  // Handle new networks array format
+  if (Array.isArray(body?.networks)) {
+    if (body.networks.length === 0) return json({ error: 'networks array must not be empty' }, 400)
+    if (body.networks.length > 8) return json({ error: 'networks array must have ≤8 items' }, 400)
+    const validated = body.networks.filter((n: unknown): n is { ip: string; label: string } =>
+      typeof (n as any)?.ip === 'string' && typeof (n as any)?.label === 'string' && (n as any)?.label.length > 0 &&
+      (n as any)?.label.length <= 32 && isPrivateV4((n as any).ip)
+    )
+    if (validated.length !== body.networks.length) return json({ error: 'all networks must have private IPv4 and label ≤32 chars' }, 400)
+    networks = validated
+    firstIp = validated[0].ip
+  } else {
+    // Backward compat: single IP
+    const ip = body?.ip
+    if (typeof ip !== 'string' || !isPrivateV4(ip)) return json({ error: 'ip must be private IPv4' }, 400)
+    firstIp = ip
+  }
+
   let prev: Record<string, unknown> = {}
   try { prev = JSON.parse((await env.BOXES.get(`seen:${id}`)) ?? '{}') } catch { /* corrupt -> reset */ }
+
+  // Create DNS records
+  const newNetworkCount = networks ? networks.length : 1
+  if (networks) {
+    for (let i = 0; i < networks.length; i++) {
+      const suffix = i === 0 ? '' : `-${i + 1}`
+      await upsertRecord(env, cf, 'A', `${id}${suffix}.${env.BASE_DOMAIN}`, networks[i].ip)
+    }
+  } else if (firstIp) {
+    await upsertRecord(env, cf, 'A', `${id}.${env.BASE_DOMAIN}`, firstIp)
+  }
+
+  // Clean up stale records from previous larger network list (idempotent)
+  let prevNetworkCount = 1
+  if (prev.networks && Array.isArray(prev.networks)) prevNetworkCount = (prev.networks as unknown[]).length
+  if (prevNetworkCount > newNetworkCount) {
+    // Delete records from newNetworkCount up to 7 (max 8 networks = indices 0-7)
+    for (let i = newNetworkCount; i < 8; i++) {
+      const suffix = i === 0 ? '' : `-${i + 1}`
+      try {
+        await deleteRecord(env, cf, 'A', `${id}${suffix}.${env.BASE_DOMAIN}`)
+      } catch { /* ignore if record doesn't exist */ }
+    }
+  }
   const pub = req.headers.get('CF-Connecting-IP') ?? ''
   const now = Date.now()
   const f = pub ? (pub.includes(':') ? '6' : '4') : ''
-  const seen: Record<string, unknown> = { lanIp: ip, seenAt: now }
+  const seen: Record<string, unknown> = networks ? { networks, last_seen: now } : { lanIp: firstIp, seenAt: now }
   for (const k of ['publicIp4', 'seenAt4', 'publicIp6', 'seenAt6']) if (prev[k] !== undefined) seen[k] = prev[k]
   if (f) { seen[`publicIp${f}`] = pub; seen[`seenAt${f}`] = now }
   await env.BOXES.put(`seen:${id}`, JSON.stringify(seen))
   return new Response(null, { status: 204 })
 }
 
-// lego httpreq: body {fqdn, value}; only the caller's own _acme-challenge name is allowed.
+// lego httpreq: body {fqdn, value}; only the caller's own _acme-challenge names are allowed.
+// Allows: _acme-challenge.<id>.<base>, _acme-challenge.<id>-2.<base>, ..., _acme-challenge.<id>-8.<base>
 const acme = (act: typeof createRecord): Route => async ({ req, env, cf }) => {
   const id = await authBox(req, env)
   if (!id) return json({ error: 'unauthorized' }, 401)
   const b = (await req.json().catch(() => null)) as { fqdn?: unknown; value?: unknown } | null
   if (typeof b?.fqdn !== 'string' || typeof b.value !== 'string' || !b.value) return json({ error: 'fqdn and value required' }, 400)
   const name = b.fqdn.trim().toLowerCase().replace(/\.$/, '')
-  if (name !== `_acme-challenge.${id}.${env.BASE_DOMAIN}`) return json({ error: 'forbidden' }, 403)
+  // Check if name is for this box: _acme-challenge.<id>, _acme-challenge.<id>-2, ..., _acme-challenge.<id>-8
+  // Use exact allow-list to prevent spoofing (e.g., _acme-challenge.<id>-2.other.<base> is rejected)
+  const allowedNames = new Set<string>([`_acme-challenge.${id}.${env.BASE_DOMAIN}`])
+  for (let i = 2; i <= 8; i++) {
+    allowedNames.add(`_acme-challenge.${id}-${i}.${env.BASE_DOMAIN}`)
+  }
+  if (!allowedNames.has(name)) return json({ error: 'forbidden' }, 403)
   await act(env, cf, 'TXT', name, b.value)
   return json({})
 }

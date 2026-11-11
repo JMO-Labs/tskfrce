@@ -29,7 +29,22 @@ say "Updating the system (can take a while)"
 $APT update -q
 $APT -yq -o Dpkg::Options::=--force-confold full-upgrade
 $APT install -yq curl git ca-certificates openssl iproute2 nftables \
-  openssh-server unattended-upgrades
+  openssh-server unattended-upgrades network-manager wpasupplicant wireless-tools iw
+
+say "Setting up NetworkManager and netplan"
+sudo mkdir -p /etc/netplan
+if [ ! -f /etc/netplan/01-netcfg.yaml ]; then
+  sudo tee /etc/netplan/01-netcfg.yaml >/dev/null <<'EOF'
+network:
+  version: 2
+  renderer: NetworkManager
+  ethernets:
+    eno2:
+      dhcp4: true
+EOF
+fi
+sudo netplan apply 2>/dev/null || true
+sudo systemctl enable --now NetworkManager
 
 say "Turning on SSH and automatic security updates"
 sudo systemctl enable --now ssh
@@ -59,6 +74,18 @@ sudo systemctl enable --now docker
 sudo docker compose version >/dev/null 2>&1 || die "Docker compose plugin is missing."
 # Security: docker group = root-equivalent. Fine on a single-purpose home box.
 sudo usermod -aG docker "$(id -un)"
+
+say "Installing the t@sk4ce network daemon (Wi-Fi setup hotspot + fallback)"
+# Only root and the backend container (group_add 42420 in docker-compose.prod.yml) may use its socket.
+sudo groupadd -f -g 42420 tskfrce-wifi
+sudo mkdir -p /usr/local/lib/tskfrce /var/lib/tskfrce/edge /etc/tskfrce
+curl -fsSL "https://raw.githubusercontent.com/JMO-Labs/tskfrce/$REF/scripts/tskfrce-netd.py" |
+  sudo tee /usr/local/lib/tskfrce/tskfrce-netd.py >/dev/null
+curl -fsSL "https://raw.githubusercontent.com/JMO-Labs/tskfrce/$REF/systemd/tskfrce-netd.service" |
+  sudo tee /etc/systemd/system/tskfrce-netd.service >/dev/null
+# The factory image writes /etc/tskfrce/setup-wifi.json ({"ssid","password"}, 0600) to match the sticker.
+sudo systemctl daemon-reload
+sudo systemctl enable --now tskfrce-netd
 
 say "Installing t@sk4ce ($REF)"
 curl -fsSL "https://raw.githubusercontent.com/JMO-Labs/tskfrce/$REF/install.sh" |

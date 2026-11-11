@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     NTFY_UPSTREAM_TOKEN: str | None = None  # optional Bearer token for that server
     NTFY_CONF_FILE: str | None = None  # shared server.yml the ntfy container reads
     BLOCKER_URL: str = "http://127.0.0.1:7777"
+    EDGE_TOKEN: str | None = None  # Caddy edge token for hotspot portal auth
     LOCK_INTERVAL_SECONDS: int = 30
     LOCK_LOOP_ENABLED: bool = True
     INTEGRATIONS_LOOP_ENABLED: bool = True
