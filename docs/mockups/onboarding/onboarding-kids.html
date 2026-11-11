@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Onboarding: Kids</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --p-bg: #f8f8f8;
+      --p-card: #ffffff;
+      --p-soft: #f3f3f3;
+      --p-ink: #292928;
+      --p-sub: #5f5f5c;
+      --p-line: #e4e4e1;
+      --p-acc: #c3f832;
+      --p-focus: #292928;
+      --font-parent: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --p-bg: #1c1c1b;
+        --p-card: #292928;
+        --p-soft: #323230;
+        --p-ink: #f4f4f2;
+        --p-sub: #a8a8a4;
+        --p-line: #3d3d3b;
+        --p-focus: #b4b4af;
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      background: var(--p-bg);
+      color: var(--p-ink);
+      font-family: var(--font-parent), system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .pn {
+      display: grid;
+      gap: 14px;
+    }
+
+    .pn-mh {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pn-mh h2 {
+      margin: 0;
+      font-size: 28px;
+      color: var(--p-ink);
+    }
+
+    .pn-help {
+      color: var(--p-sub);
+      font-size: 12.5px;
+      margin: 0;
+    }
+
+    .pn-card {
+      background: var(--p-card);
+      color: var(--p-ink);
+      border: 1px solid var(--p-line);
+      border-radius: 18px;
+      padding: 16px 18px;
+      min-width: 0;
+    }
+
+    .pn-h {
+      margin: 0 0 10px;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--p-ink);
+    }
+
+    .kid-list {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .kid-row {
+      display: grid;
+      grid-template-columns: 40px 1fr auto auto auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px;
+      background: var(--p-soft);
+      border-radius: 8px;
+      border: 1px solid var(--p-line);
+    }
+
+    .kid-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: var(--p-card);
+      border: 1px solid var(--p-line);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: var(--p-ink);
+      flex-shrink: 0;
+    }
+
+    .kid-avatar.placeholder {
+      background: linear-gradient(135deg, #e8e8e6 0%, #d8d8d5 100%);
+      font-size: 12px;
+      text-align: center;
+      padding: 2px;
+      color: var(--p-sub);
+      font-weight: 500;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .kid-avatar.placeholder {
+        background: linear-gradient(135deg, #3d3d3b 0%, #323230 100%);
+      }
+    }
+
+    .kid-info {
+      min-width: 0;
+    }
+
+    .kid-name {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--p-ink);
+      margin: 0;
+    }
+
+    .kid-meta {
+      font-size: 12px;
+      color: var(--p-sub);
+      margin: 2px 0 0;
+    }
+
+    .kid-actions {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+
+    .kid-btn {
+      padding: 6px;
+      border: 1px solid var(--p-line);
+      border-radius: 6px;
+      background: var(--p-card);
+      color: var(--p-ink);
+      cursor: pointer;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      transition: all 0.15s ease;
+    }
+
+    @media (hover: hover) {
+      .kid-btn:hover {
+        background: var(--p-line);
+      }
+    }
+
+    .kid-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .input-group {
+      margin-bottom: 12px;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--p-ink);
+    }
+
+    .input-group input,
+    .input-group select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--p-line);
+      border-radius: 8px;
+      font-size: 14px;
+      background: var(--p-card);
+      color: var(--p-ink);
+      font-family: inherit;
+    }
+
+    .input-group input:focus,
+    .input-group select:focus {
+      outline: none;
+      border-color: var(--p-ink);
+      box-shadow: 0 0 0 2px rgba(41, 41, 40, 0.1);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .input-group input:focus,
+      .input-group select:focus {
+        box-shadow: 0 0 0 2px rgba(244, 244, 242, 0.1);
+      }
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .input-help {
+      font-size: 12px;
+      color: var(--p-sub);
+      margin-top: 4px;
+    }
+
+    .pn-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: space-between;
+      margin-top: 12px;
+    }
+
+    .p-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border: 1px solid var(--p-line);
+      border-radius: 999px;
+      background: var(--p-card);
+      color: var(--p-ink);
+      font: 600 13px var(--font-parent), system-ui, sans-serif;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    @media (hover: hover) {
+      .p-btn:hover {
+        border-color: var(--p-ink);
+        background: var(--p-soft);
+      }
+    }
+
+    .p-btn[data-variant='accent'] {
+      background: var(--p-acc);
+      border-color: var(--p-acc);
+      color: #292928;
+    }
+
+    @media (hover: hover) {
+      .p-btn[data-variant='accent']:hover {
+        opacity: 0.9;
+      }
+    }
+
+    .step-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      color: var(--p-sub);
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    @media (max-width: 600px) {
+      .pn-mh {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .pn-actions {
+        flex-direction: column-reverse;
+      }
+
+      .p-btn {
+        flex: 1;
+      }
+
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+
+      .kid-row {
+        grid-template-columns: 36px 1fr 28px 28px;
+      }
+
+      .kid-avatar {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="pn">
+      <div>
+        <div class="step-label">Step 3 of 6</div>
+        <div class="pn-mh">
+          <h2>Kids</h2>
+        </div>
+        <p class="pn-help">Add the kids in your family. Edit anytime later.</p>
+      </div>
+
+      <!-- Kids List -->
+      <div class="pn-card">
+        <div class="pn-h">Family kids</div>
+        <div class="kid-list">
+          <div class="kid-row">
+            <div class="kid-avatar placeholder">SVG<br>cat</div>
+            <div class="kid-info">
+              <p class="kid-name">Maya</p>
+              <p class="kid-meta">Age 7 (Little) · PIN set</p>
+            </div>
+            <button class="kid-btn" title="Edit">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke="none" d="M0 0h24v24H0z"/><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg>
+            </button>
+            <button class="kid-btn" title="Remove">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke="none" d="M0 0h24v24H0z"/><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg>
+            </button>
+          </div>
+
+          <div class="kid-row">
+            <div class="kid-avatar placeholder">SVG<br>dog</div>
+            <div class="kid-info">
+              <p class="kid-name">Jordan</p>
+              <p class="kid-meta">Age 10 (Kid) · PIN set</p>
+            </div>
+            <button class="kid-btn" title="Edit">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke="none" d="M0 0h24v24H0z"/><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg>
+            </button>
+            <button class="kid-btn" title="Remove">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke="none" d="M0 0h24v24H0z"/><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg>
+            </button>
+          </div>
+
+          <div class="kid-row">
+            <div class="kid-avatar placeholder">SVG<br>fox</div>
+            <div class="kid-info">
+              <p class="kid-name">Sam</p>
+              <p class="kid-meta">Age 14 (Teen) · No PIN</p>
+            </div>
+            <button class="kid-btn" title="Edit">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke="none" d="M0 0h24v24H0z"/><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg>
+            </button>
+            <button class="kid-btn" title="Remove">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke="none" d="M0 0h24v24H0z"/><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg>
+            </button>
+          </div>
+
+          <div class="kid-row">
+            <div class="kid-avatar placeholder">SVG<br>lion</div>
+            <div class="kid-info">
+              <p class="kid-name">Alex</p>
+              <p class="kid-meta">Age 6 (Little) · PIN set</p>
+            </div>
+            <button class="kid-btn" title="Edit">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke="none" d="M0 0h24v24H0z"/><path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4"/><path d="M13.5 6.5l4 4"/></svg>
+            </button>
+            <button class="kid-btn" title="Remove">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke="none" d="M0 0h24v24H0z"/><path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add Kid Form -->
+      <div class="pn-card">
+        <div class="pn-h">Add a kid</div>
+
+        <div class="input-group">
+          <label>Name</label>
+          <input type="text" placeholder="Kid's name" value="Zoe">
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; margin-top: 4px; color: var(--p-sub);">
+            <span style="color: var(--p-ink); font-weight: 500;">Name already used</span>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="input-group">
+            <label>Avatar</label>
+            <select>
+              <option>SVG cat (placeholder)</option>
+              <option>SVG dog</option>
+              <option>SVG fox</option>
+              <option>SVG lion</option>
+            </select>
+            <p class="input-help">Placeholder for Noto art</p>
+          </div>
+
+          <div class="input-group">
+            <label>Age group</label>
+            <select>
+              <option>Little (5-9)</option>
+              <option>Kid (10-12)</option>
+              <option>Teen (13+)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>PIN (optional)</label>
+          <input type="text" placeholder="4 digits" maxlength="4" inputmode="numeric" value="123">
+          <p class="input-help">Lets a kid prove it's them on a shared device.</p>
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; margin-top: 6px; color: #ff9b8f;">
+            <svg width="14" height="14" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><path stroke="none" d="M0 0h24v24H0z"/><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+            <span>4 digits</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; margin-top: 6px; color: #4a9d1f;">
+            <svg width="14" height="14" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><path stroke="none" d="M0 0h24v24H0z"/><path d="M5 12l5 5l10 -10"/></svg>
+            <span>Confirmed</span>
+          </div>
+        </div>
+
+        <button class="p-btn" data-variant="accent" style="width: 100%; margin-top: 12px;">
+          <svg width="14" height="14" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke="none" d="M0 0h24v24H0z"/><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg>
+          Add kid
+        </button>
+
+        <p class="input-help" style="margin-top: 14px; border-top: 1px solid var(--p-line); padding-top: 12px;">Back from any later step returns here.</p>
+      </div>
+
+      <div class="pn-actions">
+        <button class="p-btn">Back</button>
+        <button class="p-btn" data-variant="accent">Next</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
