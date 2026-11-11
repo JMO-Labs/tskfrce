@@ -1,9 +1,8 @@
 """Tests for networks API: auth and enforcement toggle."""
 
 import pytest
-from sqlalchemy.orm import Session
-
 from app.models.network import Network
+from sqlalchemy.orm import Session
 
 
 @pytest.fixture
