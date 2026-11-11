@@ -48,10 +48,10 @@ describe('GoalSettingsPane', () => {
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/goals/settings', { method: 'PATCH', body: { max_little: 4 } }))
   })
 
-  test('extra screen time is disabled without banking', async () => {
+  test('extra screen time is disabled without screen time', async () => {
     cur = { ...base, screen_ok: false }
     wrap(<GoalSettingsPane onBack={() => {}} />)
-    expect(await screen.findByText('Turn on screen time banking first')).toBeTruthy()
+    expect(await screen.findByText('Turn on screen time first')).toBeTruthy()
     expect((screen.getByRole('switch', { name: 'Extra screen time' }) as HTMLButtonElement).disabled).toBe(true)
   })
 

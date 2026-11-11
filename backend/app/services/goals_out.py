@@ -29,7 +29,7 @@ SETTING_KEYS = {
 
 def settings_out(db: Session, fam: FamilySettings) -> dict:
     out = {k: getattr(fam, col) for k, col in SETTING_KEYS.items()}
-    out["screen_ok"] = bool(fam.points_unlock_early and fam.screen_rollover)
+    out["screen_ok"] = bool(fam.points_unlock_early)
     return out
 
 

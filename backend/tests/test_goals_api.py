@@ -67,8 +67,8 @@ def test_screen_builtin(client, db, parent_headers, kid):
     fam.goal_screen_on, fam.goal_screen_minutes, fam.goal_screen_price = True, 45, 150
     db.commit()
     r = _post(client, parent_headers, kind="screen", kid_ids=[kid.id], target=1)
-    assert r.status_code == 400  # banking not active
-    fam.points_unlock_early = fam.screen_rollover = True
+    assert r.status_code == 400  # screen time off
+    fam.points_unlock_early = True
     db.commit()
     out = _post(client, parent_headers, kind="screen", kid_ids=[kid.id], target=1).json()[0]
     assert (out["name"], out["target"], out["minutes"]) == ("45 min extra screen time", 150, 45)
