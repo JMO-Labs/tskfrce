@@ -1,4 +1,4 @@
-import { describe, test, expect, jest, beforeEach } from '@jest/globals'
+import { describe, test, expect, beforeEach } from '@jest/globals'
 import type { ReactNode } from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { MantineProvider } from '@mantine/core'
@@ -69,6 +69,19 @@ describe('WifiPane', () => {
     wrap(<WifiPane />)
     expect(screen.getByRole('button', { name: /Scan/i })).toBeEnabled()
     expect(screen.queryByText('Scanning...')).toBeNull()
+  })
+
+  test('picking a network opens the join dialog and submits ssid + password', async () => {
+    const mutate = jest.fn()
+    const { useWifiJoin, useWifiScan } = jest.requireMock('@/v2/hooks/useWifi') as Record<string, jest.Mock>
+    useWifiScan.mockReturnValue({ data: [{ ssid: 'TestNet', signal: 75, security: 'wpa' }], isFetching: false, isError: false, refetch: jest.fn() })
+    useWifiJoin.mockReturnValue({ mutate, isPending: false })
+    wrap(<WifiPane />)
+    fireEvent.click(screen.getByRole('button', { name: /Scan/i }))
+    fireEvent.click(screen.getByRole('button', { name: /TestNet/ }))
+    fireEvent.change(await screen.findByLabelText(/^Password/), { target: { value: 'secret123' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Join' }))
+    expect(mutate).toHaveBeenCalledWith({ ssid: 'TestNet', password: 'secret123', security: 'wpa', hidden: false })
   })
 
   test('scan button exists and is clickable', () => {
