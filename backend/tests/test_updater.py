@@ -15,15 +15,17 @@ def test_eval_channel_never_stable():
     """
     # Stable patterns that MUST NOT appear in eval channel resolution
     stable_patterns = [
-        r"^v\d+\.\d+\.\d+$",           # vX.Y.Z release tag
-        r"^:\d+(\.\d+)?$",              # :X or :X.Y major tag
-        r"v[0-9]",                      # any version starting with v
+        r"^v\d+\.\d+\.\d+$",  # vX.Y.Z release tag
+        r"^:\d+(\.\d+)?$",  # :X or :X.Y major tag
+        r"v[0-9]",  # any version starting with v
     ]
 
     # Valid eval channel tags for each service
     eval_valid = {
-        "backend": ["ghcr.io/jmo-labs/tskfrce/backend:eval",
-                    "ghcr.io/jmo-labs/tskfrce/backend:eval-2.14"],
+        "backend": [
+            "ghcr.io/jmo-labs/tskfrce/backend:eval",
+            "ghcr.io/jmo-labs/tskfrce/backend:eval-2.14",
+        ],
         "frontend": ["ghcr.io/jmo-labs/tskfrce/frontend:eval"],
         "blocker": ["ghcr.io/jmo-labs/tskfrce/blocker:eval"],
         "edge": ["ghcr.io/jmo-labs/tskfrce/edge:eval"],
@@ -34,14 +36,14 @@ def test_eval_channel_never_stable():
         for image in tags:
             tag_part = image.split(":")[-1]
             # Must be eval or eval-X.Y
-            assert tag_part.startswith("eval"), \
-                f"{svc}: tag {tag_part} does not start with 'eval'"
+            assert tag_part.startswith("eval"), f"{svc}: tag {tag_part} does not start with 'eval'"
 
             # Must NOT match any stable pattern
             for stable_pat in stable_patterns:
                 stable_re = re.compile(stable_pat)
-                assert not stable_re.match(tag_part), \
+                assert not stable_re.match(tag_part), (
                     f"{svc}: eval tag {tag_part} matches forbidden stable pattern {stable_pat}"
+                )
 
 
 def test_update_channel_env_values():

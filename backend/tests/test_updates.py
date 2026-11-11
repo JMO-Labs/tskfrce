@@ -1,7 +1,5 @@
 """Updates API tests."""
 
-import pytest
-
 
 def test_get_updates(api_client):
     """GET /api/v1/updates returns current status."""

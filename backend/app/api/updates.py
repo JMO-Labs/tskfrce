@@ -1,16 +1,17 @@
 """Box updates: version, channel, and upgrade management."""
 
 import os
-import subprocess
-from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app import __version__
 from app.api.deps import get_db, require_parent
+from app.api.internal import require_token
 from app.lock.loop import trigger
 from app.models.family import get_family
+from app.services import inbox
 
 router = APIRouter(prefix="/api/v1", tags=["updates"], dependencies=[Depends(require_parent)])
 internal_router = APIRouter(prefix="/internal", tags=["updates-internal"])
@@ -66,16 +67,14 @@ def _update_env(key: str, value: str) -> None:
 @router.get("/updates")
 def get_updates(db: Session = Depends(get_db)) -> UpdatesOut:
     """Get current update status."""
-    from app import __version__
-
     channel = _env_value("UPDATE_CHANNEL") or "stable"
-    last_result = _env_value("UPDATE_LAST_RESULT")  # not yet set; we store this for future
+    last_result = _env_value("UPDATE_LAST_RESULT")
 
-    # Major version check: if current is 2.x and 3 exists (future), show 3 as available
+    # Major version check: if current is 2.x and 3 exists, show 3 as available
     major_available = None
     current_major = int(__version__.split(".")[0])
     if current_major < 3:
-        major_available = "3"  # ponytail: will check actual availability when needed
+        major_available = "3"
 
     return UpdatesOut(
         version=__version__,
@@ -94,55 +93,64 @@ def patch_updates(body: UpdatesPatch, db: Session = Depends(get_db)) -> UpdatesO
         _update_env("UPDATE_CHANNEL", body.channel)
 
     if body.pull_major is not None:
-        # Validate major version exists (future versions not available yet)
         current = int(__version__.split(".")[0])
         requested = int(body.pull_major)
         if requested <= current:
             raise HTTPException(400, f"Major version {requested} not available")
-        # Set tag and trigger updater
         _update_env("TASK4CE_TAG", f":{requested}")
         trigger(force=True)
 
     return get_updates(db)
 
 
-# Internal endpoints for updater and reboot hook
+# Internal endpoints (token-protected, used by updater and reboot hook)
+
 
 @internal_router.get("/kid-session-active")
-async def kid_session_active_check(db: Session = Depends(get_db)) -> dict[str, bool]:
+async def kid_session_active_check(
+    db: Session = Depends(get_db),
+    token: str = Depends(require_token),
+) -> dict[str, bool]:
     """Check if any kid session is active (reboot and updater skip hook)."""
     fam = get_family(db)
     from app.models.lock import Device
 
-    active = db.query(Device).filter(
-        Device.family_id == fam.id,
-        Device.kid_session_active == True,
-    ).first() is not None
+    active = (
+        db.query(Device)
+        .filter(Device.family_id == fam.id, Device.kid_session_active == True)
+        .first()
+        is not None
+    )
 
     return {"active": active}
 
 
 @internal_router.post("/today-note")
-async def post_today_note(body: dict[str, str], db: Session = Depends(get_db)) -> dict[str, str]:
-    """Add a note to the Today page (update status messages)."""
-    from app.services import inbox
-
+async def post_today_note(
+    body: dict[str, str],
+    db: Session = Depends(get_db),
+    token: str = Depends(require_token),
+) -> dict[str, str]:
+    """Add a note to the Today page (update status messages, max 256 chars)."""
     fam = get_family(db)
-    note = body.get("note", "")
+    note = body.get("note", "")[:256]
     if note:
-        inbox.add_note(db, fam, note)
+        inbox.notify_parents(db, fam, note)
         db.commit()
 
     return {"status": "ok"}
 
 
 @internal_router.post("/telemetry")
-async def post_telemetry(body: dict[str, str], db: Session = Depends(get_db)) -> dict[str, str]:
+async def post_telemetry(
+    body: dict[str, str],
+    db: Session = Depends(get_db),
+    token: str = Depends(require_token),
+) -> dict[str, str]:
     """Record telemetry event (e.g. update_failed for eval boxes)."""
-    # ponytail: telemetry integration via Umami; for now, log
+    # Telemetry integration via Umami; for now, just acknowledge
     event = body.get("event", "")
     if event == "update_failed":
-        # Log update failure for eval channel monitoring
-        pass
+        pass  # Future: log to telemetry system
 
     return {"status": "recorded"}

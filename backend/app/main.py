@@ -63,8 +63,8 @@ from app.api.screen_time import router as screen_time_router
 from app.api.setup import router as setup_router
 from app.api.tips import router as tips_router
 from app.api.trust import router as trust_router
-from app.api.updates import router as updates_router
 from app.api.updates import internal_router as updates_internal_router
+from app.api.updates import router as updates_router
 from app.core.logging import configure_logging, get_logger
 from app.core.monitoring import (
     MetricsMiddleware,

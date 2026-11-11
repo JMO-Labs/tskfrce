@@ -27,17 +27,22 @@ update_env() {
   fi
 }
 
-# Check if kid session is active via backend internal API
+# Check if kid session is active via backend internal API (fail closed)
 kid_session_active() {
-  local api_port
+  local api_port response active
   api_port=$(env_value BACKEND_PORT | sed 's/.*://')
   api_port="${api_port:-8000}"
   local token
   token=$(env_value INTERNAL_TOKEN)
-  [ -n "$token" ] || return 1
+  [ -n "$token" ] || return 0  # No token: skip update (fail closed)
 
-  curl -sf -H "Authorization: Bearer $token" \
-    "http://127.0.0.1:$api_port/internal/kid-session-active" >/dev/null 2>&1
+  response=$(curl -sf -H "Authorization: Bearer $token" \
+    "http://127.0.0.1:$api_port/internal/kid-session-active" 2>/dev/null || echo "")
+  [ -z "$response" ] && return 0  # Backend unreachable: skip update (fail closed)
+
+  # Parse JSON: {"active": true/false}
+  active=$(echo "$response" | grep -o '"active":\s*true' >/dev/null && echo "1" || echo "0")
+  [ "$active" = "1" ]
 }
 
 # Verify image signature with cosign (keyless, GitHub OIDC)
@@ -136,8 +141,12 @@ main() {
   # Save old digests for rollback
   [ -f "$DIGESTS_FILE" ] && cp "$DIGESTS_FILE" "$DIGESTS_FILE.bak"
 
-  # Verify and pull all services, collect digests
+  # Verify and pull all services, collect digests, build compose override
+  local override_file="$DIR/docker-compose.override.yml"
   : >"$DIGESTS_FILE"
+  : >"$override_file"
+  echo "services:" >"$override_file"
+
   for svc in $services; do
     local image="$image_base/$svc$tag"
     say "Pulling and verifying $svc..."
@@ -146,12 +155,14 @@ main() {
     digest=$(get_verified_digest "$image") || die "Signature verification failed: $image"
     say "Verified $svc: $digest"
     echo "$svc=$digest" >>"$DIGESTS_FILE"
+    # Add to compose override with exact digest
+    printf "  %s:\n    image: %s@%s\n" "$svc" "$image_base/$svc" "$digest" >>"$override_file"
   done
-  say "Recorded new digests"
+  say "Recorded new digests in override"
 
-  # Deploy with verified digests
-  say "Deploying update..."
-  (cd "$DIR" && docker compose -f "$COMPOSE_FILE" up -d) ||
+  # Deploy with verified digests via override
+  say "Deploying update with verified digests..."
+  (cd "$DIR" && docker compose -f "$COMPOSE_FILE" -f "$override_file" up -d) ||
     die "Failed to deploy"
 
   # Health check (same endpoints as install.sh wait_healthy)
@@ -177,9 +188,16 @@ main() {
   say "Health check failed; rolling back..."
   if [ -f "$DIGESTS_FILE.bak" ]; then
     mv "$DIGESTS_FILE.bak" "$DIGESTS_FILE"
+    # Recreate override from old digests
+    local override_file="$DIR/docker-compose.override.yml"
+    : >"$override_file"
+    echo "services:" >"$override_file"
+    while IFS='=' read -r svc digest; do
+      [ -n "$svc" ] && printf "  %s:\n    image: %s@%s\n" "$svc" "$image_base/$svc" "$digest" >>"$override_file"
+    done <"$DIGESTS_FILE"
   fi
-  (cd "$DIR" && docker compose -f "$COMPOSE_FILE" down) || true
-  (cd "$DIR" && docker compose -f "$COMPOSE_FILE" up -d) ||
+  (cd "$DIR" && docker compose -f "$COMPOSE_FILE" -f "$override_file" down) || true
+  (cd "$DIR" && docker compose -f "$COMPOSE_FILE" -f "$override_file" up -d) ||
     die "Rollback failed; box may be down"
 
   say "Rollback complete"
