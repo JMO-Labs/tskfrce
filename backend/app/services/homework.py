@@ -18,7 +18,7 @@ def paused(db: Session, kid: User, now_utc: datetime) -> bool:
     """True when at least one of the kid's devices is paused."""
     fam = get_family(db)
     devs = list(kid.devices)
-    pre = Prefetch(db, devs)
+    pre = Prefetch(db, devs, now=now_utc)
     local = local_now(fam.timezone, now_utc)
     return any(not is_online(device_facts(db, d, fam, now_utc, pre), local) for d in devs)
 
