@@ -153,6 +153,18 @@ wait_healthy() {
   return 1
 }
 
+install_updater() {
+  [ -x "$DIR/install/update-check.sh" ] || return 0
+  say "Installing unattended update service..."
+  $SUDO install -m 0755 "$DIR/install/update-check.sh" /usr/local/bin/update-check.sh
+  $SUDO install -m 0644 "$DIR/install/update-check.service" /etc/systemd/system/update-check.service
+  $SUDO install -m 0644 "$DIR/install/update-check.timer" /etc/systemd/system/update-check.timer
+  $SUDO install -m 0755 "$DIR/install/pre-reboot-hook.sh" /usr/local/bin/pre-reboot-hook.sh
+  $SUDO systemctl daemon-reload
+  $SUDO systemctl enable update-check.timer
+  $SUDO systemctl start update-check.timer
+}
+
 main() {
   check_system
   ensure_docker
@@ -168,6 +180,15 @@ main() {
   else
     echo "TASK4CE_TAG=$tag" >>"$DIR/.env"
   fi
+  # Set UPDATE_CHANNEL based on tag (eval- prefix = eval channel, else stable).
+  channel="stable"
+  case "$tag" in eval-*) channel="eval" ;; esac
+  if grep -q '^UPDATE_CHANNEL=' "$DIR/.env"; then
+    sed -i "s/^UPDATE_CHANNEL=.*/UPDATE_CHANNEL=$channel/" "$DIR/.env"
+  else
+    echo "UPDATE_CHANNEL=$channel" >>"$DIR/.env"
+  fi
+  install_updater
   say "Downloading t@sk4ce..."
   # Prebuilt amd64/arm64 images; build on the box only if the download fails.
   # TASK4CE_BUILD=1 forces a local build (the smoke test checks this checkout's code).
