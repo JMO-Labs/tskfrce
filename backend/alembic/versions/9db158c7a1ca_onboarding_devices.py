@@ -1,10 +1,11 @@
 """onboarding devices
 
 Revision ID: 9db158c7a1ca
-Revises: b1c2d3e4f5a6
+Revises: b3n4o5p6q7r8
 Create Date: 2026-11-11 12:38:22.306409
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -12,15 +13,17 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '9db158c7a1ca'
-down_revision: Union[str, Sequence[str], None] = 'b1c2d3e4f5a6'
+revision: str = "9db158c7a1ca"
+down_revision: Union[str, Sequence[str], None] = "b3n4o5p6q7r8"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
     # Add columns to devices table for gateway/box filtering
-    op.add_column("devices", sa.Column("is_gateway", sa.Boolean(), nullable=False, server_default="0"))
+    op.add_column(
+        "devices", sa.Column("is_gateway", sa.Boolean(), nullable=False, server_default="0")
+    )
     op.add_column("devices", sa.Column("is_box", sa.Boolean(), nullable=False, server_default="0"))
 
     # Add column to family_settings for rescan rate-limiting

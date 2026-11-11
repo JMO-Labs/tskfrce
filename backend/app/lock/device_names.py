@@ -32,7 +32,6 @@ FINGERPRINT_HINTS = {
     # Mac
     "1,3,6,15,119,120,121": "Mac",
     # Chromebook
-    "1,121,3,6,15,119,252": "Chromebook",
     "1,3,6,15,252": "Chromebook",
 }
 

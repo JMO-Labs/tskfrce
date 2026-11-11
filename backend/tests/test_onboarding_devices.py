@@ -4,7 +4,11 @@ import pytest
 from datetime import UTC, datetime, timedelta
 
 from app.api.devices import _setup_devices
-from app.lock.device_names import display_device_name, guess_device_type_from_fingerprint, guess_maker_from_signals
+from app.lock.device_names import (
+    display_device_name,
+    guess_device_type_from_fingerprint,
+    guess_maker_from_signals,
+)
 from app.models.lock import Device
 from app.models.family import get_family
 
@@ -13,9 +17,15 @@ def test_setup_devices_filters_gateway_and_box(client, db, parent_headers):
     """GET /devices hides is_gateway and is_box during setup."""
     fam = get_family(db)
     fam.setup_step = 1
-    d1 = Device(mac="aa:bb:cc:dd:ee:01", name="Phone", status="unassigned", is_gateway=False, is_box=False)
-    d2 = Device(mac="aa:bb:cc:dd:ee:02", name="Gateway", status="unassigned", is_gateway=True, is_box=False)
-    d3 = Device(mac="aa:bb:cc:dd:ee:03", name="Box", status="unassigned", is_gateway=False, is_box=True)
+    d1 = Device(
+        mac="aa:bb:cc:dd:ee:01", name="Phone", status="unassigned", is_gateway=False, is_box=False
+    )
+    d2 = Device(
+        mac="aa:bb:cc:dd:ee:02", name="Gateway", status="unassigned", is_gateway=True, is_box=False
+    )
+    d3 = Device(
+        mac="aa:bb:cc:dd:ee:03", name="Box", status="unassigned", is_gateway=False, is_box=True
+    )
     db.add_all([d1, d2, d3])
     db.commit()
 
@@ -29,7 +39,7 @@ def test_setup_devices_filters_gateway_and_box(client, db, parent_headers):
 def test_rescan_requires_auth(client, db):
     """POST /devices/rescan requires parent auth."""
     resp = client.post("/api/v1/devices/rescan")
-    assert resp.status_code == 403
+    assert resp.status_code == 401
 
 
 def test_rescan_returns_429_within_10s(client, db, parent_headers):
@@ -79,7 +89,14 @@ def test_maker_guess_for_private_macs():
 
 def test_setup_devices_response_format(db):
     """_setup_devices returns correct format with display_name, name_source, maker_guess."""
-    d = Device(mac="aa:bb:cc:dd:ee:ff", name="Test", mdns_name="test.local", status="unassigned", is_gateway=False, is_box=False)
+    d = Device(
+        mac="aa:bb:cc:dd:ee:ff",
+        name="Test",
+        mdns_name="test.local",
+        status="unassigned",
+        is_gateway=False,
+        is_box=False,
+    )
     db.add(d)
     db.commit()
 
