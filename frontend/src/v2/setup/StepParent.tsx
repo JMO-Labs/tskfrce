@@ -38,10 +38,12 @@ export function StepParent({ value, showError, onChange }: Props) {
   const [showPassword, setShowPassword] = useState(false)
   const [showAgain, setShowAgain] = useState(false)
 
-  // Check username availability
+  // Check username availability (uses anonymous endpoint before setup, auth after)
   const usernameQuery = useQuery({
     queryKey: ['username-available', value.username],
-    queryFn: () => api<{ available: boolean }>(`/setup/username-available?u=${encodeURIComponent(value.username)}`),
+    queryFn: () =>
+      api<{ available: boolean }>(`/setup/username-available?u=${encodeURIComponent(value.username)}`)
+        .catch(() => api<{ available: boolean }>(`/setup/username-available-auth?u=${encodeURIComponent(value.username)}`)),
     enabled: !!value.username && !err.username,
     staleTime: Infinity,
   })
