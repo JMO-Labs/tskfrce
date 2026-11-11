@@ -3,7 +3,7 @@
 Android only treats Wi-Fi as online when https://www.google.com/generate_204 succeeds; without
 it a blocked phone silently moves to mobile data. The firewall redirects a blocked device's
 non-local :443 traffic here; DNS hands it real addresses only for PASS_NAMES.
-ponytail: Google Search on www.google.com works while blocked (same host as the probe).
+Passed connections are cut after DOWN_CAP bytes: enough for the probe, not for search pages.
 """
 
 from __future__ import annotations
@@ -16,6 +16,9 @@ import time
 log = logging.getLogger(__name__)
 
 PASS_NAMES = frozenset({"www.google.com"})
+# Android's probe (TLS 1.3 handshake + "204 No Content") is ~4.7 KB down; a search page or an AMP
+# article via www.google.com is hundreds of KB. Cut each passed connection after this much.
+DOWN_CAP = 16 * 1024
 GATE_PORT = 8443
 _HELLO_MAX = 16384
 
@@ -63,10 +66,16 @@ def real_ip(name: str, ttl: float = 60) -> str | None:
     return ip
 
 
-def _pipe(src: socket.socket, dst: socket.socket) -> None:
+def _pipe(src: socket.socket, dst: socket.socket, cap: int | None = None) -> None:
+    """Copy src -> dst until EOF, or until cap bytes (then cut both ways)."""
+    sent = 0
     try:
         while chunk := src.recv(65536):
+            if cap is not None and sent + len(chunk) > cap:
+                dst.sendall(chunk[: cap - sent])
+                break
             dst.sendall(chunk)
+            sent += len(chunk)
     except OSError:
         pass
     finally:
@@ -94,7 +103,7 @@ def _serve(conn: socket.socket, connect=socket.create_connection) -> None:
         with up:
             conn.settimeout(None)
             up.sendall(hello)
-            t = threading.Thread(target=_pipe, args=(up, conn), daemon=True)
+            t = threading.Thread(target=_pipe, args=(up, conn, DOWN_CAP), daemon=True)
             t.start()
             _pipe(conn, up)
             t.join(60)
