@@ -56,7 +56,11 @@ export function NeedsYouList({ items, today }: { items: NeedsItem[]; today?: str
   const sub = (i: NeedsItem) => {
     if (i.type === 'note') return i.note ?? ''
     if (i.type === 'homework') return [i.submitted_at ? `Asked ${clock(i.submitted_at)}` : '', 'wants the internet on for homework'].filter(Boolean).join(' · ')
-    if (isGoal(i)) return i.type === 'goal_suggested' ? 'Needs a price' : `${(i.cost ?? 0).toLocaleString()} pts`
+    if (isGoal(i)) {
+      if (i.type === 'goal_suggested') return 'Needs a price'
+      const pts = `${(i.cost ?? 0).toLocaleString()} pts`
+      return i.no_devices ? `${pts} · ${i.kid_name} has no devices yet — the minutes can't be used.` : pts
+    }
     const via = i.integration ? `via ${i.integration.name}` : ''
     const parts = isChore(i)
       ? [i.attempt && i.attempt > 1 ? `${ordinal(i.attempt)} try` : '', i.subtasks_total ? `${i.subtasks_done}/${i.subtasks_total} steps` : '', i.submitted_at ? `Done ${clock(i.submitted_at)}` : '']

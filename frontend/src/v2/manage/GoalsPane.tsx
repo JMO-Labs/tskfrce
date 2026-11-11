@@ -50,6 +50,7 @@ export function GoalsPane({ onSettings }: { onSettings: () => void }) {
                   )}
                 </div>
               </div>
+              {g.status === 'full' && g.no_devices && <p className="gl-off">{g.kid_name} has no devices yet — the minutes can&apos;t be used.</p>}
               <NumberAsk label="Price" open={pricing === g.id} onClose={() => setPricing(null)} button="Save price" go={(n) => run(g.id, 'price', 'Price set', { target: n })} />
             </div>
           ))}

@@ -36,8 +36,9 @@ for. Parents stay in control of what's allowed and what it costs.
 - **Kid suggestions:** a kid taps "+ Suggest a goal" and types a name. The parent sees it in "Waiting on
   you" and sets a price (approve) or declines. **Parents can turn suggestions off** (family setting).
 - **Built-ins** (each off until allowed in Goal settings):
-  - *Extra screen time:* the parent sets the price per N minutes. When fulfilled, the minutes are added to
-    the kid's screen bank (`ScreenBank`). It goes through the same parent "fulfilled" tap as other goals.
+  - *Extra screen time:* the parent sets the price per N minutes. When fulfilled, the kid gets those
+    minutes free, usable right away (a timed unlock on their devices, like a parent bonus), not added to
+    the screen bank. It goes through the same parent "fulfilled" tap as other goals.
   - *Get out of jail free:* fulfilling it gives the kid one card, which the kid can play on an active
     penalty. *Builder's call:* playing a card is instant and cancels the penalty via the Penalties
     cancel path, and the parent gets an inbox note. The card is unavailable if Penalties is off.
@@ -143,8 +144,9 @@ Settled while reading the spec as the builder. Each is easy to change later.
 15. **Built-in defaults:** extra screen time is 60 minutes for 200 points, and Get out of jail free is
     500 points. Both are off.
 16. **Banked screen time into family goals:** deferred (not in v1).
-17. **Extra screen time** is offered only while screen banking is on (screen time on, rollover on). On
-    fulfill, the minutes go into `ScreenBank.minutes`, through a single function
+17. **Extra screen time** is offered only while screen time limits are on. On
+    fulfill, the kid gets the minutes free, usable now (a timed bonus unlock on all their devices, not
+    `ScreenBank`; owner decision 2026-11-10), through a single function
     (`goals.grant_screen`), so a different payout is a one-line change.
 18. **New inbox kinds:** `goal_full` and `goal_suggested` go to parents, and `jail_card` (a card was played)
     goes to parents.

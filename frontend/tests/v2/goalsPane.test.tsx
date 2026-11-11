@@ -167,7 +167,7 @@ describe('GoalsPane', () => {
     expect(screen.getByRole('button', { name: 'Get out of jail free' })).toBeTruthy()
   })
 
-  test('screen built-in needs banking and shows its price', async () => {
+  test('screen built-in needs screen time on and shows its price', async () => {
     data = { ...empty, settings: { ...settings, screen_on: true, screen_ok: false, jail_on: true } }
     wrap(<GoalsPane onSettings={() => {}} />)
     await userEvent.click(await screen.findByText('+ New goal'))

@@ -74,7 +74,7 @@ export function GoalSettingsPane({ onBack }: { onBack: () => void }) {
         <Num id="max_teen" label="Teens" value={s.max_teen} save={save} />
       </PaneCard>
       <PaneCard icon="redeem" title="Built-ins">
-        <Flag id="screen_on" label="Extra screen time" on={s.screen_on} save={save} disabled={!s.screen_ok} hint={s.screen_ok ? undefined : 'Turn on screen time banking first'} />
+        <Flag id="screen_on" label="Extra screen time" on={s.screen_on} save={save} disabled={!s.screen_ok} hint={s.screen_ok ? undefined : 'Turn on screen time first'} />
         <Num id="screen_price" label="Price, points" value={s.screen_price} save={save} />
         <Num id="screen_minutes" label="Minutes" value={s.screen_minutes} save={save} />
         <Flag id="jail_on" label="Get out of jail free" on={s.jail_on} save={save} />

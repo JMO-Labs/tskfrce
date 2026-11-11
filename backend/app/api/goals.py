@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_parent
+from app.lock.loop import trigger
 from app.models.family import get_family
 from app.models.goal import Goal
 from app.models.user import User, UserRole
@@ -218,6 +219,7 @@ def fulfill_goal(
 ):
     g = _get(db, goal_id)
     goals.fulfill(db, g, parent)
+    trigger()
     return goals_out.goal_out(db, g, parent, get_family(db))
 
 

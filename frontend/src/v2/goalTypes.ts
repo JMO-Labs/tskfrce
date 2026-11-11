@@ -19,6 +19,8 @@ export interface Goal {
   siblings: Array<{ name: string; amount: number }> | null
   created_at: string
   fulfilled_at: string | null
+  /** screen-time goal whose kid has no devices, so the minutes can't be used */
+  no_devices?: boolean
 }
 
 export interface GoalSettings {
@@ -36,7 +38,7 @@ export interface GoalSettings {
   screen_minutes: number
   jail_on: boolean
   jail_price: number
-  /** read-only; true while banking is active */
+  /** read-only; true while screen time limits are on */
   screen_ok: boolean
 }
 
