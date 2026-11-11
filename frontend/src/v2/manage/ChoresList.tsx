@@ -1,8 +1,9 @@
 import { Icon } from '@/v2/parent/Icon'
+import { KidAv } from '@/v2/KidAv'
 import { useChoreTypes } from '@/v2/hooks/useChoreTypes'
 import { Fold } from '@/v2/parent/Fold'
 import type { Kid, LibChore } from '@/v2/types'
-import { choreLine, initial, nameOf, otherType, usedBy } from './choreMeta'
+import { choreLine, nameOf, otherType, usedBy } from './choreMeta'
 
 const MAX_AVATARS = 4
 
@@ -46,8 +47,8 @@ export function ChoresList({ chores, kids, selected, onSelect }: Props) {
                 const k = byId.get(id)
                 const name = k ? nameOf(k) : 'Unknown kid'
                 return (
-                  <span key={id} className="pk-av" title={name} aria-label={name} role="img">
-                    {initial(name)}
+                  <span key={id} title={name} aria-label={name} role="img" style={{ display: 'contents' }}>
+                    <KidAv id={id} name={name} />
                   </span>
                 )
               })}

@@ -6,7 +6,7 @@ import { MantineProvider } from '@mantine/core'
 
 jest.mock('@/v2/hooks/useSetupWifi', () => ({
   useSetupWifiStatus: jest.fn(() => ({
-    data: { state: 'idle' },
+    data: { phase: 'idle' },
     isPending: false,
     isError: false,
   })),

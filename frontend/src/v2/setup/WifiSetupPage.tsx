@@ -42,7 +42,7 @@ export function WifiSetupPage() {
   // Custom join mutation that handles auth errors
   const joinMutation = useMutation({
     mutationFn: async (params: { ssid: string; password?: string; security: string; hidden: boolean }) => {
-      const response = await api('/v1/network/wifi/setup/join', {
+      const response = await api('/network/wifi/setup/join', {
         method: 'POST',
         body: { ssid: params.ssid, password: params.password, security: params.security, hidden: params.hidden },
       })
@@ -68,9 +68,9 @@ export function WifiSetupPage() {
   })
 
   const networks = scanQuery.data ?? []
-  const isConnecting = joinMutation.isPending || (statusQuery.data?.state === 'connecting')
-  const isSuccess = statusQuery.data?.state === 'connected'
-  const isError = statusQuery.data?.state === 'failed'
+  const isConnecting = joinMutation.isPending || (statusQuery.data?.phase === 'connecting')
+  const isSuccess = statusQuery.data?.phase === 'connected'
+  const isError = statusQuery.data?.phase === 'failed'
 
   const handleNetworkClick = (net: NetworkItem) => {
     setSelectedNetwork(net)
@@ -111,7 +111,7 @@ export function WifiSetupPage() {
         setAuthError(loginBody?.detail || 'Sign-in failed. Check the username and password.')
         return
       }
-      const retry = await fetch('/api/proxy/v1/network/wifi/setup/join', {
+      const retry = await fetch('/api/proxy/network/wifi/setup/join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${loginBody.access_token}` },
         body: JSON.stringify(pendingJoin),

@@ -49,7 +49,7 @@
 
 .deviceItem {
   display: grid;
-  grid-template-columns: 36px 1fr 32px;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
   padding: 12px;
@@ -334,4 +334,25 @@
   .deviceItem {
     grid-template-columns: 36px 1fr 28px;
   }
+}
+
+.devicePopup {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 140px;
+  padding: 4px 10px;
+  border: 1px solid var(--p-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--p-ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.devicePopup span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

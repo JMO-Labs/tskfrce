@@ -276,11 +276,12 @@ class Service:
             out[mac] = t if (ip == t.ip and ip6 == t.ip6) else replace(t, ip=ip, ip6=ip6)
         return out, stripped
 
-    def _on_seen(self, seen: Seen) -> None:
-        # Add gateway/box MACs to Seen before reporting
+    def _enrich(self, seen: Seen) -> Seen:
+        """Gateway/box MACs ride on every report so the backend can hide them in setup."""
         lan = self._lan()
-        if lan:
-            seen = enrich_seen_with_gateway_and_box(seen, lan.gateway_mac, lan.box_mac)
+        return enrich_seen_with_gateway_and_box(seen, lan.gateway_mac, lan.box_mac) if lan else seen
+
+    def _on_seen(self, seen: Seen) -> None:
         self.signals.note_seen(seen)
         with self._lock:
             self._devices[seen.mac] = TargetAddrs(mac=seen.mac, ip=seen.ip, ip6=tuple(seen.ipv6))
@@ -398,7 +399,7 @@ class Service:
             self._watch = ResistanceWatch(self.cfg, counter)
         self._spawn(self._reconcile_loop)
         self._spawn(self._resist_loop)
-        self._spawn(lambda: run_discovery(self.cfg, self._stop, self._on_seen))
+        self._spawn(lambda: run_discovery(self.cfg, self._stop, self._on_seen, enrich=self._enrich))
         if self.cfg.lan_iface or self.cfg.mirror_iface:
             self._spawn(lambda: self._vlan.run(self._stop))
         self._spawn(lambda: self.signals.run_dhcp(self._stop))
