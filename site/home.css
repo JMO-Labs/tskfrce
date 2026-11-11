@@ -125,6 +125,8 @@
 .install pre { flex: 1 1 320px; min-width: 0; }
 
 .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.more { margin-top: 20px; color: var(--p-sub); font-size: 14.5px; }
+.f-card h3 a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
 
 /* ── FAQ: collapsed rows with the app's caret ─────────────────────────── */
 

@@ -183,6 +183,91 @@
         margin-top: 16px;
         text-align: center;
       }
+
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: flex-end;
+      }
+
+      .modal.open {
+        display: flex;
+      }
+
+      .modal-sheet {
+        background: var(--bg);
+        border-radius: 16px 16px 0 0;
+        padding: 24px;
+        width: 100%;
+        max-height: 80vh;
+        overflow-y: auto;
+      }
+
+      .modal-header {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .modal-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: var(--text);
+        padding: 0;
+      }
+
+      .form-group select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 14px;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      .form-group select:focus {
+        outline: none;
+        border-color: var(--button-bg);
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+      }
+
+      .password-toggle {
+        position: relative;
+      }
+
+      .password-toggle button {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--text);
+        padding: 4px;
+      }
+
+      .modal-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 24px;
+      }
+
+      .modal-actions button {
+        flex: 1;
+      }
     </style>
   </head>
   <body>
@@ -206,21 +291,27 @@
               <div class="network-name">MyHomeWifi</div>
               <div class="network-signal">Strong (80%)</div>
             </div>
-            <span>📡</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 18l.01 0" /><path d="M9.172 15.172a4 4 0 0 1 5.656 0" /><path d="M6.343 12.343a8 8 0 0 1 11.314 0" /><path d="M3.515 9.515c4.686 -4.687 12.284 -4.687 17 0" /></svg>
           </div>
           <div class="network-item">
             <div>
               <div class="network-name">GuestNetwork</div>
               <div class="network-signal">Fair (60%)</div>
             </div>
-            <span>📡</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 18l.01 0" /><path d="M9.172 15.172a4 4 0 0 1 5.656 0" /><path d="M6.343 12.343a8 8 0 0 1 11.314 0" /><path d="M3.515 9.515c4.686 -4.687 12.284 -4.687 17 0" /></svg>
           </div>
           <div class="network-item">
             <div>
               <div class="network-name">NeighborNet</div>
               <div class="network-signal">Weak (40%)</div>
             </div>
-            <span>📡</span>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 18l.01 0" /><path d="M9.172 15.172a4 4 0 0 1 5.656 0" /><path d="M6.343 12.343a8 8 0 0 1 11.314 0" /><path d="M3.515 9.515c4.686 -4.687 12.284 -4.687 17 0" /></svg>
+          </div>
+          <div class="network-item" onclick="openNetworkDialog()">
+            <div>
+              <div class="network-name">Other network…</div>
+            </div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5l0 14" /><path d="M5 12l14 0" /></svg>
           </div>
         </div>
       </div>
@@ -245,33 +336,109 @@
       </div>
     </div>
 
+    <div class="modal" id="networkModal">
+      <div class="modal-sheet">
+        <div class="modal-header">
+          <span>Join Network</span>
+          <button class="modal-close" onclick="closeNetworkDialog()">×</button>
+        </div>
+
+        <div class="form-group">
+          <label for="modalSsid">Network Name (SSID)</label>
+          <input type="text" id="modalSsid" placeholder="Network name" />
+        </div>
+
+        <div class="form-group">
+          <label for="modalSecurity">Security</label>
+          <select id="modalSecurity" onchange="updatePasswordField()">
+            <option value="wpa">WPA2/WPA3 Personal</option>
+            <option value="wpa3">WPA3 Personal only</option>
+            <option value="open">Open (no password)</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="passwordGroup">
+          <label for="modalPassword">Password</label>
+          <div class="password-toggle">
+            <input type="password" id="modalPassword" placeholder="8–63 characters" />
+            <button type="button" onclick="togglePasswordVisibility()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 18c4.686 -4.687 12 -13 12 -13s-3.529 -1.386 -12 -1.986c-8.471 0.6 -12 1.986 -12 1.986s3.314 8.313 12 13" /><path d="M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /></svg>
+            </button>
+          </div>
+          <div class="help-text">8–63 characters</div>
+        </div>
+
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="modalHidden" style="margin-right: 8px;" />
+            Hidden network
+          </label>
+        </div>
+
+        <div class="modal-actions">
+          <button class="button button-secondary" onclick="closeNetworkDialog()">Cancel</button>
+          <button class="button button-primary" onclick="handleModalJoin()">Join</button>
+        </div>
+      </div>
+    </div>
+
     <script>
       function handleConnect(event) {
         event.preventDefault();
         const ssid = document.getElementById("ssid").value;
-        const password = document.getElementById("password").value;
 
         // Show status
         const statusEl = document.getElementById("status");
         const statusText = document.getElementById("statusText");
         statusEl.style.display = "block";
         statusEl.className = "status status-joining";
-        statusText.textContent = "Connecting...";
+        statusText.innerHTML = "Connecting…<br/><span style='font-size: 12px; margin-top: 4px; display: block; opacity: 0.8'>Your phone will leave the setup Wi-Fi. If this page doesn't update within a minute, rejoin Wi-Fi t@sk4ce-K7M2 and reopen this page.</span>";
 
-        // Simulate connection (in real app, call /api/v1/network/wifi/join)
+        // Simulate connection states (in real app, call /api/v1/network/wifi/join)
         setTimeout(() => {
+          // Show success state
           statusEl.className = "status status-connected";
-          statusText.textContent = "Connected! Open my box to continue.";
-        }, 2000);
+          statusText.textContent = `Connected. Your box is on ${ssid}. Scan 'Open my box' on the sticker.`;
+        }, 3000);
+      }
+
+      function openNetworkDialog() {
+        document.getElementById("networkModal").classList.add("open");
+      }
+
+      function closeNetworkDialog() {
+        document.getElementById("networkModal").classList.remove("open");
+      }
+
+      function updatePasswordField() {
+        const security = document.getElementById("modalSecurity").value;
+        const passwordGroup = document.getElementById("passwordGroup");
+        passwordGroup.style.display = security === "open" ? "none" : "block";
+      }
+
+      function togglePasswordVisibility() {
+        const input = document.getElementById("modalPassword");
+        input.type = input.type === "password" ? "text" : "password";
+      }
+
+      function handleModalJoin() {
+        const ssid = document.getElementById("modalSsid").value;
+        if (ssid) {
+          document.getElementById("ssid").value = ssid;
+          closeNetworkDialog();
+          document.querySelector("form").dispatchEvent(new Event("submit"));
+        }
       }
 
       // Example: click network to fill SSID
-      document.querySelectorAll(".network-item").forEach((item) => {
-        item.addEventListener("click", () => {
-          const name = item.querySelector(".network-name").textContent;
-          document.getElementById("ssid").value = name;
-          document.getElementById("password").focus();
-        });
+      document.querySelectorAll(".network-item").forEach((item, idx) => {
+        if (idx < 3) { // Only for scanned networks, not "Other network"
+          item.addEventListener("click", () => {
+            const name = item.querySelector(".network-name").textContent;
+            document.getElementById("ssid").value = name;
+            document.getElementById("password").focus();
+          });
+        }
       });
     </script>
   </body>

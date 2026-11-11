@@ -155,6 +155,7 @@ venv.bak/
 # mkdocs documentation (but we use /site for GitHub Pages)
 # /site
 site/guide/
+site/releases/
 
 # mypy
 .mypy_cache/

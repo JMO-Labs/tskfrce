@@ -52,7 +52,6 @@ from app.api.kid_push import router as kid_push_router
 from app.api.kid_rewards import router as kid_rewards_router
 from app.api.kids import router as kids_router
 from app.api.network import router as network_router
-from app.api.networks import router as networks_router
 from app.api.notify import router as notify_router
 from app.api.password_reset import router as password_reset_router
 from app.api.penalties import router as penalties_router
@@ -64,6 +63,8 @@ from app.api.screen_time import router as screen_time_router
 from app.api.setup import router as setup_router
 from app.api.tips import router as tips_router
 from app.api.trust import router as trust_router
+from app.api.updates import internal_router_with_auth as updates_internal_router
+from app.api.updates import router as updates_router
 from app.api.wifi import router as wifi_router
 from app.api.wifi import setup_router as wifi_setup_router
 from app.core.logging import configure_logging, get_logger
@@ -168,6 +169,7 @@ fastapi_app.include_router(chores_router)
 fastapi_app.include_router(chore_photos_router)
 fastapi_app.include_router(chat_router)
 fastapi_app.include_router(internal_router)
+fastapi_app.include_router(updates_internal_router)
 fastapi_app.include_router(devices_router)
 fastapi_app.include_router(device_activity_router)
 fastapi_app.include_router(hours_router)
@@ -183,8 +185,8 @@ fastapi_app.include_router(kid_router)
 fastapi_app.include_router(kid_rewards_router)
 fastapi_app.include_router(kid_goals_router)
 fastapi_app.include_router(family_router)
+fastapi_app.include_router(updates_router)
 fastapi_app.include_router(network_router)
-fastapi_app.include_router(networks_router)
 fastapi_app.include_router(wifi_router)
 fastapi_app.include_router(wifi_setup_router)
 fastapi_app.include_router(notify_router)

@@ -6,9 +6,11 @@ on:
     paths:
       - 'site/**'
       - 'docs/guide/**'
+      - 'docs/releases/**'
       - 'docs/remote-access.md'
       - 'docs/integrations/protocol-v1.md'
       - 'scripts/build_site.py'
+      - 'scripts/build_releases.py'
       - 'scripts/site_templates.py'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
