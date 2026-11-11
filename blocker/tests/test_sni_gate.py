@@ -77,3 +77,15 @@ def test_ruleset_sends_blocked_https_through_gate_but_not_box_pages():
     gate = next(i for i, ln in enumerate(lines) if "redirect to :8443" in ln)
     assert "fib daddr type != local tcp dport 443" in lines[gate]
     assert any("@hw_out tcp dport 443 return" in ln for ln in lines[:gate])
+
+
+def test_pipe_cuts_a_passed_connection_after_the_cap():
+    src_a, src_b = socket.socketpair()
+    dst_a, dst_b = socket.socketpair()
+    src_a.sendall(b"x" * 5000)
+    src_a.close()
+    sni_gate._pipe(src_b, dst_a, cap=1200)
+    got = b""
+    while chunk := dst_b.recv(65536):
+        got += chunk
+    assert got == b"x" * 1200

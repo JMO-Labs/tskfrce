@@ -247,7 +247,7 @@ class Service:
         for m, a in devs.items():
             iface = self._iface_of.get(m) or iface_for_ip(a.ip, nets)
             if iface is None:
-                log.info("device %s (%s) is on no managed network; not enforcing", m, a.ip)
+                log.debug("device %s (%s) is on no managed network; not enforcing", m, a.ip)
                 continue
             by_iface.setdefault(iface, {})[m] = a
         return by_iface
