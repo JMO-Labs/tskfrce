@@ -25,6 +25,7 @@ from blocker.backend import (
     report_workarounds,
 )
 from blocker.config import Config
+from blocker.devices_meta import enrich_seen_with_gateway_and_box
 from blocker.discovery import run_discovery
 from blocker.hits import HitCounter
 from blocker.homework import HomeworkGate
@@ -276,6 +277,10 @@ class Service:
         return out, stripped
 
     def _on_seen(self, seen: Seen) -> None:
+        # Add gateway/box MACs to Seen before reporting
+        lan = self._lan()
+        if lan:
+            seen = enrich_seen_with_gateway_and_box(seen, lan.gateway_mac, lan.box_mac)
         self.signals.note_seen(seen)
         with self._lock:
             self._devices[seen.mac] = TargetAddrs(mac=seen.mac, ip=seen.ip, ip6=tuple(seen.ipv6))

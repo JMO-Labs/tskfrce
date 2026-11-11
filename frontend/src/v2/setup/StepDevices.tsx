@@ -1,101 +1,200 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '../api'
-import { useSaveQueue } from '../hooks/useSaveQueue'
-import { Icon } from '../parent/Icon'
-import { InfoPop } from '../parent/InfoPop'
-import { KidPicker, type PickerExtra } from '../parent/KidPicker'
-import { FocusArea, SummaryRow } from '../parent/SummaryRow'
-import { LoadFail, RowsSkeleton } from '../parent/states'
-import { useFocusParam } from '../parent/useFocusParam'
-import { DEVICE_TYPE_ICON, getDeviceType } from '../manage/deviceMeta'
-import { isPrivateMac } from '../manage/privateMac'
-import type { Device, Kid } from '../types'
-import styles from './devices.module.css'
+import { useEffect, useState } from "react"
+import { useRouter } from "next/router"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { api } from "../api"
+import { Icon } from "../parent/Icon"
+import { MakerLogo } from "../parent/MakerLogo"
+import { LoadFail } from "../parent/states"
+import { toastFail } from "../notify"
+import { DEVICE_TYPE_ICON, getDeviceType } from "../manage/deviceMeta"
+import { isPrivateMac } from "../manage/privateMac"
+import type { Device, Kid } from "../types"
+import styles from "./devices.module.css"
 
-const GUEST = 'guest'
-const UNSURE = 'unsure'
-const EXTRAS: PickerExtra[] = [
-  { value: GUEST, label: 'Guest (never blocked)', short: 'Guest', icon: 'shield' },
-  { value: UNSURE, label: 'Not sure yet', icon: 'close' },
-]
-const validRow = (id: string) => id === 'need' || id === 'done'
-
-/** Step 6: devices split into "Need an owner" and "Done"; each device has one owner pop-over. */
 export function StepDevices({ kids }: { kids: Kid[] }) {
+  const router = useRouter()
   const qc = useQueryClient()
-  const run = useSaveQueue()
-  const focus = useFocusParam('open', { valid: validRow, replace: true }) // the wizard step is not in the URL: no history entry for a row
-  const list = useQuery({ queryKey: ['setup-devices'], queryFn: () => api<Device[]>('/devices'), refetchInterval: 5000, refetchIntervalInBackground: false })
-
-  // The owner shown is always the server's; a failed save toasts and the next refetch shows the old owner again.
-  const save = (d: Device, status: Device['status'], owner_ids: number[]) =>
-    void run(() => api<Device>(`/devices/${d.id}`, { method: 'PATCH', body: { status, owner_ids } })).then(() => qc.invalidateQueries({ queryKey: ['setup-devices'] }))
-
-  const change = (d: Device, vals: string[]) => {
-    const v = vals[0]
-    if (v === GUEST) return save(d, 'guest', [])
-    if (v === undefined || v === UNSURE) return save(d, 'unassigned', [])
-    save(d, 'assigned', [Number(v)])
-  }
-
+  const [secondsAgo, setSecondsAgo] = useState<number | null>(null)
+  const [rescanning, setRescanning] = useState(false)
+  const [showPrivateHelp, setShowPrivateHelp] = useState(false)
+  const [openPopupId, setOpenPopupId] = useState<number | null>(null)
+  const list = useQuery({
+    queryKey: ["setup-devices"],
+    queryFn: () => api<Device[]>("/devices"),
+    refetchInterval: 5000,
+    refetchIntervalInBackground: false,
+  })
+  useEffect(() => {
+    if (secondsAgo === null) return
+    const timer = setInterval(() => setSecondsAgo((s) => (s !== null ? s + 1 : null)), 1000)
+    return () => clearInterval(timer)
+  }, [secondsAgo])
   const devices = list.data ?? []
-  const need = devices.filter((d) => d.status === 'unassigned')
-  const done = devices.filter((d) => d.status !== 'unassigned')
-  const privateMacs = devices.filter((d) => isPrivateMac(d.mac)).length
-
+  const needOwner = devices.filter((d) => d.status === "unassigned")
+  const done = devices.filter((d) => d.status !== "unassigned")
+  const selectedTab = (router.query.open as string) || (needOwner.length > 0 ? "need" : "done")
+  const networkLabels = new Set(devices.map((d) => d.network || null))
+  const showHeaders = networkLabels.size > 1
+  const visibleDevices = selectedTab === "need" ? needOwner : done
+  const groups = Array.from(networkLabels)
+    .sort((a, b) => {
+      if (a === null) return -1
+      if (b === null) return 1
+      return (a || "").localeCompare(b || "")
+    })
+    .map((label) => ({
+      label,
+      devices: visibleDevices.filter((d) => (d.network || null) === label),
+    }))
+  const handleRescan = async () => {
+    setRescanning(true)
+    try {
+      await api("/devices/rescan", { method: "POST" })
+      setSecondsAgo(0)
+      setTimeout(() => qc.invalidateQueries({ queryKey: ["setup-devices"] }), 500)
+    } catch (err) {
+      console.error("Rescan failed:", err)
+    } finally {
+      setRescanning(false)
+    }
+  }
+  const canRescan = secondsAgo === null || secondsAgo >= 10
   const deviceRow = (d: Device) => {
-    const value = d.status === 'guest' ? [GUEST] : d.owner_ids.map(String)
+    const displayName = d.display_name || d.name
+    const isPrivate = isPrivateMac(d.mac)
+    const owner = d.owner_ids.length > 0 ? kids.find((k) => k.id === d.owner_ids[0]) : undefined
+    const ownerName = owner ? `${owner.full_name}` : ""
+    const isOpen = openPopupId === d.id
+    const handleSelectOwner = async (status: "assigned" | "guest" | "unassigned", owner_ids: number[]) => {
+      try {
+        await api(`/devices/${d.id}`, {
+          method: "PATCH",
+          body: { status, owner_ids },
+        })
+        qc.invalidateQueries({ queryKey: ["setup-devices"] })
+        setOpenPopupId(null)
+      } catch (error) {
+        toastFail(error instanceof Error ? error.message : "Failed to update device")
+      }
+    }
     return (
-      <div key={d.id} className={styles.dv} data-owned={value.length ? '' : undefined}>
-        <div className={styles.ic}>
-          <Icon name={DEVICE_TYPE_ICON[getDeviceType(d.name, d.vendor)]} size={20} />
+      <>
+        <div key={d.id} className={styles.deviceItem}>
+          <div className={styles.deviceIcon}>
+            <Icon name={DEVICE_TYPE_ICON[getDeviceType(displayName, d.vendor)]} size={18} />
+            {(d.vendor || d.maker_guess) && <span className={styles.makerLogo}><MakerLogo vendor={d.vendor || null} size={9} /></span>}
+          </div>
+          <div className={styles.deviceInfo}>
+            <div className={styles.deviceName}>
+              {displayName}
+              {isPrivate && <span className={styles.privateTag}>private</span>}
+            </div>
+            <div className={styles.deviceMeta}>
+              {isPrivate ? "Open t@sk4ce on this device to claim it" : d.vendor && d.ip ? `${d.vendor} · ${d.ip}` : d.ip || ""}
+            </div>
+          </div>
+          <button
+            type="button"
+            className={styles.devicePopup}
+            title={`Assign owner for ${displayName}`}
+            aria-label={owner ? `Owner for ${displayName}: ${ownerName}` : `Owner for ${displayName}`}
+            onClick={() => setOpenPopupId(isOpen ? null : d.id)}
+          >
+            {d.owner_ids.length === 0 && <Icon name="plus" size={16} />}
+            <span>Owner for {displayName}{ownerName ? `: ${ownerName}` : ""}</span>
+          </button>
         </div>
-        <div className={styles.t2}>
-          <b className="p-kn" title={d.name}>{d.name}</b>
-          <small>{[d.vendor || 'Unknown maker', d.ip].filter(Boolean).join(' · ')}</small>
-        </div>
-        <KidPicker variant="pop" single kids={kids} extras={EXTRAS} value={value} label={`Owner for ${d.name}`} onChange={(v) => change(d, v)} />
-      </div>
+        {isOpen && (
+          <div role="group" aria-label={`Owner for ${displayName}`} className={styles.ownerPopup}>
+            {kids.map((kid) => (
+              <button
+                key={kid.id}
+                type="button"
+                className={styles.ownerOption}
+                aria-pressed="false"
+                onClick={() => void handleSelectOwner("assigned", [kid.id])}
+              >
+                {kid.full_name}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={styles.ownerOption}
+              aria-pressed="false"
+              onClick={() => void handleSelectOwner("guest", [])}
+            >
+              Guest (never blocked)
+            </button>
+            <button
+              type="button"
+              className={styles.ownerOption}
+              aria-pressed="false"
+              onClick={() => void handleSelectOwner("unassigned", [])}
+            >
+              Not sure yet
+            </button>
+          </div>
+        )}
+      </>
     )
   }
-
-  const names = need.slice(0, 2).map((d) => d.name).join(', ')
+  const deviceNames = visibleDevices.slice(0, 2).map((d) => d.display_name || d.name).join(", ")
+  const moreCount = visibleDevices.length - 2
+  const deviceLine = needOwner.length === 0 ? "All devices have an owner" : visibleDevices.length <= 2 ? deviceNames : `${deviceNames} +${moreCount} more`
+  const privateDevices = devices.filter((d) => isPrivateMac(d.mac))
   return (
     <>
-      {list.isError && !list.data && <LoadFail error={list.error} onRetry={() => void list.refetch()} />}
-      <div className={styles.head}>
-        <span className={styles.pulse} aria-hidden="true" />
-        <b>Looking for devices…{list.data ? ` ${list.data.length} found` : ''}</b>
+      {list.isError && <LoadFail error={list.error} onRetry={() => void list.refetch()} />}
+      <div className={styles.scanStatus}>
+        {list.isPending && <span className={styles.scanPulse} aria-hidden="true" />}
+        {devices.length > 0 && <span>Looking for devices… {devices.length} found</span>}
       </div>
-      {list.isPending && <RowsSkeleton rows={2} />}
-      {devices.length > 0 && (
-        <FocusArea focus={focus} grouped>
-          <SummaryRow
-            id="need"
-            icon={<Icon name="warning" size={18} />}
-            title="Need an owner"
-            summary={`${need.length} left`}
-            line2={<span className={styles.l2}>{need.length ? `${names}${need.length > 2 ? ` +${need.length - 2} more` : ''}` : 'All devices have an owner'}</span>}
-            focus={focus}
-          >
-            {need.length ? need.map(deviceRow) : <p className={styles.none}>All set. Nice.</p>}
-          </SummaryRow>
-          <SummaryRow id="done" icon={<Icon name="check" size={18} />} title="Done" summary={String(done.length)} focus={focus}>
-            {done.length ? done.map(deviceRow) : <p className={styles.none}>No device has an owner yet.</p>}
-          </SummaryRow>
-        </FocusArea>
-      )}
-      {list.data && devices.length === 0 && <p className={styles.none}>No devices yet. Unlock a device and open a web page, or skip and add them later.</p>}
-      <div className={styles.tip}>
-        <Icon name="info" size={20} />
-        <span className={styles.grow}>Not seeing a device, or one keeps changing?</span>
-        <InfoPop label="More about missing or changing devices" width={320} target={<button type="button" className={styles.more}>More</button>}>
-          <p className={styles.pp}><b>Not seeing a device?</b> Unlock it and open a web page so it talks to the network.</p>
-          <p className={styles.pp}>
-            <b>Keeps changing?</b> {privateMacs > 0 && `${privateMacs} of these use a private Wi-Fi address. `}On iPhones and iPads, turn off “Private Wi-Fi Address” for your home Wi-Fi.
-          </p>
-        </InfoPop>
+      {devices.length > 0 ? (
+        <>
+          <div className={styles['p-srows']} data-grp>
+            <button
+              className={`${styles.rowTab} ${selectedTab === "need" ? styles.active : ""}`}
+              onClick={() => void router.replace({ query: { ...router.query, open: "need" } })}
+            >
+              <span>Need an owner</span> · {needOwner.length} left
+            </button>
+            <button
+              className={`${styles.rowTab} ${selectedTab === "done" ? styles.active : ""}`}
+              onClick={() => void router.replace({ query: { ...router.query, open: "done" } })}
+            >
+              <span>Done</span> · {done.length}
+            </button>
+          </div>
+          <div className={styles.rowInfo}>{deviceLine}</div>
+          <div className={styles.deviceGroups}>
+            {groups.map((group) => (
+              <div key={group.label || "untagged"} className={styles.networkSection}>
+                {showHeaders && group.label && <div className={styles.networkHeader}>{group.label}</div>}
+                {group.devices.map(deviceRow)}
+              </div>
+            ))}
+          </div>
+        </>
+      ) : !list.isPending ? (
+        <p className={styles.noDevices}>No devices yet. Unlock a device and open a web page, or skip and add them later.</p>
+      ) : null}
+      <div className={styles.helpSection}>
+        <p className={styles.helpText}>Not seeing a device, or one keeps changing?</p>
+        <button className={styles.moreButton} onClick={() => setShowPrivateHelp(!showPrivateHelp)}>
+          More
+        </button>
+        {showPrivateHelp && (
+          <div className={styles.helpContent}>
+            <p>Unlock it and open a web page to claim it, or we&rsquo;ll assign it later.</p>
+            {privateDevices.length > 0 && <p>{privateDevices.length} of these use a private Wi-Fi address</p>}
+          </div>
+        )}
       </div>
+      <button className={styles.rescanButton} onClick={handleRescan} disabled={!canRescan || rescanning}>
+        <Icon name="refresh-cw" size={14} />
+        Rescan{secondsAgo !== null && ` - Last scan ${secondsAgo} s ago`}
+      </button>
+      <div className={styles.note}>Router and this box are hidden.</div>
     </>
   )
 }

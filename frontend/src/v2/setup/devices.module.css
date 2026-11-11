@@ -1,25 +1,337 @@
-/* Setup step 6: live line, device rows inside the two summary rows, help tip (mockup declutter-v2 setup-calm) */
-.head { display: flex; align-items: center; gap: 10px; padding: 4px 0 2px; font-size: 13px; }
-.head b { white-space: nowrap; }
-.pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--p-acc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--p-acc) 35%, transparent); animation: pulse 1.8s var(--ease-out) infinite; }
-@keyframes pulse { 50% { box-shadow: 0 0 0 6px transparent; } }
-@media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
-.dv { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--p-line); }
-.dv:first-child { border-top: 0; }
-.ic { flex: none; width: 36px; height: 36px; border-radius: 11px; background: var(--p-soft); color: var(--p-sub); display: grid; place-items: center; }
-.dv :global(.p-pk-pop) { position: relative; min-height: 30px; padding: 4px 8px 4px 12px; gap: 4px; flex: none; max-width: 48%; border-radius: 999px; border: 1px solid var(--p-line); background: var(--p-soft); color: var(--p-ink); font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dv[data-owned] :global(.p-pk-pop) { background: var(--p-acc); border-color: var(--p-acc); color: #292928; }
-.dv :global(.p-pk-pop)::after { content: ''; position: absolute; inset: -7px 0; } /* 44px touch target */
-.t2 { flex: 1 1 0; min-width: 0; font-size: 13.5px; }
-.t2 b { display: block; font-weight: 600; }
-.t2 small { display: block; color: var(--p-sub); font-size: 11.5px; font-family: ui-monospace, monospace; overflow-wrap: anywhere; /* full IP always shown: wraps rather than ellipsis */ }
-.none { margin: 0; padding: 6px 0; color: var(--p-sub); font-size: 13px; }
-.tip { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding: 8px 8px 8px 14px; border: 1px dashed var(--p-line); border-radius: 14px; font-size: 13px; color: var(--p-sub); }
-.tip :global(.ms) { flex: none; font-size: 20px; }
-.grow { flex: 1; min-width: 0; }
-.more { flex: none; min-height: 32px; padding: 0 4px; border: 0; background: none; color: var(--p-ink); font: inherit; font-size: 13px; font-weight: 600; text-decoration: underline; cursor: pointer; }
-.more:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; border-radius: 6px; }
-.pp { margin: 0 0 8px; font-size: 13px; line-height: 1.5; }
-.pp:last-child { margin-bottom: 0; }
-@media (max-width: 767px) { .more { min-height: 44px; min-width: 44px; } }
-.l2 { color: var(--p-sub); font-size: 12.5px; }
+/* Setup step 5: onboarding device discovery with rescan and network grouping */
+
+.scanStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: var(--p-soft);
+  border: 1px solid var(--p-line);
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.scanPulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff6b6b;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scanPulse { animation: none; }
+}
+
+.deviceGroups {
+  display: flex;
+  flex-direction: column;
+}
+
+.networkSection {
+  margin-bottom: 12px;
+}
+
+.networkHeader {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--p-sub);
+  margin-bottom: 6px;
+  padding: 0 4px;
+}
+
+.deviceItem {
+  display: grid;
+  grid-template-columns: 36px 1fr 32px;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  background: var(--p-soft);
+  border: 1px solid var(--p-line);
+  border-radius: 8px;
+  margin-bottom: 6px;
+  transition: border-color 0.15s;
+}
+
+@media (hover: hover) {
+  .deviceItem:hover {
+    border-color: var(--p-ink);
+  }
+}
+
+.deviceIcon {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: var(--p-card);
+  border: 1px solid var(--p-line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--p-ink);
+  flex-shrink: 0;
+}
+
+.deviceIcon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.makerLogo {
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  width: 14px;
+  height: 14px;
+  background: var(--p-card);
+  border: 1px solid var(--p-line);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--p-sub);
+}
+
+.deviceInfo {
+  min-width: 0;
+}
+
+.deviceName {
+  font-weight: 500;
+  font-size: 13px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.privateTag {
+  display: inline-block;
+  padding: 2px 6px;
+  background: var(--p-card);
+  border: 1px solid var(--p-line);
+  border-radius: 4px;
+  font-size: 10px;
+  color: var(--p-sub);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.deviceMeta {
+  font-size: 11px;
+  color: var(--p-sub);
+  margin: 2px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.devicePopup {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: var(--p-card);
+  border: 1px solid var(--p-line);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+  color: var(--p-ink);
+}
+
+@media (hover: hover) {
+  .devicePopup:hover {
+    background: var(--p-line);
+  }
+}
+
+.devicePopup svg {
+  width: 16px;
+  height: 16px;
+}
+
+.rescanButton {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--p-line);
+  border-radius: 8px;
+  background: var(--p-card);
+  color: var(--p-ink);
+  font: 600 13px var(--font-parent);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+@media (hover: hover) {
+  .rescanButton:hover:not(:disabled) {
+    background: var(--p-soft);
+    border-color: var(--p-ink);
+  }
+}
+
+.rescanButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rescanButton svg {
+  width: 14px;
+  height: 14px;
+}
+
+.note {
+  font-size: 11px;
+  color: var(--p-sub);
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--p-line);
+  text-align: center;
+}
+
+.noDevices {
+  font-size: 13px;
+  color: var(--p-sub);
+  text-align: center;
+  padding: 24px;
+  margin: 0;
+}
+
+.p-srows {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.rowTabs {
+  border: 1px solid var(--p-line);
+  border-radius: 8px;
+  padding: 4px;
+  background: var(--p-card);
+}
+
+.rowTab {
+  flex: 1;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--p-sub);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+@media (hover: hover) {
+  .rowTab:hover {
+    background: var(--p-soft);
+  }
+}
+
+.rowTab.active {
+  background: var(--p-soft);
+  border-color: var(--p-line);
+  color: var(--p-ink);
+}
+
+.rowInfo {
+  font-size: 13px;
+  color: var(--p-sub);
+  padding: 8px 4px;
+  margin-bottom: 12px;
+}
+
+.helpSection {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--p-soft);
+  border: 1px solid var(--p-line);
+  border-radius: 8px;
+}
+
+.helpText {
+  font-size: 13px;
+  margin: 0 0 8px 0;
+  color: var(--p-ink);
+}
+
+.moreButton {
+  padding: 6px 12px;
+  background: var(--p-card);
+  border: 1px solid var(--p-line);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--p-ink);
+  transition: background-color 0.15s;
+}
+
+@media (hover: hover) {
+  .moreButton:hover {
+    background: var(--p-line);
+  }
+}
+
+.helpContent {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--p-line);
+}
+
+.helpContent p {
+  font-size: 12px;
+  color: var(--p-sub);
+  margin: 4px 0;
+}
+
+.ownerPopup {
+  background: var(--p-soft);
+  border: 1px solid var(--p-line);
+  border-radius: 8px;
+  padding: 4px;
+  margin: 6px 0 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ownerOption {
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--p-ink);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s;
+}
+
+@media (hover: hover) {
+  .ownerOption:hover {
+    background: var(--p-card);
+  }
+}
+
+@media (max-width: 600px) {
+  .deviceItem {
+    grid-template-columns: 36px 1fr 28px;
+  }
+}
