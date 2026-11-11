@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals'
+import { afterEach, beforeEach, describe, expect, test } from '@jest/globals'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { useEffect } from 'react'
 import { CelebrationLayer } from '@/v2/kid/celebrate/CelebrationLayer'

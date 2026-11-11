@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, jest, test } from '@jest/globals'
+import { afterEach, beforeEach, expect, test } from '@jest/globals'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MathDash } from '@/v2/games/mathDash/MathDash'
 

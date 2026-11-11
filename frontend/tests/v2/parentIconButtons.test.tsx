@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach, jest } from '@jest/globals'
+import { describe, expect, test, beforeEach } from '@jest/globals'
 import { render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MantineProvider } from '@mantine/core'
@@ -33,6 +33,13 @@ const wrap = (ui: React.ReactElement) =>
       <MantineProvider>{ui}</MantineProvider>
     </QueryClientProvider>,
   )
+
+describe('mocks', () => {
+  test('mocked Bell is rendered in the rail', () => {
+    wrap(<Rail />)
+    expect(screen.getByText('Bell rail')).toBeInTheDocument()
+  })
+})
 
 describe('Parent UI icon-only buttons accessibility', () => {
   test('Rail items have accessible names', () => {

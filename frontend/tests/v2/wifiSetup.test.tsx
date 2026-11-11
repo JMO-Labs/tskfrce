@@ -1,8 +1,9 @@
-import { describe, test, expect, jest, beforeEach } from '@jest/globals'
+import { describe, test, expect, beforeEach } from '@jest/globals'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WifiSetupPage } from '@/v2/setup/WifiSetupPage'
 import { MantineProvider } from '@mantine/core'
+import { useSetupWifiScan } from '@/v2/hooks/useSetupWifi'
 
 jest.mock('@/v2/hooks/useSetupWifi', () => ({
   useSetupWifiStatus: jest.fn(() => ({
@@ -38,6 +39,12 @@ describe('WifiSetup page', () => {
   test('renders heading and description', () => {
     wrap(<WifiSetupPage />)
     expect(screen.getByText('Connect to Wi-Fi')).toBeInTheDocument()
+  })
+
+  test('uses the mocked scan hook', () => {
+    wrap(<WifiSetupPage />)
+    expect(jest.isMockFunction(useSetupWifiScan)).toBe(true)
+    expect(useSetupWifiScan).toHaveBeenCalled()
   })
 
   test('displays available networks section', () => {
