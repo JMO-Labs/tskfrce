@@ -49,6 +49,7 @@ KINDS = (
     "goal_full",
     "goal_suggested",
     "jail_card",
+    "box_update",
 )
 
 
