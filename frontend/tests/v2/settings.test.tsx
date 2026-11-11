@@ -6,10 +6,12 @@ import { MantineProvider } from '@mantine/core'
 import { SettingsPage } from '@/v2/manage/SettingsPage'
 import { AppearancePane } from '@/v2/manage/AppearancePane'
 import { api } from '@/v2/api'
+import { useSectionView } from '@/v2/eval/useSectionView'
 import { ACCENTS } from '@/v2/parent/accent'
 import type { Family, Kid, Group, HoursPayload } from '@/v2/types'
 
 jest.mock('@/v2/api')
+jest.mock('@/v2/eval/useSectionView', () => ({ useSectionView: jest.fn() }))
 const mockQuery: Record<string, string> = {}
 jest.mock('next/router', () => ({ useRouter: () => ({ query: mockQuery, pathname: '/settings' }) }))
 jest.mock('@/v2/components/RequireParent', () => ({ RequireParent: ({ children }: any) => children }))
@@ -160,5 +162,24 @@ describe('Appearance via SettingsPage', () => {
     expect(mockPatch).toHaveBeenCalled()
     expect(document.documentElement.style.getPropertyValue('--p-acc')).toBe(ACCENTS.neon.hex)
     mockPatch.mockReset()
+  })
+})
+
+describe('SettingsPage section tracking', () => {
+  beforeEach(() => {
+    jest.mocked(useSectionView).mockClear()
+    jest.mocked(api).mockImplementation((async () => []) as never)
+  })
+
+  test('a valid section is reported as is', () => {
+    mockQuery.section = 'wifi'
+    wrap(<SettingsPage />)
+    expect(useSectionView).toHaveBeenLastCalledWith('/settings', 'wifi')
+  })
+
+  test('an invalid section falls back to family', () => {
+    mockQuery.section = 'nope'
+    wrap(<SettingsPage />)
+    expect(useSectionView).toHaveBeenLastCalledWith('/settings', 'family')
   })
 })

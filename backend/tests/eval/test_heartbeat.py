@@ -47,6 +47,22 @@ def test_heartbeat_uses_family_day(eval_on, db):
     assert heartbeat.maybe_send(db, now) is False
 
 
+def test_dropped_shows_in_that_days_heartbeat(eval_on, db):
+    store.bump("dropped", 7, day="2026-10-24")
+    assert heartbeat.build(db, date(2026, 10, 24))["dropped"] == 7
+    assert heartbeat.build(db, date(2026, 10, 23))["dropped"] == 0
+
+
+def test_heartbeat_exempt_from_cap(eval_on, db):
+    store.kv_set("first_day", "2026-10-20")
+    day = store.local_day()
+    store.bump("enq", store.DAILY_CAP, day=day)
+    now = datetime.now(UTC) + timedelta(days=1)
+    assert heartbeat.maybe_send(db, now) is True
+    assert len(_rows()) == 1
+    assert store.counters(day).get("dropped", 0) == 0
+
+
 def test_no_heartbeat_before_first_boot(eval_on, db):
     now = datetime(2026, 10, 25, 12, 0, tzinfo=UTC)
     assert heartbeat.maybe_send(db, now) is False

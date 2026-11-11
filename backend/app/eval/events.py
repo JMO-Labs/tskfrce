@@ -131,6 +131,6 @@ def emit(
     try:
         ts = time.time()
         body = umami_body(name, data or {}, source=source, age_group=age_group, url=url, ts=ts)
-        store.enqueue("umami", body, now=ts)
+        store.enqueue("umami", body, now=ts, capped=name != "heartbeat")
     except Exception as e:
         logger.warning("eval_emit_failed", event=name, error=type(e).__name__)

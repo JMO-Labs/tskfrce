@@ -131,26 +131,24 @@ def kid_age(kid_id: int | None) -> str:
     return rows[0][0] if rows else "unknown"
 
 
-DAILY_CAP = 500  # umami events per box per local day
+DAILY_CAP = 500  # umami events per box per local day (heartbeat exempt)
 
 
-def _apply_cap(kind: str) -> None:
-    """Count today's umami enqueues; at the cap drop the oldest pending one, count `dropped`."""
-    if kind != "umami":
-        return
+def _under_cap(kind: str, capped: bool) -> bool:
+    """Count today's umami enqueues; at the cap refuse the new one and count `dropped`."""
+    if kind != "umami" or not capped:
+        return True
     day = local_day()
     if counters(day).get("enq", 0) < DAILY_CAP:
         bump("enq", day=day)
-        return
+        return True
     bump("dropped", day=day)
-    _run(
-        "DELETE FROM outbox WHERE id=(SELECT id FROM outbox WHERE kind='umami' "
-        "ORDER BY created_at, id LIMIT 1)"
-    )
+    return False
 
 
-def enqueue(kind: str, body: dict, now: float | None = None) -> None:
-    _apply_cap(kind)
+def enqueue(kind: str, body: dict, now: float | None = None, capped: bool = True) -> None:
+    if not _under_cap(kind, capped):
+        return
     t = time.time() if now is None else now
     _run(
         "INSERT INTO outbox(kind, body, created_at, next_at) VALUES(?, ?, ?, ?)",
