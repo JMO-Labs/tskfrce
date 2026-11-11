@@ -13,9 +13,5 @@ export function ago(iso: string, now = Date.now()): string {
 export const lastActive = (iso: string | null | undefined, now = Date.now()) =>
   iso ? `Last active ${now - Date.parse(iso) < 120_000 ? 'now' : ago(iso, now)}` : 'Never signed in'
 
-/** Home box status, honest about how long it has been quiet. */
-export const boxLine = (b: { online: boolean; last_seen: string | null } | undefined, now = Date.now(), short = false) =>
-  !b ? undefined : b.online ? 'Home box healthy' : short ? 'Home box offline' : `Home box offline — ${b.last_seen ? `last seen ${ago(b.last_seen, now)}` : 'never seen'}`
-
 export const countLine = (n: number | undefined, one: string, many = `${one}s`) =>
   n === undefined ? undefined : `${n} ${n === 1 ? one : many}`

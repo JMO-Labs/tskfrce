@@ -57,6 +57,18 @@ t@sk4ce restarts by itself after a power cut.
 
 **To update:** run the install line again. Your family, chores and settings are kept. The app saves a copy of your data before it changes anything.
 
+**Which version am I on?** The installer writes a line `TASK4CE_TAG=` in the `.env` file in the `task4ce` folder. It says which version of the app images the box uses (for example `TASK4CE_TAG=latest`, or `TASK4CE_TAG=2.13.0` for a numbered release). A restart or a plain `docker compose up` keeps that version.
+
+**To pin a numbered version** (or go back to one), run the install line with the release you want:
+
+```bash
+curl -fsSL https://jmo-labs.github.io/tskfrce/install.sh | TASK4CE_REF=v2.13.0 sh
+```
+
+The `v` is in `TASK4CE_REF`; the `.env` line then reads `TASK4CE_TAG=2.13.0`. Running the plain install line again afterwards moves the box back to `latest`.
+
+**To change the version by hand:** open `.env` with `nano .env`, change the `TASK4CE_TAG=` line, save (Ctrl+O, Enter) and leave (Ctrl+X). Then, in the same folder, type `docker compose -f docker-compose.prod.yml pull` and then `docker compose -f docker-compose.prod.yml up -d`.
+
 **To stop it:** in the Terminal on the box, type `cd ~/task4ce` and press Enter (that goes to the `task4ce` folder in your home folder), then type `docker compose -f docker-compose.prod.yml down`. To start it again, go to the same folder and type `docker compose -f docker-compose.prod.yml up -d`.
 
 ## Do it by hand (for the curious)
@@ -65,7 +77,7 @@ The installer does these things. You can do them yourself instead:
 
 1. Install Docker from https://docs.docker.com/engine/install/ and check with `docker --version`.
 2. Download the code: `git clone https://github.com/JMO-Labs/tskfrce.git task4ce && cd task4ce`.
-3. Write a `.env` file with `SECRET_KEY` and `INTERNAL_TOKEN` (each a long random string, for example from `openssl rand -hex 32`), `BOX_URL=http://<box address>:3000`, `NTFY_PUBLIC_URL=http://<box address>:2586` (for kids' phone alerts), `LAN_IFACE=<network name: the word after "dev" in the output of ip route show default, for example eth0>` and `COMPOSE_PROFILES=blocker`.
+3. Write a `.env` file with `SECRET_KEY` and `INTERNAL_TOKEN` (each a long random string, for example from `openssl rand -hex 32`), `BOX_URL=http://<box address>:3000`, `NTFY_PUBLIC_URL=http://<box address>:2586` (for kids' phone alerts), `LAN_IFACE=<network name: the word after "dev" in the output of ip route show default, for example eth0>` and `COMPOSE_PROFILES=blocker`. Add `TASK4CE_TAG=latest` (or a release number such as `2.13.0`) to choose the version.
 4. Start it: `docker compose -f docker-compose.prod.yml up -d --build`.
 
 Mac and Windows can run the app to try it out (not the internet pausing): leave out `COMPOSE_PROFILES=blocker`.

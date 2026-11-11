@@ -12,18 +12,18 @@ const locksAt = (kid: TodayKid, clock: (iso: string) => string) => {
   return kid.devices.length && !kid.devices.some((d) => d.online) ? 'Locked' : '—'
 }
 
-/** Points / streak / next reward / locks-at, shared by the desktop kid card and phone Today. */
+/** Streak / last active / next reward / locks-at: the Today avatar pop-over and the chat side panel. */
 export function KidFacts({ kid }: { kid: TodayKid }) {
   const clock = useClock()
   return (
     <div className="p-kid-facts">
       <div>
-        <span>Points</span>
-        <b>{kid.points ?? 0}</b>
-      </div>
-      <div>
         <span>Streak</span>
         <b>{streakText(kid.progress?.streak ?? 0)}</b>
+      </div>
+      <div>
+        <span>Last active</span>
+        <b>{kid.last_active ? clock(kid.last_active) : '—'}</b>
       </div>
       <div>
         <span>Next reward</span>

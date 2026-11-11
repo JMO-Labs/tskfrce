@@ -21,6 +21,7 @@ class PointsType(str, Enum):
     PENALTY = "penalty"
     TRANSFER = "transfer"
     REDEMPTION = "redemption"
+    GAME = "game"
 
 
 class Points(Base):
@@ -33,7 +34,7 @@ class Points(Base):
         points_type: Type of points transaction
         amount: Points amount (positive or negative)
         description: Transaction description
-        reason: Machine-read kind (chore, early_bonus, team_share, redemption, bonus, adjustment, deduction)
+        reason: Machine-read kind (chore, early_bonus, team_share, redemption, bonus, adjustment, deduction, goal_save, goal_return)
         created_at: Creation timestamp
     """
 
@@ -41,7 +42,7 @@ class Points(Base):
     __table_args__ = (
         CheckConstraint("run_id IS NULL OR redemption_id IS NULL", name="ck_points_one_ref"),
         CheckConstraint(
-            "reason IN ('chore','early_bonus','team_share','redemption','bonus','adjustment','deduction')",
+            "reason IN ('chore','early_bonus','team_share','redemption','bonus','adjustment','deduction','goal_save','goal_return','penalty','game')",
             name="ck_points_reason",
         ),
     )
@@ -55,6 +56,7 @@ class Points(Base):
     by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     run_id = Column(Integer, ForeignKey("chore_runs.id"), nullable=True, index=True)
     redemption_id = Column(Integer, ForeignKey("redemptions.id"), nullable=True, index=True)
+    penalty_id = Column(Integer, ForeignKey("penalties.id", ondelete="SET NULL"), nullable=True)
     seen_by_kid = Column(Boolean, nullable=False, default=True, server_default="1")
     created_at = Column(DateTime, default=datetime.utcnow)
 

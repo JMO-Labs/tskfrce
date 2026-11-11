@@ -6,6 +6,18 @@ Commands on this page are typed in the Terminal on the home box (see [Install](0
 
 If a command says "permission denied" for Docker, put `sudo` in front of it. If it says "no configuration file provided" or "no such file", you are not in the `task4ce` folder.
 
+## I can't find a setting
+
+Screens now show less at first, and open a row for more. Where things moved:
+
+- **Points history** for a kid: tap the points chip at the top of the kid's page.
+- **Block new devices** and the **Home box** status: **Devices**, the **Home network** row at the top of the list (no longer in Settings → Family).
+- **Bedtime auto-approve** and **Weekly recap**: **Settings → Family → Bedtime & recap** (the old Extras card).
+- **Start Happy Hour**: the **…** at the top right of **Today**.
+- **Send back**, **Decline** and **Dismiss**: the **…** on a row in Needs you or the bell.
+- **Export CSV** of rewards: the button in the header of **Kids & chores → Rewards → History**.
+- Quiet hours, and the rest of how pings arrive: **Settings → Notifications → When and how**.
+
 ## The app says "Home box offline"
 
 A red message at the top says **Home box offline** and "It went quiet at ...". It means the app has not heard from the box for a minute or two.
@@ -24,11 +36,24 @@ A red message at the top says **Home box offline** and "It went quiet at ...". I
 
 The most common cause is a wrong network name in the `.env` file. Type `ip route show default`. The word right after `dev` (for example `eth0`) is the network name. Open the file with `nano .env`, fix the `LAN_IFACE=` line, save (Ctrl+O, Enter) and leave (Ctrl+X). Then run `docker compose -f docker-compose.prod.yml up -d blocker`.
 
+## The box runs an old version
+
+You updated, but the app looks the same as before, or a new feature is missing.
+
+1. In the Terminal on the box, go to the folder (`cd ~/task4ce`) and type `grep TASK4CE_TAG .env`.
+   You should see: `TASK4CE_TAG=latest` or a number like `TASK4CE_TAG=2.13.0`.
+2. If it is a **number**, the box is pinned to that version on purpose. To move on, run the install line from [Install](02-install.md) again (it goes back to `latest`), or run it with `TASK4CE_REF=v<new number>` in front of `sh` to pick a newer release.
+3. If it says `latest`, download the newest files and restart: type `docker compose -f docker-compose.prod.yml pull` and then `docker compose -f docker-compose.prod.yml up -d`.
+   You should see: `Pulled`, then `Started`.
+4. If there is no `TASK4CE_TAG` line (a box installed before this was added), run the install line again. It adds the line.
+
+Your family, chores and settings are kept. See [Keeping it running](02-install.md#keeping-it-running).
+
 ## A device isn't being paused
 
 Work through these in order:
 
-1. Is the device **assigned** to a kid? Guests are never paused. New devices are paused only if **Block new devices until I assign them** is on in **Settings → Family**.
+1. Is the device **assigned** to a kid? Guests are never paused. New devices are paused only if **Block new devices until I assign them** is on (**Devices → Home network**).
 2. Are all that kid's chores approved for today? If yes, the internet is on. If the kid has no chores today, it is also on.
 3. Is **Lock until today's chores are done** off in **Settings → Hours**? Then only the hours count. Is it inside a **Free time** window?
 4. Open the device. Is **Always allowed (never lock)** on? Do you see **Back to schedule**? That means someone unlocked it by hand: tap **Back to schedule**.
@@ -38,6 +63,16 @@ Work through these in order:
    - "Success — the device lost internet access while blocked.": it works.
    - "The device is trying to get around the block. The box is still stopping it, but someone may have changed its network settings.": see below.
    - "We couldn't see this device use the internet during the test. ...": open a video on the device and test again. If it repeats, your router may be stopping the box. Check the [router list](../routers.md).
+
+## My kid is stuck in jail (a penalty block won't end)
+
+A penalty block ends by itself, but you can end it sooner. Try these in order:
+
+1. Open **Devices**. A blocked device shows **Blocked by penalty until …**. Tap **Forgive** there to end it now.
+2. Or open the kid's page and find the active penalty. **Forgive** ends it and keeps the record. **Cancel** undoes it and gives back what was taken. **Shorten** ends a block earlier.
+3. If the kid has make-up chores, they must be done and you must approve them (they always wait for you, even in trust mode). Check **Needs you**.
+4. If the kid saved for **Get out of jail free**, they can tap **Use Get out of jail free** on the penalty card.
+5. Still blocked? Make sure the device is not paused for another reason, like bedtime or no screen time left. See [A device isn't being paused](#a-device-isnt-being-paused) for the other side of this.
 
 ## My kid found a way around it
 
@@ -155,6 +190,12 @@ An iPhone or iPad keeps the home-screen icon apart from Safari, so the icon star
 ## A lost phone
 
 Open the kid's page, find **Phones and tablets**, and tap **Remove** next to the phone. It signs out right away. The phone shows "This phone was removed. Ask a parent for a new code." To add a phone back, scan a new code.
+
+## Homework sites won't load
+
+1. Check the site is in **Settings → Homework** (or the kid's extra list) and not in "Never during homework".
+2. Some sites need other addresses to work. Open **Homework activity** and add what the page pulled in.
+3. Turn off Private DNS (Android) or secure DNS in the browser on the kid's device. It can skip the box's answers.
 
 ## Backups
 

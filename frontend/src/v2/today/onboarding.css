@@ -60,9 +60,11 @@
   }
 }
 
-[data-look='parent'] .p-onboard-dismiss:hover {
-  background-color: var(--p-soft);
-  color: var(--p-ink);
+@media (hover: hover) {
+  [data-look='parent'] .p-onboard-dismiss:hover {
+    background-color: var(--p-soft);
+    color: var(--p-ink);
+  }
 }
 
 [data-look='parent'] .p-onboard-dismiss:active {

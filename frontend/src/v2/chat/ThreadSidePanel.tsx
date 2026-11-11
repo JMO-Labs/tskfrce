@@ -58,6 +58,7 @@ function KidCard({ kid }: { kid: TodayKid }) {
         </>
       )}
       <Kv k="Devices online">{online} / {kid.devices.length}</Kv>
+      <Kv k="Points">{kid.points ?? 0}</Kv>
       <KidFacts kid={kid} />
       <div className="pc-links">
         <Link href={`/?item=${kid.id}`} className="p-btn">

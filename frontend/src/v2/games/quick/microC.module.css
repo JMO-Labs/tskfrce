@@ -1,0 +1,38 @@
+.stage{position:relative;width:100%;height:330px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--k-ink);font-family:var(--font-display),'Space Grotesk',system-ui,sans-serif;user-select:none;touch-action:manipulation}
+.kb{font:700 17px var(--font-display),'Space Grotesk',system-ui,sans-serif;min-height:56px;min-width:56px;padding:12px 18px;border-radius:16px;border:2px solid var(--k-ink);background:var(--k-card);color:var(--k-ink);box-shadow:var(--k-shadow);cursor:pointer;touch-action:none}
+.kb:active{transform:translateY(2px)}
+.sun{background:var(--k-sun);color:#1d2b53}
+.big{font-size:64px;line-height:1;padding:8px 14px}
+.row{display:flex;gap:12px;justify-content:center;align-items:flex-end}
+.hint{font-size:15px;color:var(--k-sub);font-weight:600}
+
+/* water */
+.waterWrap{display:flex;gap:22px;align-items:flex-end}
+.meter{position:relative;width:56px;height:210px;border:2px solid var(--k-ink);border-radius:16px;background:var(--k-soft);overflow:hidden}
+.fill{position:absolute;left:0;right:0;bottom:0;background:#4aa8ff}
+.band{position:absolute;left:0;right:0;background:var(--k-green);opacity:.55;border-top:2px dashed var(--k-ink);border-bottom:2px dashed var(--k-ink)}
+.plant{font-size:80px;line-height:1}
+
+/* hang */
+.rack{position:relative;width:100%;height:230px}
+.pole{position:absolute;left:8%;right:8%;bottom:30px;height:8px;border-radius:4px;background:var(--k-ink)}
+.hanger{position:absolute;top:10px;font-size:64px;line-height:1;transform:translateX(-50%)}
+.shirt{position:absolute;font-size:64px;line-height:1;transform:translateX(-50%);transition:top .25s ease-in}
+.target{position:absolute;bottom:22px;left:50%;width:70px;height:24px;transform:translateX(-50%);border:3px dashed var(--k-sun);border-radius:12px}
+
+/* shh */
+.clock{width:96px;height:112px;font-size:64px;border-radius:20px}
+@keyframes shake{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}}
+.ring{animation:shake .12s linear infinite;background:var(--k-coral)}
+.fuse{width:240px;height:12px;border-radius:6px;background:var(--k-soft);border:2px solid var(--k-ink);overflow:hidden}
+.fuseIn{height:100%;background:var(--k-coral)}
+
+/* catch */
+.sky{position:relative;width:100%;height:240px}
+.key{position:absolute;left:50%;font-size:56px;line-height:1;transform:translateX(-50%)}
+.ground{position:absolute;left:8%;right:8%;bottom:0;height:6px;border-radius:3px;background:var(--k-line)}
+
+/* match */
+.pot{position:relative;height:84px;display:flex;align-items:flex-end;justify-content:center;font-size:44px}
+.potBody{height:72px;border:3px solid var(--k-ink);border-radius:10px 10px 36px 36px;background:var(--k-soft);display:flex;align-items:center;justify-content:center}
+.lid{height:64px;padding:0;border-radius:40px 40px 8px 8px;display:flex;align-items:flex-start;justify-content:center;font-size:22px}

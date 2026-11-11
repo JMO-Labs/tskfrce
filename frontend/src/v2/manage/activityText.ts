@@ -12,7 +12,7 @@ const time = (iso: string, tz?: string) => {
 
 const WORKAROUND: Record<string, string> = { vpn: 'a VPN', private_dns: 'private DNS', proxy: 'a proxy site', tor: 'Tor' }
 
-const LOCKED_WHY: Record<string, string> = { chores: 'chores not done', manual: 'locked by a parent', new_device: 'new device' }
+const LOCKED_WHY: Record<string, string> = { chores: 'chores not done', manual: 'locked by a parent', penalty: 'penalty', new_device: 'new device' }
 
 /** Alert row copy for the Activity tab. */
 export function eventText(e: DeviceEvent, deviceName: string, tz?: string): { icon: string; sev: Sev; title: string; sub: string } {
@@ -112,6 +112,7 @@ export function whyText(d: Device): string {
   switch (d.reason) {
     case 'chores': return blocked ? `Chores ${d.chores_done}/${d.chores_total} done` : 'Chores done'
     case 'schedule': return blocked ? 'Outside allowed hours' : 'No chores to wait for'
+    case 'penalty': return 'Blocked by penalty'
     case 'manual': return blocked ? 'Locked by a parent' : 'Unlocked by a parent'
     case 'new_device': return 'New device, waiting for you'
     case 'free_time': return 'Free time'

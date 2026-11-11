@@ -27,7 +27,7 @@ export function PasswordCard() {
       setCur('')
       setNext('')
       setAgain('')
-      toastOk('Password changed.')
+      toastOk('Password changed')
     } catch (e) {
       // 400 carries "That's not your current password."; plain call, not a mutation, so no session redirect
       setError(e instanceof ApiError ? e.detail : 'Something went wrong. Try again.')

@@ -31,7 +31,7 @@ export const fridgeTheme: MantineThemeOverride = createTheme({
     Input: { classNames: { input: 'f-input' } },
     InputWrapper: { classNames: { label: 'f-label' } },
     SegmentedControl: { classNames: { root: 'f-seg' } },
-    Switch: { classNames: { track: 'f-switch' } },
+    Switch: { defaultProps: { withThumbIndicator: false }, classNames: { track: 'f-switch' } },
     Checkbox: { classNames: { input: 'f-check' } },
     Chip: { classNames: { label: 'f-chipctl', iconWrapper: 'f-chipicon' } },
     Menu: { classNames: { dropdown: 'p-pop', item: 'p-pop-item', divider: 'p-pop-div' } },

@@ -24,7 +24,7 @@ It stays in your home, on the home box. There are no accounts with us, no ads an
 A determined kid can. t@sk4ce is built to stop normal use and to tell you when someone is dodging it. It is not a lock.
 
 - Mobile data and phone hotspots aren't covered. It only works on your home Wi-Fi.
-- A new, unregistered device can be used instead, unless you turn on "Block new devices" in Settings (it is off at first).
+- A new, unregistered device can be used instead, unless you turn on "Block new devices" in **Devices → Home network** (it is off at first).
 - A kid who tries a VPN, a proxy site or Tor on a paused device is still blocked, and you get a "Tried a workaround" alert. A VPN app that goes straight to a number address is blocked but not noticed.
 - A kid who changes their device's network settings is usually still stopped, and you get an alert when something gets through.
 
@@ -57,6 +57,15 @@ No. A kid can use any device assigned to them, and siblings can share one. A PIN
 ## Can there be two parents?
 
 Yes. In **Settings → Parents**, tap **Invite a parent** and send them the link.
+
+## Why can't my kid play games right now?
+
+Check these, in order:
+
+- **Quiet hours or bedtime.** Games sleep at the kid's bedtime until the day resets, and during family quiet hours (**Settings → Notifications → When and how**). The Games tab says "Games are asleep" and when they wake up.
+- **No game saved.** A game comes from an approved chore. A chore still waiting for you to approve earns nothing yet.
+- **Games are off.** Check **Settings → Family → Minigames** for the family switch and the kid's own switch.
+- **Earn setting.** With **Once a day**, **Random** or **Custom**, not every chore earns a game. A kid can also hold at most 5 saved games.
 
 ## What do "First one wins" and "Team effort" mean?
 

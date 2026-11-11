@@ -1,5 +1,6 @@
 import { Fragment, useState } from 'react'
 import { Icon } from '@/v2/parent/Icon'
+import { InfoPop } from '@/v2/parent/InfoPop'
 import { wallTime } from './choreMeta'
 
 export const MAX_STEPS = 20 // backend limit
@@ -26,7 +27,19 @@ const moved = <T,>(list: T[], from: number, to: number) => {
   return s
 }
 
-/** Steps card: drag or ↑/↓ to reorder, a due time per step, and links that chain a step to the one above. */
+/** The (i) next to the Steps row title: what the chain links and numbers mean, and how many steps are used. */
+export function StepsInfo({ count }: { count: number }) {
+  return (
+    <InfoPop label="How steps work" width={280}>
+      <div className="ch-lg"><span><Icon name="link" size={14} /> Link between steps</span><b>tap to chain</b></div>
+      <div className="ch-lg"><span><span className="pk-num">1</span> Numbered</span><b>must go in order</b></div>
+      <div className="ch-lg"><span><span className="pk-num" data-free="true">–</span> No number</span><b>any time</b></div>
+      <p className="ch-pop-p">{`Every step must be ticked before the chore comes to you. ${count} of ${MAX_STEPS} steps used.`}</p>
+    </InfoPop>
+  )
+}
+
+/** Steps form (the body of the Steps row): drag or ↑/↓ to reorder, a due time per step, and links that chain a step to the one above. */
 export function ChoreSteps({ steps, onChange, next, onNext, choreDue }: Props) {
   const [editing, setEditing] = useState<number | null>(null)
   const full = steps.length >= MAX_STEPS
@@ -65,18 +78,13 @@ export function ChoreSteps({ steps, onChange, next, onNext, choreDue }: Props) {
   const late = choreDue ? steps.filter((s) => s.due_time && hhmm(s.due_time) > hhmm(choreDue)) : []
 
   return (
-    <section className="pk-panel" aria-label="Steps">
-      <h3>
-        <Icon name="checklist" size={18} />
-        Steps
-      </h3>
+    <>
       <div className="pk-steps">
         {steps.map((s, i) => (
           <Fragment key={i}>
             {i > 0 && (
-              <button type="button" className="pk-link" aria-pressed={s.after_previous} onClick={() => set(i, { after_previous: !s.after_previous })}>
+              <button type="button" className="pk-link" aria-pressed={s.after_previous} aria-label={s.after_previous ? 'Must be done after the step above' : 'Any order'} title={s.after_previous ? 'Must be done after the step above' : 'Any order'} onClick={() => set(i, { after_previous: !s.after_previous })}>
                 <Icon name={s.after_previous ? 'link' : 'link_off'} size={14} />
-                {s.after_previous ? 'Must be done after the step above' : 'Any order'}
               </button>
             )}
             <div className="pk-step" data-step={i}>
@@ -135,28 +143,12 @@ export function ChoreSteps({ steps, onChange, next, onNext, choreDue }: Props) {
           onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), add())}
         />
       </label>
-      {steps.length > 1 && (
-        <div className="pk-legend">
-          <span>
-            <Icon name="link" size={14} /> tap between steps to chain them
-          </span>
-          <span>
-            <span className="pk-num">1</span> must go in order
-          </span>
-          <span>
-            <span className="pk-num" data-free="true">–</span> any time
-          </span>
-        </div>
-      )}
       {late.map((s, i) => (
         <div key={`${i}-${s.title}`} className="pk-warn" role="note">
           <Icon name="info" size={15} />
           {`“${s.title}” is due after the chore (${wallTime(choreDue!)}). The chore will stay open until ${wallTime(latest!)}.`}
         </div>
       ))}
-      <span className="pk-hint">
-        Every step must be ticked before the chore goes to you for approval. {steps.length} of {MAX_STEPS} steps.
-      </span>
-    </section>
+    </>
   )
 }

@@ -19,3 +19,32 @@
 .card > :is(ol, p) { color: var(--p-sub); }
 .card ol :global(.ms), .card p :global(.ms) { vertical-align: middle; }
 .card ol b, .card p b { color: var(--p-ink); }
+
+/* Step 3 calm kids (declutter v3): one-line kid rows, avatar pop-over */
+.list { border: 1px solid var(--p-line); border-radius: 14px; background: var(--p-card); }
+.kidline { display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 52px; }
+.kidline + .kidline { border-top: 1px solid var(--p-line); }
+.avsm { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--p-soft); border: 1px solid var(--p-line); font-size: 15px; }
+.kn { flex: 1; min-width: 0; font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pinnote { flex: none; color: var(--p-sub); font-size: 12px; }
+.kidline .chip { display: inline-flex; align-items: center; gap: 4px; }
+.pair { display: flex; gap: 10px; align-items: flex-end; margin-top: 12px; }
+.fldlabel { font-size: 12.5px; font-weight: 600; line-height: 1.55; margin-bottom: 6px; }
+.pinlabel { display: flex; align-items: center; gap: 2px; height: 24px; } /* 24px like the mockup's label row: Avatar sits ~2px lower, not 8 */
+.pinlabel :global(.p-info-btn) { margin: -4px 0; }
+.avbtn { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 6px 12px; border-radius: 10px; border: 1px solid var(--p-line); background: var(--p-card); color: var(--p-ink); font-size: 20px; line-height: 1; cursor: pointer; }
+.actbar { display: flex; justify-content: flex-end; margin-top: 14px; }
+.avgrid { display: grid; grid-template-columns: repeat(6, 36px); gap: 6px; padding: 6px; }
+.avgrid button { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--p-line); background: var(--p-card); display: grid; place-items: center; padding: 0; font-size: 19px; line-height: 1; cursor: pointer; }
+.avbtn:focus-visible, .avgrid button:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
+@media (max-width: 767px) { .avgrid { grid-template-columns: repeat(6, 44px); } .avgrid button { width: 44px; height: 44px; } }
+.avgrid button[aria-pressed='true'] { background: var(--p-acc); border-color: var(--p-acc); color: #292928; }
+@media (hover: hover) { .avgrid button:hover { background: var(--p-acc); border-color: var(--p-acc); color: #292928; } }
+.avtitle { margin: 4px 8px 0; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--p-sub); }
+.card .pinerr { margin: 8px 0 0; color: var(--p-red); font-size: 12px; }
+@media (max-width: 767px) { .avgrid { grid-template-columns: repeat(6, 44px); } .avgrid button { width: 44px; height: 44px; } }
+
+/* Step 5 plan card rows (mockup presets-v2 .li) */
+.li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; font-size: 14px; }
+.li + .li { border-top: 1px solid var(--p-line); }
+.li span:last-child { text-align: right; color: var(--p-sub); }

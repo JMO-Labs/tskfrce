@@ -56,7 +56,7 @@ def _active(t: TargetAddrs | None) -> bool:
 
 def arp_reply(target_ip: str, target_mac: str, gateway_ip: str, box_mac: str):
     """Unsolicited ARP reply telling target that gateway_ip is at box_mac."""
-    from scapy.all import ARP, Ether
+    from blocker.scapy_lite import ARP, Ether
 
     return Ether(dst=target_mac) / ARP(
         op=2, psrc=gateway_ip, hwsrc=box_mac, pdst=target_ip, hwdst=target_mac
@@ -71,7 +71,7 @@ def ndp_advert(
     ``router`` sets the R flag: True when impersonating the router to a device,
     False when advertising a host (the device) to the gateway.
     """
-    from scapy.all import Ether, ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, IPv6
+    from blocker.scapy_lite import Ether, ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, IPv6
 
     flag = 1 if router else 0
     na = ICMPv6ND_NA(tgt=gateway_ip6, R=flag, S=0, O=1) / ICMPv6NDOptDstLLAddr(lladdr=box_mac)
@@ -110,7 +110,7 @@ def restore(target: TargetAddrs, lan: LanFacts) -> list:
     poison the cache and break the device after unblock). The device's own cache
     timeout recovers the truth in that case.
     """
-    from scapy.all import ARP, Ether
+    from blocker.scapy_lite import ARP, Ether
 
     pkts = []
     if target.ip and lan.gateway_mac:
@@ -140,7 +140,7 @@ def restore(target: TargetAddrs, lan: LanFacts) -> list:
 def _real_sendp(pkts: list, iface: str | None) -> None:
     if not pkts:
         return
-    from scapy.all import sendp
+    from blocker.scapy_lite import sendp
 
     sendp(pkts, iface=iface, verbose=0)
 
@@ -155,7 +155,7 @@ def _detect_gateway_ip6(cfg) -> str | None:
     (see docs/blocker.md: disable IPv6 at the router for airtight blocking). We pin
     to cfg.lan_iface so we never pick up a gateway on the container's WAN side."""
     try:
-        from scapy.all import conf
+        from blocker.scapy_lite import conf
 
         iface, _src, nh = conf.route6.route("2000::")
         if cfg.lan_iface and iface != cfg.lan_iface:
@@ -169,8 +169,7 @@ def _detect_gateway_ip6(cfg) -> str | None:
 
 def detect_lan(cfg) -> LanFacts:
     """Best-effort LAN facts from scapy. Production only; tests inject LanFacts."""
-    from scapy.all import conf, get_if_hwaddr, getmacbyip
-    from scapy.layers.inet6 import getmacbyip6
+    from blocker.scapy_lite import conf, get_if_hwaddr, getmacbyip, getmacbyip6
 
     iface = cfg.lan_iface or conf.iface
     gw = conf.route.route("0.0.0.0")[2]

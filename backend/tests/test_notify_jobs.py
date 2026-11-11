@@ -211,8 +211,8 @@ def test_loop_survives_notify_failure(db, monkeypatch):
 
     pushed = []
     monkeypatch.setattr(loop, "SessionLocal", lambda: db)
-    monkeypatch.setattr(loop, "tick", lambda d, n: ["aa"])
-    monkeypatch.setattr(loop, "push_blocked", pushed.append)
+    monkeypatch.setattr(loop, "tick", lambda d, n: (["aa"], {}))
+    monkeypatch.setattr(loop, "push_state", lambda b, h: pushed.append(b))
     monkeypatch.setattr(notify_jobs, "tick", lambda *a: 1 / 0)
     monkeypatch.setattr(db, "close", lambda: None)
     loop._run_once()
@@ -236,8 +236,8 @@ def test_loop_db_locked_logs_warning(db, monkeypatch):
 
     warns, errs = [], []
     monkeypatch.setattr(loop, "SessionLocal", lambda: db)
-    monkeypatch.setattr(loop, "tick", lambda d, n: [])
-    monkeypatch.setattr(loop, "push_blocked", lambda b: None)
+    monkeypatch.setattr(loop, "tick", lambda d, n: ([], {}))
+    monkeypatch.setattr(loop, "push_state", lambda b, h: None)
     monkeypatch.setattr(loop.kid_alerts, "scan", lambda *a: None)
     monkeypatch.setattr(loop.logger, "warning", lambda *a, **k: warns.append(a))
     monkeypatch.setattr(loop.logger, "error", lambda *a, **k: errs.append(a))

@@ -26,6 +26,8 @@ KID_KINDS = frozenset(
         "badge_earned",
         "level_up",
         "happy_hour",
+        "trust_up",
+        "trust_down",
     }
 )
 
@@ -83,10 +85,12 @@ def path_for(kind: str, *, run_id=None, redemption_id=None, device_id=None) -> s
         return f"/devices?item={device_id}"
     if run_id is not None:
         return f"/?chore={run_id}"
-    if kind == "redemption_request":
+    if kind in ("redemption_request", "homework_request"):
         return "/?tab=needs"
     if kind == "redemption_decided":
         return "/kids?section=rewards&item=history"
+    if kind == "recap":
+        return "/recap"
     return "/devices" if kind == "box_offline" else "/"
 
 

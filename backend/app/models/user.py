@@ -80,8 +80,16 @@ class User(Base):
     celebrated_level = Column(Integer, nullable=False, default=1, server_default="1")
     age_group = Column(String(6), nullable=False, default="kid", server_default="kid")
     celebrate = Column(String(5), nullable=True)  # full|small|off; NULL = mode default
+    trust_mode = Column(Boolean, nullable=False, default=False, server_default="0")
+    trust_level = Column(Integer, nullable=False, default=0, server_default="0")  # 0 New 1 2 Proven
+    trust_clean = Column(Integer, nullable=False, default=0, server_default="0")
+    preset_style = Column(
+        String(8), nullable=True
+    )  # relaxed|balanced|strict; NULL = follows family
+    chores_lock = Column(Boolean, nullable=False, default=True, server_default="1")
     push_topic = Column(String(40), nullable=True, unique=True)
     alert_topic = Column(String(64), nullable=True)  # upstream ntfy topic, 192-bit
+    games_on = Column(Boolean, nullable=False, default=True, server_default="1")
     last_active_at = Column(DateTime, nullable=True)  # naive UTC; touched at most every 5 min
 
     # Relationships

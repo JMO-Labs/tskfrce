@@ -1,0 +1,55 @@
+/* Penalty sheet: compact, mockup penalties-v2 columns 1-2 */
+[data-look='parent'] .p-pen-sheet { color: var(--p-ink); font-size: 13px; }
+[data-look='parent'] .p-pen-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+[data-look='parent'] .p-pen-seg { flex: 1 1 260px; display: flex; border: 1px solid var(--p-line); border-radius: 999px; padding: 3px; background: var(--p-soft); }
+[data-look='parent'] .p-pen-seg button { flex: 1; min-height: 36px; padding: 0 4px; font-size: 13px; border: 0; background: transparent; color: var(--p-ink); border-radius: 999px; font: inherit; cursor: pointer; }
+[data-look='parent'] .p-pen-seg button[data-active='true'] { background: var(--p-ink); color: var(--p-card); font-weight: 600; }
+[data-look='parent'] .p-pen-hint { color: var(--p-sub); font-size: 12px; white-space: nowrap; }
+[data-look='parent'] .p-pen-lines { margin-top: 6px; }
+[data-look='parent'] .p-pen-sum { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 40px; padding: 4px 0; font-size: 13px; border-bottom: 1px solid var(--p-line); }
+[data-look='parent'] .p-pen-sum:last-child { border-bottom: 0; }
+[data-look='parent'] .p-pen-sum em { font-style: normal; color: var(--p-sub); }
+[data-look='parent'] .p-pen-link { background: none; border: 0; padding: 4px 0; min-height: 32px; color: var(--p-sub); text-decoration: underline; font: inherit; font-size: 12px; cursor: pointer; }
+[data-look='parent'] .p-pen-edit { padding: 10px 0; border-bottom: 1px solid var(--p-line); }
+[data-look='parent'] .p-pen-edit:last-child { border-bottom: 0; }
+[data-look='parent'] .p-pen-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+[data-look='parent'] .p-pen-chip { border: 1px solid var(--p-line); background: var(--p-soft); color: var(--p-ink); border-radius: 999px; padding: 6px 11px; min-height: 36px; font: inherit; font-size: 13px; cursor: pointer; }
+[data-look='parent'] .p-pen-chip[data-on='true'] { background: var(--p-ink); color: var(--p-card); border-color: var(--p-ink); }
+[data-look='parent'] .p-pen-lbl { font-size: 12px; color: var(--p-sub); margin: 10px 0 6px; }
+[data-look='parent'] .p-pen-step { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+[data-look='parent'] .p-pen-step button { width: 36px; height: 36px; border: 1px solid var(--p-line); border-radius: 8px; background: var(--p-card); color: var(--p-ink); font: inherit; cursor: pointer; }
+[data-look='parent'] .p-pen-step b { min-width: 70px; text-align: center; }
+[data-look='parent'] .p-pen-input { width: 100%; min-height: 40px; border: 1px solid var(--p-line); border-radius: 8px; padding: 8px 10px; background: var(--p-card); color: var(--p-ink); font: inherit; }
+[data-look='parent'] .p-pen-give { display: block; width: 100%; margin-top: 14px; min-height: 44px; border: 0; border-radius: 8px; background: var(--p-ink); color: var(--p-card); font: inherit; font-weight: 600; font-size: 14px; cursor: pointer; }
+[data-look='parent'] .p-pen-give:disabled { opacity: 0.6; cursor: default; }
+[data-look='parent'] .p-pen-plain { background: none; border: 0; padding: 4px 0; min-height: 32px; color: var(--p-sub); font: inherit; text-align: left; cursor: pointer; }
+/* Kid page list: one card like the mockup sheet; rows toggle open in place */
+[data-look='parent'] .p-pen-list { background: var(--p-card); border: 1px solid var(--p-line); border-radius: 12px; padding: 0 14px; margin: 0 0 12px; }
+[data-look='parent'] .p-pen-list > .p-pen-lbl { margin: 12px 0 2px; }
+[data-look='parent'] .p-pen-list .p-pen-edit { padding: 0; }
+[data-look='parent'] .p-pen-list .p-pen-edit[data-open='true'] { padding-bottom: 12px; }
+[data-look='parent'] .p-pen-row { width: 100%; background: none; border: 0; border-bottom: 0; font: inherit; font-size: 13px; color: inherit; text-align: left; cursor: pointer; }
+[data-look='parent'] .p-pen-row { flex-wrap: wrap; }
+[data-look='parent'] .p-pen-row > span { display: inline-flex; align-items: center; gap: 6px; }
+[data-look='parent'] .p-pen-row > em { margin-left: auto; text-align: right; }
+[data-look='parent'] .p-pen-acts { margin-top: 10px; }
+/* Settings: each size is a soft tile (mockup .size) */
+[data-look='parent'] .p-pen-size { border: 1px solid var(--p-line); border-radius: 12px; background: var(--p-soft); padding: 10px 12px 2px; margin: 0 0 8px; color: var(--p-ink); }
+[data-look='parent'] .p-pen-size > b { font-size: 14px; }
+[data-look='parent'] .p-pen-size .p-pen-sum:last-child { border-bottom: 0; }
+/* Sheet header (mockup .top): avatar, name, small sub line */
+[data-look='parent'] .p-pen-head { display: flex; align-items: center; gap: 10px; }
+[data-look='parent'] .p-pen-head b { display: block; font-size: 16px; line-height: 1.25; color: var(--p-ink); }
+[data-look='parent'] .p-pen-head small { display: block; font-size: 12px; font-weight: 400; color: var(--p-sub); }
+[data-look='parent'] .p-pen-av { flex: none; width: 36px; height: 36px; border-radius: 50%; background: var(--p-lav); color: var(--p-lav-ink); display: grid; place-items: center; font-weight: 700; font-size: 15px; }
+[data-look='parent'] .p-pen-vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* Phone: 44px touch targets */
+@media (max-width: 640px) {
+  [data-look='parent'] .p-pen-seg button { min-height: 44px; }
+  [data-look='parent'] .p-pen-chip { min-height: 44px; padding: 8px 14px; }
+  [data-look='parent'] .p-pen-step button { width: 44px; height: 44px; }
+  [data-look='parent'] .p-pen-link, [data-look='parent'] .p-pen-plain { min-height: 44px; padding: 8px 4px; }
+  [data-look='parent'] .p-pen-sum { min-height: 44px; }
+  [data-look='parent'] .p-pen-input { min-height: 44px; }
+}
+[data-look='parent'] .p-pen-sheet button:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }

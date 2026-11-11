@@ -24,6 +24,14 @@ def normalize_claim_code(raw: str) -> str:
     return "".join(raw.split()).upper().translate(_LOOKALIKES)
 
 
+def normalize_db_url(url: str) -> str:
+    """postgres:// and postgresql:// mean Postgres via psycopg 3 (the only server driver shipped)."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url.removeprefix(prefix)
+    return url
+
+
 class Settings(BaseSettings):
     """
     Application settings loaded from environment variables.
@@ -48,6 +56,7 @@ class Settings(BaseSettings):
     NTFY_UPSTREAM_TOKEN: str | None = None  # optional Bearer token for that server
     NTFY_CONF_FILE: str | None = None  # shared server.yml the ntfy container reads
     BLOCKER_URL: str = "http://127.0.0.1:7777"
+    EDGE_TOKEN: str | None = None  # Caddy edge token for hotspot portal auth
     LOCK_INTERVAL_SECONDS: int = 30
     LOCK_LOOP_ENABLED: bool = True
     INTEGRATIONS_LOOP_ENABLED: bool = True
@@ -86,6 +95,7 @@ class Settings(BaseSettings):
         self.DATA_DIR.mkdir(parents=True, exist_ok=True)
         if not self.DATABASE_URL:
             self.DATABASE_URL = f"sqlite:///{self.DATA_DIR}/task4ce.db"
+        self.DATABASE_URL = normalize_db_url(self.DATABASE_URL)
         generated = load_or_create_secrets(self.DATA_DIR)
         for name, value in generated.items():
             if not getattr(self, name):

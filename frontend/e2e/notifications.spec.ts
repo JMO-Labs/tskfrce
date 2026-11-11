@@ -20,9 +20,11 @@ test('apprise place: add, mask, test, chip, quiet hours, bell, delete', async ({
     await page.goto('/settings?section=notifications')
     await page.getByRole('button', { name: 'Add a place' }).first().click()
     await page.getByLabel('Name', { exact: true }).fill(name)
-    await page.getByLabel('Apprise address').fill('json://127.0.0.1:9/nowhere')
+    await page.getByLabel('Place address', { exact: true }).fill('json://127.0.0.1:9/nowhere')
     await page.getByRole('button', { name: 'Save', exact: true }).click()
 
+    // places are calm rows now: open this one (the card is its body)
+    await page.getByRole('button', { name: new RegExp(`^${name} `) }).click()
     const card = page.getByRole('region', { name, exact: true })
     await expect(card.getByText(/^json:\/\/••••$/)).toBeVisible()
     await expect(page.getByText('json://127.0.0.1:9/nowhere')).toHaveCount(0)
@@ -40,8 +42,9 @@ test('apprise place: add, mask, test, chip, quiet hours, bell, delete', async ({
     await expect(page.getByRole('region', { name, exact: true }).getByRole('button', { name: 'Badge / level up' })).toHaveAttribute('aria-pressed', now)
 
     const quiet = page.getByRole('switch', { name: 'Quiet hours' })
-    if (!(await quiet.isChecked())) await quiet.click()
+    if (!(await quiet.isChecked())) await page.locator('.mantine-Switch-root').filter({ has: quiet }).locator('.mantine-Switch-track').click() // the track sits over the input
     await expect(quiet).toBeChecked()
+    await page.getByRole('button', { name: /^Quiet hours/ }).click() // From / To live in its body
     await expect(page.getByLabel('From')).toHaveValue('21:30')
     await page.reload()
     await expect(page.getByLabel('From')).toHaveValue('21:30') // 9:30 PM
@@ -51,9 +54,10 @@ test('apprise place: add, mask, test, chip, quiet hours, bell, delete', async ({
     await expect(page).toHaveURL(/\/notifications/)
 
     await page.goto('/settings?section=notifications')
-    await page.getByRole('button', { name: `Remove ${name}` }).click()
-    await page.getByRole('button', { name: 'Remove', exact: true }).click()
-    await expect(page.getByRole('region', { name, exact: true })).toHaveCount(0)
+    await page.getByRole('button', { name: new RegExp(`^${name} `) }).click()
+    await page.getByRole('button', { name: 'Delete place' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect(page.getByRole('button', { name: new RegExp(`^${name} `) })).toHaveCount(0)
   } finally {
     const places: { id: number; name: string }[] = await (await api.get('/api/proxy/notify/places')).json()
     for (const p of places.filter((p) => p.name === name)) await api.delete(`/api/proxy/notify/places/${p.id}`)
@@ -104,15 +108,17 @@ test('kid note shows in the bell under Needs you and Reply opens the chore chat'
 
     await loginUi(page)
     await page.getByRole('button', { name: /^Notifications/ }).click()
-    await page.getByRole('button', { name: /^Needs you/ }).click()
-    const item = page.locator('.p-bell-item').filter({ hasText: choreName })
+    await page.getByRole('dialog', { name: /^Notifications/ }).getByRole('button', { name: /^Needs you/ }).click()
+    const item = page.getByRole('dialog', { name: /^Notifications/ }).locator('.p-arow').filter({ hasText: choreName })
     await expect(item).toBeVisible()
     await item.getByRole('button', { name: 'Reply' }).click()
     await expect(page).toHaveURL(new RegExp(`chore=${run.id}`))
-    // Today opens the chore's chat inline, in a region named after the chore
-    const chat = page.getByRole('region', { name: choreName })
+    // Today opens the chore's chat inline (the chat column); the dock must not open the same thread beside it.
+    const chat = page.getByTestId('chat-column')
     await expect(chat.getByText(`Note: ${label}`)).toBeVisible()
     await expect(chat.getByRole('textbox', { name: 'Message' })).toBeVisible()
+    await page.waitForTimeout(2_000) // longer than the dock handoff delay
+    await expect(page.locator('#f-chat-dock')).toHaveCount(0)
   } finally {
     if (deviceId) {
       await api.patch(`/api/proxy/devices/${deviceId}`, { data: { owner_ids: [] } })

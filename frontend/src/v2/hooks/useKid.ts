@@ -6,6 +6,7 @@ import { KID_ID_KEY, KID_TOKEN_KEY, writeToken } from '../kid/tokenStore'
 import { blocked, kidInit, useAsKid } from './usePreview'
 import { retryIfOffline, toastFail, toastOk } from '../notify'
 import type { CelebrateLevel, KidToday, KidWhoami } from '../types'
+import type { KidDoneResult } from '../trustTypes'
 import type { KidEnrolled } from '../types/enroll'
 import { clearDevice, deviceKid, saveAlert, saveDevice, saveKid } from '../kid/kidDevice'
 
@@ -107,8 +108,13 @@ export function useMarkDone(onExpired: () => void) {
   const qc = useQueryClient()
   const as = useAsKid()
   return useMutation({
-    mutationFn: (id: number) => (as ? blocked() : api(`/kid/chores/${id}/done`, { method: 'POST', kid: true })),
-    onSuccess: () => toastOk('Marked done'),
+    mutationFn: (id: number) => (as ? blocked() : api<KidDoneResult>(`/kid/chores/${id}/done`, { method: 'POST', kid: true })),
+    onSuccess: (r, id) => {
+      // approved itself: straight to done. Anything else waits (a spot check is indistinguishable from a normal wait)
+      const state = r?.status === 'done' ? 'done' : 'needs_you'
+      qc.setQueriesData<KidToday>({ queryKey: ['kid', 'today'] }, (d) => d && { ...d, chores: d.chores.map((c) => (c.id === id ? { ...c, state } : c)) })
+      toastOk('Marked done')
+    },
     onError: (e: Error) => {
       if (e instanceof AuthError) onExpired()
       else toastFail(e)

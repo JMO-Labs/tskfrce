@@ -25,12 +25,14 @@ import '../src/v2/parent/typography.css';
 import '../src/v2/parent/responsive.css';
 import '../src/v2/parent/parent-layout.css';
 import '../src/v2/parent/parent-today.css';
+import '../src/v2/parent/parent-trust.css';
 import '../src/v2/parent/states.css';
 import '../src/v2/parent/controls.css';
 import '../src/v2/parent/parent-kids.css';
 import '../src/v2/parent/parent-manage.css';
 import '../src/v2/parent/parent-devices.css';
 import '../src/v2/parent/parent-hours.css';
+import '../src/v2/recap/recap.css';
 import '../src/v2/parent/parent-chat.css';
 import '../src/v2/today/onboarding.css';
 import '../src/v2/login/auth.css';
@@ -52,11 +54,21 @@ import '../src/v2/kid/kid-app.css';
 import '../src/v2/kid/modes/modes.css';
 import '../src/v2/kid/kid-shell.css';
 import '../src/v2/kid/kid-rewards.css';
+import '../src/v2/kid/kid-goals.css';
+import '../src/v2/parent/goals.css';
 import '../src/v2/kid/kid-locker.css';
 import '../src/v2/kid/kid-gate.css';
 import '../src/v2/kid/happy-hour.css';
+import '../src/v2/kid/penalty-card.css';
 import '../src/v2/components/bell.css';
 import '../src/v2/interactions.css';
+import '../src/v2/parent/declutter.css';
+import '../src/v2/parent/today-focus.css';
+import '../src/v2/parent/kid-focus.css';
+import '../src/v2/parent/penalty.css';
+import '../src/v2/parent/chore-focus.css';
+import '../src/v2/parent/family-focus.css';
+import '../src/v2/parent/touch.css';
 
 // Suppress WebSocket connection errors in console since HTTP notifications work as fallback
 if (typeof window !== 'undefined') {

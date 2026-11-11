@@ -26,6 +26,7 @@ class RuleIn(BaseModel):
     everyone: bool = False
     kid_ids: list[int] = []
     group_ids: list[int] = []
+    replaces_everyone: bool | None = None  # None keeps what the rule has
     times: list[TimeRange] = Field(min_length=1, max_length=6)
 
     @field_validator("days")

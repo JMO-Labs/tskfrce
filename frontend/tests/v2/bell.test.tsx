@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, test } from '@jest/globals'
 import type { Mock } from 'jest-mock'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MantineProvider } from '@mantine/core'
 import { api } from '@/v2/api'
 import { Bell, tabLabel } from '@/v2/components/Bell'
-import { openChat } from '@/v2/chat/dock'
+import { openChat, openChatAfterNav } from '@/v2/chat/dock'
 
 const push = jest.fn()
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
 jest.mock('next/router', () => ({ useRouter: () => ({ push }) }))
-jest.mock('@/v2/chat/dock', () => ({ openChat: jest.fn() }))
+jest.mock('@/v2/chat/dock', () => ({ openChat: jest.fn(), openChatAfterNav: jest.fn() }))
 
 const apiMock = api as unknown as Mock<(p: string, i?: { method?: string; kid?: boolean }) => Promise<unknown>>
 const item = (id: number, over: object = {}) => ({
@@ -36,6 +36,7 @@ beforeEach(() => {
   apiMock.mockReset()
   push.mockReset().mockResolvedValue(true)
   ;(openChat as unknown as Mock).mockReset()
+  ;(openChatAfterNav as unknown as Mock).mockReset()
   window.matchMedia =
     window.matchMedia ||
     ((() => ({ matches: false, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} })) as never)
@@ -70,6 +71,65 @@ describe('Bell', () => {
     serve([item(1)], 12)
     wrap(<Bell />)
     expect(await screen.findByText('9+')).toBeTruthy()
+  })
+
+  test('Needs you filter counts pending real kinds', async () => {
+    serve([
+      item(1, { kind: 'chore_submitted', run_id: 1, pending: true }),
+      item(2, { kind: 'redemption_request', redemption_id: 2, pending: true }),
+      item(3, { kind: 'chore_submitted', run_id: 3, pending: true }),
+    ])
+    wrap(<Bell />)
+    await userEvent.click(await screen.findByRole('button', { name: /Notifications/ }))
+    expect(await screen.findByRole('button', { name: 'Needs you · 3', hidden: true })).toBeTruthy()
+  })
+
+  test('inbox rows: one main button, the rest in the "..." menu, Dismiss on every row', async () => {
+    serve([
+      item(1, { kind: 'chore_submitted', run_id: 7, pending: true }),
+      item(2, { kind: 'device_bypass', device_id: 9, kid_id: 4, kid_name: 'Mia' }),
+      item(3, { kind: 'level_up', read: true }),
+    ])
+    wrap(<Bell />)
+    await userEvent.click(await screen.findByRole('button', { name: /Notifications/ }))
+    const rows = (await screen.findAllByText(/^Item \d$/)).map((t) => t.closest('.p-arow') as HTMLElement)
+    const mains = rows.map((r) => [...r.querySelectorAll('.p-arow-acts > button:not(.p-ib)')].map((b) => b.textContent))
+    expect(mains).toEqual([['Approve'], ['View'], []])
+    for (const r of rows) expect(r.querySelector('.p-ib')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'More for Item 3', hidden: true }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Dismiss', hidden: true }))
+    expect(apiMock).toHaveBeenCalledWith('/notifications/3', expect.objectContaining({ method: 'DELETE' }))
+  })
+
+  test('Mark all read sits on the first group header, only while something is unread', async () => {
+    serve([item(1), item(2, { created_at: new Date(Date.now() - 2 * 86400000).toISOString() })])
+    wrap(<Bell />)
+    await userEvent.click(await screen.findByRole('button', { name: /Notifications/ }))
+    const heads = (await screen.findAllByText(/^(Today|Earlier)$/)).map((h) => h.closest('.p-bell-group') as HTMLElement)
+    expect(heads[0].textContent).toContain('Mark all read')
+    expect(heads[1].textContent).not.toContain('Mark all read')
+  })
+
+  test('Esc in a "..." menu closes the menu, not the bell, and focus returns to "..."', async () => {
+    serve([item(1, { kind: 'level_up' })], 1)
+    wrap(<Bell />)
+    await userEvent.click(await screen.findByRole('button', { name: /^Notifications/ }))
+    const more = await screen.findByRole('button', { name: 'More for Item 1', hidden: true })
+    await userEvent.click(more)
+    await screen.findByRole('menuitem', { name: 'Dismiss', hidden: true })
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('menuitem', { name: 'Dismiss', hidden: true })).toBeNull())
+    expect(screen.getByRole('button', { name: 'More for Item 1', hidden: true })).toBeTruthy()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'More for Item 1', hidden: true })).toHaveFocus())
+  })
+
+  test('a bypass alert can lock all of the kid\'s devices from "..."', async () => {
+    serve([item(1, { kind: 'device_bypass', device_id: 9, kid_id: 4, kid_name: 'Mia' })])
+    wrap(<Bell />)
+    await userEvent.click(await screen.findByRole('button', { name: /Notifications/ }))
+    await userEvent.click(await screen.findByRole('button', { name: 'More for Item 1', hidden: true }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: "Lock all Mia's devices", hidden: true }))
+    expect(apiMock).toHaveBeenCalledWith('/kids/4/override', expect.objectContaining({ method: 'POST', body: { action: 'lock' } }))
   })
 
   test('lists items in order', async () => {
@@ -133,7 +193,8 @@ describe('Bell', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Notifications/ }))
     await userEvent.click(await screen.findByRole('button', { name: /Approve/, hidden: true }))
     expect(apiMock).toHaveBeenCalledWith('/redemptions/4/approve', expect.objectContaining({ method: 'POST' }))
-    await userEvent.click(await screen.findByRole('button', { name: /Decline/, hidden: true }))
+    await userEvent.click(await screen.findByRole('button', { name: 'More for Item 1', hidden: true }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Decline', hidden: true }))
     expect(apiMock).toHaveBeenCalledWith('/redemptions/4/deny', expect.objectContaining({ method: 'POST' }))
   })
 
@@ -141,10 +202,11 @@ describe('Bell', () => {
     serve([item(1, { run_id: 7, kind: 'chore_submitted', pending: true })], 1)
     wrap(<Bell />)
     await userEvent.click(await screen.findByRole('button', { name: /Notifications/ }))
-    await userEvent.click(await screen.findByRole('button', { name: /Send back/, hidden: true }))
-    expect((screen.getByRole('button', { name: /Send back/, hidden: true }) as HTMLButtonElement).disabled).toBe(true)
+    await userEvent.click(await screen.findByRole('button', { name: 'More for Item 1', hidden: true }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Send back', hidden: true }))
+    expect((screen.getByRole('button', { name: 'Send', hidden: true }) as HTMLButtonElement).disabled).toBe(true)
     await userEvent.type(screen.getByLabelText('Note for sending back'), 'redo it')
-    await userEvent.click(screen.getByRole('button', { name: /Send back/, hidden: true }))
+    await userEvent.click(screen.getByRole('button', { name: 'Send', hidden: true }))
     expect(apiMock).toHaveBeenCalledWith('/chores/7/send-back', expect.objectContaining({ method: 'POST', body: { note: 'redo it' } }))
   })
 
@@ -158,6 +220,17 @@ describe('Bell', () => {
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByText('Item 1')).toBeNull())
     expect(bell.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  test('Escape with focus on the bell itself still closes the popover', async () => {
+    serve([item(1, { run_id: 7 })])
+    wrap(<Bell />)
+    const bell = await screen.findByRole('button', { name: /Notifications/ })
+    await userEvent.click(bell)
+    expect(await screen.findByText('Item 1')).toBeTruthy()
+    act(() => bell.focus())
+    await userEvent.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByText('Item 1')).toBeNull())
   })
 
   test('earlier group for read items', async () => {
@@ -232,7 +305,7 @@ describe('Bell', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Notifications/ }))
     await userEvent.click(await screen.findByRole('button', { name: /Reply/, hidden: true }))
     expect(push).toHaveBeenCalledWith('/?chore=7')
-    await waitFor(() => expect(openChat).toHaveBeenCalledWith('chore', '7'))
+    await waitFor(() => expect(openChatAfterNav).toHaveBeenCalledWith('chore', '7'))
   })
 
   test("Who's this? shows for an unassigned device on any day, not once assigned", async () => {
@@ -258,7 +331,8 @@ describe('Bell', () => {
     serve([item(1, { kind: 'device_bypass', device_id: 9, kid_id: 4, kid_name: 'Mia' })])
     wrap(<Bell />)
     await userEvent.click(await screen.findByRole('button', { name: /Notifications/ }))
-    await userEvent.click(await screen.findByRole('button', { name: /Ask Mia/, hidden: true }))
+    await userEvent.click(await screen.findByRole('button', { name: 'More for Item 1', hidden: true }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Ask Mia/, hidden: true }))
     expect(openChat).toHaveBeenCalledWith('private', '4')
     // Ask closes the bell; reopen it for View
     await userEvent.click(screen.getByRole('button', { name: /Notifications/ }))
@@ -313,8 +387,8 @@ describe('Bell', () => {
     serve([item(1, { created_at: new Date(Date.now() - 2 * 86400000).toISOString(), read: false })])
     wrap(<Bell />)
     await userEvent.click(await screen.findByRole('button', { name: /Notifications/ }))
-    const row = (await screen.findByText('Item 1')).closest('.p-bell-item') as HTMLElement
-    expect(row.classList.contains('unread')).toBe(true)
+    const row = (await screen.findByText('Item 1')).closest('.p-arow') as HTMLElement
+    expect(row.querySelector('[aria-label="Unread"]')).toBeTruthy()
   })
 
   test('tab labels: no count before data, "+" only on a non-zero count', () => {

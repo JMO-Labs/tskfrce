@@ -13,14 +13,17 @@ interface Props {
   onChange: (emoji: string) => void
   label: string
   placeholder?: string
+  /** the caller draws the label (a row), so none is shown above the button */
+  inline?: boolean
+  className?: string
 }
 
 /** Button showing the current emoji; opens a grid of curated emojis plus a typed fallback. */
-export function EmojiPicker({ value, onChange, label, placeholder = '＋' }: Props) {
+export function EmojiPicker({ value, onChange, label, placeholder = '＋', inline, className }: Props) {
   const [open, setOpen] = useState(false)
   return (
-    <div>
-      <div className="pk-label">{label}</div>
+    <div className={className}>
+      {!inline && <div className="pk-label">{label}</div>}
       <Popover opened={open} onChange={setOpen} position="bottom-start" withArrow trapFocus>
         <Popover.Target>
           <button type="button" className="pk-pick-btn" aria-label={label} onClick={() => setOpen((o) => !o)}>

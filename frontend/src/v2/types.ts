@@ -1,10 +1,12 @@
 import type { CelebrateLevel } from './funTypes'
+import type { DevicePenaltyFields, FamilyPenaltyFields, KidTodayPenaltyFields } from './penaltyTypes'
 import type { KidScreen } from './rewardTypes'
+import type { ChoreTrustFields, FamilyExtrasFields, KidTrust, KidTrustFields, RunTrustFields, TodayTryFields } from './trustTypes'
 /** Shapes of the v2 backend responses (backend/app/api/{family,kid,devices,kids,hours,chores,setup}.py). */
 
 export type ChoreState = 'done' | 'needs_you' | 'todo' | 'skipped'
 export type DeviceStatus = 'unassigned' | 'assigned' | 'guest'
-export type OverrideAction = 'lock' | 'unlock'
+export type OverrideAction = 'lock' | 'unlock' | 'homework'
 
 /** GET /setup */
 export interface SetupStatus {
@@ -18,7 +20,7 @@ export interface Override {
 }
 
 /** GET /devices item (device_out) */
-export interface Device {
+export interface Device extends DevicePenaltyFields {
   id: number
   name: string
   mac: string
@@ -94,21 +96,25 @@ export interface Group {
 /** GET /kids item */
 export type AgeGroup = 'little' | 'kid' | 'teen'
 
-export interface Kid {
+export interface Kid extends KidTrustFields {
   id: number
   full_name: string | null
   username: string
   avatar: string | null
   has_pin: boolean
   age_group: AgeGroup
+  chores_lock?: boolean
+  preset_style?: 'relaxed' | 'balanced' | 'strict' | null
   /** the kid's own pick; null = mode default */
   celebrate?: CelebrateLevel | null
+  /** minigames switch for this kid */
+  games_on?: boolean
 }
 
 /** GET/PATCH /family */
 export type AccentKey = 'neon' | 'sun' | 'tangerine' | 'bubblegum' | 'lilac' | 'sky' | 'aqua' | 'mint' | 'peach' | 'ice'
 
-export interface Family {
+export interface Family extends FamilyExtrasFields, FamilyPenaltyFields {
   name: string
   timezone: string
   reset_time: string
@@ -128,6 +134,12 @@ export interface Family {
   hh_weekly_surprise: boolean
   hh_auto_boost: boolean
   streak_freeze: boolean
+  games_on?: boolean
+  games_earn?: 'every' | 'daily' | 'random' | 'custom'
+  games_cap_pct?: number
+  games_board?: boolean
+  /** finished plays, all kids, all time (GET only) */
+  games_rounds?: number
 }
 
 /** GET /chore-types item */
@@ -160,7 +172,7 @@ export interface RunStep {
 }
 
 /** Chore entry inside /today and /kid/today */
-export interface TodayChore {
+export interface TodayChore extends RunTrustFields {
   id: number
   title: string
   points: number
@@ -240,8 +252,8 @@ export interface TodayKid {
 }
 
 /** Item in GET /today needs_you. */
-export interface NeedsItem {
-  type: 'chore' | 'redo' | 'screen_time' | 'reward' | 'note' | 'integration'
+export interface NeedsItem extends RunTrustFields {
+  type: 'chore' | 'redo' | 'screen_time' | 'reward' | 'note' | 'integration' | 'homework' | 'goal_full' | 'goal_suggested'
   id: number
   kid_id: number | null
   kid_name: string | null
@@ -257,6 +269,8 @@ export interface NeedsItem {
   cost?: number
   kid_balance?: number
   mode?: string
+  /** type 'goal_full': screen-time goal whose kid has no devices */
+  no_devices?: boolean
   /** type 'note': the kid's note label */
   note?: string
   /** type 'integration': the service that checked the chore off */
@@ -264,7 +278,7 @@ export interface NeedsItem {
 }
 
 /** GET /today */
-export interface Today {
+export interface Today extends TodayTryFields {
   day: string
   pending_approvals: number
   new_devices: Device[]
@@ -297,7 +311,8 @@ export interface Assignment {
 }
 
 /** GET /chores: a chore in the library with its assignments */
-export interface LibChore {
+export interface LibChore extends ChoreTrustFields {
+  gives_game?: boolean
   id: number
   title: string
   points: number
@@ -339,8 +354,10 @@ export interface KidChore extends TodayChore {
   points_now?: number
 }
 
-export interface KidToday {
+export interface KidToday extends KidTodayPenaltyFields {
   locked: boolean
+  /** minigames: on for this kid, unplayed plays, plays not yet announced */
+  games?: { on: boolean; saved: number; fresh: number }
   chores: KidChore[]
   points_balance: number
   /** points tied up in requests a parent has not answered yet */
@@ -355,6 +372,12 @@ export interface KidToday {
   celebrate?: CelebrateLevel
   /** active Happy Hour, if any */
   happy_hour?: { ends_at: string; multiplier: number } | null
+  /** null = trust mode off */
+  trust?: KidTrust | null
+  /** homework mode until timestamp; null = not in homework mode */
+  homework?: { until: string } | null
+  /** true if kid has a pending homework request */
+  homework_pending?: boolean
 }
 
 /** GET /kids/{id}/push */

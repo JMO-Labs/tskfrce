@@ -2,7 +2,7 @@
 
 "Open t@sk4ce" means: in a web browser on your phone or computer, type the address from the install step (like `http://192.168.1.50:3000`) into the address bar. Not working? See [Troubleshooting](06-troubleshooting.md).
 
-The first time you open t@sk4ce, a short wizard asks a few questions. It has seven steps: **You**, **Family**, **Kids**, **Kids' phones**, **Chores**, **Devices** and **Hours**. It takes about 7 minutes, and you can change every answer later.
+The first time you open t@sk4ce, a short wizard asks a few questions. It has seven steps: **You**, **Family**, **Kids**, **How strict**, **Your plan**, **Kids' phones** and **Devices**. Kids' phones is optional. It takes about 4 minutes, and you can change every answer later.
 
 If you stop partway, just open t@sk4ce again and log in. It picks up where you left off.
 
@@ -24,45 +24,52 @@ Type your family name. Kids see it on their screens. Check the time zone. The ap
 
 Tap **Next**. This makes your account and logs you in.
 
-You should see: step 3, "Add your kids".
+You should see: step 3, "Who are your kids?".
 
 ## Step 3. Kids
 
-For each kid: type their name, pick an avatar, and optionally set a 4-digit PIN. A PIN lets a kid prove it's them on a shared device. Tap **Add kid**. Add everyone, then tap **Next**.
+For each kid: type their name, tap the avatar button to pick an avatar from a small pop-over, and optionally set a 4-digit PIN. A PIN lets a kid prove it's them on a shared device. Tap **Add kid**. Add everyone, then tap **Next**.
 
-You should see: each kid in the list, marked "Added".
+You should see: each kid on one line at the top, marked "Added", with the form below ready for the next kid.
 
 Every kid starts with the **Kid (9–12)** look. You can switch a kid to **Little (5–8)** or **Teen (13+)** later, in **Kids & chores**. See [For kids](05-for-kids.md).
 
-## Step 4. Kids' phones
+## Step 4. How strict
 
-This step puts t@sk4ce on your kids' own phones. Each kid on the list has a **Show code** button. Tap it and a square code appears. On the kid's phone, open the camera and point it at the code. The phone opens a welcome page. The code **works once, for 24 hours**. If it runs out, or you want a fresh one, tap **New code**.
+The page asks "How strict should it be?" Pick one:
 
-![Kids' phones: a code for each kid (example; the code shown can't be scanned)](img/setup-phones.jpg)
+- **Relaxed**: 2 chores a day, 3 hours of screen time, bedtime 9:00 PM. Trust mode is on, so chores approve themselves with random spot checks. Devices are not locked until chores are done.
+- **Balanced** (most families): the default. 3 chores a day, 2 hours of screen time, bedtime 8:30 PM. You approve each chore, and devices stay locked until the day's chores are done. Tap **Next** to keep it.
+- **Strict**: 4 chores a day, 1 hour of screen time, bedtime 8:00 PM. You approve each chore and it needs a photo. Devices stay locked until chores are done. Penalties are on, and banked time is off.
 
-No kids yet? The step says "Add a kid first, or tap Next to go on." You can also do it later from the kid's page. See [For kids](05-for-kids.md).
+These numbers are for the **Kid (9–12)** look. Goals are on for every style. Relaxed and Balanced also turn banked time on, and Strict turns it off. Screen time is a daily amount, and weekend bedtimes are an hour and a half later.
 
-You should see: the phone shows "You're in" and the kid's name.
+With two or more kids, switch on **Different for each kid** to pick a style for each one. Tap **See what this sets** to see the limits in a table, one column per kid. You don't need to open it.
 
-## Step 5. Chores
+Each kid's age changes the plan. Little kids get one chore fewer, 30 minutes less screen time and a bedtime an hour earlier. Teens get 30 minutes more screen time and a bedtime an hour later.
+
+You should see: your pick selected.
+
+### Change the style later
+
+Nothing here is final. To switch the whole family, tap **Settings**, then **Family**, then **Style**. To switch one kid, open that kid's page and use its **Style** switch.
+
+Pick a different style and t@sk4ce first shows what would change. It keeps anything you already edited, such as chores you added or hours you changed. Tap **Switch to** to confirm.
+
+## Step 5. Your plan
+
+The page shows "Here's your plan". For each kid, you see their chores, screen time and bedtime.
+
+- Tap **Looks good** to accept the plan. This is the usual choice.
+- Tap **Tweak** to change the chores, hours or extras first. Tweak opens the three pages below, one after another. They are already filled in from the plan. Tap **Next** on each one to go on.
+
+### Tweak: chores
 
 Tap the starter chores you like, such as **Make bed**, **Homework** or **Feed the pet**. Each one becomes a daily chore for every kid you added, with points (Homework is for school days only). They are only a start. You can change them later.
 
 You should see: a tick on each chore you picked, and "4 picked" (or however many) next to **Next**.
 
-## Step 6. Devices
-
-The page asks "Whose devices are these?" Devices show up here once the home box sees them on your Wi-Fi. This can take a minute or two. Ask each kid to unlock their phone, tablet or console and open a web page.
-
-For each device, tap the kid who owns it. A shared device can have more than one owner. Tap **Guest** for devices that should never be blocked, like a visitor's phone or the family TV.
-
-![Choosing who owns each device](img/setup-devices.jpg)
-
-You should see: the kid's name highlighted on each device. Devices you skip wait under **Who's this?** on the **Devices** page, and you can finish there later.
-
-Not seeing a device? iPhones and iPads use a "Private Wi-Fi Address". Turn it off for your home Wi-Fi in the device's Wi-Fi settings. If nothing shows up after a few minutes, skip this step and see [Troubleshooting](06-troubleshooting.md).
-
-## Step 7. Hours
+### Tweak: hours
 
 The page asks "When can devices be online?" It starts you with two schedules for everyone:
 
@@ -71,11 +78,44 @@ The page asks "When can devices be online?" It starts you with two schedules for
 
 There is no separate school-hours block, so devices are not cut off during the school day. Change the bedtimes if you like. Tap the pencil on a row to change it, or **Add hours** for more.
 
-![Step 7: the starting schedule on a timeline](img/setup-hours.jpg)
+![Tweak, hours: the starting schedule on a timeline](img/setup-hours.jpg)
 
-**Lock until today's chores are done** is on. That means devices stay paused, even inside these hours, until the day's chores are approved. Turn it off if you only want the schedule. Chores from step 5 start at the next daily reset after you finish, so nobody is paused while you finish setting up.
+**Lock until today's chores are done** is on. That means devices stay paused, even inside these hours, until the day's chores are approved. Turn it off if you only want the schedule. Chores from your plan start at the next daily reset after you finish, so nobody is paused while you finish setting up.
 
 You should see: the hours as bars on the timeline.
+
+### Tweak: optional extras
+
+![Tweak, optional extras: all off](img/setup-extras.jpg)
+
+Two ways to tap less. Both are off. Switch on only what you want. Each one is explained in [Everyday use](04-everyday-use.md#less-tapping).
+
+- **Trust mode**: one switch for each kid. Chores approve themselves as that kid earns it, with random spot checks.
+- **Bedtime auto-approve**: at 9:00 PM, chores still waiting approve themselves.
+
+Tap **Next**. This applies your plan and goes on to the next step.
+
+## Step 6. Kids' phones
+
+This step is optional. It puts t@sk4ce on your kids' own phones. Each kid on the list has a **Show code** button. Tap it and a square code appears. On the kid's phone, open the camera and point it at the code. The phone opens a welcome page. The code **works once, for 24 hours**. If it runs out, or you want a fresh one, tap **New code**.
+
+![Kids' phones: a code for each kid (example; the code shown can't be scanned)](img/setup-phones.jpg)
+
+No kids yet? The step says "Add a kid first, or tap Next to go on." No phone? Tap **Skip**. You can also do it later from the kid's page. See [For kids](05-for-kids.md).
+
+You should see: the phone shows "You're in" and the kid's name.
+
+## Step 7. Devices
+
+The page asks "Whose devices are these?" Devices show up here once the home box sees them on your Wi-Fi. This can take a minute or two. Ask each kid to unlock their phone, tablet or console and open a web page.
+
+The page shows a short list: **Need an owner** and **Done**. Open **Need an owner**. For each device, tap **Owner** and pick the kid. A shared device can have more than one owner. Pick **Guest (never blocked)** for devices that should never be blocked, like a visitor's phone or the family TV, or **Not sure yet** to decide later.
+
+![Choosing who owns each device](img/setup-devices.jpg)
+
+You should see: the kid's name on each device, and **Need an owner** getting shorter. Devices you skip wait under **Who's this?** on the **Devices** page, and you can finish there later.
+
+Not seeing a device? iPhones and iPads use a "Private Wi-Fi Address". Turn it off for your home Wi-Fi in the device's Wi-Fi settings. If nothing shows up after a few minutes, skip this step and see [Troubleshooting](06-troubleshooting.md).
 
 Tap **Finish**.
 
@@ -88,9 +128,9 @@ You can put t@sk4ce on your own phone like an app. This works once your box has 
 - **iPhone:** open it in Safari, tap the Share button at the bottom of the screen, then tap **Add to Home Screen**, then **Add**.
 - **Android:** open it in Chrome, tap the menu (three dots), then tap **Add to Home screen** or **Install app**.
 
-![Today for one kid: seven chores, none done yet](img/today-kid.jpg)
+![Today for one kid: their chores and requests](img/today-kid.jpg)
 
-On a computer, Today shows a card for each kid on the left and the chosen kid's day on the right. On a phone, the kids are a row of avatars at the top.
+Today shows a card for each kid. Tap a kid to see their day, and tap **All** to go back. A **Needs you** bar appears when something is waiting.
 
 ## Test that pausing works
 

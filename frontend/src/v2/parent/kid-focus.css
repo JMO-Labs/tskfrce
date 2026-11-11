@@ -1,0 +1,69 @@
+/**
+ * @fileoverview Kid page: header pills, summary-row bodies, in-place profile form.
+ * Look copied from the owner-approved mockup declutter-v1 (kid-calm, kid-trust, kid-edit): .khead .pill .l2 .bar .kv .editbar .miniseg .lg.
+ */
+
+[data-look='parent'] .kd-page { gap: 10px; }
+
+/* Header pills (.kd-pill) live in declutter.css: the chore page shares them */
+.kd-pts { display: grid; gap: 2px; min-width: 240px; }
+.kd-pts .p-sec-h { margin: 4px 8px; }
+.kd-lg { display: flex; justify-content: space-between; gap: 12px; padding: 6px 8px; font-size: 12.5px; }
+.kd-lg b[data-neg] { color: var(--p-red); }
+
+/* Lists inside row bodies (mockup .list .row .ty) */
+[data-look='parent'] .kd-list { background: var(--p-card); border: 1px solid var(--p-line); border-radius: 14px; overflow: hidden; }
+[data-look='parent'] .kd-list > * + * { border-top: 1px solid var(--p-line); }
+[data-look='parent'] .kd-prow { display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 52px; }
+[data-look='parent'] .kd-prow .pk-card-t { flex: 1; min-width: 0; display: flex; flex-direction: column; font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
+[data-look='parent'] .kd-prow small { font-weight: 400; font-size: 12px; color: var(--p-sub); }
+[data-look='parent'] .kd-prow .p-btn { flex: none; }
+[data-look='parent'] .kd-ty { width: 30px; height: 30px; flex: none; display: grid; place-items: center; border-radius: 10px; background: var(--p-soft); color: var(--p-sub); }
+[data-look='parent'] .kd-link { color: inherit; text-decoration: none; }
+@media (hover: hover) { [data-look='parent'] .kd-link:hover { background: var(--p-soft); } }
+[data-look='parent'] .kd-lnk {
+  position: relative; padding: 4px 6px 4px 0; border: 0; background: transparent; color: var(--p-ink); cursor: pointer;
+  font: 700 13px var(--font-parent), system-ui, sans-serif; text-decoration: underline; text-underline-offset: 3px; text-align: left;
+}
+[data-look='parent'] .kd-lnk:disabled { color: var(--p-sub); cursor: default; }
+
+/* Trust: calm line and body */
+[data-look='parent'] .kd-sw { flex: none; position: relative; }
+[data-look='parent'] .p-srow-l2 { flex-wrap: wrap; }
+[data-look='parent'] .kd-bar { flex: 1 1 60px; min-width: 60px; height: 6px; border-radius: 6px; }
+[data-look='parent'] .kd-frac { font-size: 12px; font-weight: 600; color: var(--p-sub); white-space: nowrap; }
+[data-look='parent'] .kd-next { display: flex; align-items: center; gap: 10px; }
+[data-look='parent'] .kd-next-t { flex: 1; min-width: 0; font-weight: 600; font-size: 14px; }
+[data-look='parent'] .kd-next-t small { display: block; font-weight: 400; font-size: 12px; color: var(--p-sub); }
+[data-look='parent'] .kd-list .p-arow-acts .p-btn:not(.p-ib) { padding: 7px 12px; font-size: 13px; }
+@media (min-width: 768px) { [data-look='parent'] .kd-list .p-arow-acts .p-btn:not(.p-ib) { min-height: 0; } }
+
+/* Settings: Profile key/values, inputs in place, Celebrations */
+[data-look='parent'] .kd-kvs { padding: 0 12px; }
+[data-look='parent'] .kd-kvs > * + * { border-top: 0; }
+[data-look='parent'] .kd-kv { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--p-line); font-size: 13.5px; }
+[data-look='parent'] .kd-kv:first-child { border-top: 0; }
+[data-look='parent'] .kd-kv > span, [data-look='parent'] .kd-kv > .pk-hint { flex: 1; min-width: 0; color: var(--p-sub); }
+[data-look='parent'] .kd-kv > b { font-weight: 600; text-align: right; min-width: 0; overflow-wrap: anywhere; }
+[data-look='parent'] .kd-kv > div { flex: 1; }
+[data-look='parent'] .kd-kv > .kd-pick { flex: none; }
+[data-look='parent'] .kd-kv .kd-in { width: 52%; max-width: 240px; padding: 7px 10px; border-radius: 8px; border-color: var(--p-sub); background: var(--p-bg); text-align: right; }
+[data-look='parent'] .kd-cel-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+[data-look='parent'] .kd-sech { display: flex; align-items: center; gap: 6px; }
+
+@media (max-width: 767px) {
+  [data-look='parent'] .kd-sw .mantine-Switch-input { inset: -12px -6px; width: auto; height: auto; }
+  [data-look='parent'] .kd-lnk::after { content: ''; position: absolute; inset: -12px 0; }
+  [data-look='parent'] .kd-prow .p-btn, [data-look='parent'] .kd-next .p-btn { padding: 7px 10px; }
+  [data-look='parent'] .kd-kv .kd-in { min-height: 44px; }
+  [data-look='parent'] .kd-link { min-height: 52px; }
+}
+
+/* phone: Edit and "…" take their own row, as on the device and group pages, so the Level pill never wraps */
+@media (max-width: 767px) { [data-look='parent'] .kd-page .p-dhead-act { flex-basis: 100%; } }
+[data-look='parent'] .kd-page [hidden] { display: none; } /* Edit hides while editing (mockup [data-edit] #editb) */
+
+/* Kids list: the ring sits on the name line so "Level 7 · 240 pts" keeps its own line */
+[data-look='parent'] .pk-items .kl-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+[data-look='parent'] .pk-items .kl-line b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-look='parent'] .pk-items .pk-card-t small { white-space: nowrap; }

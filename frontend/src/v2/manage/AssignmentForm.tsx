@@ -3,11 +3,12 @@ import { useDisclosure } from '@mantine/hooks'
 import { useDeleteAssignment, type AssignmentBody, type ChoreMode } from '@/v2/hooks/useChores'
 import { DAYS } from '@/v2/days'
 import { Icon } from '@/v2/parent/Icon'
+import { InfoPop } from '@/v2/parent/InfoPop'
+import { KidPicker } from '@/v2/parent/KidPicker'
 import { SegmentedControl } from '@/v2/parent/SegmentedControl'
 import type { Assignment, Kid } from '@/v2/types'
 import { ConfirmDelete } from './ConfirmDelete'
 import { useSingle } from './useSingle'
-import { initial, nameOf } from './choreMeta'
 import { toastFail } from '../notify'
 
 const REPEATS = [
@@ -16,9 +17,9 @@ const REPEATS = [
   { value: 'once', label: 'One time' },
 ]
 const MODES: { value: ChoreMode; label: string; hint: string }[] = [
-  { value: 'each', label: 'Each does it', hint: 'Each kid gets their own copy and their own points.' },
-  { value: 'race', label: 'First one wins', hint: 'One chore for everyone. The first kid to finish it gets the points.' },
-  { value: 'team', label: 'Team effort', hint: 'One chore for everyone. Any kid can tick it, and the points are split evenly.' },
+  { value: 'each', label: 'Each does it', hint: 'every kid gets their own copy and points.' },
+  { value: 'race', label: 'First one wins', hint: 'first to finish gets the points.' },
+  { value: 'team', label: 'Team effort', hint: 'done together, points shared.' },
 ]
 
 const FULL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
@@ -40,23 +41,26 @@ interface Props {
   due: string
   /** Due by was edited: only then does it replace this assignment's own due time. */
   dueTouched?: boolean
-  /** Report this form's pending change to the editor (null on unmount). */
+  /** Report this form's pending change to the editor. It keeps it while the row is closed; null when dismissed or removed. */
   report: (key: string, p: PendingAssignment | null) => void
+  /** Unsaved edits from before the row was closed: the form starts from these instead of the saved assignment. */
+  kept?: AssignmentBody
   /** Called after a remove, and by Cancel (shown only when this form can be dismissed). */
   onClose?: () => void
   dismissable?: boolean
 }
 
 /** Who does a chore, how often and by when. Add or edit one assignment. */
-export function AssignmentForm({ kids, assignment: a, due, dueTouched, report, onClose, dismissable }: Props) {
+export function AssignmentForm({ kids, assignment: a, due, dueTouched, report, kept, onClose, dismissable }: Props) {
   const del = useDeleteAssignment()
   const delOnce = useSingle(del)
   const [confirm, { open, close }] = useDisclosure(false)
-  const [who, setWho] = useState<string[]>(a?.kid_ids.map(String) ?? [])
-  const [mode, setMode] = useState<ChoreMode>(a?.mode ?? 'each')
-  const [repeat, setRepeat] = useState<string>(a?.repeat.type ?? 'daily')
-  const [days, setDays] = useState<string[]>(a?.repeat.days.map(String) ?? [])
-  const [date, setDate] = useState(a?.on_date ?? '')
+  const from = kept ?? a
+  const [who, setWho] = useState<string[]>(from?.kid_ids.map(String) ?? [])
+  const [mode, setMode] = useState<ChoreMode>(from?.mode ?? 'each')
+  const [repeat, setRepeat] = useState<string>(from?.repeat.type ?? 'daily')
+  const [days, setDays] = useState<string[]>(from?.repeat.days.map(String) ?? [])
+  const [date, setDate] = useState(from?.on_date ?? '')
 
   const ready = who.length > 0 && (repeat !== 'weekly' || days.length > 0) && (repeat !== 'once' || !!date)
   const body: AssignmentBody = {
@@ -74,7 +78,6 @@ export function AssignmentForm({ kids, assignment: a, due, dueTouched, report, o
   const sig = JSON.stringify([body, dirty, ready])
   useEffect(() => {
     report(key, { id: a?.id, body, dirty, ready })
-    return () => report(key, null)
     // body is derived from the same state as sig
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, sig])
@@ -82,29 +85,21 @@ export function AssignmentForm({ kids, assignment: a, due, dueTouched, report, o
   return (
     <div className="pk-form">
       <div className="pk-field">
-        <span className="pk-label" id={`who-${a?.id ?? 'new'}`}>Assign to</span>
-        <div className="pk-pills" role="group" aria-labelledby={`who-${a?.id ?? 'new'}`}>
-          {kids.map((k) => (
-            <button
-              key={k.id}
-              type="button"
-              className="pk-pill"
-              aria-pressed={who.includes(String(k.id))}
-              onClick={() => setWho(toggle(who, String(k.id)))}
-            >
-              <span className="pk-av" aria-hidden="true">{initial(nameOf(k))}</span>
-              {nameOf(k)}
-            </button>
-          ))}
-        </div>
+        <KidPicker kids={kids} value={who} onChange={setWho} label="Assign to" />
       </div>
       {who.length > 1 && (
         <div className="pk-field">
-          <span className="pk-label">With more than one kid</span>
+          <span className="pk-label ch-lbl">
+            With more than one kid
+            <InfoPop label="About sharing" width={300}>
+              <p className="ch-pop-p">
+                {MODES.map((m) => <span key={m.value} className="ch-pop-l"><b>{m.label}</b>: {m.hint}</span>)}
+              </p>
+            </InfoPop>
+          </span>
           <div className="pk-seg">
             <SegmentedControl label="Mode" options={MODES} value={mode} onChange={setMode} />
           </div>
-          <span className="pk-hint">{MODES.find((m) => m.value === mode)?.hint}</span>
         </div>
       )}
       <div className="pk-field">
@@ -141,7 +136,7 @@ export function AssignmentForm({ kids, assignment: a, due, dueTouched, report, o
       )}
       {(dismissable || a) && <div className="pk-actions">
         {dismissable && (
-          <button type="button" className="p-btn" onClick={onClose}>
+          <button type="button" className="p-btn" onClick={() => (report(key, null), onClose?.())}>
             Cancel
           </button>
         )}
@@ -156,7 +151,7 @@ export function AssignmentForm({ kids, assignment: a, due, dueTouched, report, o
               title="Remove this assignment?"
               confirmLabel="Remove"
               body="The chore stays in the library. Chores already done stay in history."
-              onConfirm={() => delOnce(a.id, { onError: toastFail, onSuccess: onClose })}
+              onConfirm={() => delOnce(a.id, { onError: toastFail, onSuccess: () => (report(key, null), onClose?.()) })}
               onClose={close}
             />
           </>

@@ -132,6 +132,22 @@ def apply_hint(db: Session, device: Device) -> bool:
                 created_by_id=lock.created_by_id,
             )
         )
+    for pen in (
+        db.query(Override)
+        .filter(Override.device_id == cand.id, Override.source == "penalty")
+        .filter((Override.expires_at.is_(None)) | (Override.expires_at > naive))
+    ):
+        db.add(
+            Override(
+                device_id=device.id,
+                action="lock",
+                source="penalty",
+                penalty_id=pen.penalty_id,
+                expires_at=pen.expires_at,
+                created_at=naive,
+                created_by_id=pen.created_by_id,
+            )
+        )
     names = " and ".join(o.full_name or o.username for o in device.owners)
     inbox.notify(
         db,

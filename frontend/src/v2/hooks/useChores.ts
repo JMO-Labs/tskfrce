@@ -10,6 +10,8 @@ export interface ChoreBody {
   title: string
   points: number
   needs_photo: boolean
+  always_check?: boolean
+  gives_game?: boolean
   type_id?: number
   steps: { title: string; due_time?: string | null; after_previous?: boolean }[]
 }

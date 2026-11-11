@@ -25,7 +25,7 @@ export default defineConfig({
     ...projects.map((p) => ({ ...p, retries: process.env.CI ? 1 : 0 })),
     {
       name: 'journeys',
-      testMatch: ['parent.spec.ts', 'chore-model.spec.ts', 'kid-app.spec.ts', 'devices-hours.spec.ts', 'notifications.spec.ts', 'rewards.spec.ts'],
+      testMatch: ['parent.spec.ts', 'declutter-nav.spec.ts', 'chore-model.spec.ts', 'kid-app.spec.ts', 'devices-hours.spec.ts', 'notifications.spec.ts', 'inbox-bell.spec.ts', 'rewards.spec.ts'],
       retries: 0,
       dependencies: projects.map((p) => p.name),
       use: { viewport: size.desktop, colorScheme: 'light' },

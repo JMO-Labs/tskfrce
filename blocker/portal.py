@@ -6,6 +6,7 @@ import logging
 import socket
 import threading
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 log = logging.getLogger(__name__)
@@ -16,7 +17,7 @@ def dns_response(query_wire: bytes, answer_ip: str) -> bytes | None:
 
     Returns None (drop) for responses, non-zero opcodes, qdcount != 1 or unparsable input.
     """
-    from scapy.layers.dns import DNS, DNSRR
+    from blocker.scapy_lite import DNS, DNSRR
 
     try:
         q = DNS(query_wire)
@@ -38,7 +39,7 @@ def dns_response(query_wire: bytes, answer_ip: str) -> bytes | None:
 
 def qname_of(wire: bytes) -> str | None:
     """First question name of a DNS packet (e.g. "example.com."), or None if unparsable."""
-    from scapy.layers.dns import DNS
+    from blocker.scapy_lite import DNS
 
     try:
         q = DNS(wire)
@@ -70,11 +71,63 @@ def handle_query(
     return out
 
 
-def run_dns(cfg, box_ip: str, stop, on_query: Callable[[str, str], None] | None = None) -> None:
-    """Serve dns_response over UDP :53 until stop (threading.Event) is set."""
+HW_WORKERS = 8  # homework lookups waiting on upstream at once
+HW_PER_CLIENT = 4  # in-flight homework lookups per client before we drop
+
+
+def run_dns(
+    cfg,
+    box_ip: str,
+    stop,
+    handle=None,
+    claims=None,
+    bind=("0.0.0.0", 53),
+    client_key=None,
+    on_query: Callable[[str, str], None] | None = None,
+) -> None:
+    """Serve dns_response over UDP :53 until stop (threading.Event) is set.
+
+    handle(client_ip, data) -> bytes | None may forward upstream (slow). Clients for which
+    claims(client_ip) is true are served by a bounded worker pool (per-client cap; excess
+    is dropped and the client retries); everyone else gets the portal answer inline and
+    never waits on upstream. Without claims, handle runs inline (legacy/tests).
+    client_key(client_ip) -> MAC | None keys the per-client cap (falls back to the IP), so a
+    device can't multiply its budget by changing source IPs.
+    on_query(client_ip, qname) sees every name that gets the portal answer (bypass alerts).
+    """
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(("0.0.0.0", 53))
+    sock.bind(bind)
     sock.settimeout(0.5)
+    pool = ThreadPoolExecutor(max_workers=HW_WORKERS, thread_name_prefix="hw-dns")
+    inflight: dict[str, int] = {}
+    guard = threading.Lock()
+
+    def answer(addr, data) -> None:
+        try:
+            out = handle(addr[0], data) if handle else None
+            if out is None:
+                out = handle_query(data, addr, box_ip, on_query)
+            if out is not None:
+                sock.sendto(out, addr)
+        except Exception:
+            log.debug("DNS handling failed", exc_info=True)
+
+    def key_for(ip: str) -> str:
+        try:
+            return (client_key(ip) if client_key else None) or ip
+        except Exception:
+            log.debug("client_key failed", exc_info=True)
+            return ip
+
+    def work(key, addr, data) -> None:
+        try:
+            answer(addr, data)
+        finally:
+            with guard:
+                inflight[key] -= 1
+                if not inflight[key]:
+                    del inflight[key]
+
     try:
         while not stop.is_set():
             try:
@@ -82,12 +135,26 @@ def run_dns(cfg, box_ip: str, stop, on_query: Callable[[str, str], None] | None 
             except TimeoutError:
                 continue
             try:
-                out = handle_query(data, addr, box_ip, on_query)
-                if out is not None:
-                    sock.sendto(out, addr)
+                slow = handle is not None and claims is not None and claims(addr[0])
             except Exception:
-                log.debug("DNS handling failed", exc_info=True)
+                log.debug("claims failed", exc_info=True)
+                continue
+            if not slow:
+                if claims is not None:  # pool mode: unclaimed clients never touch upstream
+                    out = handle_query(data, addr, box_ip, on_query)
+                    if out is not None:
+                        sock.sendto(out, addr)
+                else:
+                    answer(addr, data)
+                continue
+            key = key_for(addr[0])
+            with guard:
+                if inflight.get(key, 0) >= HW_PER_CLIENT:
+                    continue  # client floods: drop, it will retry
+                inflight[key] = inflight.get(key, 0) + 1
+            pool.submit(work, key, addr, data)
     finally:
+        pool.shutdown(wait=False, cancel_futures=True)
         sock.close()
 
 
@@ -116,14 +183,14 @@ class PortalHTTP(BaseHTTPRequestHandler):
         pass
 
 
-def run_http(cfg, stop, on_hit=None) -> None:
-    """Serve PortalHTTP on :80 until stop (threading.Event) is set."""
+def run_http(cfg, stop, on_hit=None, host="0.0.0.0") -> None:
+    """Serve PortalHTTP on host:80 until stop (threading.Event) is set."""
     handler = type(
         "Handler",
         (PortalHTTP,),
         {"config": cfg, "on_hit": staticmethod(on_hit) if on_hit else None},
     )
-    srv = ThreadingHTTPServer(("0.0.0.0", 80), handler)
+    srv = ThreadingHTTPServer((host, 80), handler)
     srv.daemon_threads = True
     threading.Thread(target=lambda: (stop.wait(), srv.shutdown()), daemon=True).start()
     try:

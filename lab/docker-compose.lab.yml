@@ -66,9 +66,9 @@ services:
     networks:
       lab: {ipv4_address: 10.99.0.5, ipv6_address: "fd00:99::5"}
 
-  # Playwright runner; keep the image tag equal to @playwright/test in frontend/package.json
+  # Playwright runner; PW_VERSION comes from frontend/package.json via scripts/lab.sh pw-version
   e2e:
-    image: mcr.microsoft.com/playwright:v1.64.1-jammy
+    image: mcr.microsoft.com/playwright:v${PW_VERSION:?PW_VERSION unset; run via scripts/lab.sh}-jammy
     profiles: [e2e]
     depends_on: [frontend]
     working_dir: /work

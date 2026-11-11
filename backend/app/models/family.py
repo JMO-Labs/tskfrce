@@ -21,6 +21,10 @@ class FamilySettings(Base):
     __table_args__ = (
         CheckConstraint("gif_rating IN ('g','pg')", name="ck_family_gif_rating"),
         CheckConstraint(
+            "games_earn IN ('every','daily','random','custom')", name="ck_family_games_earn"
+        ),
+        CheckConstraint("games_cap_pct BETWEEN 0 AND 50", name="ck_family_games_cap"),
+        CheckConstraint(
             "accent IN ('neon','sun','tangerine','bubblegum','lilac','sky','aqua','mint','peach','ice')",
             name="ck_family_accent",
         ),
@@ -56,6 +60,8 @@ class FamilySettings(Base):
     summary_date = Column(Date, nullable=True)
     notify_scan_at = Column(DateTime, nullable=True)  # naive UTC
     blocker_alerted = Column(Boolean, nullable=False, default=False, server_default="0")
+    preset_style = Column(String(8), nullable=True)  # family-wide style last applied
+    preset_base = Column(Text, nullable=True)  # JSON of values the presets last wrote
     setup_step = Column(Integer, nullable=True)  # wizard step to resume; NULL = done/not started
     screen_rollover = Column(Boolean, nullable=False, default=True, server_default="1")
     screen_bank_cap = Column(Integer, nullable=True)  # NULL = one day's max
@@ -67,6 +73,33 @@ class FamilySettings(Base):
     hh_surprise_date = Column(Date, nullable=True)  # local day this week's surprise was planned
     hh_surprise_at = Column(DateTime, nullable=True)  # naive UTC start of the planned surprise
     streak_freeze = Column(Boolean, nullable=False, default=True, server_default="1")
+    bedtime_auto = Column(Boolean, nullable=False, default=False, server_default="0")
+    bedtime_auto_at = Column(String(5), nullable=False, default="21:00", server_default="21:00")
+    bedtime_date = Column(Date, nullable=True)  # local day bedtime auto-approve last ran
+    recap_weekly = Column(Boolean, nullable=False, default=True, server_default="1")
+    recap_date = Column(Date, nullable=True)  # local day the weekly recap last went out
+    waiting_reset_days = Column(Integer, nullable=False, default=0, server_default="0")
+    goals_on = Column(Boolean, nullable=False, default=True, server_default="1")
+    goal_suggest = Column(Boolean, nullable=False, default=True, server_default="1")
+    goal_withdraw = Column(Boolean, nullable=False, default=True, server_default="1")
+    goal_siblings = Column(Boolean, nullable=False, default=False, server_default="0")
+    goal_auto = Column(Boolean, nullable=False, default=False, server_default="0")  # 0 = by hand
+    goal_auto_pct = Column(Integer, nullable=False, default=25, server_default="25")
+    goal_max_little = Column(Integer, nullable=False, default=1, server_default="1")
+    goal_max_kid = Column(Integer, nullable=False, default=2, server_default="2")
+    goal_max_teen = Column(Integer, nullable=False, default=3, server_default="3")
+    goal_screen_on = Column(Boolean, nullable=False, default=False, server_default="0")
+    goal_screen_price = Column(Integer, nullable=False, default=200, server_default="200")
+    goal_screen_minutes = Column(Integer, nullable=False, default=60, server_default="60")
+    goal_jail_on = Column(Boolean, nullable=False, default=False, server_default="0")
+    goal_jail_price = Column(Integer, nullable=False, default=500, server_default="500")
+    games_on = Column(Boolean, nullable=False, default=True, server_default="1")
+    games_earn = Column(String(6), nullable=False, default="every", server_default="every")
+    games_cap_pct = Column(Integer, nullable=False, default=10, server_default="10")
+    games_board = Column(Boolean, nullable=False, default=True, server_default="1")
+    penalties_enabled = Column(Boolean, nullable=False, default=False, server_default="0")
+    penalty_sizes = Column(Text, nullable=True)  # JSON; NULL = defaults
+    makeup_chores = Column(Text, nullable=True)  # JSON; NULL = defaults
 
 
 def get_family(db: Session) -> FamilySettings:

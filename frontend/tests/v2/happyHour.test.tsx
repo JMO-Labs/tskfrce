@@ -11,8 +11,11 @@ import { KidCelebrations } from '@/v2/manage/KidCelebrations'
 import { FamilyCard } from '@/v2/manage/FamilyCards'
 import { KidAlerts } from '@/v2/kid/KidAlerts'
 import { severity } from '@/v2/components/bellRules'
-import { BellActions } from '@/v2/components/BellActions'
+import { InboxRow } from '@/v2/components/InboxRow'
 import type { Family, Kid } from '@/v2/types'
+import { fakeRouter } from './helpers/fakeRouter'
+
+jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
 
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
@@ -130,9 +133,10 @@ describe('scoped running state', () => {
 
 describe('placement', () => {
   const src = (f: string) => require('fs').readFileSync(require('path').join(__dirname, '../../src/v2', f), 'utf8') as string
-  test('the button is in TodayPage and KidDetail', () => {
-    expect(src('today/TodayPage.tsx')).toContain('<HappyHourButton kidId={kid.id} allKids />')
-    expect(src('manage/KidDetail.tsx')).toContain('<HappyHourButton kidId={kid.id} />')
+  test('Start Happy Hour is in the Today header menu, not on the kid page', () => {
+    expect(src('today/TodayPage.tsx')).toContain("label: 'Start Happy Hour'")
+    expect(src('today/TodayPage.tsx')).not.toContain('<HappyHourButton')
+    expect(src('manage/KidDetail.tsx')).not.toContain('HappyHour')
   })
 })
 
@@ -151,12 +155,13 @@ describe('settings', () => {
     expect(screen.getByText(/After 2 quiet days/)).toBeTruthy()
   })
 
-  test('Streak freezes switch in Points rules', async () => {
+  test('Streak freezes switch in Points rules saves at once', async () => {
+    fakeRouter.reset('/settings', { section: 'family', open: 'pts' })
     wrap(<FamilyCard fam={fam()} />)
-    await userEvent.click(screen.getByLabelText('Streak freezes'))
-    expect(screen.getByText(/covers one missed day/)).toBeTruthy()
-    await userEvent.click(screen.getByRole('button', { name: 'Save settings' }))
+    await userEvent.click(screen.getByRole('switch', { name: 'Streak freezes' }))
     await waitFor(() => expect(sent('/family', 'PATCH')).toEqual([{ streak_freeze: false }]))
+    await userEvent.click(screen.getByRole('button', { name: 'About streak freezes' }))
+    expect(await screen.findByText(/covers one missed day/)).toBeTruthy()
   })
 })
 
@@ -198,8 +203,10 @@ describe('alerts', () => {
     const n = { id: 1, kind: 'boost', glyph: null } as never
     expect(severity(n)).toEqual({ name: 'bolt', tone: 'ok' })
     const go = jest.fn(async () => {})
-    render(<BellActions n={{ ...n, pending: false } as never} busy={false} sending={false} note="" onNote={() => {}} onApprove={() => {}} onSendBack={() => {}} onDecide={() => {}} go={go} />)
-    await userEvent.click(screen.getByRole('button', { name: 'See Happy Hour' }))
+    const f = () => {}
+    render(<MantineProvider env="test"><InboxRow n={{ ...n, pending: false, title: 'Boost', created_at: new Date().toISOString() } as never} live busy={false} sending={false} note="" onNote={f} onApprove={f} onSendBack={f} onDecide={f} onDismiss={f} onLock={f} onOpen={f} go={go} /></MantineProvider>)
+    await userEvent.click(screen.getByRole('button', { name: 'More for Boost' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'See Happy Hour' }))
     expect(go).toHaveBeenCalledWith('/')
   })
 

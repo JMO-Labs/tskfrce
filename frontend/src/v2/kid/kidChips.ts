@@ -1,7 +1,7 @@
 import { clockText } from '../clockText'
 import type { KidChore, KidStep } from '../types'
 
-export type KidTone = 'back' | 'late' | 'soon' | 'new' | 'today' | 'later' | 'wait' | 'done'
+export type KidTone = 'back' | 'late' | 'soon' | 'new' | 'today' | 'later' | 'wait' | 'done' | 'sun'
 export interface KidChipT {
   tone: KidTone
   icon: string

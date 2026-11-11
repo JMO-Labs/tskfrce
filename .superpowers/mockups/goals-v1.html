@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Goals mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--pg-bg:#ececea;--p-bg:#f8f8f8;--p-card:#fff;--p-ink:#292928;--p-sub:#5f5f5c;--p-line:#e4e4e1;--p-soft:#f3f3f3;--p-acc:#c3f832;--p-amb:#ffefcc;--p-ambink:#5c3a00;--p-lav:#e3d4fb;--p-lav-ink:#4a2f8a;
+--k-bg:#f4f7fa;--k-card:#fff;--k-ink:#1d2b53;--k-sub:#4a5a80;--k-line:#dfe5ee;--k-soft:#eef1f6;--k-green:#5cc46f;--k-amber:#ffb020;--k-coral:#ff6b4a;--k-lav:#e6dcff;--k-blue:#e4ecff;--k-sun:#ffc93c;--k-shadow:4px 4px 0 var(--k-ink)}
+@media (prefers-color-scheme:dark){:root{--pg-bg:#111110;--p-bg:#1c1c1b;--p-card:#292928;--p-ink:#f4f4f2;--p-sub:#a8a8a4;--p-line:#3d3d3b;--p-soft:#323230;--p-amb:#3b2f17;--p-ambink:#ffd38a;--p-lav:#3d3354;--p-lav-ink:#d8c8fb;
+--k-bg:#141a2e;--k-card:#1d2747;--k-ink:#eef2ff;--k-sub:#a9b6d8;--k-line:#2e3b66;--k-soft:#25315a;--k-green:#6fd08a;--k-amber:#ffc04d;--k-coral:#ff7a5c;--k-lav:#352c5c;--k-blue:#26355f;--k-shadow:4px 4px 0 #000}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--pg-bg);color:var(--p-ink);font:15px/1.45 Inter,system-ui,sans-serif;padding:24px 16px 48px}
+.wrap{max-width:1120px;margin:0 auto}
+h1{font:700 22px "Space Grotesk",system-ui;margin:0 0 4px}
+.lead{color:var(--p-sub);margin:0 0 24px;max-width:72ch}
+.row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.col{flex:1 1 320px;max-width:360px}
+.col>h2{font:700 17px "Space Grotesk",system-ui;margin:0 0 2px}
+.why{color:var(--p-sub);font-size:13px;margin:0 0 12px;min-height:38px}
+/* kid phone */
+.kphone{background:var(--k-bg);color:var(--k-ink);border:2px solid var(--k-ink);border-radius:26px;padding:18px 14px;font-family:Inter,system-ui}
+.kphone h3{font:700 20px "Space Grotesk",system-ui;margin:0 0 12px}
+.goal{background:var(--k-card);border:2px solid var(--k-ink);box-shadow:var(--k-shadow);border-radius:12px;padding:12px;margin-bottom:14px}
+.goal .t{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.goal b{font:700 16px "Space Grotesk",system-ui}
+.goal .n{font-size:13px;color:var(--k-sub);white-space:nowrap}
+.bar{height:14px;border:2px solid var(--k-ink);border-radius:999px;background:var(--k-soft);overflow:hidden;margin:8px 0}
+.bar i{display:block;height:100%;background:var(--k-green)}
+.goal .acts{display:flex;justify-content:space-between;font-size:13px;color:var(--k-sub)}
+.kbtn{border:2px solid var(--k-ink);background:var(--k-sun);color:#1d2b53;border-radius:8px;padding:4px 10px;font:700 13px "Space Grotesk",system-ui}
+.goal.fam{background:var(--k-lav)}
+.goal.done{background:var(--k-blue)}
+.chip{display:inline-block;font-size:11px;font-weight:600;border:1.5px solid var(--k-ink);border-radius:999px;padding:1px 7px;margin-left:6px;vertical-align:2px}
+.suggest{border:2px dashed var(--k-sub);border-radius:12px;padding:10px;text-align:center;color:var(--k-sub);font-size:14px}
+/* parent phone */
+.phone{background:var(--p-bg);border:1px solid var(--p-line);border-radius:28px;padding:18px 14px}
+.phone h3{font:600 16px Inter,system-ui;margin:0 0 10px}
+.card{background:var(--p-card);border:1px solid var(--p-line);border-radius:12px;padding:4px 12px;margin-bottom:12px}
+.li{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--p-line);font-size:14px;gap:8px}
+.li:last-child{border-bottom:0}
+.li small{display:block;color:var(--p-sub);font-size:12px}
+.mini{height:6px;border-radius:999px;background:var(--p-soft);overflow:hidden;margin-top:5px;width:120px}.mini i{display:block;height:100%;background:var(--p-ink)}
+.pill{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--p-line);background:var(--p-soft);white-space:nowrap}
+.pill.dark{background:var(--p-ink);color:var(--p-card);border-color:var(--p-ink)}
+.ask{background:var(--p-amb);color:var(--p-ambink);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:14px}
+.ask .li{border-color:rgba(0,0,0,.08)}
+.sec{font-size:12px;color:var(--p-sub);margin:4px 0 6px}
+.setl{font-size:13px;color:var(--p-sub);text-align:center;text-decoration:underline}
+/* party */
+.party{position:relative;height:440px;border-radius:26px;border:2px solid var(--k-ink);overflow:hidden;background:radial-gradient(circle at 50% 38%,#ffe27a 0,#ffc93c 30%,#ff8a5c 70%,#d94a8c 100%);color:#1d2b53;text-align:center}
+.party h3{font:700 26px/1.1 "Space Grotesk",system-ui;margin:34px 16px 4px}
+.party p{margin:0 16px;font-weight:600}
+.dance{position:absolute;bottom:18px;left:0;right:0;display:flex;justify-content:center;flex-wrap:wrap;gap:4px 2px;padding:0 6px}
+.dance img{width:74px;height:74px;animation:bop .9s ease-in-out infinite alternate;transform-origin:50% 100%}
+.dance img:nth-child(2){animation-delay:.15s}.dance img:nth-child(3){animation-delay:.3s}.dance img:nth-child(4){animation-delay:.45s}.dance img:nth-child(5){animation-delay:.6s}.dance img:nth-child(6){animation-delay:.75s}
+@keyframes bop{0%{transform:translateY(0) rotate(-8deg)}100%{transform:translateY(-22px) rotate(8deg)}}
+.conf{position:absolute;inset:0;pointer-events:none}
+.conf i{position:absolute;top:-12px;width:9px;height:14px;border-radius:2px;animation:fall 2.6s linear infinite}
+@keyframes fall{to{transform:translateY(470px) rotate(540deg)}}
+.trophy{display:inline-block;margin-top:14px;background:#fff;border:2px solid #1d2b53;box-shadow:4px 4px 0 #1d2b53;border-radius:12px;padding:8px 14px;font:700 16px "Space Grotesk",system-ui}
+@media (prefers-reduced-motion:reduce){.dance img,.conf i{animation:none}}
+.note{margin-top:28px;background:var(--p-card);border:1px solid var(--p-line);border-radius:12px;padding:14px 16px;max-width:780px}
+.note h2{font-size:16px;margin:0 0 6px}.note ul{margin:0;padding-left:18px}.note li{margin:3px 0}
+</style></head><body><div class="wrap">
+<h1>Goals</h1>
+<p class="lead">Kids save toward things that matter to them, alone or as a family. Kid app on the left, parent screen in the middle, and the party once a parent marks a goal fulfilled on the right.</p>
+<div class="row">
+
+<div class="col"><h2>Ivy's goals (kid app)</h2><p class="why">Ivy's own goals, the family goal, and a way to suggest a new one.</p>
+<div class="kphone">
+ <h3>My goals</h3>
+ <div class="goal"><div class="t"><b>New bike</b><span class="n">1,240 / 2,000</span></div>
+  <div class="bar"><i style="width:62%"></i></div>
+  <div class="acts"><span>25% of every chore goes here</span><span class="kbtn">+ Add</span></div></div>
+ <div class="goal done"><div class="t"><b>Pizza + movie night</b><span class="n">300 / 300</span></div>
+  <div class="bar"><i style="width:100%"></i></div>
+  <div class="acts"><span>Goal reached! Waiting on Mom</span><span>🎉</span></div></div>
+ <div class="goal fam"><div class="t"><b>Disney trip<span class="chip">Family</span></b><span class="n">6,800 / 20,000</span></div>
+  <div class="bar"><i style="width:34%"></i></div>
+  <div class="acts"><span>You gave 1,900</span><span class="kbtn">+ Add</span></div></div>
+ <div class="suggest">+ Suggest a goal</div>
+</div></div>
+
+<div class="col"><h2>Goals (parent)</h2><p class="why">Suggestions to price at the top, then the goals people are saving for. Settings are one link.</p>
+<div class="phone">
+ <h3>Goals</h3>
+ <div class="ask"><div class="sec" style="color:inherit;opacity:.8">Waiting on you</div>
+  <div class="li"><span>🎉 Ivy's <b>Pizza + movie night</b> is full</span><span class="pill dark">Fulfilled</span></div>
+  <div class="li"><span>Theo suggests <b>Skateboard</b></span><span class="pill">Set price</span></div></div>
+ <div class="sec">Family</div>
+ <div class="card"><div class="li"><div>Disney trip<div class="mini"><i style="width:34%"></i></div></div><span class="pill">+ Chip in</span></div></div>
+ <div class="sec">Kids</div>
+ <div class="card">
+  <div class="li"><div>Ivy · New bike<div class="mini"><i style="width:62%"></i></div></div><small>1,240 / 2,000</small></div>
+  <div class="li"><div>Theo · Game system<div class="mini"><i style="width:18%"></i></div></div><small>540 / 3,000</small></div>
+ </div>
+ <div class="card"><div class="li"><span>+ New goal</span><small>custom or built-in</small></div></div>
+ <div class="setl">Goal settings</div>
+</div></div>
+
+<div class="col"><h2>Fulfilled: the party</h2><p class="why">Plays on the kid's next open after a parent taps Fulfilled. Family goals party for every kid.</p>
+<div class="party">
+ <div class="conf" id="conf"></div>
+ <h3>Pizza + movie night<br>is happening!</h3>
+ <p>Mom made it official.</p>
+ <div class="trophy">Goal complete</div>
+ <div class="dance">
+  <img src="/files/trex.svg" alt=""><img src="/files/cat-princess.svg" alt=""><img src="/files/dog-cowboy.svg" alt=""><img src="/files/axolotl.svg" alt=""><img src="/files/sloth-cool.svg" alt=""><img src="/files/lizard-sombrero.svg" alt="">
+ </div>
+</div></div>
+
+</div>
+<div class="note"><h2>Not on screen, still included</h2><ul>
+<li>Built-in goals: extra screen time, and a "Get out of jail free" card that cancels a penalty. Each is off until a parent allows it.</li>
+<li>Goal settings: how many goals per kid (default by age mode), whether points go in by hand or automatically, withdrawals on or off, kid suggestions on or off, and whether kids see sibling contributions.</li>
+<li>Withdrawals are blocked once a goal is full and waiting on a parent. Family goal points never come back out.</li>
+<li>Penalties can take from a family goal or raise its target.</li>
+</ul></div>
+</div>
+<script>
+const c=document.getElementById('conf'),cols=['#1d2b53','#fff','#5cc46f','#26a0ff','#ff6b4a','#8a5cff'];
+for(let i=0;i<34;i++){const e=document.createElement('i');e.style.left=Math.random()*100+'%';e.style.background=cols[i%cols.length];e.style.animationDelay=(Math.random()*2.6)+'s';c.appendChild(e)}
+</script>
+</body></html>
