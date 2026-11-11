@@ -300,7 +300,8 @@ html[data-look='parent'] .pn-addr .f-input.f-input { font: 12.5px ui-monospace, 
 /* Notifications header and iPhones body (mockup .btn.sm, .setr) */
 [data-look='parent'] .pn .p-dhead-meta { min-width: 110px; }
 [data-look='parent'] .pn .pn-add { padding: 6px 12px; font-size: 13px; }
-[data-look='parent'] .pn-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; }
+[data-look='parent'] .pn-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; min-width: 0; }
+[data-look='parent'] .pn-line .pn-kv-key { min-width: 0; flex: 1; }
 [data-look='parent'] .pn-line .mantine-Switch-body { flex: 1; justify-content: space-between; }
 [data-look='parent'] .pn-line .mantine-Switch-label { color: var(--p-sub); font-size: 13px; }
 [data-look='parent'] .st .p-dhead-meta { min-width: 110px; }
