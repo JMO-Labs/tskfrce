@@ -2,6 +2,7 @@
 
 import re
 import secrets
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -24,8 +25,9 @@ from app.models.reward import Redemption
 from app.models.tips import DismissedTip
 from app.models.user import User, UserRole
 from app.schemas.lock import KidCreate, KidPatch, utc_z
-from app.services import chat, economy, trust
+from app.services import chat, economy, preset_state, trust
 from app.services import chores as svc
+from app.services.age_bands import next_group
 from app.services.photos import storage
 
 router = APIRouter(prefix="/api/v1/kids", tags=["kids"], dependencies=[Depends(require_parent)])
@@ -39,6 +41,8 @@ def _out(k: User) -> dict:
         "avatar": k.avatar,
         "has_pin": bool(k.pin_hash),
         "age_group": k.age_group,
+        "birth_month": k.birth_month,
+        "birth_year": k.birth_year,
         "celebrate": k.celebrate,  # raw: null = mode default
         "trust_mode": k.trust_mode,
         "games_on": k.games_on,
@@ -85,6 +89,8 @@ def create_kid(body: KidCreate, db: Session = Depends(get_db)):
         avatar=body.avatar,
         pin_hash=auth.get_password_hash(body.pin) if body.pin else None,
         age_group=body.age_group or "kid",
+        birth_month=body.birth_month,
+        birth_year=body.birth_year,
     )
     db.add(kid)
     db.flush()
@@ -108,8 +114,10 @@ def patch_kid(
         kid.avatar = body.avatar
     if body.pin is not None:
         kid.pin_hash = AuthService(db).get_password_hash(body.pin)
-    if body.age_group is not None:
-        kid.age_group = body.age_group
+    if body.age_group is not None and body.age_group != kid.age_group:
+        kid.age_group, kid.age_group_set_at = body.age_group, datetime.utcnow()
+    if "birth_month" in body.model_fields_set or "birth_year" in body.model_fields_set:
+        kid.birth_month, kid.birth_year = body.birth_month, body.birth_year
     if "celebrate" in body.model_fields_set:  # explicit null: back to the mode default
         kid.celebrate = body.celebrate
     if body.chores_lock is not None:
@@ -125,6 +133,22 @@ def patch_kid(
     if body.clear_pin:
         kid.pin_hash = None
     db.commit()
+    return _out(kid)
+
+
+@router.post("/{kid_id}/age-up")
+def age_up(
+    kid_id: int, db: Session = Depends(get_db), parent: User = Depends(require_parent)
+):
+    """Confirm a kid.age_up suggestion: next group, then that group's preset defaults."""
+    kid = _kid(db, kid_id)
+    nxt = next_group(kid.age_group)
+    if nxt is None:
+        raise HTTPException(400, "That kid is already in the oldest group.")
+    kid.age_group, kid.age_group_set_at = nxt, datetime.utcnow()
+    db.commit()
+    preset_state.run(db, parent, {"kids": {kid.id: kid.preset_style}}, True)
+    db.refresh(kid)
     return _out(kid)
 
 

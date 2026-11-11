@@ -12,6 +12,7 @@ from app.models.goal import Goal, GoalContribution
 from app.models.homework import HomeworkRequest
 from app.models.lock import Device
 from app.models.user import User, UserRole
+from app.services.age_bands import age_up_target
 
 SYSTEM, KID, GROWTH = 0, 1, 2
 SETUP_DAYS = 7
@@ -319,6 +320,31 @@ def feature_homework(db: Session, now: datetime) -> list[dict]:
     return out
 
 
+def kid_age_up(db: Session, now: datetime) -> list[dict]:
+    out = []
+    for kid in _kids(db):
+        to = age_up_target(kid, now)
+        if to is None:
+            continue
+        out.append(
+            _s(
+                "kid.age_up",
+                kid.id,
+                GROWTH,
+                to,
+                kid.age_group_set_at or kid.created_at or now,
+                f"{_name(kid)} may be ready for {to.title()}",
+                f"{_name(kid)} looks ready to move up from {kid.age_group.title()} to "
+                f"{to.title()}. Moving applies the {to.title()} defaults for chores, "
+                "screen time and bedtime.",
+                "post",
+                f"Move to {to.title()}",
+                f"/kids/{kid.id}/age-up",
+            )
+        )
+    return out
+
+
 RULES = {
     "chore.skipped": chore_skipped,
     "chore.stale": chore_stale,
@@ -328,5 +354,6 @@ RULES = {
     "family.parent": family_parent,
     "devices.unknown": devices_unknown,
     "feature.homework": feature_homework,
+    "kid.age_up": kid_age_up,
 }
 SYSTEM_RULES = frozenset({"devices.unknown"})
