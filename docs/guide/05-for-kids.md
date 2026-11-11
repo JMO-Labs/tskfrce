@@ -75,7 +75,17 @@ Tap **Rewards** (**Prizes** in Little). Ask for screen time (you pick the minute
 
 ## My goals
 
-Saving for something big? It's at the top of **Rewards**. Tap **+ Add** on a goal to move points in, or **+ Suggest a goal** to ask for a new one. A parent sets the price. Family goals are shared, and everyone adds to them. When a goal is full, a parent makes it official, and then all the mascots throw you a party. You can take points back out of your own goal unless it's full (or a parent turned that off). Points in a family goal stay there.
+Saving for something big? It's at the top of **Rewards**. Tap **+ Add** on a goal to move points in, or **+ Suggest a goal** to ask for a new one. A parent sets the price. Family goals are shared, and everyone adds to them. When a goal is full, a parent makes it official, and then all the mascots throw you a party. You can take points back out of your own goal unless it's full (or a parent turned that off). Points in a family goal stay there. Some goals give you extra screen time: when a parent makes one official, your devices unlock for the free minutes right away, with no request needed.
+
+## Games
+
+Finish a chore, get a game! Every chore a parent approves earns you a game (your parent can change that, so some families give one a day, or only for certain chores). Open the **Games** tab to play. You can save up to 5 games. If you already have 5 saved, play one before you earn more. Make-up chores for a penalty don't earn games.
+
+- Tap **Play** when you have a game saved. Games can add a few points, but only up to a small daily limit your parent sets.
+- A weekly board shows how everyone in the family is doing, if your parent left it on.
+- **Games are asleep** means you can't play right now. Games sleep at your bedtime until the new day starts, and during the family's quiet hours. The screen tells you when they wake up. Your saved games wait for you.
+- If your parent turned games off, you won't see games to play.
+- If you like less movement, set your device to "reduce motion". The mascots then stay still instead of dancing.
 
 ## Chat and alerts
 

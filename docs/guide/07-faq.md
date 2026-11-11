@@ -58,6 +58,15 @@ No. A kid can use any device assigned to them, and siblings can share one. A PIN
 
 Yes. In **Settings → Parents**, tap **Invite a parent** and send them the link.
 
+## Why can't my kid play games right now?
+
+Check these, in order:
+
+- **Quiet hours or bedtime.** Games sleep at the kid's bedtime until the day resets, and during family quiet hours (**Settings → Notifications → When and how**). The Games tab says "Games are asleep" and when they wake up.
+- **No game saved.** A game comes from an approved chore. A chore still waiting for you to approve earns nothing yet.
+- **Games are off.** Check **Settings → Family → Minigames** for the family switch and the kid's own switch.
+- **Earn setting.** With **Once a day**, **Random** or **Custom**, not every chore earns a game. A kid can also hold at most 5 saved games.
+
 ## What do "First one wins" and "Team effort" mean?
 
 Both give one chore to several kids. With **First one wins**, the first kid to finish it gets the points. With **Team effort**, anyone can do the steps and the points are split evenly. With **Each does it**, every kid has their own copy.
