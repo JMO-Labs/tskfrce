@@ -9,10 +9,16 @@ for c in curl lego caddy; do
   # shellcheck disable=SC2016
   printf '#!/bin/sh\necho "%s $*" >> "%s"\necho "ENDPOINT=$HTTPREQ_ENDPOINT" >> "%s"\n' "$c" "$LOG" "$LOG" > "$T/bin/$c"
 done
-setip() { printf '#!/bin/sh\necho "1.1.1.1 via 192.168.1.1 dev eth0 src 192.168.1.%s uid 0"\n' "$1" > "$T/bin/ip"; }
+# ip stub: `ip route get` for lan_ip, `ip -o -4 addr show up` for collect_networks
+setip() {
+  printf '#!/bin/sh\ncase "$*" in *addr*) echo "2: eth0    inet 192.168.1.%s/24 brd 192.168.1.255 scope global eth0" ;; *) echo "1.1.1.1 via 192.168.1.1 dev eth0 src 192.168.1.%s uid 0" ;; esac\n' "$1" "$1" > "$T/bin/ip"
+}
+# fake /sys/class/net: physical NICs have device/, Wi-Fi also wireless/; VLANs and virtual links have neither
+for n in eth0 eth1 wlan0 ap0; do mkdir -p "$T/sys/$n/device"; done
+mkdir -p "$T/sys/wlan0/wireless" "$T/sys/eth0.100" "$T/sys/docker0" "$T/sys/virbr0" "$T/sys/veth1" "$T/sys/lo"
 chmod +x "$T/bin/"* 2>/dev/null
 setip 40; chmod +x "$T/bin/ip"
-export PATH="$T/bin:$PATH" DATA_DIR="$T/data" LAST_IP_FILE="$T/last_ip" BOX_ID=abc123 BOX_SECRET=s3cret EDGE_TOKEN=t EDGE_ONCE=1
+export SYS_NET="$T/sys" NET_TMP="$T/lan_addrs" HDR_FILE="$T/hdrs" PATH="$T/bin:$PATH" DATA_DIR="$T/data" LAST_IP_FILE="$T/last_ip" BOX_ID=abc123 BOX_SECRET=s3cret EDGE_TOKEN=t EDGE_ONCE=1
 fail=0
 run() { sh "$HERE/edge.sh" "$@"; }
 ok() { if [ "$2" = 0 ]; then echo "ok   $1"; else echo "FAIL $1"; fail=1; fi; }
@@ -32,13 +38,13 @@ setip 41; : > "$LOG"; run report_ip
 has '"ip":"192.168.1.41"'; ok "changed ip posts" $?
 
 printf '#!/bin/sh\nexit 22\n' > "$T/bin/curl"; setip 42; : > "$LOG"; run report_ip
-r=0; [ "$(cat "$T/last_ip")" = 192.168.1.41 ] || r=1; ok "failed report keeps last_ip" $r
+r=0; grep -q '"192.168.1.41"' "$T/last_ip" || r=1; ok "failed report keeps last_ip" $r
 printf '#!/bin/sh\necho "curl $*" >> "%s"\n' "$LOG" > "$T/bin/curl"
 
 # -6 failing is ignored; -4 failing is not
 printf '#!/bin/sh\ncase " $* " in *" -6 "*) exit 7;; esac\necho "curl $*" >> "%s"\n' "$LOG" > "$T/bin/curl"
 setip 43; : > "$LOG"; run report_ip; r=$?
-[ "$(cat "$T/last_ip")" = 192.168.1.43 ] || r=1; ok "failing -6 ignored, last_ip written" $r
+grep -q '"192.168.1.43"' "$T/last_ip" || r=1; ok "failing -6 ignored, last_ip written" $r
 printf '#!/bin/sh\necho "curl $*" >> "%s"\n' "$LOG" > "$T/bin/curl"
 
 : > "$LOG"; run issue_or_renew
@@ -46,7 +52,14 @@ has "--path $T/data/lego" && has "--accept-tos" && has "--email boxes@jmolabs.de
   && has "--server https://acme-v02.api.letsencrypt.org/directory" && has "--dns httpreq" && has "-d abc123.taskfrce.jmolabs.dev" && has " run" \
   && has "ENDPOINT=https://taskfrce.jmolabs.dev/api/acme"; ok "issue runs lego run" $?
 
+: > "$LOG"; run issue_or_renew
+has "-d abc123.taskfrce.jmolabs.dev" && has "-d abc123-2.taskfrce.jmolabs.dev" && has "-d abc123-3.taskfrce.jmolabs.dev" \
+  && has "-d abc123-4.taskfrce.jmolabs.dev" && has "-d abc123-5.taskfrce.jmolabs.dev" && has "-d abc123-6.taskfrce.jmolabs.dev" \
+  && has "-d abc123-7.taskfrce.jmolabs.dev" && has "-d abc123-8.taskfrce.jmolabs.dev"; ok "issue requests all 8 domain SANs" $?
+
 mkdir -p "$T/data/lego/certificates"; echo c > "$T/data/lego/certificates/abc123.taskfrce.jmolabs.dev.crt"
+rm -f "$T/data/lego/sans-8"; : > "$LOG"; run issue_or_renew
+has " run" && ! has "renew"; ok "pre-8-SAN cert is re-issued once" $?
 : > "$LOG"; run issue_or_renew
 has "renew --days 30"; ok "existing cert renews" $?
 
@@ -73,4 +86,67 @@ r=0; echo "$out" | grep -q "EDGE_TOKEN not set" || r=1; ok "warns without EDGE_T
 out=$(EDGE_TOKEN=x run next_backoff 30 2>&1)
 r=0; echo "$out" | grep -q "EDGE_TOKEN" && r=1; ok "no warning with EDGE_TOKEN" $r
 r=0; ! grep -q 2443 "$HERE/Caddyfile" || r=1; ok "Caddyfile has no public ntfy port" $r
+
+# Caddyfile serves every network hostname the cert covers (literal Caddy placeholders, not shell vars)
+r=0
+# shellcheck disable=SC2016
+for host in '{$BOX_ID}' '{$BOX_ID}-2' '{$BOX_ID}-3' '{$BOX_ID}-4' '{$BOX_ID}-5' '{$BOX_ID}-6' '{$BOX_ID}-7' '{$BOX_ID}-8'; do
+  grep -qF "https://$host.{\$BASE_DOMAIN}:443" "$HERE/Caddyfile" || r=1
+done
+ok "Caddyfile lists all 8 hostnames" $r
+
+# Test collect_networks
+setnet() {
+  printf '#!/bin/sh\ncat <<EOF\n%s\nEOF\n' "$1" > "$T/bin/ip"
+}
+# report_ip posts the whole network list
+setnet "1: eth0    inet 192.168.1.10/24 scope global eth0
+2: wlan0    inet 10.0.0.5/8 scope global wlan0"
+: > "$LOG"; run report_ip force
+has '"networks":[' && has '"ip":"192.168.1.10","label":"Wired"' && has '"ip":"10.0.0.5","label":"Wi-Fi"'; ok "report_ip posts every network" $?
+chmod +x "$T/bin/ip"
+
+# Single Wired network
+setnet "1: eth0    inet 192.168.1.10/24 scope global eth0"
+out=$(run collect_networks); r=0
+echo "$out" | grep -q '"ip":"192.168.1.10"' || r=1
+echo "$out" | grep -q '"label":"Wired"' || r=1; ok "collect single wired network" $r
+
+# Multiple networks including VLAN
+setnet "1: eth0    inet 192.168.1.10/24 scope global eth0
+2: wlan0    inet 10.0.0.5/8 scope global wlan0
+3: eth0.100 inet 172.20.0.1/24 scope global eth0.100"
+out=$(run collect_networks); r=0
+echo "$out" | grep -q '"ip":"192.168.1.10"' || r=1
+echo "$out" | grep -q '"ip":"10.0.0.5"' || r=1
+echo "$out" | grep -q '"ip":"172.20.0.1"' || r=1
+echo "$out" | grep -q '"label":"VLAN 100"' || r=1; ok "collect multiple networks with VLAN" $r
+
+# Exclude hotspot, link-local, CGNAT
+setnet "1: eth0    inet 192.168.1.10/24 scope global eth0
+2: ap0     inet 10.42.0.2/24 scope global ap0
+3: eth1    inet 169.254.1.1/16 scope link eth1
+4: wlan0   inet 100.100.0.5/10 scope global wlan0"
+out=$(run collect_networks); r=0
+echo "$out" | grep -q '"ip":"192.168.1.10"' || r=1
+echo "$out" | grep -qv '"ip":"10.42.0.2"' || r=1
+echo "$out" | grep -qv '"ip":"169.254"' || r=1
+echo "$out" | grep -qv '"ip":"100.100"' || r=1; ok "collect excludes hotspot, link-local, CGNAT" $r
+
+# Skip docker, virbr, veth, etc
+setnet "1: eth0    inet 192.168.1.10/24 scope global eth0
+2: docker0 inet 172.17.0.1/16 scope global docker0
+3: virbr0  inet 192.168.122.1/24 scope global virbr0
+4: veth1   inet 10.1.0.1/24 scope global veth1"
+out=$(run collect_networks); r=0
+echo "$out" | grep -q '"ip":"192.168.1.10"' || r=1
+echo "$out" | grep -qv docker || r=1
+echo "$out" | grep -qv virbr || r=1
+echo "$out" | grep -qv veth || r=1; ok "collect skips docker, virbr, veth" $r
+
+# Empty networks (loopback only)
+setnet "1: lo    inet 127.0.0.1/8 scope host lo"
+out=$(run collect_networks); r=0
+echo "$out" | grep -q '"networks":\[' || r=1; ok "collect empty networks returns empty array" $r
+
 exit $fail

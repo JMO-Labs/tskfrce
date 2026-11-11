@@ -17,6 +17,7 @@ import { SETTINGS_SECTIONS, type S } from './settingsSections'
 import { AppearancePane } from './AppearancePane'
 import { HomeworkPane } from './HomeworkPane'
 import { NotificationsPane } from './NotificationsPane'
+import { UpdatesPane } from './UpdatesPane'
 import { accentHex } from '@/v2/parent/accent'
 import { toastFail, toastOk } from '@/v2/notify'
 
@@ -74,6 +75,7 @@ function SettingsBody() {
         {section === 'homework' && <HomeworkPane />}
         {section === 'parents' && <ParentsPane />}
         {section === 'integrations' && <IntegrationsPane />}
+        {section === 'updates' && <UpdatesPane />}
       </div>
     </ParentShell>
   )

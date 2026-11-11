@@ -16,6 +16,7 @@ except ImportError:
     print("Error: markdown package not installed. Install with: pip install markdown")
     exit(1)
 
+from build_releases import build_releases  # noqa: E402
 from site_templates import (  # noqa: E402 (needs the check above)
     chapter_page,
     nav_card,
@@ -26,6 +27,8 @@ from site_templates import (  # noqa: E402 (needs the check above)
 GUIDE_SOURCE = Path("docs/guide")
 REMOTE_ACCESS_SOURCE = Path("docs/remote-access.md")
 SITE_OUTPUT = Path("site/guide")
+RELEASES_SOURCE = Path("docs/releases")
+RELEASES_OUTPUT = Path("site/releases")
 IMG_SOURCE = GUIDE_SOURCE / "img"
 IMG_OUTPUT = SITE_OUTPUT / "img"
 
@@ -405,6 +408,10 @@ def build_site():
 
         page_html = build_standalone_page(html, title, edit_path)
         (SITE_OUTPUT / out_name).write_text(page_html)
+
+    # Release notes
+    built = build_releases(RELEASES_SOURCE, RELEASES_OUTPUT, markdown_to_html)
+    print(f"  Built {len(built)} release pages")
 
     print("✓ Guide site built successfully!")
     print(f"  Output: {SITE_OUTPUT}")
