@@ -9,7 +9,8 @@ BAR = """    <header class="f-bar">
       <a href="../" class="f-wordmark"><span class="f-logo" aria-hidden="true">@</span>t@sk4ce</a>
       <nav class="f-bar-buttons" aria-label="Site">
         <a id="back-to-app" class="f-back" hidden href="../">← Back to app</a>
-        <a class="f-nav" aria-current="page" href="index.html">Guide</a>
+        <a class="f-nav"@GUIDE_CUR@ href="@G@index.html">Guide</a>
+        <a class="f-nav"@REL_CUR@ href="@R@index.html">Releases</a>
         <a class="f-nav" data-wide href="../engineering.html">Engineering</a>
       </nav>
     </header>"""
@@ -30,8 +31,9 @@ FOOTER = """    <footer class="f-footer">
         <div>
           <h2>Help</h2>
           <ul>
-            <li><a href="index.html">Start the guide</a></li>
-            <li><a href="06-troubleshooting.html">Troubleshooting</a></li>
+            <li><a href="@G@index.html">Start the guide</a></li>
+            <li><a href="@G@06-troubleshooting.html">Troubleshooting</a></li>
+            <li><a href="@R@index.html">Release notes</a></li>
           </ul>
         </div>
         <div>
@@ -43,6 +45,16 @@ FOOTER = """    <footer class="f-footer">
       </div>
       <p class="f-footer-note">t@sk4ce: Chores first, then screens. Free, open-source family software.</p>
     </footer>"""
+
+
+_ARGS = {False: ("", "../releases/"), True: ("../guide/", "")}
+
+
+def chrome(html, guide="", rel="../releases/", releases=False):
+    """Fill the bar/footer link prefixes: guide pages sit beside releases/, release pages beside guide/."""
+    cur = ' aria-current="page"'
+    return (html.replace("@GUIDE_CUR@", "" if releases else cur).replace("@REL_CUR@", cur if releases else "")
+            .replace("@G@", guide).replace("@R@", rel))
 
 
 def nav_card(href, side, label, title):
@@ -72,7 +84,7 @@ def chapter_page(title, summary_text, chapter_links, breadcrumb, toc_html, conte
 </head>
 <body>
   <div class="f-shell">
-{BAR}
+{chrome(BAR)}
 
     <main class="guide-layout">
       <!-- Chapter sidebar (desktop) / collapsible (mobile) -->
@@ -118,14 +130,14 @@ def chapter_page(title, summary_text, chapter_links, breadcrumb, toc_html, conte
       </article>
     </main>
 
-{FOOTER}
+{chrome(FOOTER)}
   </div>
 </body>
 </html>
 """
 
 
-def standalone_page(title, chapter_links, breadcrumb, toc_html, content_html, edit_path="remote-access.md"):
+def standalone_page(title, chapter_links, breadcrumb, toc_html, content_html, edit_path="remote-access.md", releases=False):
     """A page outside the chapter list (remote access): back link instead of chapters."""
     return f"""<!doctype html>
 <html lang="en">
@@ -142,7 +154,7 @@ def standalone_page(title, chapter_links, breadcrumb, toc_html, content_html, ed
 </head>
 <body>
   <div class="f-shell">
-{BAR}
+{chrome(BAR, *_ARGS[releases], releases=releases)}
 
     <main class="guide-layout">
       <!-- Chapter sidebar -->
@@ -175,7 +187,7 @@ def standalone_page(title, chapter_links, breadcrumb, toc_html, content_html, ed
       </article>
     </main>
 
-{FOOTER}
+{chrome(FOOTER, *_ARGS[releases], releases=releases)}
   </div>
 </body>
 </html>

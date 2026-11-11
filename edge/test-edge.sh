@@ -9,10 +9,16 @@ for c in curl lego caddy; do
   # shellcheck disable=SC2016
   printf '#!/bin/sh\necho "%s $*" >> "%s"\necho "ENDPOINT=$HTTPREQ_ENDPOINT" >> "%s"\n' "$c" "$LOG" "$LOG" > "$T/bin/$c"
 done
-setip() { printf '#!/bin/sh\necho "1.1.1.1 via 192.168.1.1 dev eth0 src 192.168.1.%s uid 0"\n' "$1" > "$T/bin/ip"; }
+# ip stub: `ip route get` for lan_ip, `ip -o -4 addr show up` for collect_networks
+setip() {
+  printf '#!/bin/sh\ncase "$*" in *addr*) echo "2: eth0    inet 192.168.1.%s/24 brd 192.168.1.255 scope global eth0" ;; *) echo "1.1.1.1 via 192.168.1.1 dev eth0 src 192.168.1.%s uid 0" ;; esac\n' "$1" "$1" > "$T/bin/ip"
+}
+# fake /sys/class/net: physical NICs have device/, Wi-Fi also wireless/; VLANs and virtual links have neither
+for n in eth0 eth1 wlan0 ap0; do mkdir -p "$T/sys/$n/device"; done
+mkdir -p "$T/sys/wlan0/wireless" "$T/sys/eth0.100" "$T/sys/docker0" "$T/sys/virbr0" "$T/sys/veth1" "$T/sys/lo"
 chmod +x "$T/bin/"* 2>/dev/null
 setip 40; chmod +x "$T/bin/ip"
-export PATH="$T/bin:$PATH" DATA_DIR="$T/data" LAST_IP_FILE="$T/last_ip" BOX_ID=abc123 BOX_SECRET=s3cret EDGE_TOKEN=t EDGE_ONCE=1
+export SYS_NET="$T/sys" NET_TMP="$T/lan_addrs" HDR_FILE="$T/hdrs" PATH="$T/bin:$PATH" DATA_DIR="$T/data" LAST_IP_FILE="$T/last_ip" BOX_ID=abc123 BOX_SECRET=s3cret EDGE_TOKEN=t EDGE_ONCE=1
 fail=0
 run() { sh "$HERE/edge.sh" "$@"; }
 ok() { if [ "$2" = 0 ]; then echo "ok   $1"; else echo "FAIL $1"; fail=1; fi; }
@@ -32,13 +38,13 @@ setip 41; : > "$LOG"; run report_ip
 has '"ip":"192.168.1.41"'; ok "changed ip posts" $?
 
 printf '#!/bin/sh\nexit 22\n' > "$T/bin/curl"; setip 42; : > "$LOG"; run report_ip
-r=0; [ "$(cat "$T/last_ip")" = 192.168.1.41 ] || r=1; ok "failed report keeps last_ip" $r
+r=0; grep -q '"192.168.1.41"' "$T/last_ip" || r=1; ok "failed report keeps last_ip" $r
 printf '#!/bin/sh\necho "curl $*" >> "%s"\n' "$LOG" > "$T/bin/curl"
 
 # -6 failing is ignored; -4 failing is not
 printf '#!/bin/sh\ncase " $* " in *" -6 "*) exit 7;; esac\necho "curl $*" >> "%s"\n' "$LOG" > "$T/bin/curl"
 setip 43; : > "$LOG"; run report_ip; r=$?
-[ "$(cat "$T/last_ip")" = 192.168.1.43 ] || r=1; ok "failing -6 ignored, last_ip written" $r
+grep -q '"192.168.1.43"' "$T/last_ip" || r=1; ok "failing -6 ignored, last_ip written" $r
 printf '#!/bin/sh\necho "curl $*" >> "%s"\n' "$LOG" > "$T/bin/curl"
 
 : > "$LOG"; run issue_or_renew
@@ -52,6 +58,8 @@ has "-d abc123.taskfrce.jmolabs.dev" && has "-d abc123-2.taskfrce.jmolabs.dev" &
   && has "-d abc123-7.taskfrce.jmolabs.dev" && has "-d abc123-8.taskfrce.jmolabs.dev"; ok "issue requests all 8 domain SANs" $?
 
 mkdir -p "$T/data/lego/certificates"; echo c > "$T/data/lego/certificates/abc123.taskfrce.jmolabs.dev.crt"
+rm -f "$T/data/lego/sans-8"; : > "$LOG"; run issue_or_renew
+has " run" && ! has "renew"; ok "pre-8-SAN cert is re-issued once" $?
 : > "$LOG"; run issue_or_renew
 has "renew --days 30"; ok "existing cert renews" $?
 
@@ -91,6 +99,11 @@ ok "Caddyfile lists all 8 hostnames" $r
 setnet() {
   printf '#!/bin/sh\ncat <<EOF\n%s\nEOF\n' "$1" > "$T/bin/ip"
 }
+# report_ip posts the whole network list
+setnet "1: eth0    inet 192.168.1.10/24 scope global eth0
+2: wlan0    inet 10.0.0.5/8 scope global wlan0"
+: > "$LOG"; run report_ip force
+has '"networks":[' && has '"ip":"192.168.1.10","label":"Wired"' && has '"ip":"10.0.0.5","label":"Wi-Fi"'; ok "report_ip posts every network" $?
 chmod +x "$T/bin/ip"
 
 # Single Wired network
