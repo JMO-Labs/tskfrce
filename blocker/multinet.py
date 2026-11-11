@@ -75,22 +75,24 @@ def detect_iface_gateway(iface: str) -> LanFacts:
     except Exception:
         log.exception("failed to detect IPv6 gateway on %s", iface)
 
-    # IPv6: Resolve gateway MAC via Neighbor Discovery (ICMPv6)
+    # IPv6: Query kernel neighbor table for MAC (secure: never hand-roll NS/NA)
     if gateway_ip6:
         try:
-            from blocker.scapy_lite import IPv6, ICMPv6ND_NS, ICMPv6NDOptSrcLLAddr
-
-            ans, _ = srp(
-                Ether(dst="ff:ff:ff:ff:ff:ff") / IPv6(dst=gateway_ip6) / ICMPv6ND_NS(tgt=gateway_ip6),
-                iface=iface,
-                timeout=2,
-                retry=1,
-                verbose=0,
+            result = subprocess.run(
+                ["ip", "-6", "neigh", "show", gateway_ip6, "dev", iface],
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
-            if ans:
-                gateway_mac6 = ans[0][1][Ether].src.lower()
+            # Format: "<ip6> dev <iface> lladdr <mac> ... REACHABLE"
+            line = result.stdout.strip().split("\n")[0] if result.stdout.strip() else ""
+            if "lladdr" in line:
+                parts = line.split()
+                idx = parts.index("lladdr")
+                if idx + 1 < len(parts):
+                    gateway_mac6 = parts[idx + 1].lower()
         except Exception:
-            log.exception("IPv6 ND failed on %s for %s", iface, gateway_ip6)
+            log.exception("IPv6 neighbor lookup failed on %s for %s", iface, gateway_ip6)
 
     return LanFacts(
         gateway_ip=gateway_ip,
