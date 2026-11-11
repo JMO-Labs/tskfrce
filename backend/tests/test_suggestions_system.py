@@ -1,8 +1,7 @@
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
-
 from app.api import updates
 from app.models.family import get_family
 from app.services import box_power
@@ -42,7 +41,9 @@ def test_update_failed_and_dismiss(client, parent_headers):
     updates._write_state({"last_result": "failed", "last_version": "1.2.0"})
     s = _items(client, parent_headers)["update.failed"]
     client.post(
-        f"{U}/dismiss", json={"key": s["key"], "fingerprint": s["fingerprint"]}, headers=parent_headers
+        f"{U}/dismiss",
+        json={"key": s["key"], "fingerprint": s["fingerprint"]},
+        headers=parent_headers,
     )
     assert "update.failed" not in _items(client, parent_headers)
     updates._write_state({"last_result": "success"})
@@ -68,7 +69,7 @@ def _cert(tmp_path, days):
 
     key = ec.generate_private_key(ec.SECP256R1())
     name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "box")])
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     c = (
         x509.CertificateBuilder()
         .subject_name(name)

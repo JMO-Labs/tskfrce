@@ -124,7 +124,9 @@ def box_power_rule(db: Session, now: datetime) -> list[dict]:
     body = []
     if settings.LOCK_LOOP_ENABLED:  # only what the box can confirm
         body.append("Locks were re-applied when power came back.")
-    recent = [o for o in found if now - datetime.strptime(o["end"], ISO) <= timedelta(days=UPS_DAYS)]
+    recent = [
+        o for o in found if now - datetime.strptime(o["end"], ISO) <= timedelta(days=UPS_DAYS)
+    ]
     if len(recent) >= UPS_COUNT:
         body.append(
             f"That's {len(recent)} power cuts in {UPS_DAYS} days. "

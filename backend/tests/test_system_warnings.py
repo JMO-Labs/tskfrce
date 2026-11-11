@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
-
 from app.models.family import get_family
 from app.models.network import Network
 from app.services import network_wifi, system_warnings
