@@ -229,14 +229,13 @@ func TestContentLengthPresent(t *testing.T) {
 
 // F4: Body size cap at 64 KiB
 func TestBodySizeLimit(t *testing.T) {
-	h := newTestHandler()
 	cfg := &config.Config{
 		InternalToken: "test-token",
 		BlockerBind:   []string{"127.0.0.1"},
 		BlockerPort:   8080,
 	}
 	s := store.New()
-	h = New(cfg, s)
+	h := New(cfg, s)
 
 	// Create a request with body > 64KiB
 	largeBody := make([]byte, 65*1024)
@@ -289,10 +288,9 @@ func TestAuthBeforeBodyRead(t *testing.T) {
 // Exact path matching - query string should 404
 func TestExactPathMatching(t *testing.T) {
 	h := newTestHandler()
-	resp, _ := makeRequest(h, "GET", "/health?foo=bar", nil, nil)
 	// Go's mux will match /health, so this should still work
 	// Let's test unknown path with query instead
-	resp, _ = makeRequest(h, "GET", "/unknown?foo=bar", nil, nil)
+	resp, _ := makeRequest(h, "GET", "/unknown?foo=bar", nil, nil)
 	if resp.StatusCode != 404 {
 		t.Errorf("expected 404 for unknown path with query, got %d", resp.StatusCode)
 	}

@@ -137,14 +137,6 @@ func MDNSGenerateQuery() ([]byte, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-// parseDHCPOptions extracts DHCP option values
-// TODO: Implement actual DHCP parsing
-func parseDHCPOptions(packet []byte) map[uint8][]byte {
-	opts := make(map[uint8][]byte)
-	// TODO: Parse DHCP options from raw packet
-	return opts
-}
-
 // formatDHCPFingerprint joins option numbers with commas
 func formatDHCPFingerprint(optNums []byte) string {
 	parts := make([]string, len(optNums))

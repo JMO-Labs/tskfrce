@@ -185,31 +185,28 @@ func (m *Manager) waitForLease(site *Site, timeout time.Duration) {
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
-			if time.Now().After(deadline) {
-				m.logger.Warn("DHCP lease timeout", "iface", site.IfaceName)
+	for range ticker.C {
+		if time.Now().After(deadline) {
+			m.logger.Warn("DHCP lease timeout", "iface", site.IfaceName)
+			return
+		}
+
+		// Check if interface has an address
+		iface, err := net.InterfaceByName(site.IfaceName)
+		if err != nil {
+			continue
+		}
+
+		addrs, _ := iface.Addrs()
+		for _, addr := range addrs {
+			if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
+				site.mu.Lock()
+				site.IPAddr = ipnet.IP
+				site.Subnet = ipnet
+				site.IsActive = true
+				site.mu.Unlock()
+				m.logger.Info("DHCP lease acquired", "iface", site.IfaceName, "ip", ipnet.IP)
 				return
-			}
-
-			// Check if interface has an address
-			iface, err := net.InterfaceByName(site.IfaceName)
-			if err != nil {
-				continue
-			}
-
-			addrs, _ := iface.Addrs()
-			for _, addr := range addrs {
-				if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
-					site.mu.Lock()
-					site.IPAddr = ipnet.IP
-					site.Subnet = ipnet
-					site.IsActive = true
-					site.mu.Unlock()
-					m.logger.Info("DHCP lease acquired", "iface", site.IfaceName, "ip", ipnet.IP)
-					return
-				}
 			}
 		}
 	}

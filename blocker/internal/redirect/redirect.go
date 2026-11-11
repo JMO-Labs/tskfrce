@@ -15,16 +15,15 @@ import (
 
 // Manager handles ARP/NDP spoofing and healing (F23-F26)
 type Manager struct {
-	mu              sync.Mutex
-	lanIface        *net.Interface
-	targets         map[string]*targetLoop // MAC -> active goroutine
-	portalIP        net.IP
-	gatewayIPv4     net.IP
-	gatewayIPv6     net.IP
-	gatewayMacIPv4  net.HardwareAddr
-	gatewayMacIPv6  net.HardwareAddr
-	lastGatewaySync time.Time
-	logger          *slog.Logger
+	mu             sync.Mutex
+	lanIface       *net.Interface
+	targets        map[string]*targetLoop // MAC -> active goroutine
+	portalIP       net.IP
+	gatewayIPv4    net.IP
+	gatewayIPv6    net.IP
+	gatewayMacIPv4 net.HardwareAddr
+	gatewayMacIPv6 net.HardwareAddr
+	logger         *slog.Logger
 }
 
 type targetLoop struct {

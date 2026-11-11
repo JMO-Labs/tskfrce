@@ -1,7 +1,6 @@
 package resist
 
 import (
-	"net"
 	"testing"
 	"time"
 )
@@ -35,11 +34,6 @@ func (m *mockClock) Now() time.Time {
 
 func (m *mockClock) Add(d time.Duration) {
 	m.t = m.t.Add(d)
-}
-
-func parseCIDR(s string) *net.IPNet {
-	_, n, _ := net.ParseCIDR(s)
-	return n
 }
 
 func TestIdleDeviceNotResisting(t *testing.T) {

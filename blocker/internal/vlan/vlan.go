@@ -13,20 +13,18 @@ import (
 
 // Detector listens for 802.1Q frames and detects VLAN topology (F49)
 type Detector struct {
-	mu           sync.RWMutex
-	lanIface     *net.Interface
-	mirrorIface  *net.Interface
-	vlans        map[uint16]*vlanInfo // VID -> vlanInfo
-	macVLANs     map[string]map[uint16]bool // MAC -> VIDs
-	logger       *slog.Logger
-	stopChan     chan struct{}
-	listenConn   *packet.Conn
+	mu          sync.RWMutex
+	lanIface    *net.Interface
+	mirrorIface *net.Interface
+	vlans       map[uint16]*vlanInfo // VID -> vlanInfo
+	macVLANs    map[string]map[uint16]bool // MAC -> VIDs
+	logger      *slog.Logger
+	stopChan    chan struct{}
 }
 
 type vlanInfo struct {
-	macs     map[string]bool // Distinct MACs on this VLAN
-	subnets  map[string]int  // /24 subnet -> count (voting)
-	bestNet  *net.IPNet      // Detected /24 network
+	macs    map[string]bool // Distinct MACs on this VLAN
+	subnets map[string]int  // /24 subnet -> count (voting)
 }
 
 // New creates a new VLAN detector

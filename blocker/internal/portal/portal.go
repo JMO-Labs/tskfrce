@@ -12,15 +12,14 @@ import (
 
 // Portal handles DNS and HTTP capture for the captive portal
 type Portal struct {
-	dnsAddr         string
-	httpAddr        string
+	dnsAddr          string
+	httpAddr         string
 	portalRedirectURL string
-	portalIP        net.IP
-	hitsFunc        func(mac string) error // Callback for hit recording
-	ipToMACMap      map[string]string      // IP -> MAC mapping
-	logger          *slog.Logger
-	dnsSrv          *http.Server
-	httpSrv         *http.Server
+	portalIP         net.IP
+	hitsFunc         func(mac string) error // Callback for hit recording
+	ipToMACMap       map[string]string      // IP -> MAC mapping
+	logger           *slog.Logger
+	httpSrv          *http.Server
 }
 
 // New creates a new portal
