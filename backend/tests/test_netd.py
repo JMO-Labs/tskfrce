@@ -1,0 +1,127 @@
+"""Host network daemon (scripts/tskfrce-netd.py): validation, secrets out of argv, keyfile safety."""
+
+import importlib.util
+import stat
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+SRC = Path(__file__).resolve().parents[2] / "scripts" / "tskfrce-netd.py"
+spec = importlib.util.spec_from_file_location("netd", SRC)
+assert spec and spec.loader
+netd = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(netd)
+
+PSK = "hunter2-secret"
+
+
+@pytest.fixture
+def nmcli(monkeypatch, tmp_path):
+    """Fake nmcli: records argv, one wifi device, nothing active unless told."""
+    calls, state = [], {"up_rc": 0, "stderr": "", "active": []}
+
+    def run(argv, **kw):
+        calls.append(argv)
+        args = argv[1:]
+        out = ""
+        if args[:4] == ["-t", "-f", "DEVICE,TYPE", "device"]:
+            out = "wlo1:wifi\neno2:ethernet\n"
+        elif "--active" in args:
+            out = "".join(f"{n}:{t}:{d}\n" for n, t, d in state["active"])
+        rc = state["up_rc"] if "up" in args else 0
+        return SimpleNamespace(
+            returncode=rc, stdout=out, stderr=state["stderr"] if "up" in args else ""
+        )
+
+    monkeypatch.setattr(netd.subprocess, "run", run)
+    monkeypatch.setattr(netd, "KEYFILES", tmp_path)
+    monkeypatch.setattr(netd, "STATE", tmp_path / "state")
+    monkeypatch.setattr(netd, "COUNTRY_FILE", tmp_path / "state" / "country")
+    monkeypatch.setattr(netd, "EDGE_COUNTRY", tmp_path / "edge-country")
+    monkeypatch.setattr(netd, "CAPTIVE_DNS", tmp_path / "captive.conf")
+    return SimpleNamespace(calls=calls, state=state, dir=tmp_path)
+
+
+@pytest.mark.parametrize("ssid", ["", "x" * 33, "a\nb", "a\x00", "evil\r[ipv4]", 5, None])
+def test_bad_ssid_rejected(ssid):
+    assert not netd.valid_ssid(ssid)
+
+
+@pytest.mark.parametrize("psk", ["short", "x" * 65, "has\nnewline12", "g" * 64, None])
+def test_bad_psk_rejected(psk):
+    assert not netd.valid_psk(psk)
+
+
+def test_good_values_accepted():
+    assert netd.valid_ssid("Home WiFi; 5G") and netd.valid_psk(PSK) and netd.valid_psk("ab" * 32)
+    assert netd.valid_cc("US") and not netd.valid_cc("us") and not netd.valid_cc("USA")
+
+
+def test_handle_rejects_injection_before_nmcli(nmcli):
+    assert netd.handle({"cmd": "join", "ssid": "x\n[ipv4]", "password": PSK}) == {
+        "error": "bad_ssid"
+    }
+    assert netd.handle({"cmd": "join", "ssid": "Home", "password": "p\nsk=evil1"}) == {
+        "error": "bad_password"
+    }
+    assert nmcli.calls == []
+
+
+def test_join_keeps_secret_out_of_argv_and_writes_0600_keyfile(nmcli):
+    assert netd.handle({"cmd": "join", "ssid": "Home", "password": PSK}) == {"success": True}
+    assert not any(PSK in " ".join(c) for c in nmcli.calls)
+    kf = nmcli.dir / f"{netd.wifi_name('Home')}.nmconnection"
+    assert stat.S_IMODE(kf.stat().st_mode) == 0o600
+    assert f"psk={PSK}" in kf.read_text() and "ssid=Home" in kf.read_text()
+
+
+def test_ssid_never_used_as_connection_name(nmcli):
+    netd.handle({"cmd": "join", "ssid": "--help", "password": PSK})
+    assert not any("--help" in c for c in nmcli.calls)
+
+
+def test_failed_join_deletes_profile_and_rolls_back(nmcli):
+    nmcli.state.update(
+        up_rc=4,
+        stderr="Secrets were required, but not provided",
+        active=[("OldNet", "802-11-wireless", "wlo1")],
+    )
+    res = netd.handle({"cmd": "join", "ssid": "Home", "password": PSK})
+    assert res == {"success": False, "error": "wrong_password"}
+    assert not (nmcli.dir / f"{netd.wifi_name('Home')}.nmconnection").exists()
+    assert ["nmcli", "--wait", "60", "connection", "up", "id", "OldNet"] in nmcli.calls
+
+
+def test_keyfile_escapes_backslash_and_leading_space():
+    assert netd.kf_escape(" a\\b") == "\\sa\\\\b"
+
+
+def test_setup_join_refused_outside_setup_mode(nmcli):
+    assert netd.handle({"cmd": "setup_join", "ssid": "Home", "password": PSK}) == {
+        "error": "not_in_setup_mode"
+    }
+
+
+def test_country_validated_and_persisted(nmcli):
+    assert netd.handle({"cmd": "set_country", "country": "u;s"})["success"] is False
+    assert netd.handle({"cmd": "set_country", "country": "DE"}) == {
+        "success": True,
+        "country": "DE",
+    }
+    assert ["iw", "reg", "set", "DE"] in nmcli.calls
+    assert netd.COUNTRY_FILE.read_text() == "DE"
+
+
+def test_country_defaults_to_us_and_prefers_edge(nmcli):
+    assert netd.apply_country()["country"] == "US"
+    netd.EDGE_COUNTRY.write_text("CA\n")
+    assert netd.apply_country()["country"] == "CA"
+
+
+def test_terse_split_handles_escaped_colons():
+    assert netd.terse(r"My\:Net:WPA2:70") == ["My:Net", "WPA2", "70"]
+
+
+def test_unknown_command(nmcli):
+    assert netd.handle({"cmd": "rm -rf"}) == {"error": "unknown_command"}

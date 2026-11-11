@@ -1,169 +1,98 @@
-"""Parent API: Wi-Fi setup and management."""
+"""Wi-Fi API: parent Settings routes, plus the captive setup page's hotspot-only routes."""
 
 import hmac
 import ipaddress
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from app.api.deps import require_parent
 from app.core.client_ip import client_ip
 from app.core.config import settings
-from app.services import country_code, network_wifi, setup_mode
+from app.services import network_wifi
 
-# Parent auth router
 router = APIRouter(
     prefix="/api/v1/network/wifi", tags=["wifi"], dependencies=[Depends(require_parent)]
 )
-
-# Setup mode router (unauthenticated, IP-restricted)
+# Unauthenticated, but only for hotspot clients via the edge's hotspot site (see _hotspot_only).
 setup_router = APIRouter(prefix="/api/v1/network/wifi/setup", tags=["wifi-setup"])
 
-
-class WifiNetwork(BaseModel):
-    ssid: str
-    signal: int
-    security: str
-
-
-class ScanResponse(BaseModel):
-    networks: list[WifiNetwork]
+HOTSPOT_NET = ipaddress.ip_network("10.42.0.0/24")
 
 
 class JoinRequest(BaseModel):
     ssid: str
-    password: str = Field(min_length=8, max_length=64)
+    password: str
 
 
-class JoinResponse(BaseModel):
-    status: str  # "joining", "connected", "error"
-    reason: str | None = None
+class ForgetRequest(BaseModel):
+    ssid: str
 
 
-class StatusResponse(BaseModel):
-    connected: bool
-    ssid: str | None
-    signal: int
+class CountryRequest(BaseModel):
+    country: str
 
 
-@router.post("/scan", response_model=ScanResponse)
-def scan_wifi():
-    """Scan nearby Wi-Fi networks."""
+def _daemon(fn, *args) -> dict:
     try:
-        networks = network_wifi.scan()
-        return {"networks": [n.__dict__ for n in networks]}
-    except Exception as e:
-        raise HTTPException(500, f"Scan failed: {e}")
-
-
-@router.post("/join", response_model=JoinResponse)
-def join_wifi(body: JoinRequest):
-    """Join a Wi-Fi network."""
-    try:
-        success = network_wifi.join(body.ssid, body.password, timeout=60)
-        if success:
-            return {"status": "connected", "reason": None}
-        return {"status": "error", "reason": "connection_failed"}
+        return fn(*args)
     except ValueError as e:
-        raise HTTPException(400, str(e))
-    except Exception as e:
-        raise HTTPException(500, f"Join failed: {e}")
+        raise HTTPException(400, str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(503, "Network service unavailable") from e
 
 
-@router.get("/status", response_model=StatusResponse)
-def get_status():
-    """Get current Wi-Fi status."""
-    try:
-        status_dict = network_wifi.status()
-        return status_dict
-    except Exception as e:
-        raise HTTPException(500, f"Status check failed: {e}")
+@router.get("/status")
+def get_status() -> dict:
+    return _daemon(network_wifi.status)
+
+
+@router.post("/scan")
+def scan_wifi() -> dict:
+    return {"networks": _daemon(network_wifi.scan)}
+
+
+@router.post("/join")
+def join_wifi(body: JoinRequest) -> dict:
+    """Join from Settings. On failure the box returns to the previous network."""
+    return _daemon(network_wifi.join, body.ssid, body.password)
 
 
 @router.post("/forget")
-def forget_wifi():
-    """Forget the currently connected Wi-Fi network."""
-    try:
-        status_dict = network_wifi.status()
-        if status_dict["ssid"]:
-            network_wifi.forget(status_dict["ssid"])
-            return {"status": "forgotten"}
-        return {"status": "not_connected"}
-    except Exception as e:
-        raise HTTPException(500, f"Forget failed: {e}")
+def forget_wifi(body: ForgetRequest) -> dict:
+    return _daemon(network_wifi.forget, body.ssid)
 
 
-@router.post("/settings-join", response_model=JoinResponse)
-def settings_join(body: JoinRequest):
-    """Join from Settings with 60s rollback to previous network."""
-    try:
-        # Use SetupModeManager for rollback logic (even though not in setup mode)
-        manager = setup_mode.SetupModeManager("temp", "")  # dummy box_id/password
-        success = manager.process_settings_join(body.ssid, body.password)
-        if success:
-            # Try to apply country code if available
-            country_code.apply_country_code()
-            return {"status": "connected", "reason": None}
-        return {"status": "error", "reason": "connection_failed"}
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-    except Exception as e:
-        raise HTTPException(500, f"Settings join failed: {e}")
+@router.post("/country")
+def set_country(body: CountryRequest) -> dict:
+    """Manual country for IP-mode boxes; domain boxes get it from CF-IPCountry."""
+    return _daemon(network_wifi.set_country, body.country)
 
 
-@router.post("/apply-country")
-def apply_country():
-    """Apply country code from domain service CF-IPCountry header."""
-    try:
-        success = country_code.apply_country_code()
-        cc = country_code.get_country_code()
-        return {"applied": success, "country": cc}
-    except Exception as e:
-        raise HTTPException(500, f"Country apply failed: {e}")
-
-
-def _verify_hotspot_request(request: Request) -> None:
-    """Verify request is from hotspot client with valid token and setup mode active."""
-    # SECURITY: Use client_ip() helper (handles trusted proxy correctly)
-    ip = client_ip(request)
-
-    # SECURITY: Validate X-Edge-Token with constant-time comparison
-    token = request.headers.get("X-Edge-Token", "")
+def _hotspot_only(request: Request) -> dict:
+    """Edge token + hotspot subnet + hotspot really up. Returns daemon status."""
     if not settings.EDGE_TOKEN:
         raise HTTPException(503, "Setup mode not configured")
-    if not hmac.compare_digest(token, settings.EDGE_TOKEN):
+    if not hmac.compare_digest(request.headers.get("X-Edge-Token", ""), settings.EDGE_TOKEN):
         raise HTTPException(403, "Invalid or missing X-Edge-Token")
-
-    # SECURITY: Verify IP is in hotspot subnet (10.42.0.0/24)
     try:
-        addr = ipaddress.ip_address(ip)
-        if addr not in ipaddress.ip_network("10.42.0.0/24"):
-            raise HTTPException(403, "Client IP outside hotspot subnet")
-    except ValueError:
-        raise HTTPException(403, "Invalid client IP")
-
-    # SECURITY: Check setup mode is active (query helper socket)
-    try:
-        status = network_wifi._call_helper("status")
-        # Helper's hotspot_active flag indicates setup mode
-        if not status.get("hotspot_active"):
-            raise HTTPException(503, "Setup mode not active")
-    except RuntimeError:
-        raise HTTPException(503, "Cannot verify setup mode")
-
-
-@setup_router.post("/join", response_model=JoinResponse)
-def setup_join(request: Request, body: JoinRequest):
-    """Setup mode: join a Wi-Fi network (hotspot clients only, requires X-Edge-Token)."""
-    # SECURITY: Verify hotspot client, token, and setup mode active
-    _verify_hotspot_request(request)
-
-    try:
-        success = network_wifi.join(body.ssid, body.password, timeout=60)
-        if success:
-            return {"status": "connected", "reason": None}
-        return {"status": "error", "reason": "connection_failed"}
+        if ipaddress.ip_address(client_ip(request)) not in HOTSPOT_NET:
+            raise HTTPException(403, "Not a setup hotspot client")
     except ValueError as e:
-        raise HTTPException(400, str(e))
-    except Exception as e:
-        raise HTTPException(500, f"Join failed: {e}")
+        raise HTTPException(403, "Not a setup hotspot client") from e
+    status = _daemon(network_wifi.status)
+    if not status.get("hotspot_active") and status.get("setup", {}).get("phase") != "connecting":
+        raise HTTPException(409, "Setup mode is not active")
+    return status
+
+
+@setup_router.get("/status")
+def setup_status(request: Request) -> dict:
+    """Captive page polls this: phase idle|connecting|connected|failed, error wrong_password|failed."""
+    return _hotspot_only(request).get("setup", {})
+
+
+@setup_router.post("/join")
+def setup_join(request: Request, body: JoinRequest) -> dict:
+    _hotspot_only(request)
+    return _daemon(network_wifi.setup_join, body.ssid, body.password)

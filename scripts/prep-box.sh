@@ -75,29 +75,17 @@ sudo docker compose version >/dev/null 2>&1 || die "Docker compose plugin is mis
 # Security: docker group = root-equivalent. Fine on a single-purpose home box.
 sudo usermod -aG docker "$(id -un)"
 
-say "Setting up Wi-Fi group and socket permissions"
+say "Installing the t@sk4ce network daemon (Wi-Fi setup hotspot + fallback)"
+# Only root and the backend container (group_add 42420 in docker-compose.prod.yml) may use its socket.
 sudo groupadd -f -g 42420 tskfrce-wifi
-sudo mkdir -p /var/lib/tskfrce
-
-say "Installing Wi-Fi privileged helper and setup mode"
-for script in tskfrce-wifi-helper.sh check-setup-mode.sh wifi-watchdog.sh; do
-  curl -fsSL "https://raw.githubusercontent.com/JMO-Labs/tskfrce/$REF/scripts/$script" |
-    sudo tee "/usr/local/bin/$script" >/dev/null
-  sudo chmod +x "/usr/local/bin/$script"
-done
-sudo mkdir -p /var/lib/tskfrce
-
-for unit in tskfrce-wifi-helper.service tskfrce-check-setup.service \
-            tskfrce-setup-mode.service tskfrce-watchdog.service tskfrce-watchdog.timer; do
-  curl -fsSL "https://raw.githubusercontent.com/JMO-Labs/tskfrce/$REF/systemd/$unit" |
-    sudo tee "/etc/systemd/system/$unit" >/dev/null
-done
-
+sudo mkdir -p /usr/local/lib/tskfrce /var/lib/tskfrce/edge /etc/tskfrce
+curl -fsSL "https://raw.githubusercontent.com/JMO-Labs/tskfrce/$REF/scripts/tskfrce-netd.py" |
+  sudo tee /usr/local/lib/tskfrce/tskfrce-netd.py >/dev/null
+curl -fsSL "https://raw.githubusercontent.com/JMO-Labs/tskfrce/$REF/systemd/tskfrce-netd.service" |
+  sudo tee /etc/systemd/system/tskfrce-netd.service >/dev/null
+# The factory image writes /etc/tskfrce/setup-wifi.json ({"ssid","password"}, 0600) to match the sticker.
 sudo systemctl daemon-reload
-sudo systemctl enable --now tskfrce-wifi-helper
-sudo systemctl enable tskfrce-check-setup.service
-sudo systemctl enable tskfrce-watchdog.timer
-sudo systemctl start tskfrce-watchdog.timer
+sudo systemctl enable --now tskfrce-netd
 
 say "Installing t@sk4ce ($REF)"
 curl -fsSL "https://raw.githubusercontent.com/JMO-Labs/tskfrce/$REF/install.sh" |
