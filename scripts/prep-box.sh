@@ -75,6 +75,10 @@ sudo docker compose version >/dev/null 2>&1 || die "Docker compose plugin is mis
 # Security: docker group = root-equivalent. Fine on a single-purpose home box.
 sudo usermod -aG docker "$(id -un)"
 
+say "Setting up Wi-Fi group and socket permissions"
+sudo groupadd -f -g 42420 tskfrce-wifi
+sudo mkdir -p /var/lib/tskfrce
+
 say "Installing Wi-Fi privileged helper and setup mode"
 for script in tskfrce-wifi-helper.sh check-setup-mode.sh wifi-watchdog.sh; do
   curl -fsSL "https://raw.githubusercontent.com/JMO-Labs/tskfrce/$REF/scripts/$script" |

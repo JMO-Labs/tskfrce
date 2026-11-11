@@ -1,6 +1,8 @@
 """Parent API: Wi-Fi setup and management."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from app.api.deps import require_parent
@@ -111,3 +113,57 @@ def apply_country():
         return {"applied": success, "country": cc}
     except Exception as e:
         raise HTTPException(500, f"Country apply failed: {e}")
+
+
+# Captive portal probe URL handlers (no auth required)
+# These redirect to the setup page while in setup mode
+_SETUP_TRIGGER = Path("/var/lib/tskfrce/setup-mode.active")
+
+
+def _is_setup_mode() -> bool:
+    """Check if setup mode is active."""
+    return _SETUP_TRIGGER.exists()
+
+
+@router.get("/hotspot-detect.html")
+def hotspot_detect_apple():
+    """Apple's captive portal probe."""
+    if _is_setup_mode():
+        return Response(
+            status_code=302,
+            headers={"Location": "http://10.42.0.1/setup"},
+        )
+    return Response(status_code=200, content="Success")
+
+
+@router.get("/generate_204")
+def generate_204_android():
+    """Android's captive portal probe."""
+    if _is_setup_mode():
+        return Response(
+            status_code=302,
+            headers={"Location": "http://10.42.0.1/setup"},
+        )
+    return Response(status_code=204)
+
+
+@router.get("/connecttest.txt")
+def connecttest_windows():
+    """Windows's captive portal probe (option 1)."""
+    if _is_setup_mode():
+        return Response(
+            status_code=302,
+            headers={"Location": "http://10.42.0.1/setup"},
+        )
+    return Response(status_code=200, content="Microsoft Connect Test")
+
+
+@router.get("/ncsi.txt")
+def ncsi_windows():
+    """Windows's captive portal probe (option 2)."""
+    if _is_setup_mode():
+        return Response(
+            status_code=302,
+            headers={"Location": "http://10.42.0.1/setup"},
+        )
+    return Response(status_code=200, content="Microsoft NCSI")

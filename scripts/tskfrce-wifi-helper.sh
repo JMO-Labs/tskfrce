@@ -14,13 +14,11 @@ init_socket() {
   mkdir -p "$(dirname "$SOCKET")"
   rm -f "$SOCKET"
   mkfifo "$SOCKET"
-  # SECURITY: socket is 0666 because:
-  # 1. Only accessible via Unix socket (local only, not network exposed)
-  # 2. Backend container may run as unprivileged user (appuser)
-  # 3. Commands are validated and idempotent (no harm in replay)
-  # 4. PSK never in socket protocol (only in temp files)
-  chmod 0666 "$SOCKET"
-  log "Socket ready at $SOCKET (mode 0666)"
+  # SECURITY: socket 0660, owned by root:tskfrce-wifi group
+  # Only backend service (via group_add in docker-compose) can connect
+  chmod 0660 "$SOCKET"
+  chgrp tskfrce-wifi "$SOCKET" 2>/dev/null || true
+  log "Socket ready at $SOCKET (root:tskfrce-wifi 0660)"
 }
 
 # Handler for JSON-RPC style commands on the socket

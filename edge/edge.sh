@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # t@sk4ce edge: reports LAN IP, keeps a Let's Encrypt cert fresh, runs Caddy.
 : "${BOX_ID:=}" "${BOX_SECRET:=}"
 if [ -z "$BOX_ID" ] || [ -z "$BOX_SECRET" ]; then
@@ -25,13 +25,17 @@ lan_ip() {
 
 # post_ip <curl family flag> <ip>: returns country code from CF-IPCountry header
 post_ip() {
+  local hdrfile
+  hdrfile=$(mktemp)
+  # shellcheck disable=SC2064
+  trap "rm -f '$hdrfile'" RETURN
+
   # Capture headers to extract CF-IPCountry
   curl "$1" -fsS --max-time 30 -X POST -u "$BOX_ID:$BOX_SECRET" -H 'Content-Type: application/json' \
-    -D /tmp/curl_headers_$$ \
+    -D "$hdrfile" \
     -d "{\"ip\":\"$2\"}" "$REGISTRY_URL/api/ip"
   # Extract CF-IPCountry from response headers (e.g., "CF-IPCountry: US")
-  grep -i "^cf-ipcountry:" /tmp/curl_headers_$$ 2>/dev/null | cut -d: -f2 | tr -d ' \r' || true
-  rm -f /tmp/curl_headers_$$
+  grep -i "^cf-ipcountry:" "$hdrfile" 2>/dev/null | cut -d: -f2 | tr -d ' \r' || true
 }
 
 # report_ip [force]: -4 required, -6 best-effort (lets /find match IPv6-only visitors)
@@ -41,7 +45,9 @@ report_ip() {
   [ "${1:-}" = force ] || [ "$ip" != "$(cat "$LAST_IP_FILE" 2>/dev/null)" ] || return 0
   post_ip -6 "$ip" >/dev/null 2>&1 || :
   cc=$(post_ip -4 "$ip")
-  if [ -n "$cc" ]; then
+
+  # Validate country code: must be exactly 2 uppercase letters
+  if [ -n "$cc" ] && echo "$cc" | grep -qE '^[A-Z]{2}$'; then
     echo "$ip" > "$LAST_IP_FILE"
     # Write country code for the box to pick up
     [ -d /data ] && echo "$cc" > /data/cf_country 2>/dev/null || true

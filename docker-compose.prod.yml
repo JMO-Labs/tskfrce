@@ -36,6 +36,8 @@ services:
       - task4ce_data:/app/data
       - ntfy_conf:/ntfy-conf
       - /run/tskfrce-wifi.sock:/run/tskfrce-wifi.sock:ro
+    group_add:
+      - "42420"  # tskfrce-wifi: allows unprivileged container to connect to socket
     networks:
       - task4ce
     restart: unless-stopped
