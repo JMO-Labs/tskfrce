@@ -1,0 +1,70 @@
+{
+  "frames": [
+    {
+      "name": "dhcp_request_example",
+      "description": "Example DHCP DISCOVER request from a device",
+      "frame_hex": "ffffffffffffaabbccddeeff08004500014400000000401139a500000000ffffffff00440043013000000101aabbccddeeff000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000063825363350101ff",
+      "expected_parsing": {
+        "frame_type": "DHCP",
+        "message_type": "BOOTREQUEST",
+        "client_mac": "aa:bb:cc:dd:ee:ff",
+        "is_dhcp_discover": true
+      }
+    },
+    {
+      "name": "mdns_query_example",
+      "description": "Example mDNS PTR query for _device-info._tcp.local",
+      "frame_hex": "01005e0000fbaabbccddeeff08004500005600000000ff110000c0a80101e00000fbe5e914e9004200000000000000010000000000000b5f6465766963652d696e666f045f746370056c6f63616c00000c8001",
+      "expected_parsing": {
+        "frame_type": "mDNS",
+        "query_type": "PTR",
+        "query_name": "_device-info._tcp.local",
+        "source_ip": "192.168.1.1"
+      }
+    },
+    {
+      "name": "dns_query_example",
+      "description": "Example DNS A query",
+      "frame_hex": "aabbccddee00aabbccddeeff08004500003c0000400040110000c0a8010208080808d1a3003500280000abcd0100000100000000000006676f6f676c6503636f6d0000010001",
+      "expected_parsing": {
+        "frame_type": "DNS",
+        "query_type": "A",
+        "query_name": "google.com",
+        "source_ip": "192.168.1.2"
+      }
+    },
+    {
+      "name": "vlan_802_1q_example",
+      "description": "Example VLAN-tagged (802.1Q) Ethernet frame",
+      "frame_hex": "aabbccddee00aabbccddeeff8100000a08004500001c0000400040110000c0a80a02c0a80a0100440043000800000000",
+      "expected_parsing": {
+        "frame_type": "VLAN",
+        "vlan_id": 10,
+        "inner_type": "IPv4",
+        "source_mac": "aa:bb:cc:dd:ee:ff"
+      }
+    },
+    {
+      "name": "arp_reply_example",
+      "description": "Example ARP reply (used for spoofing redirection)",
+      "frame_hex": "aabbccddee0011223344556608060001080006040002112233445566c0a80101aabbccddeeffc0a80102",
+      "expected_parsing": {
+        "frame_type": "ARP",
+        "operation": "reply",
+        "sender_mac": "11:22:33:44:55:66",
+        "sender_ip": "192.168.1.1",
+        "target_mac": "aa:bb:cc:dd:ee:ff",
+        "target_ip": "192.168.1.2"
+      }
+    },
+    {
+      "name": "corrupted_dns_query",
+      "description": "Malformed DNS query (truncated)",
+      "frame_hex": "aabbccddee00aabbccddeeff08004500000040110000c0a80102c0a80101d1a3003500000000abcd",
+      "expected_parsing": {
+        "frame_type": "DNS",
+        "parsing_status": "corrupted"
+      }
+    }
+  ]
+}
