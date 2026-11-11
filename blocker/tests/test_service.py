@@ -17,7 +17,14 @@ CFG = Config(
     backend_url="http://b",
     blocker_url_host="b",
     internal_token="t",
-    lan_iface="",
+    lan_iface="eth0",  # Set to use single RedirectionManager for existing tests
+    data_dir=Path("/tmp"),
+)
+CFG_MULTINET = Config(
+    backend_url="http://b",
+    blocker_url_host="b",
+    internal_token="t",
+    lan_iface="",  # Empty for InterfaceManager tests
     data_dir=Path("/tmp"),
 )
 MAC = "de:ad:be:ef:00:01"
@@ -467,7 +474,8 @@ def test_resist_once_reports_workarounds_only_when_found():
 
 def test_interface_manager_used_when_lan_iface_empty():
     """Verify Service uses InterfaceManager when LAN_IFACE is unset."""
-    svc, _fw, _redir = _svc()
+    fw = FakeFirewall()
+    svc = Service(CFG_MULTINET, firewall=fw, sleep=lambda *_: None, portal_ip="192.168.1.2")
     assert svc._using_iface_mgr is True
     assert svc._iface_manager is not None
     assert svc._redir is None
