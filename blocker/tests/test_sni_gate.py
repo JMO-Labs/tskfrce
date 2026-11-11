@@ -58,17 +58,17 @@ def test_gate_closes_other_names_without_dialing():
     assert dialed == [] and got == []
 
 
-def test_dns_gives_real_address_only_for_pass_names(monkeypatch):
+def test_dns_gives_blocked_devices_real_addresses(monkeypatch):
     from blocker.scapy_lite import DNS, DNSQR
 
-    monkeypatch.setattr(portal, "real_ip", lambda n: "142.250.1.1")
+    monkeypatch.setattr(portal, "real_ip", lambda n: {"www.google.com": "142.250.1.1"}.get(n))
 
     def ask(name):
         q = bytes(DNS(id=1, rd=1, qd=DNSQR(qname=name)))
         return DNS(portal.handle_query(q, ("10.0.0.5", 5353), "10.0.0.2")).an[0].rdata
 
     assert ask("www.google.com") == "142.250.1.1"
-    assert ask("youtube.com") == "10.0.0.2"
+    assert ask("unresolvable.example") == "10.0.0.2"  # lookup failed: portal address
 
 
 def test_ruleset_sends_blocked_https_through_gate_but_not_box_pages():

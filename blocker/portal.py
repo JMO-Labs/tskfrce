@@ -12,7 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 log = logging.getLogger(__name__)
 
 
-from blocker.sni_gate import PASS_NAMES, real_ip
+from blocker.sni_gate import real_ip
 
 
 def dns_response(query_wire: bytes, answer_ip: str) -> bytes | None:
@@ -63,12 +63,13 @@ def handle_query(
     """Per-packet work: report the qname to on_query (errors swallowed), return the reply."""
     if addr[1] == 53:
         return None
+    # Real addresses, not the box's: Chrome refuses a public name that suddenly resolves to a
+    # private IP (rebinding / local-network protection), so the portal never loaded. The firewall
+    # catches the traffic instead (:80 -> portal, :443 -> sni_gate). Box IP only if lookup fails.
+    # ponytail: blocking getaddrinfo inline (cached 60 s); async upstream if DNS load matters.
     name = qname_of(data)
-    if name and name.rstrip(".").lower() in PASS_NAMES:  # real address; sni_gate vets the TLS
-        ip = real_ip(name.rstrip(".").lower())
-        if ip:
-            return dns_response(data, ip)
-    out = dns_response(data, box_ip)
+    ip = real_ip(name.rstrip(".").lower()) if name else None
+    out = dns_response(data, ip or box_ip)
     if out is not None and on_query is not None:
         try:
             name = qname_of(data)
