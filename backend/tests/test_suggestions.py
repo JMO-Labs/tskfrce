@@ -387,7 +387,7 @@ def test_goal_missing_off_when_goals_disabled(db, client, parent, kid, parent_he
 
     _old(db, parent, kid)
     _make_user(db, "dad", UserRole.PARENT)
-    assert "goal.missing:%d" % kid.id in _keys(client, parent_headers)
+    assert f"goal.missing:{kid.id}" in _keys(client, parent_headers)
     get_family(db).goals_on = False
     db.commit()
     assert not any(k.startswith("goal.missing") for k in _keys(client, parent_headers))
