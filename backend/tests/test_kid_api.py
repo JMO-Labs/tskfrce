@@ -171,6 +171,50 @@ def test_today_only_own_chores_points_and_locked(kc, db, parent, kid):
     assert j["points_balance"] == 7 and j["locked"] is True
 
 
+def test_today_lock_reason_chores(kc, db, parent, kid):
+    get_family(db).last_reset_date = DAY.date()
+    mkdev(db, kid)
+    mkchore(db, parent, kid)
+    db.commit()
+    j = kc.get("/api/v1/kid/today", headers=kid_hdr(db, kid)).json()
+    assert j["lock_reason"] == "chores" and j["lock_until"] is None
+
+
+def test_today_lock_reason_manual_with_chores_todo(kc, db, parent, kid):
+    from datetime import timedelta
+
+    from app.models.lock import Override
+
+    get_family(db).last_reset_date = DAY.date()
+    d = mkdev(db, kid)
+    mkchore(db, parent, kid)
+    end = datetime.utcnow() + timedelta(minutes=30)
+    db.add(Override(device_id=d.id, action="lock", source="manual", expires_at=end))
+    db.commit()
+    j = kc.get("/api/v1/kid/today", headers=kid_hdr(db, kid)).json()
+    assert j["lock_reason"] == "manual"
+    assert j["lock_until"].startswith(end.isoformat()[:19])
+
+
+def test_today_lock_reason_manual_no_chores_no_end(kc, db, kid):
+    from app.models.lock import Override
+
+    get_family(db).last_reset_date = DAY.date()
+    d = mkdev(db, kid)
+    db.add(Override(device_id=d.id, action="lock", source="manual", expires_at=None))
+    db.commit()
+    j = kc.get("/api/v1/kid/today", headers=kid_hdr(db, kid)).json()
+    assert j["locked"] is True and j["lock_reason"] == "manual" and j["lock_until"] is None
+
+
+def test_today_unlocked_has_no_reason(kc, db, kid):
+    get_family(db).last_reset_date = DAY.date()
+    mkdev(db, kid)
+    db.commit()
+    j = kc.get("/api/v1/kid/today", headers=kid_hdr(db, kid)).json()
+    assert j["locked"] is False and j["lock_reason"] is None
+
+
 def test_today_reports_points_held_by_pending_requests(kc, db, parent, kid):
     get_family(db).last_reset_date = DAY.date()
     mkdev(db, kid)

@@ -365,6 +365,10 @@ export interface KidChore extends TodayChore {
 
 export interface KidToday extends KidTodayPenaltyFields {
   locked: boolean
+  /** why it is blocked (schedule, chores, manual, penalty, new_device); null when open */
+  lock_reason?: string | null
+  /** UTC ISO when a timed lock (manual, penalty) ends; null = unknown */
+  lock_until?: string | null
   /** minigames: on for this kid, unplayed plays, plays not yet announced */
   games?: { on: boolean; saved: number; fresh: number }
   chores: KidChore[]
