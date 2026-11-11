@@ -140,8 +140,26 @@ def active():
 
 
 def online():
-    """True when any non-hotspot connection is up (wired or Wi-Fi, any interface)."""
-    return any(name != HOTSPOT and typ != "loopback" for name, typ, _ in active())
+    """True when the kernel has a default route through anything but the hotspot.
+
+    Asks the kernel, not NetworkManager: a wired link is often managed by systemd-networkd
+    (Ubuntu server, netplan), which NetworkManager reports as unmanaged.
+    """
+    try:
+        routes = json.loads(
+            subprocess.run(
+                ["ip", "-j", "-4", "route", "show", "default"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            ).stdout
+            or "[]"
+        )
+    except ValueError:
+        return False
+    hotspot_devs = {dev for name, _, dev in active() if name == HOTSPOT}
+    return any(r.get("dev") and r.get("dev") not in hotspot_devs for r in routes)
 
 
 def hotspot_active():

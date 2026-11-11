@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -531,3 +532,23 @@ def test_interface_manager_stop_synchronously_stops_managers():
     assert len(svc._iface_manager._managers) == 0
     # Verify firewall was flushed
     assert fw.flushed
+
+
+def test_interface_discovery_reports_that_networks_gateway(monkeypatch):
+    """Each network's discovery tags reports with its own gateway/box MAC (backend hides them)."""
+    from blocker import multinet
+    from blocker.arp import LanFacts
+
+    got = {}
+
+    def fake_run(cfg, stop, on_seen, iface=None, enrich=lambda s: s):
+        got[iface] = enrich(Seen(mac=MAC, ip="10.0.5.1", ipv6=[], hostname=None, vendor=None))
+
+    monkeypatch.setattr(multinet, "run_discovery", fake_run)
+    mgr = multinet.InterfaceManager(CFG_MULTINET)
+    lan = LanFacts(
+        gateway_ip="10.0.5.1", gateway_mac="aa:aa:aa:aa:aa:01", box_mac="bb:bb:bb:bb:bb:02"
+    )
+    mgr._run_discovery("wlo1", threading.Event(), lan)
+    assert got["wlo1"].gateway_mac == "aa:aa:aa:aa:aa:01"
+    assert got["wlo1"].box_mac == "bb:bb:bb:bb:bb:02"

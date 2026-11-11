@@ -44,6 +44,8 @@ import '../src/v2/flair/rings.css';
 import '../src/v2/flair/names.css';
 import '../src/v2/flair/titles.css';
 import '../src/v2/manage/manage.css';
+import '../src/v2/manage/wifi.css';
+import '../src/styles/setup.css';
 import '../src/v2/integrations/integrations.css';
 import '../src/v2/integrations/widgets.css';
 import '../src/v2/kid/kid-widgets.css';

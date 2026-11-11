@@ -56,6 +56,12 @@ class Device(Base):
     network_id = Column(Integer, ForeignKey("networks.id", ondelete="SET NULL"), nullable=True)
     blocked_since = Column(DateTime, nullable=True)
     exempt = Column(Boolean, nullable=False, default=False, server_default="0")  # never locked
+    is_gateway = Column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )  # reported by blocker
+    is_box = Column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )  # reported by blocker
 
     ipv6_rows = relationship("DeviceIPv6", cascade="all, delete-orphan")
     owners = relationship("User", secondary=device_owners, backref="devices")

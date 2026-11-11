@@ -13,6 +13,7 @@ from typing import Any
 
 from blocker.arp import LanFacts, RedirectionManager, TargetAddrs
 from blocker.config import Config
+from blocker.devices_meta import enrich_seen_with_gateway_and_box
 from blocker.discovery import run_discovery
 from blocker.ifaces import lan_addrs
 from blocker.resist import ResistanceCounter, ResistanceWatch
@@ -164,7 +165,7 @@ class InterfaceManager:
                     # Spawn discovery for this interface in its own thread
                     threading.Thread(
                         target=self._run_discovery,
-                        args=(iface, stop_ev),
+                        args=(iface, stop_ev, lan),
                         daemon=True,
                     ).start()
                     log.info(
@@ -173,10 +174,21 @@ class InterfaceManager:
                 except Exception:
                     log.exception("failed to start enforcement on %s", iface)
 
-    def _run_discovery(self, iface: str, stop: threading.Event) -> None:
-        """Run discovery on one interface until stop is set."""
+    def _run_discovery(
+        self, iface: str, stop: threading.Event, lan: LanFacts | None = None
+    ) -> None:
+        """Run discovery on one interface until stop is set; reports carry that network's
+        gateway/box MACs so the backend hides them."""
+
+        def enrich(seen):
+            return (
+                enrich_seen_with_gateway_and_box(seen, lan.gateway_mac, lan.box_mac)
+                if lan
+                else seen
+            )
+
         try:
-            run_discovery(self.cfg, stop, self._on_seen, iface=iface)
+            run_discovery(self.cfg, stop, self._on_seen, iface=iface, enrich=enrich)
         except Exception:
             log.exception("discovery on %s crashed", iface)
             with self._lock:

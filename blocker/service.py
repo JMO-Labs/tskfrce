@@ -26,6 +26,7 @@ from blocker.backend import (
     report_workarounds,
 )
 from blocker.config import Config
+from blocker.devices_meta import enrich_seen_with_gateway_and_box
 from blocker.discovery import run_discovery
 from blocker.hits import HitCounter
 from blocker.homework import HomeworkGate
@@ -328,6 +329,11 @@ class Service:
             out[mac] = t if (ip == t.ip and ip6 == t.ip6) else replace(t, ip=ip, ip6=ip6)
         return out, stripped
 
+    def _enrich(self, seen: Seen) -> Seen:
+        """Gateway/box MACs ride on every report so the backend can hide them in setup."""
+        lan = self._lan()
+        return enrich_seen_with_gateway_and_box(seen, lan.gateway_mac, lan.box_mac) if lan else seen
+
     def _on_seen(self, seen: Seen) -> None:
         self.signals.note_seen(seen)
         with self._lock:
@@ -460,7 +466,9 @@ class Service:
         if self._using_iface_mgr:
             self._spawn(lambda: self._iface_manager.run(self._stop))
         else:
-            self._spawn(lambda: run_discovery(self.cfg, self._stop, self._on_seen))
+            self._spawn(
+                lambda: run_discovery(self.cfg, self._stop, self._on_seen, enrich=self._enrich)
+            )
         if self.cfg.lan_iface or self.cfg.mirror_iface:
             self._spawn(lambda: self._vlan.run(self._stop))
         self._spawn(lambda: self.signals.run_dhcp(self._stop))

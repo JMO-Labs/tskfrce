@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Onboarding: Plan</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --p-bg: #f8f8f8;
+      --p-card: #ffffff;
+      --p-soft: #f3f3f3;
+      --p-ink: #292928;
+      --p-sub: #5f5f5c;
+      --p-line: #e4e4e1;
+      --p-acc: #c3f832;
+      --font-parent: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --p-bg: #1c1c1b;
+        --p-card: #292928;
+        --p-soft: #323230;
+        --p-ink: #f4f4f2;
+        --p-sub: #a8a8a4;
+        --p-line: #3d3d3b;
+      }
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 16px;
+      background: var(--p-bg);
+      color: var(--p-ink);
+      font-family: var(--font-parent), system-ui, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .pn { display: grid; gap: 14px; }
+    .pn-mh { display: flex; gap: 10px; }
+    .pn-mh h2 { margin: 0; font-size: 28px; }
+    .pn-help { color: var(--p-sub); font-size: 12.5px; margin: 0; }
+    .pn-card { background: var(--p-card); border: 1px solid var(--p-line); border-radius: 18px; padding: 16px 18px; }
+    .pn-h { margin: 0 0 10px; font-size: 14px; font-weight: 600; }
+
+    .chore-group { margin-bottom: 12px; }
+    .chore-group-title { font-size: 12px; font-weight: 600; text-transform: uppercase; color: var(--p-sub); margin-bottom: 6px; padding: 0 4px; }
+
+    .chore-item {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 12px;
+      border-radius: 6px;
+      background: var(--p-soft);
+      border: 1px solid transparent;
+      margin-bottom: 3px;
+    }
+
+    @media (hover: hover) {
+      .chore-item:hover { border-color: var(--p-line); }
+    }
+
+    .chore-item.selected {
+      border-color: var(--p-line);
+      background: var(--p-card);
+    }
+
+    .chore-check {
+      width: 16px;
+      height: 16px;
+      border: 1.5px solid var(--p-line);
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .chore-item.selected .chore-check {
+      border-color: var(--p-ink);
+      background: var(--p-ink);
+    }
+
+    .chore-check svg {
+      width: 11px;
+      height: 11px;
+      color: var(--p-card);
+      display: none;
+    }
+
+    .chore-item.selected .chore-check svg { display: block; }
+    .chore-name { font-weight: 500; font-size: 13px; margin: 0; }
+    .chore-meta { font-size: 11px; color: var(--p-sub); margin: 2px 0 0; }
+
+    .collapsible-btn {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--p-line);
+      border-radius: 8px;
+      background: var(--p-soft);
+      color: var(--p-ink);
+      font: 600 13px var(--font-parent);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    @media (hover: hover) {
+      .collapsible-btn:hover { border-color: var(--p-ink); }
+    }
+
+    .collapsible-content { display: none; margin-top: 6px; }
+    .collapsible.open .collapsible-content { display: block; }
+    .collapsible-icon { width: 16px; height: 16px; transition: transform 0.15s; }
+    .collapsible.open .collapsible-icon { transform: rotate(180deg); }
+
+    .plan-summary { margin-top: 10px; display: grid; gap: 8px; }
+    .plan-card { background: var(--p-soft); border: 1px solid var(--p-line); border-radius: 12px; padding: 10px; }
+    .plan-header { font-weight: 600; font-size: 13px; margin-bottom: 6px; }
+    .plan-kids { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+    .kid-chip { display: inline-block; padding: 3px 6px; border-radius: 10px; background: var(--p-card); border: 1px solid var(--p-line); font-size: 11px; }
+    .plan-icons { display: flex; gap: 6px; justify-content: center; }
+    .plan-icon { width: 18px; height: 18px; border-radius: 3px; background: var(--p-card); border: 1px solid var(--p-line); display: flex; align-items: center; justify-content: center; }
+    .plan-icon svg { width: 10px; height: 10px; }
+
+    .pn-actions { display: flex; gap: 8px; justify-content: space-between; margin-top: 12px; }
+    .p-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border: 1px solid var(--p-line);
+      border-radius: 999px;
+      background: var(--p-card);
+      color: var(--p-ink);
+      font: 600 13px var(--font-parent);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    @media (hover: hover) {
+      .p-btn:hover { border-color: var(--p-ink); background: var(--p-soft); }
+    }
+
+    .p-btn[data-variant='accent'] {
+      background: var(--p-acc);
+      border-color: var(--p-acc);
+      color: #292928;
+    }
+
+    @media (hover: hover) {
+      .p-btn[data-variant='accent']:hover { opacity: 0.9; }
+    }
+
+    .step-label { font-size: 12px; text-transform: uppercase; color: var(--p-sub); font-weight: 600; margin-bottom: 12px; }
+
+    @media (max-width: 600px) {
+      .pn-mh { flex-direction: column; align-items: flex-start; }
+      .pn-actions { flex-direction: column-reverse; }
+      .p-btn { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="pn">
+      <div>
+        <div class="step-label">Step 5 of 6</div>
+        <div class="pn-mh"><h2>Plan</h2></div>
+        <p class="pn-help">Pick starter chores for each age group. Customize anytime later.</p>
+      </div>
+
+      <div class="pn-card">
+        <div class="pn-h">Starter chores</div>
+
+        <div class="chore-group">
+          <div class="chore-group-title">Little (5-9)</div>
+          <div class="chore-item selected">
+            <div class="chore-check"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5l10 -10"/></svg></div>
+            <div>
+              <p class="chore-name">Put toys away</p>
+              <p class="chore-meta">Cleaning · 10 pts · daily</p>
+            </div>
+          </div>
+          <div class="chore-item selected">
+            <div class="chore-check"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5l10 -10"/></svg></div>
+            <div>
+              <p class="chore-name">Clothes in hamper</p>
+              <p class="chore-meta">Personal · 8 pts · daily</p>
+            </div>
+          </div>
+          <div class="chore-item selected">
+            <div class="chore-check"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5l10 -10"/></svg></div>
+            <div>
+              <p class="chore-name">Help set table</p>
+              <p class="chore-meta">Kitchen · 12 pts · daily</p>
+            </div>
+          </div>
+          <div class="chore-item selected">
+            <div class="chore-check"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5l10 -10"/></svg></div>
+            <div>
+              <p class="chore-name">Make bed</p>
+              <p class="chore-meta">Personal · 10 pts · daily</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="chore-group">
+          <div class="chore-group-title">Kid (10-12)</div>
+          <div class="chore-item selected">
+            <div class="chore-check"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5l10 -10"/></svg></div>
+            <div>
+              <p class="chore-name">Make bed</p>
+              <p class="chore-meta">Personal · 10 pts · daily</p>
+            </div>
+          </div>
+          <div class="chore-item selected">
+            <div class="chore-check"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5l10 -10"/></svg></div>
+            <div>
+              <p class="chore-name">Tidy room</p>
+              <p class="chore-meta">Cleaning · 25 pts · daily</p>
+            </div>
+          </div>
+          <div class="chore-item selected">
+            <div class="chore-check"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5l10 -10"/></svg></div>
+            <div>
+              <p class="chore-name">Set and clear table</p>
+              <p class="chore-meta">Kitchen · 18 pts · daily</p>
+            </div>
+          </div>
+          <div class="chore-item selected">
+            <div class="chore-check"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5l10 -10"/></svg></div>
+            <div>
+              <p class="chore-name">Homework</p>
+              <p class="chore-meta">Schoolwork · 30 pts · school days</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="chore-group">
+          <div class="chore-group-title">Teen (13+)</div>
+          <div class="chore-item selected">
+            <div class="chore-check"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5l10 -10"/></svg></div>
+            <div>
+              <p class="chore-name">Do own laundry</p>
+              <p class="chore-meta">Personal · 20 pts · daily</p>
+            </div>
+          </div>
+          <div class="chore-item selected">
+            <div class="chore-check"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5l10 -10"/></svg></div>
+            <div>
+              <p class="chore-name">Load/unload dishes</p>
+              <p class="chore-meta">Kitchen · 20 pts · daily</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="collapsible open">
+          <button class="collapsible-btn">
+            <span>More ideas</span>
+            <svg class="collapsible-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6l6 -6"/></svg>
+          </button>
+          <div class="collapsible-content">
+            <div class="chore-item">
+              <div class="chore-check"></div>
+              <div>
+                <p class="chore-name">Feed the pet</p>
+                <p class="chore-meta">Pets · 10 pts · daily</p>
+              </div>
+            </div>
+            <div class="chore-item">
+              <div class="chore-check"></div>
+              <div>
+                <p class="chore-name">Water plants</p>
+                <p class="chore-meta">Outdoor · 10 pts · daily</p>
+              </div>
+            </div>
+            <div class="chore-item">
+              <div class="chore-check"></div>
+              <div>
+                <p class="chore-name">Practice instrument</p>
+                <p class="chore-meta">Practice · 15 pts · daily</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pn-card">
+        <div class="pn-h">What this sets for 4 kids (2 share a plan = 3 cards)</div>
+        <div class="plan-summary">
+          <div class="plan-card">
+            <div class="plan-header">Plan A — Kid/Balanced</div>
+            <div class="plan-kids">
+              <span class="kid-chip">Mia</span>
+              <span class="kid-chip">Leo</span>
+            </div>
+            <div class="plan-icons">
+              <div class="plan-icon" title="Chores"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l-4 4l3 3l-3 3l4 4m6 0l4 -4l-3 -3l3 -3l-4 -4"/></svg></div>
+              <div class="plan-icon" title="Screen time"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13m0 2a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z"/></svg></div>
+              <div class="plan-icon" title="Bedtime"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3c-4.97 0 -9 3.582 -9 8c0 1.06 .474 2.078 1.318 3.078c-.553 1.896 -.996 2.518 -1.318 2.659"/></svg></div>
+              <div class="plan-icon" title="Internet locks"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2z"/></svg></div>
+              <div class="plan-icon" title="Check chores"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5l10 -10"/></svg></div>
+            </div>
+          </div>
+
+          <div class="plan-card">
+            <div class="plan-header">Plan B — Teen/Relaxed</div>
+            <div class="plan-kids">
+              <span class="kid-chip">Ava</span>
+            </div>
+            <div class="plan-icons">
+              <div class="plan-icon" title="Chores"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l-4 4l3 3l-3 3l4 4m6 0l4 -4l-3 -3l3 -3l-4 -4"/></svg></div>
+              <div class="plan-icon" title="Screen time"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13m0 2a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z"/></svg></div>
+              <div class="plan-icon" title="Bedtime"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3c-4.97 0 -9 3.582 -9 8c0 1.06 .474 2.078 1.318 3.078c-.553 1.896 -.996 2.518 -1.318 2.659"/></svg></div>
+              <div class="plan-icon" title="Internet locks"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2z"/></svg></div>
+              <div class="plan-icon" title="Check chores"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5l10 -10"/></svg></div>
+            </div>
+          </div>
+
+          <div class="plan-card">
+            <div class="plan-header">Plan C — Little/Balanced</div>
+            <div class="plan-kids">
+              <span class="kid-chip">Sam</span>
+            </div>
+            <div class="plan-icons">
+              <div class="plan-icon" title="Chores"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l-4 4l3 3l-3 3l4 4m6 0l4 -4l-3 -3l3 -3l-4 -4"/></svg></div>
+              <div class="plan-icon" title="Screen time"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13m0 2a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v4a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z"/></svg></div>
+              <div class="plan-icon" title="Bedtime"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3c-4.97 0 -9 3.582 -9 8c0 1.06 .474 2.078 1.318 3.078c-.553 1.896 -.996 2.518 -1.318 2.659"/></svg></div>
+              <div class="plan-icon" title="Internet locks"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2z"/></svg></div>
+              <div class="plan-icon" title="Check chores"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5l10 -10"/></svg></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pn-actions">
+        <button class="p-btn">Back</button>
+        <button class="p-btn" data-variant="accent">Looks good</button>
+      </div>
+      <button class="p-btn" style="width: 100%; margin-top: 8px;">Tweak</button>
+    </div>
+  </div>
+</body>
+</html>

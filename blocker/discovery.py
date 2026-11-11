@@ -53,6 +53,7 @@ def scan_once(
     resolve: Callable[[str], str | None] = resolve_hostname,
     vid: int | None = None,
     iface: str | None = None,
+    enrich: Callable[[Seen], Seen] = lambda s: s,
 ) -> list[Seen]:
     v4: dict[str, str] = {}
     for _, rcv in send("arp", cfg, iface)[0]:
@@ -69,14 +70,16 @@ def scan_once(
     for mac, ip in v4.items():
         hostname = resolve(ip)
         vendor = vendor_for(mac)
-        seen = Seen(
-            mac=mac,
-            ip=ip,
-            ipv6=v6.get(mac, [])[:MAX_IPV6],
-            hostname=hostname[:MAX_STR] if hostname else hostname,
-            vendor=vendor[:MAX_STR] if vendor else vendor,
-            vid=vid,
-            iface=iface,
+        seen = enrich(
+            Seen(
+                mac=mac,
+                ip=ip,
+                ipv6=v6.get(mac, [])[:MAX_IPV6],
+                hostname=hostname[:MAX_STR] if hostname else hostname,
+                vendor=vendor[:MAX_STR] if vendor else vendor,
+                vid=vid,
+                iface=iface,
+            )
         )
         report_seen(cfg, seen)
         seen_list.append(seen)
@@ -89,11 +92,12 @@ def run_discovery(
     on_seen: Callable[[Seen], None] | None = None,
     vid: int | None = None,
     iface: str | None = None,
+    enrich: Callable[[Seen], Seen] = lambda s: s,
 ) -> None:
     """Run periodic ARP/NDP discovery. Pass iface to override cfg.lan_iface."""
     while not stop.is_set():
         try:
-            for seen in scan_once(cfg, vid=vid, iface=iface):
+            for seen in scan_once(cfg, vid=vid, iface=iface, enrich=enrich):
                 if on_seen:
                     on_seen(seen)
         except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
