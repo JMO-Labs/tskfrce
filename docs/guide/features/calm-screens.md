@@ -14,7 +14,7 @@ You can't. Calm screens are how the parent app works now. Some pieces have their
 
 - **Today**: a **Needs you** bar when something waits, one card for each kid and a **Devices** line. The **…** at the top right has **Start Happy Hour**.
 - **A kid's page**: points, level and a few rows. Open a row to see more and change it right there. Tap the points chip for points history. **Edit** and **More** are at the top; **More** has **Bonus**, **Deduct** and **View as kid**.
-- **A chore**: rows for **Basics**, **Steps**, **Who & when** and **Options**. The chore's **…** menu has **Duplicate** and **Delete**. The type tile opens the notes kids can send.
+- **A chore**: rows for **Basics**, **Steps**, **Who & when** and **Options**. The chore's **…** menu has **Duplicate** and **Delete chore**. The type tile opens the notes kids can send.
 - **A device**: rows for **Right now**, **Details**, **Network** and **Activity**.
 - **Devices list**: **Home network** is the row at the top. It holds blocking new devices and the Home box status.
 - **Settings → Family**: rows for **Style**, **Household**, **Bedtime & recap**, **Points rules**, **Minigames** and **Penalties**. Changes save as you go.
