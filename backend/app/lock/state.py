@@ -58,7 +58,13 @@ class Prefetch:
     already holds today's runs, otherwise each owner is counted on demand.
     """
 
-    def __init__(self, db: Session, devices: list[Device], counts: dict | None = None):
+    def __init__(
+        self,
+        db: Session,
+        devices: list[Device],
+        counts: dict | None = None,
+        now: datetime | None = None,
+    ):
         ids = {d.id for d in devices}
         self.overrides: dict[int, list[Override]] = {i: [] for i in ids}
         for o in (
@@ -68,7 +74,7 @@ class Prefetch:
         ):
             self.overrides[o.device_id].append(o)
         self.rules = hours.load(db)
-        self.whole_kid = whole_kid_penalties(db, datetime.now(UTC))
+        self.whole_kid = whole_kid_penalties(db, now or datetime.now(UTC))
         self.counts = counts or {}
 
 
@@ -139,7 +145,7 @@ def desired_blocked(db: Session, now_utc: datetime) -> list[str]:
     fam = get_family(db)
     now_local = local_now(fam.timezone, _aware_utc(now_utc))
     devs = db.query(Device).options(selectinload(Device.owners), selectinload(Device.groups)).all()
-    pre = Prefetch(db, devs)
+    pre = Prefetch(db, devs, now=now_utc)
     return sorted(
         d.mac for d in devs if not is_online(device_facts(db, d, fam, now_utc, pre), now_local)
     )
@@ -162,7 +168,7 @@ def tick(db: Session, now_utc: datetime) -> tuple[list[str], dict]:
     db.query(Override).filter(Override.expires_at.isnot(None), Override.expires_at <= now).delete()
     db.commit()
     devices = db.query(Device).all()
-    pre = Prefetch(db, devices)
+    pre = Prefetch(db, devices, now=now_utc)
     rows = [(d, device_facts(db, d, fam, now_utc, pre)) for d in devices]
     rows = [(d, clamp(f, pre.overrides[d.id], now_local)) for d, f in rows]
     blocked = sorted(d.mac for d, f in rows if not is_online(f, now_local))
