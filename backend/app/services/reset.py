@@ -17,16 +17,23 @@ from app.models.user import UserRole
 
 logger = get_logger(__name__)
 
-# Tables to KEEP (not wiped): box identity, settings, config, secrets
-# Everything else is wiped.
+# Tables to KEEP (not wiped): box identity, settings, config, security registries
+# Everything else is wiped. Security registries MUST be kept to prevent:
+# - Replayed invite tokens
+# - Stale JWT auth (via token_epoch bump)
+# - Unauthorized setup (setup token tracking)
 KEEP_TABLES = {
-    "family_settings",  # family name, timezone, config
-    "family_keys",  # box ID, secret, domain (if exists)
-    "alembic_version",  # migration tracking
+    "family_settings",      # family name, timezone, config, token_epoch
+    "family_keys",          # box ID, secret, domain
+    "used_invites",         # security: prevent replayed invite tokens
+    "kid_enroll_tokens",    # security: enrollment tokens
+    "pending_invites",      # security: setup wizard state
+    "password_reset",       # security: password reset tokens
+    "alembic_version",      # migration tracking
 }
 
 
-def reset_app_data(db: Session, unblock: bool = True) -> None:
+def reset_app_data(db: Session, unblock: bool = True) -> str | None:
     """
     Reset app: wipe family data (kids, chores, history, parent PIN).
     Keep box ID/domain, UPDATE_CHANNEL, telemetry config.
@@ -35,7 +42,10 @@ def reset_app_data(db: Session, unblock: bool = True) -> None:
 
     Parent user (ROLE=PARENT) is deleted so setup wizard is reachable again
     (claim code re-armed if factory reset).
+
+    Returns: setup_token (for unclaimed boxes without CLAIM_CODE), or None.
     """
+    setup_token = None
     try:
         # Unblock all devices first (flush blocker nftables rules)
         if unblock:
@@ -49,6 +59,17 @@ def reset_app_data(db: Session, unblock: bool = True) -> None:
             fam.owner_id = None  # Re-arm claim code for setup
             fam.last_reset_date = None
             fam.setup_step = None  # Wizard starts fresh
+
+            # Bump token_epoch to invalidate all old JWTs (security)
+            fam.token_epoch = (fam.token_epoch or 0) + 1
+
+            # For unclaimed boxes (no CLAIM_CODE), generate setup token
+            from app.core.config import settings
+            if not settings.CLAIM_CODE:
+                import secrets
+                setup_token = secrets.token_urlsafe(32)
+                # TODO: Store setup_token in a new table for one-use validation
+
             db.commit()
 
         # Disable FK constraints temporarily (SQLite only; Postgres auto-handles with CASCADE)
@@ -70,20 +91,24 @@ def reset_app_data(db: Session, unblock: bool = True) -> None:
         # For now, log the intent (actual send deferred to telemetry integration)
         _log_telemetry_intent("box_reset", {"factory": False})
 
+        return setup_token
+
     except Exception as e:
         logger.error("Reset app data failed", error=str(e))
         db.rollback()
         raise
 
 
-def factory_reset(db: Session, unblock: bool = True) -> None:
+def factory_reset(db: Session, unblock: bool = True) -> str | None:
     """
     Factory reset: wipe everything reset_app_data wipes, plus saved Wi-Fi.
     Re-arms the sticker claim code for setup (on next boot).
+
+    Returns: setup_token for unclaimed boxes, or None.
     """
     try:
         # First do the app reset
-        reset_app_data(db, unblock=unblock)
+        setup_token = reset_app_data(db, unblock=unblock)
 
         # Then wipe Wi-Fi (restart network manager or systemd-networkd)
         restart_network_manager()
@@ -93,6 +118,8 @@ def factory_reset(db: Session, unblock: bool = True) -> None:
 
         # Telemetry: use eval-branch hooks when available
         _log_telemetry_intent("box_reset", {"factory": True})
+
+        return setup_token
 
     except Exception as e:
         logger.error("Factory reset failed", error=str(e))

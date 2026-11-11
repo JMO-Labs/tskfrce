@@ -7,6 +7,8 @@
 set -e
 
 FACTORY=false
+SET_PIN=false
+NEW_PIN=""
 INTERNAL_TOKEN="${INTERNAL_TOKEN:-}"
 API_URL="${API_URL:-http://localhost:3000}"
 BOX_ID="${BOX_ID:-localhost}"
@@ -18,8 +20,16 @@ while [[ $# -gt 0 ]]; do
             FACTORY=true
             shift
             ;;
+        --pin)
+            SET_PIN=true
+            shift
+            if [[ $# -gt 0 ]]; then
+                NEW_PIN="$1"
+                shift
+            fi
+            ;;
         *)
-            echo "Usage: $0 [--factory]"
+            echo "Usage: $0 [--factory] [--pin <new-pin>]"
             exit 1
             ;;
     esac
@@ -43,30 +53,49 @@ if [[ -z "$INTERNAL_TOKEN" ]]; then
     exit 1
 fi
 
-echo "Starting box reset..."
-echo "This will:"
-if [[ "$FACTORY" == "true" ]]; then
-    echo "  - Erase all family data (kids, chores, devices, history)"
-    echo "  - Erase saved Wi-Fi networks"
-    echo "  - Re-arm the sticker claim code"
+if [[ "$SET_PIN" == "true" ]]; then
+    echo "Setting new parent PIN (no data loss, bumps session epoch)..."
+    if [[ -z "$NEW_PIN" ]]; then
+        read -sp "Enter new PIN: " NEW_PIN
+        echo ""
+    fi
+    if [[ -z "$NEW_PIN" ]] || [[ ${#NEW_PIN} -lt 4 ]]; then
+        echo "Error: PIN must be at least 4 characters"
+        exit 1
+    fi
+
+    echo "Sending PIN set request..."
+    RESPONSE=$(curl -s -X POST \
+        -H "Content-Type: application/json" \
+        -H "X-Internal-Token: $INTERNAL_TOKEN" \
+        -d "{\"new_password\": \"$NEW_PIN\"}" \
+        "$API_URL/api/v1/settings/set-pin" 2>/dev/null || true)
 else
-    echo "  - Erase all family data (kids, chores, devices, history)"
-    echo "  - Keep saved Wi-Fi networks"
+    echo "Starting box reset..."
+    echo "This will:"
+    if [[ "$FACTORY" == "true" ]]; then
+        echo "  - Erase all family data (kids, chores, devices, history)"
+        echo "  - Erase saved Wi-Fi networks"
+        echo "  - Re-arm the sticker claim code"
+    else
+        echo "  - Erase all family data (kids, chores, devices, history)"
+        echo "  - Keep saved Wi-Fi networks"
+    fi
+    echo ""
+    echo "Press Ctrl+C to cancel, or wait 5 seconds to proceed..."
+    sleep 5
+
+    # Call reset API
+    FACTORY_FLAG='false'
+    [[ "$FACTORY" == "true" ]] && FACTORY_FLAG='true'
+
+    echo "Sending reset request..."
+    RESPONSE=$(curl -s -X POST \
+        -H "Content-Type: application/json" \
+        -H "X-Internal-Token: $INTERNAL_TOKEN" \
+        -d "{\"password\": \"\", \"confirm\": \"RESET\", \"factory\": $FACTORY_FLAG}" \
+        "$API_URL/api/v1/settings/reset" 2>/dev/null || true)
 fi
-echo ""
-echo "Press Ctrl+C to cancel, or wait 5 seconds to proceed..."
-sleep 5
-
-# Call reset API
-FACTORY_FLAG='false'
-[[ "$FACTORY" == "true" ]] && FACTORY_FLAG='true'
-
-echo "Sending reset request to backend..."
-RESPONSE=$(curl -s -X POST \
-    -H "Content-Type: application/json" \
-    -H "X-Internal-Token: $INTERNAL_TOKEN" \
-    -d "{\"password\": \"\", \"confirm\": \"RESET\", \"factory\": $FACTORY_FLAG}" \
-    "$API_URL/api/v1/settings/reset" 2>/dev/null || true)
 
 # Check if reset succeeded (will need proper parsing based on actual response)
 if echo "$RESPONSE" | grep -q '"ok"'; then

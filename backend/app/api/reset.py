@@ -37,6 +37,12 @@ class ForgotPinRequest(BaseModel):
     new_password: str = Field(min_length=8)
 
 
+class SetPinRequest(BaseModel):
+    """Request to set a new parent PIN via CLI (no data loss)."""
+
+    new_password: str = Field(min_length=8)
+
+
 @router.post("/reset")
 def reset(
     body: ResetRequest,
@@ -70,14 +76,18 @@ def reset(
 
     try:
         if body.factory:
-            factory_reset(db, unblock=True)
+            setup_token = factory_reset(db, unblock=True)
         else:
-            reset_app_data(db, unblock=True)
+            setup_token = reset_app_data(db, unblock=True)
 
-        return {
+        response = {
             "ok": True,
             "message": "Box will restart shortly. Log in again when it comes back online.",
         }
+        if setup_token:
+            response["setup_token"] = setup_token
+
+        return response
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -161,10 +171,22 @@ def forgot_pin(
 
         # Hash and update password
         owner.hashed_password = auth.hash_password(body.new_password)
+
+        # Bump token_epoch to invalidate all existing JWTs (session invalidation)
+        fam.token_epoch = (fam.token_epoch or 0) + 1
+
         db.commit()
 
-        # TODO: Invalidate all existing owner sessions/tokens
-        # TODO: Send notification: ntfy + Today note "Parent PIN was reset with box code"
+        # Notify parent via Today inbox
+        try:
+            from app.services.notify import notify_parents
+            notify_parents(
+                db,
+                "Parent PIN was reset with the box code.",
+                kind="box_reset_pin",
+            )
+        except Exception as e:
+            logger.warning("Failed to notify parents of PIN reset", error=str(e))
 
         return {
             "ok": True,
@@ -176,4 +198,55 @@ def forgot_pin(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Password reset failed: {str(e)}",
+        )
+
+
+@router.post("/set-pin")
+def set_pin(
+    body: SetPinRequest,
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    Set a new parent PIN via CLI (no data loss, bumps token epoch for security).
+
+    Called by: sudo tskfrce-reset --pin
+    Auth: X-Internal-Token (internal only, not user-facing)
+
+    Sets new PIN + bumps token_epoch to invalidate old sessions.
+    """
+    try:
+        auth = AuthService(db)
+        fam = get_family(db)
+        owner_id = fam.owner_id
+        if not owner_id:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="No parent account found.",
+            )
+
+        owner = db.query(User).filter(User.id == owner_id).first()
+        if not owner:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Parent account not found.",
+            )
+
+        # Hash and update password
+        owner.hashed_password = auth.hash_password(body.new_password)
+
+        # Bump token_epoch to invalidate old sessions
+        fam.token_epoch = (fam.token_epoch or 0) + 1
+
+        db.commit()
+
+        return {
+            "ok": True,
+            "message": "PIN updated and sessions invalidated.",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"PIN set failed: {str(e)}",
         )
