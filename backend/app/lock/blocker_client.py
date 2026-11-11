@@ -38,3 +38,18 @@ def test_block(mac: str) -> dict | None:
     except Exception as exc:
         logger.warning("Blocker test-block failed", error=str(exc))
         return None
+
+
+def rescan() -> bool:
+    """Ask the blocker to perform an immediate device discovery sweep. Never raises."""
+    try:
+        r = httpx.post(
+            f"{settings.BLOCKER_URL}/rescan",
+            headers={"X-Internal-Token": settings.INTERNAL_TOKEN or ""},
+            timeout=5,
+        )
+        r.raise_for_status()
+        return True
+    except Exception as exc:
+        logger.warning("Blocker rescan failed", error=str(exc))
+        return False

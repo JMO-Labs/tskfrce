@@ -71,11 +71,22 @@ def _test_block(h: _Handler) -> tuple[int, dict]:
         return 400, {"error": str(e)}
 
 
+def _rescan(h: _Handler) -> tuple[int, dict]:
+    if not _authorized(h):
+        return 403, {"error": "forbidden"}
+    try:
+        h.server.rescan()  # type: ignore[attr-defined]
+        return 200, {"ok": True}
+    except Exception as e:  # noqa: BLE001
+        return 400, {"error": str(e)}
+
+
 # (method, path) -> handler(request_handler) -> (status, json body)
 ROUTES: dict[tuple[str, str], Callable[[_Handler], tuple[int, dict]]] = {
     ("GET", "/health"): _health,
     ("POST", "/state"): _state,
     ("POST", "/test-block"): _test_block,
+    ("POST", "/rescan"): _rescan,
 }
 
 
@@ -101,10 +112,16 @@ class _Handler(BaseHTTPRequestHandler):
 
 
 def make_api(
-    state: Any, token: str, tester: Callable, host: str = "127.0.0.1", port: int = 0
+    state: Any,
+    token: str,
+    tester: Callable,
+    rescan: Callable | None = None,
+    host: str = "127.0.0.1",
+    port: int = 0,
 ) -> HTTPServer:
     server = HTTPServer((host, port), _Handler)
     server.state = state  # type: ignore[attr-defined]
     server.token = token  # type: ignore[attr-defined]
     server.tester = tester  # type: ignore[attr-defined]
+    server.rescan = rescan or (lambda: None)  # type: ignore[attr-defined]
     return server

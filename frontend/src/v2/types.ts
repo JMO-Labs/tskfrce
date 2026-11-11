@@ -54,9 +54,18 @@ export interface Device extends DevicePenaltyFields {
   hint_reason?: 'name' | 'model' | 'timing' | null
   mdns_name?: string | null
   model?: string | null
+  dhcp_fp?: string | null
   random_mac?: boolean
   /** null/absent = the untagged LAN */
   vlan_id?: number | null
+  /** Setup step: best display name (mdns > hostname > fingerprint guess > vendor) */
+  display_name?: string
+  /** Setup step: which source gave the display_name */
+  name_source?: 'mdns' | 'hostname' | 'fingerprint' | 'vendor' | 'unknown'
+  /** Setup step: maker guess from DHCP/mDNS for private MACs */
+  maker_guess?: string | null
+  /** Setup step: human-readable network label when present */
+  network?: string | null
 }
 
 /** GET /network */

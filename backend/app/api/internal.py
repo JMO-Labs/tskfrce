@@ -55,10 +55,14 @@ class SeenReport(BaseModel):
     model: str | None = Field(default=None, max_length=255)
     dhcp_fp: str | None = Field(default=None, max_length=255)
     vid: int | None = Field(default=None, ge=1, le=4094)  # null = untagged LAN
+    gateway_mac: str | None = Field(default=None, max_length=17)  # blocker's gateway MAC
+    box_mac: str | None = Field(default=None, max_length=17)  # blocker's own MAC
 
-    @field_validator("mac")
+    @field_validator("mac", "gateway_mac", "box_mac")
     @classmethod
-    def _mac(cls, v: str) -> str:
+    def _mac(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
         v = v.strip().lower().replace("-", ":")
         if not MAC_RE.match(v):
             raise ValueError("MAC address must look like aa:bb:cc:dd:ee:ff.")
@@ -146,6 +150,12 @@ def _apply(dev: Device, body: SeenReport, now: datetime) -> None:
         dev.vlan_id = body.vid
     for k in ("mdns_name", "model", "dhcp_fp"):
         setattr(dev, k, getattr(body, k) or getattr(dev, k))
+    # Set is_gateway if this MAC matches the gateway_mac reported by blocker
+    if body.gateway_mac:
+        dev.is_gateway = dev.mac == body.gateway_mac
+    # Set is_box if this MAC matches the box_mac reported by blocker
+    if body.box_mac:
+        dev.is_box = dev.mac == body.box_mac
 
 
 @router.post("/devices/seen", dependencies=[Depends(require_token)])
