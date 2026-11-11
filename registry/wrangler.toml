@@ -5,8 +5,8 @@ routes = [{ pattern = "taskfrce.jmolabs.dev", custom_domain = true }]
 
 [[kv_namespaces]]
 binding = "BOXES"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "3f7e66865e1b4e15b98415bc5df7da2f"
 
 [vars]
 BASE_DOMAIN = "taskfrce.jmolabs.dev"
-CF_ZONE_ID = ""
+CF_ZONE_ID = "9c86b83d7ed170ab99cfda89562c0900"

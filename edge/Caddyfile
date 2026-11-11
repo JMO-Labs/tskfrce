@@ -3,7 +3,14 @@
 	admin localhost:2019
 }
 
-https://{$BOX_ID}.{$BASE_DOMAIN}:443 {
+https://{$BOX_ID}.{$BASE_DOMAIN}:443,
+https://{$BOX_ID}-2.{$BASE_DOMAIN}:443,
+https://{$BOX_ID}-3.{$BASE_DOMAIN}:443,
+https://{$BOX_ID}-4.{$BASE_DOMAIN}:443,
+https://{$BOX_ID}-5.{$BASE_DOMAIN}:443,
+https://{$BOX_ID}-6.{$BASE_DOMAIN}:443,
+https://{$BOX_ID}-7.{$BASE_DOMAIN}:443,
+https://{$BOX_ID}-8.{$BASE_DOMAIN}:443 {
 	tls /data/lego/certificates/{$BOX_ID}.{$BASE_DOMAIN}.crt /data/lego/certificates/{$BOX_ID}.{$BASE_DOMAIN}.key
 	reverse_proxy {$FRONTEND_UPSTREAM:127.0.0.1:3000} {
 		header_up X-Real-IP {remote_host}

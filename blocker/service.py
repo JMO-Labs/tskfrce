@@ -25,10 +25,12 @@ from blocker.backend import (
     report_workarounds,
 )
 from blocker.config import Config
+from blocker.devices_meta import enrich_seen_with_gateway_and_box
 from blocker.discovery import run_discovery
 from blocker.hits import HitCounter
 from blocker.homework import HomeworkGate
 from blocker.hw_wiring import HomeworkWiring
+from blocker.ifaces import PerAddress
 from blocker.portal import run_dns, run_http
 from blocker.resist import ResistanceCounter, ResistanceWatch, Tally
 from blocker.signals import Signals
@@ -275,6 +277,10 @@ class Service:
         return out, stripped
 
     def _on_seen(self, seen: Seen) -> None:
+        # Add gateway/box MACs to Seen before reporting
+        lan = self._lan()
+        if lan:
+            seen = enrich_seen_with_gateway_and_box(seen, lan.gateway_mac, lan.box_mac)
         self.signals.note_seen(seen)
         with self._lock:
             self._devices[seen.mac] = TargetAddrs(mac=seen.mac, ip=seen.ip, ip6=tuple(seen.ipv6))
@@ -397,18 +403,9 @@ class Service:
             self._spawn(lambda: self._vlan.run(self._stop))
         self._spawn(lambda: self.signals.run_dhcp(self._stop))
         self._spawn(lambda: self.signals.run_mdns(self._stop))
-        self._spawn(
-            lambda: run_dns(
-                self.cfg,
-                self._portal_ip or "",
-                self._stop,
-                handle=self._wiring.dns_handle,
-                claims=self._wiring.claims,
-                client_key=self._mac_for_ip,
-                on_query=self.workarounds.add,
-            )
-        )
-        self._spawn(lambda: run_http(self.cfg, self._stop, on_hit=self.hits.add))
+        # One DNS + portal server per LAN address, never 0.0.0.0: the setup hotspot (10.42.0.1)
+        # needs :53/:80 for itself, and networks come and go (spec A2/A3).
+        self._spawn(lambda: PerAddress(self._serve_portal).run(self._stop))
         # Create API servers for each bind host. If bind_hosts is set, use multi-bind with retry.
         if self.cfg.bind_hosts:
             self._spawn(
@@ -423,6 +420,25 @@ class Service:
                 self.cfg.blocker_port,
             )
             self._spawn(self._api.serve_forever)
+
+    def _serve_portal(self, ip: str, stop: threading.Event) -> None:
+        """DNS on ip:53 and the kid portal on ip:80 until stop is set."""
+        threading.Thread(
+            target=run_http,
+            args=(self.cfg, stop),
+            kwargs={"on_hit": self.hits.add, "host": ip},
+            daemon=True,
+        ).start()
+        run_dns(
+            self.cfg,
+            self._portal_ip or ip,
+            stop,
+            handle=self._wiring.dns_handle,
+            claims=self._wiring.claims,
+            bind=(ip, 53),
+            client_key=self._mac_for_ip,
+            on_query=self.workarounds.add,
+        )
 
     def _spawn(self, target: Callable[[], None]) -> None:
         threading.Thread(target=target, daemon=True).start()

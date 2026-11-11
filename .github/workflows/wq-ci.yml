@@ -4,11 +4,28 @@ on:
     branches: [dev]
 permissions: {contents: read, pull-requests: write}
 jobs:
+  # Docs/site-only PRs skip the gate (skipped = success). Backend/blocker/lint-config changes run it.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {contents: read, pull-requests: read}
+    outputs:
+      py: ${{ steps.f.outputs.py }}
+    steps:
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        id: f
+        with:
+          filters: |
+            py: ['backend/**', 'blocker/**', 'examples/**', 'ruff.toml', '.github/workflows/wq-ci.yml']
   wq:
+    needs: changes
+    if: needs.changes.outputs.py == 'true'
     uses: JMO-Labs/wq-ci/.github/workflows/wq-ci.yml@v1
     with:
+      reruns: 1  # one rerun separates a flake from a real failure; a deterministic failure costs 2 runs, not 3
+      # The one sqlite backend run for PRs to dev (ci-cd.yml skips its duplicate): -n auto on the 4-vCPU hosted runner.
       test-cmd: >-
-        pip install -q -r backend/requirements.txt pytest-cov
-        && cd backend && python -m pytest tests -q --cov --cov-report=xml:../coverage.xml --junitxml=../junit.xml
+        pip install -q -r backend/requirements.txt pytest-cov pytest-xdist
+        && cd backend && python -m pytest tests -q -n auto --cov --cov-report=xml:../coverage.xml --junitxml=../junit.xml
       fix-cmd: pip install -q ruff && ruff format backend blocker examples && ruff check --fix backend blocker examples
     secrets: inherit

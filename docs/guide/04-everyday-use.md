@@ -36,7 +36,7 @@ Tap a kid to see their day: how many chores are done, their points, streak and t
 
 When more than one thing is waiting, **Approve all** approves them in one go.
 
-A chore a kid finished stays here until you answer it, even after the daily reset. If it is from an earlier day, it shows that day. Approving it later pays the kid as normal, with any Happy Hour bonus from when it was finished. (Before 2.7.0 these were dropped at the reset and the kid got nothing.)
+A chore a kid finished stays here until you answer it, even after the daily reset. If it is from an earlier day, it shows that day. Approving it later pays the kid as normal, with any Happy Hour bonus from when it was finished. (Before 2.13.0 these were dropped at the reset and the kid got nothing.)
 
 ### Approve a chore or send it back
 

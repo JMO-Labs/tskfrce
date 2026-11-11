@@ -11,8 +11,9 @@ const require = createRequire(new URL('../frontend/package.json', import.meta.ur
 const { chromium } = require('playwright')
 
 const BASE = (process.argv[2] || 'http://127.0.0.1:8811').replace(/\/$/, '')
-const CHAPTERS = ['01-what-you-need', '02-install', '03-first-setup', '04-everyday-use', '05-for-kids', '06-troubleshooting', '07-faq', 'remote-access', 'integrations-protocol', 'features/index', 'features/homework', 'features/small-devices']
-const PAGES = ['/', '/engineering.html', '/guide/', ...CHAPTERS.map((c) => `/guide/${c}.html`)]
+const FEATURES = ['homework', 'time-banking', 'group-pricing', 'less-parent-work', 'calm-screens', 'rewards-celebrations', 'minigames', 'goals', 'small-devices']
+const CHAPTERS = ['01-what-you-need', '02-install', '03-first-setup', '04-everyday-use', '05-for-kids', '06-troubleshooting', '07-faq', 'remote-access', 'integrations-protocol', 'features/index', ...FEATURES.map((f) => `features/${f}`)]
+const PAGES = ['/', '/engineering.html', '/guide/', ...CHAPTERS.map((c) => `/guide/${c}.html`), '/releases/', '/releases/2.13.0.html']
 const problems = []
 
 const browser = await chromium.launch()
@@ -46,6 +47,12 @@ for (const path of PAGES) {
       await ctx.close()
     }
   }
+}
+
+// every feature guide must be linked from the home page (no orphans)
+{
+  const home = await (await browser.newPage()).goto(BASE + '/').then((r) => r.text())
+  for (const f of FEATURES) if (!home.includes(`href="guide/features/${f}.html"`)) problems.push(`home: no link to guide/features/${f}.html`)
 }
 
 // every local link and image on each page must resolve
