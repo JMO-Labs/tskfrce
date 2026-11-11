@@ -11,7 +11,7 @@
 #   TASK4CE_API_PORT     loopback API port           (default 8000, first install only)
 #   TASK4CE_SKIP_BLOCKER=1  do not start the internet pauser (tests)
 #   TASK4CE_YES=1        answer yes to "install Docker?"
-#   TASK4CE_PROJECT, TASK4CE_SUBNET, TASK4CE_FRONTEND_IP   side-by-side installs (tests)
+#   TASK4CE_PROJECT, TASK4CE_SUBNET, TASK4CE_BRIDGE_GW, TASK4CE_FRONTEND_IP   side-by-side installs (tests)
 
 set -eu
 
@@ -130,6 +130,7 @@ write_env() {
     echo "BLOCKER_BACKEND_URL=http://127.0.0.1:$API_PORT"
     echo "LAN_IFACE=$(lan_iface)"
     [ -z "${TASK4CE_SUBNET:-}" ] || echo "TASK4CE_SUBNET=$TASK4CE_SUBNET"
+    [ -z "${TASK4CE_BRIDGE_GW:-}" ] || echo "TASK4CE_BRIDGE_GW=$TASK4CE_BRIDGE_GW"
     [ -z "${TASK4CE_FRONTEND_IP:-}" ] || echo "TASK4CE_FRONTEND_IP=$TASK4CE_FRONTEND_IP"
   } >"$DIR/.env"
 }

@@ -14,7 +14,7 @@ from collections.abc import Callable
 from dataclasses import replace
 
 from blocker import firewall as fw
-from blocker.api import make_api
+from blocker.api import make_api, make_api_multi
 from blocker.arp import RedirectionManager, TargetAddrs
 from blocker.backend import (
     Seen,
@@ -120,6 +120,7 @@ class Service:
         self._probing: set[str] = set()  # MACs overlaid by test_block; guarded by _lock
         self._stop = threading.Event()
         self._api = None
+        self._api_servers: list = []  # For multi-bind API servers
         self.signals = Signals(cfg)
         self._vlan = VlanDetector(cfg)
         self.store.on_change(self._apply)
@@ -372,17 +373,76 @@ class Service:
             )
         )
         self._spawn(lambda: run_http(self.cfg, self._stop, on_hit=self.hits.add))
-        self._api = make_api(
-            self.store,
-            self.cfg.internal_token,
-            self.test_block,
-            self.cfg.bind_host,
-            self.cfg.blocker_port,
-        )
-        self._spawn(self._api.serve_forever)
+        # Create API servers for each bind host. If bind_hosts is set, use multi-bind with retry.
+        if self.cfg.bind_hosts:
+            self._spawn(
+                lambda: self._start_api_multi(
+                    list(self.cfg.bind_hosts), self.cfg.blocker_port
+                )
+            )
+        else:
+            self._api = make_api(
+                self.store,
+                self.cfg.internal_token,
+                self.test_block,
+                self.cfg.bind_host,
+                self.cfg.blocker_port,
+            )
+            self._spawn(self._api.serve_forever)
 
     def _spawn(self, target: Callable[[], None]) -> None:
         threading.Thread(target=target, daemon=True).start()
+
+    def _start_api_multi(self, hosts: list[str], port: int) -> None:
+        """Start API servers for multiple bind hosts with retry logic for non-loopback addresses.
+
+        Retries binding to non-loopback addresses with exponential backoff if they fail
+        (e.g., waiting for the bridge interface to be created), but other addresses
+        start immediately without retry.
+        """
+        backoff = 0.1  # start with 100ms
+        max_backoff = 30.0  # cap at 30s between retries
+
+        while True:
+            servers = []
+            failed_hosts = []
+
+            for host in hosts:
+                try:
+                    server = make_api(
+                        self.store,
+                        self.cfg.internal_token,
+                        self.test_block,
+                        host,
+                        port,
+                    )
+                    servers.append(server)
+                    if host != "127.0.0.1" and host != "::1":
+                        log.info("bound API to %s:%d", host, server.server_address[1])
+                except OSError as e:
+                    if host in ("127.0.0.1", "::1"):
+                        # Loopback must work; don't retry
+                        log.exception("failed to bind API to loopback %s:%d", host, port)
+                        raise
+                    # Non-loopback: might not exist yet (bridge IP before bridge is up)
+                    failed_hosts.append(host)
+                    log.warning("failed to bind API to %s (will retry): %s", host, e)
+
+            if not failed_hosts:
+                # All hosts bound successfully
+                self._api_servers = servers
+                for server in servers:
+                    self._spawn(server.serve_forever)
+                log.info("API servers started on %d listeners", len(servers))
+                return
+
+            # Some non-loopback hosts failed; sleep and retry
+            log.info("retrying failed hosts %s in %.1fs", failed_hosts, backoff)
+            if self._stop.wait(backoff):
+                # Service is stopping; don't retry
+                log.info("service stopping, abandoning API startup")
+                return
+            backoff = min(backoff * 1.5, max_backoff)
 
     def run(self) -> None:
         self.start()
@@ -411,6 +471,11 @@ class Service:
         if self._api is not None:
             try:
                 self._api.shutdown()
+            except Exception:  # noqa: BLE001, S110 - best effort shutdown
+                pass
+        for server in self._api_servers:
+            try:
+                server.shutdown()
             except Exception:  # noqa: BLE001, S110 - best effort shutdown
                 pass
 

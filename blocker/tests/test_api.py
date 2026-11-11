@@ -3,7 +3,7 @@ import json
 import threading
 
 import pytest
-from blocker.api import make_api
+from blocker.api import make_api, make_api_multi
 from blocker.state_store import StateStore
 
 
@@ -119,4 +119,49 @@ def test_test_block_bad_mac_is_400():
         assert status == 400 and "not a valid MAC" in body["error"]
     finally:
         server.shutdown()
+        server.server_close()
+
+
+def test_make_api_multi_creates_multiple_servers():
+    """Test that make_api_multi creates servers for each host and they share state."""
+    store = StateStore()
+    servers = make_api_multi(
+        state=store,
+        token="t",
+        tester=lambda mac: {"offline": True, "message": mac},
+        hosts=["127.0.0.1", "127.0.0.2"],
+        port=0,  # OS assigns ports
+    )
+    assert len(servers) == 2
+
+    # Both servers should have the same port (assigned by OS on first, reused on second)
+    port1 = servers[0].server_address[1]
+    port2 = servers[1].server_address[1]
+    assert port1 == port2
+
+    # Both servers should share the same state
+    assert servers[0].state is store  # type: ignore[attr-defined]
+    assert servers[1].state is store  # type: ignore[attr-defined]
+
+    # Clean up
+    for server in servers:
+        server.server_close()
+
+
+def test_make_api_multi_with_explicit_port():
+    """Test that make_api_multi with explicit port uses that port for each server."""
+    store = StateStore()
+    servers = make_api_multi(
+        state=store,
+        token="t",
+        tester=lambda mac: {"offline": True, "message": mac},
+        hosts=["127.0.0.1", "127.0.0.2"],
+        port=9999,
+    )
+    assert len(servers) == 2
+    assert servers[0].server_address[1] == 9999
+    assert servers[1].server_address[1] == 9999
+
+    # Clean up
+    for server in servers:
         server.server_close()
