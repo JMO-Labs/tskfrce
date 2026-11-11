@@ -1,6 +1,6 @@
 import type { SettingsSection } from './SettingsList'
 
-export type S = 'family' | 'hours' | 'notifications' | 'look' | 'gifs' | 'homework' | 'parents' | 'integrations' | 'wifi' | 'updates'
+export type S = 'family' | 'hours' | 'notifications' | 'look' | 'gifs' | 'homework' | 'parents' | 'integrations' | 'updates'
 
 /** The settings sections (spec mockup 02): one list for the Settings page and the phone More page. */
 export const SETTINGS_SECTIONS: SettingsSection<S>[] = [
@@ -12,6 +12,5 @@ export const SETTINGS_SECTIONS: SettingsSection<S>[] = [
   { id: 'homework', label: 'Homework', description: 'Sites that work in homework mode', icon: 'menu_book' },
   { id: 'parents', label: 'Parents', description: 'Invite and manage parents', icon: 'supervisor_account' },
   { id: 'integrations', label: 'Integrations', description: 'Connect other apps', icon: 'extension' },
-  { id: 'wifi', label: 'Wi-Fi', description: 'Connect to networks, set region', icon: 'wifi' },
   { id: 'updates', label: 'Updates', description: 'Check for new versions, manage auto-update', icon: 'download' },
 ]
