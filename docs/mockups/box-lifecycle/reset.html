@@ -273,11 +273,11 @@
     <div class="container">
         <h1>Start over: Box reset mockups</h1>
 
-        <!-- Light mode: Reset app -->
-        <h2>Light mode – Reset app (Wi-Fi kept)</h2>
+        <!-- Light mode -->
+        <h2>Light mode</h2>
         <div class="mockups">
             <div class="mockup-frame">
-                <div class="frame-label">Phone (390×844)</div>
+                <div class="frame-label">Reset app (Wi-Fi kept)</div>
                 <div class="phone-frame">
                     <div class="phone-content light-mode">
                         <div class="screen-header">
@@ -285,6 +285,15 @@
                             <div class="header-description">Reset all family data. Keep Wi-Fi and box settings.</div>
                         </div>
                         <div class="screen-content">
+                            <button class="btn btn-secondary" style="margin-bottom: 16px;">
+                                <svg style="display: inline-block; margin-right: 4px; vertical-align: -4px;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 11l5 5l5 -5" /><path d="M12 4l0 12" /></svg>
+                                Download backup
+                            </button>
+
+                            <div class="warning-box">
+                                <strong>Warning:</strong> Erases all kids, chores, devices, history, and PIN.
+                            </div>
+
                             <div class="input-group">
                                 <label class="input-label">Parent PIN</label>
                                 <input type="password" class="input-field text-input" placeholder="••••">
@@ -295,13 +304,6 @@
                                 <input type="text" class="input-field text-input" placeholder="Type RESET here">
                             </div>
 
-                            <div class="warning-box">
-                                <strong>Warning:</strong> This will erase all kids, chores, devices, history, and the parent PIN. You can download a backup first.
-                            </div>
-
-                            <button class="btn btn-secondary" style="margin-top: auto;">
-                                ↓ Download backup
-                            </button>
                             <button class="btn btn-primary" disabled>
                                 Reset app
                             </button>
@@ -310,16 +312,30 @@
                 </div>
             </div>
 
-            <!-- Dark mode: Reset app -->
+            <!-- Factory reset -->
             <div class="mockup-frame">
-                <div class="frame-label">Phone – Dark mode</div>
+                <div class="frame-label">Factory reset (+ Wi-Fi erase)</div>
                 <div class="phone-frame">
-                    <div class="phone-content dark-mode">
+                    <div class="phone-content light-mode">
                         <div class="screen-header">
                             <div class="header-title">Start over</div>
-                            <div class="header-description">Reset all family data. Keep Wi-Fi and box settings.</div>
+                            <div class="header-description">Reset all family data. Choose what to keep.</div>
                         </div>
                         <div class="screen-content">
+                            <button class="btn btn-secondary" style="margin-bottom: 16px;">
+                                <svg style="display: inline-block; margin-right: 4px; vertical-align: -4px;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 11l5 5l5 -5" /><path d="M12 4l0 12" /></svg>
+                                Download backup
+                            </button>
+
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="factory" class="checkbox-input">
+                                <label for="factory" class="checkbox-label">Also erase Wi-Fi networks? (will start setup hotspot)</label>
+                            </div>
+
+                            <div class="warning-box">
+                                <strong>Warning:</strong> Erases all kids, chores, devices, history, and PIN.
+                            </div>
+
                             <div class="input-group">
                                 <label class="input-label">Parent PIN</label>
                                 <input type="password" class="input-field text-input" placeholder="••••">
@@ -330,13 +346,6 @@
                                 <input type="text" class="input-field text-input" placeholder="Type RESET here">
                             </div>
 
-                            <div class="warning-box">
-                                <strong>Warning:</strong> This will erase all kids, chores, devices, history, and the parent PIN. You can download a backup first.
-                            </div>
-
-                            <button class="btn btn-secondary" style="margin-top: auto;">
-                                ↓ Download backup
-                            </button>
                             <button class="btn btn-primary" disabled>
                                 Reset app
                             </button>
@@ -346,26 +355,30 @@
             </div>
         </div>
 
-        <!-- Light mode: Factory reset with toggle -->
-        <h2>Light mode – Factory reset (with Wi-Fi erase option)</h2>
+        <!-- Dark mode -->
+        <h2>Dark mode</h2>
         <div class="mockups">
             <div class="mockup-frame">
-                <div class="frame-label">Phone (390×844)</div>
+                <div class="frame-label">Reset app (Wi-Fi kept)</div>
                 <div class="phone-frame">
-                    <div class="phone-content light-mode">
+                    <div class="phone-content dark-mode">
                         <div class="screen-header">
                             <div class="header-title">Start over</div>
-                            <div class="header-description">Reset all family data. Choose what to keep.</div>
+                            <div class="header-description">Reset all family data. Keep Wi-Fi and box settings.</div>
                         </div>
                         <div class="screen-content">
+                            <button class="btn btn-secondary" style="margin-bottom: 16px;">
+                                <svg style="display: inline-block; margin-right: 4px; vertical-align: -4px;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 11l5 5l5 -5" /><path d="M12 4l0 12" /></svg>
+                                Download backup
+                            </button>
+
+                            <div class="warning-box">
+                                <strong>Warning:</strong> Erases all kids, chores, devices, history, and PIN.
+                            </div>
+
                             <div class="input-group">
                                 <label class="input-label">Parent PIN</label>
                                 <input type="password" class="input-field text-input" placeholder="••••">
-                            </div>
-
-                            <div class="checkbox-group">
-                                <input type="checkbox" id="factory" class="checkbox-input">
-                                <label for="factory" class="checkbox-label">Also forget saved Wi-Fi networks? (will require re-joining on restart)</label>
                             </div>
 
                             <div class="input-group">
@@ -373,13 +386,6 @@
                                 <input type="text" class="input-field text-input" placeholder="Type RESET here">
                             </div>
 
-                            <div class="warning-box">
-                                <strong>Warning:</strong> This will erase all kids, chores, devices, history, and the parent PIN. You can download a backup first.
-                            </div>
-
-                            <button class="btn btn-secondary" style="margin-top: auto;">
-                                ↓ Download backup
-                            </button>
                             <button class="btn btn-primary" disabled>
                                 Reset app
                             </button>
@@ -388,9 +394,9 @@
                 </div>
             </div>
 
-            <!-- Dark mode: Factory reset -->
+            <!-- Factory reset dark -->
             <div class="mockup-frame">
-                <div class="frame-label">Phone – Dark mode</div>
+                <div class="frame-label">Factory reset (+ Wi-Fi erase)</div>
                 <div class="phone-frame">
                     <div class="phone-content dark-mode">
                         <div class="screen-header">
@@ -398,14 +404,23 @@
                             <div class="header-description">Reset all family data. Choose what to keep.</div>
                         </div>
                         <div class="screen-content">
-                            <div class="input-group">
-                                <label class="input-label">Parent PIN</label>
-                                <input type="password" class="input-field text-input" placeholder="••••">
-                            </div>
+                            <button class="btn btn-secondary" style="margin-bottom: 16px;">
+                                <svg style="display: inline-block; margin-right: 4px; vertical-align: -4px;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /><path d="M7 11l5 5l5 -5" /><path d="M12 4l0 12" /></svg>
+                                Download backup
+                            </button>
 
                             <div class="checkbox-group">
                                 <input type="checkbox" id="factory-dark" class="checkbox-input">
-                                <label for="factory-dark" class="checkbox-label">Also forget saved Wi-Fi networks? (will require re-joining on restart)</label>
+                                <label for="factory-dark" class="checkbox-label">Also erase Wi-Fi networks? (will start setup hotspot)</label>
+                            </div>
+
+                            <div class="warning-box">
+                                <strong>Warning:</strong> Erases all kids, chores, devices, history, and PIN.
+                            </div>
+
+                            <div class="input-group">
+                                <label class="input-label">Parent PIN</label>
+                                <input type="password" class="input-field text-input" placeholder="••••">
                             </div>
 
                             <div class="input-group">
@@ -413,13 +428,6 @@
                                 <input type="text" class="input-field text-input" placeholder="Type RESET here">
                             </div>
 
-                            <div class="warning-box">
-                                <strong>Warning:</strong> This will erase all kids, chores, devices, history, and the parent PIN. You can download a backup first.
-                            </div>
-
-                            <button class="btn btn-secondary" style="margin-top: auto;">
-                                ↓ Download backup
-                            </button>
                             <button class="btn btn-primary" disabled>
                                 Reset app
                             </button>

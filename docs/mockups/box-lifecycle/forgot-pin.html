@@ -245,6 +245,32 @@
             margin-bottom: 20px;
         }
 
+        details {
+            margin-top: 12px;
+            font-size: 13px;
+        }
+
+        details summary {
+            cursor: pointer;
+            color: #2196f3;
+            font-weight: 500;
+        }
+
+        .dark-mode details summary {
+            color: #64b5f6;
+        }
+
+        details > div {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: rgba(33, 150, 243, 0.05);
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+            opacity: 0.8;
+        }
+
         @media (max-width: 768px) {
             .grid-2 {
                 grid-template-columns: 1fr;
@@ -270,10 +296,6 @@
                             <div class="header-title">t@sk4ce</div>
                         </div>
                         <div class="screen-content">
-                            <div style="text-align: center; margin-bottom: 10px;">
-                                <div style="font-size: 40px; margin: 20px 0;">📦</div>
-                            </div>
-
                             <div class="input-group">
                                 <label class="input-label">Parent username</label>
                                 <input type="text" class="input-field text-input" placeholder="Enter your username">
@@ -305,10 +327,6 @@
                             <div class="header-title">t@sk4ce</div>
                         </div>
                         <div class="screen-content">
-                            <div style="text-align: center; margin-bottom: 10px;">
-                                <div style="font-size: 40px; margin: 20px 0;">📦</div>
-                            </div>
-
                             <div class="input-group">
                                 <label class="input-label">Parent username</label>
                                 <input type="text" class="input-field text-input" placeholder="Enter your username">
@@ -363,6 +381,15 @@
                                 <input type="password" class="input-field text-input" placeholder="••••">
                             </div>
 
+                            <div class="hint-box">
+                                <strong>After reset:</strong> All parents get alerted, all sessions sign out, and the sticker code locks until re-armed in Settings.
+                            </div>
+
+                            <details>
+                                <summary>Can't reach the sticker?</summary>
+                                <div>sudo tskfrce-reset --pin</div>
+                            </details>
+
                             <button class="btn btn-primary" style="margin-top: auto;" disabled>
                                 Reset PIN
                             </button>
@@ -399,6 +426,15 @@
                                 <label class="input-label">Confirm PIN</label>
                                 <input type="password" class="input-field text-input" placeholder="••••">
                             </div>
+
+                            <div class="hint-box">
+                                <strong>After reset:</strong> All parents get alerted, all sessions sign out, and the sticker code locks until re-armed in Settings.
+                            </div>
+
+                            <details>
+                                <summary>Can't reach the sticker?</summary>
+                                <div>sudo tskfrce-reset --pin</div>
+                            </details>
 
                             <button class="btn btn-primary" style="margin-top: auto;" disabled>
                                 Reset PIN
