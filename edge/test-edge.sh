@@ -79,6 +79,12 @@ out=$(EDGE_TOKEN=x run next_backoff 30 2>&1)
 r=0; echo "$out" | grep -q "EDGE_TOKEN" && r=1; ok "no warning with EDGE_TOKEN" $r
 r=0; ! grep -q 2443 "$HERE/Caddyfile" || r=1; ok "Caddyfile has no public ntfy port" $r
 
+r=0; grep -q '{$BOX_ID}\.{$BASE_DOMAIN}' "$HERE/Caddyfile" || r=1
+grep -q '{$BOX_ID}-2\.{$BASE_DOMAIN}' "$HERE/Caddyfile" || r=1
+grep -q '{$BOX_ID}-3\.{$BASE_DOMAIN}' "$HERE/Caddyfile" || r=1
+grep -q '{$BOX_ID}-8\.{$BASE_DOMAIN}' "$HERE/Caddyfile" || r=1
+ok "Caddyfile lists all 8 hostnames" $r
+
 # Test collect_networks
 setnet() {
   printf '#!/bin/sh\ncat <<EOF\n%s\nEOF\n' "$1" > "$T/bin/ip"

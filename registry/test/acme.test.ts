@@ -108,4 +108,28 @@ describe('acme SAN challenges', () => {
     expect(res.status).toBe(403)
     expect(cf.calls).toHaveLength(0)
   })
+
+  test('rejects SAN with extra subdomain (abc123-2.x.base)', async () => {
+    const cf = fakeCf()
+    const badName = '_acme-challenge.abc123-2.x.taskfrce.jmolabs.dev.'
+    const res = await handle(req('/api/acme/present', badName, 'tok'), await makeEnv(), cf)
+    expect(res.status).toBe(403)
+    expect(cf.calls).toHaveLength(0)
+  })
+
+  test('rejects out-of-range suffix (abc123-9)', async () => {
+    const cf = fakeCf()
+    const badName = '_acme-challenge.abc123-9.taskfrce.jmolabs.dev.'
+    const res = await handle(req('/api/acme/present', badName, 'tok'), await makeEnv(), cf)
+    expect(res.status).toBe(403)
+    expect(cf.calls).toHaveLength(0)
+  })
+
+  test('rejects invalid format (abc123x-2)', async () => {
+    const cf = fakeCf()
+    const badName = '_acme-challenge.abc123x-2.taskfrce.jmolabs.dev.'
+    const res = await handle(req('/api/acme/present', badName, 'tok'), await makeEnv(), cf)
+    expect(res.status).toBe(403)
+    expect(cf.calls).toHaveLength(0)
+  })
 })

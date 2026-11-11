@@ -82,9 +82,12 @@ const acme = (act: typeof createRecord): Route => async ({ req, env, cf }) => {
   if (typeof b?.fqdn !== 'string' || typeof b.value !== 'string' || !b.value) return json({ error: 'fqdn and value required' }, 400)
   const name = b.fqdn.trim().toLowerCase().replace(/\.$/, '')
   // Check if name is for this box: _acme-challenge.<id>, _acme-challenge.<id>-2, ..., _acme-challenge.<id>-8
-  const baseAcme = `_acme-challenge.${id}.${env.BASE_DOMAIN}`
-  const isOwnAcme = name === baseAcme || /^_acme-challenge\..+-[2-8]\./.test(name) && name.startsWith(`_acme-challenge.${id}-`) && name.endsWith(`.${env.BASE_DOMAIN}`)
-  if (!isOwnAcme) return json({ error: 'forbidden' }, 403)
+  // Use exact allow-list to prevent spoofing (e.g., _acme-challenge.<id>-2.other.<base> is rejected)
+  const allowedNames = new Set<string>([`_acme-challenge.${id}.${env.BASE_DOMAIN}`])
+  for (let i = 2; i <= 8; i++) {
+    allowedNames.add(`_acme-challenge.${id}-${i}.${env.BASE_DOMAIN}`)
+  }
+  if (!allowedNames.has(name)) return json({ error: 'forbidden' }, 403)
   await act(env, cf, 'TXT', name, b.value)
   return json({})
 }
