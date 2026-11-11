@@ -6,6 +6,9 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/jmo-labs/tskfrce/blocker/internal/homework"
 )
 
 var macRE = regexp.MustCompile(`^([0-9a-f]{2}:){5}[0-9a-f]{2}$`)
@@ -13,9 +16,10 @@ var macRE = regexp.MustCompile(`^([0-9a-f]{2}:){5}[0-9a-f]{2}$`)
 // Store holds the blocked MAC addresses and state
 type Store struct {
 	mu           sync.RWMutex
-	blocked      map[string]bool // MAC -> bool (key is lowercase)
+	blocked      map[string]bool                  // MAC -> bool (key is lowercase)
 	listenOnly   bool
 	coveredVLANs []uint16
+	homework     map[string]*homework.HomeworkState // MAC -> HomeworkState
 }
 
 // New creates a new state store
@@ -23,6 +27,7 @@ func New() *Store {
 	return &Store{
 		blocked:      make(map[string]bool),
 		coveredVLANs: []uint16{},
+		homework:     make(map[string]*homework.HomeworkState),
 	}
 }
 
@@ -93,5 +98,50 @@ func (s *Store) GetCoveredVLANs() []uint16 {
 	// Return a copy to prevent external modification
 	result := make([]uint16, len(s.coveredVLANs))
 	copy(result, s.coveredVLANs)
+	return result
+}
+
+// SetHomework updates homework state for a MAC with validation (H1)
+func (s *Store) SetHomework(mac string, hw *homework.HomeworkState) error {
+	// Validate MAC
+	mac = strings.TrimSpace(strings.ToLower(mac))
+	if !macRE.MatchString(mac) {
+		return fmt.Errorf("'%s' is not a valid MAC address", mac)
+	}
+
+	// Validate homework state
+	if hw != nil {
+		if err := homework.ValidateHomeworkState(hw); err != nil {
+			return err
+		}
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if hw == nil || hw.Until.Before(time.Now()) {
+		delete(s.homework, mac)
+	} else {
+		s.homework[mac] = hw
+	}
+	return nil
+}
+
+// GetHomework returns the current homework state for a MAC
+func (s *Store) GetHomework(mac string) *homework.HomeworkState {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.homework[mac]
+}
+
+// GetAllHomework returns all active homework states (H1)
+func (s *Store) GetAllHomework() map[string]*homework.HomeworkState {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	// Return a copy to prevent external modification
+	result := make(map[string]*homework.HomeworkState)
+	for mac, hw := range s.homework {
+		result[mac] = hw
+	}
 	return result
 }

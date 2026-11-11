@@ -3,6 +3,9 @@ package store
 import (
 	"sort"
 	"testing"
+	"time"
+
+	"github.com/jmo-labs/tskfrce/blocker/internal/homework"
 )
 
 func TestSetBlockedValidatesAndLowercases(t *testing.T) {
@@ -228,4 +231,177 @@ func TestErrorMessageIncludesMAC(t *testing.T) {
 
 func contains(s, substr string) bool {
 	return len(s) > 0 && len(substr) > 0 && (s == substr || len(s) > len(substr))
+}
+
+func TestSetHomeworkValidatesMAC(t *testing.T) {
+	s := New()
+
+	hw := &homework.HomeworkState{
+		Allow: []string{"google.com"},
+		Block: []string{},
+		Until: time.Now().Add(1 * time.Hour),
+	}
+
+	err := s.SetHomework("invalid-mac", hw)
+	if err == nil {
+		t.Errorf("SetHomework should fail with invalid MAC")
+	}
+}
+
+func TestSetHomeworkValidatesState(t *testing.T) {
+	s := New()
+
+	// Exceed max names
+	hw := &homework.HomeworkState{
+		Allow: make([]string, homework.MaxNamesPerList+1),
+		Block: []string{},
+		Until: time.Now().Add(1 * time.Hour),
+	}
+
+	err := s.SetHomework("aa:bb:cc:dd:ee:ff", hw)
+	if err == nil {
+		t.Errorf("SetHomework should fail with exceeded limits")
+	}
+}
+
+func TestSetHomeworkStoresValidState(t *testing.T) {
+	s := New()
+
+	mac := "aa:bb:cc:dd:ee:ff"
+	hw := &homework.HomeworkState{
+		Allow: []string{"google.com", "example.com"},
+		Block: []string{"evil.com"},
+		Until: time.Now().Add(1 * time.Hour),
+	}
+
+	err := s.SetHomework(mac, hw)
+	if err != nil {
+		t.Fatalf("SetHomework failed: %v", err)
+	}
+
+	got := s.GetHomework(mac)
+	if got == nil {
+		t.Fatalf("GetHomework returned nil")
+	}
+	if len(got.Allow) != 2 || got.Allow[0] != "google.com" {
+		t.Errorf("Allow list not stored correctly")
+	}
+}
+
+func TestSetHomeworkLowercasesMAC(t *testing.T) {
+	s := New()
+
+	hw := &homework.HomeworkState{
+		Allow: []string{"google.com"},
+		Block: []string{},
+		Until: time.Now().Add(1 * time.Hour),
+	}
+
+	err := s.SetHomework("AA:BB:CC:DD:EE:FF", hw)
+	if err != nil {
+		t.Fatalf("SetHomework failed: %v", err)
+	}
+
+	// Should be stored as lowercase
+	got := s.GetHomework("aa:bb:cc:dd:ee:ff")
+	if got == nil {
+		t.Errorf("GetHomework should find MAC regardless of case")
+	}
+}
+
+func TestSetHomeworkDeletesExpiredState(t *testing.T) {
+	s := New()
+
+	mac := "aa:bb:cc:dd:ee:ff"
+	hw := &homework.HomeworkState{
+		Allow: []string{"google.com"},
+		Block: []string{},
+		Until: time.Now().Add(-1 * time.Hour), // Past time
+	}
+
+	err := s.SetHomework(mac, hw)
+	if err == nil {
+		t.Errorf("SetHomework should reject past until time")
+	}
+}
+
+func TestSetHomeworkNilDeletesEntry(t *testing.T) {
+	s := New()
+
+	mac := "aa:bb:cc:dd:ee:ff"
+	hw := &homework.HomeworkState{
+		Allow: []string{"google.com"},
+		Block: []string{},
+		Until: time.Now().Add(1 * time.Hour),
+	}
+
+	s.SetHomework(mac, hw)
+	if got := s.GetHomework(mac); got == nil {
+		t.Fatalf("initial SetHomework failed")
+	}
+
+	// Set to nil
+	s.SetHomework(mac, nil)
+	if got := s.GetHomework(mac); got != nil {
+		t.Errorf("SetHomework(nil) should delete entry, got %v", got)
+	}
+}
+
+func TestGetAllHomeworkReturnsAll(t *testing.T) {
+	s := New()
+
+	mac1 := "aa:bb:cc:dd:ee:01"
+	mac2 := "aa:bb:cc:dd:ee:02"
+
+	until := time.Now().Add(1 * time.Hour)
+	hw1 := &homework.HomeworkState{
+		Allow: []string{"google.com"},
+		Block: []string{},
+		Until: until,
+	}
+	hw2 := &homework.HomeworkState{
+		Allow: []string{"example.com"},
+		Block: []string{},
+		Until: until,
+	}
+
+	s.SetHomework(mac1, hw1)
+	s.SetHomework(mac2, hw2)
+
+	all := s.GetAllHomework()
+	if len(all) != 2 {
+		t.Errorf("GetAllHomework: got %d entries, want 2", len(all))
+	}
+
+	if _, ok := all[mac1]; !ok {
+		t.Errorf("GetAllHomework missing %s", mac1)
+	}
+	if _, ok := all[mac2]; !ok {
+		t.Errorf("GetAllHomework missing %s", mac2)
+	}
+}
+
+func TestHomeworkAndBlockedIndependent(t *testing.T) {
+	s := New()
+
+	mac := "aa:bb:cc:dd:ee:ff"
+
+	// Set both homework and blocked
+	s.SetBlocked([]string{mac})
+	s.SetHomework(mac, &homework.HomeworkState{
+		Allow: []string{"google.com"},
+		Block: []string{},
+		Until: time.Now().Add(1 * time.Hour),
+	})
+
+	// Check both are stored independently
+	blocked := s.GetBlocked()
+	if len(blocked) != 1 {
+		t.Errorf("blocked set not stored")
+	}
+
+	hw := s.GetHomework(mac)
+	if hw == nil {
+		t.Errorf("homework not stored")
+	}
 }
