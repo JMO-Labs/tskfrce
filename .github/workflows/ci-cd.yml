@@ -51,6 +51,10 @@ jobs:
 
   test:
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
+    strategy:
+      fail-fast: false
+      matrix:
+        db: [sqlite, postgres]
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
     - name: Set up Python
@@ -58,13 +62,29 @@ jobs:
       with:
         python-version: '3.11'
     - name: Install dependencies
-      run: pip install -r backend/requirements.txt
+      run: pip install -r backend/requirements.txt pytest-xdist
+    - name: Start Postgres
+      if: matrix.db == 'postgres'
+      run: |
+        docker run -d --name ci-pg-${{ github.run_id }} -p 127.0.0.1:55432:5432 \
+          -e POSTGRES_PASSWORD=pg -e POSTGRES_DB=task4ce postgres:16-alpine
+        for _ in $(seq 60); do
+          docker exec ci-pg-${{ github.run_id }} pg_isready -U postgres -d task4ce && exit 0
+          sleep 1
+        done
+        exit 1
     - name: Run test suite
-      run: cd backend && python -m pytest tests -q
+      env:
+        TEST_DATABASE_URL: ${{ matrix.db == 'postgres' && 'postgresql+psycopg://postgres:pg@127.0.0.1:55432/task4ce' || '' }}
+      run: cd backend && python -m pytest tests -q -n auto
     - name: Run blocker test suite
+      if: matrix.db == 'sqlite'
       run: |
         pip install "scapy>=2.6" pytest pyyaml
         python -m pytest blocker -q
+    - name: Stop Postgres
+      if: always() && matrix.db == 'postgres'
+      run: docker rm -f ci-pg-${{ github.run_id }}
 
   # Next 16 needs Node >= 20.9, so the jest suites and the production build run on 22.
   frontend-test:
@@ -94,7 +114,7 @@ jobs:
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
     - name: Shellcheck
-      run: shellcheck install.sh scripts/test-install.sh scripts/start.sh scripts/prep-box.sh edge/edge.sh edge/test-edge.sh scripts/enable-hostname.sh scripts/test-enable-hostname.sh registry/scripts/new-box.sh registry/scripts/test-new-box.sh
+      run: shellcheck install.sh scripts/test-install.sh scripts/start.sh scripts/prep-box.sh edge/edge.sh edge/test-edge.sh scripts/enable-hostname.sh scripts/test-enable-hostname.sh registry/scripts/new-box.sh registry/scripts/test-new-box.sh scripts/db-migrate.sh scripts/test-db-migrate.sh scripts/tier.sh
     - name: Installer smoke test
       run: bash scripts/test-install.sh
     - name: Edge tests
@@ -103,6 +123,8 @@ jobs:
       run: bash scripts/test-enable-hostname.sh
     - name: New-box test
       run: bash registry/scripts/test-new-box.sh
+    - name: DB migrate wrapper test
+      run: bash scripts/test-db-migrate.sh
 
   lab:
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
@@ -151,6 +173,33 @@ jobs:
       if: always()
       run: bash scripts/lab.sh down
 
+  # Pi 4 2GB tier (docs/superpowers/specs/2026-11-10-constrained-devices-design.md): fails on a target miss
+  # or on memory growth over a compressed soak. Needs the production frontend build, so not the home runner.
+  perf:
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    timeout-minutes: 45
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+    - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+      with: { python-version: '3.11' }
+    - name: Bench math tests
+      run: pip install pytest && python -m pytest perf -q
+    - name: Pi 4 2GB gate
+      run: bash scripts/tier.sh pi4-2g gate
+    - name: Pi 4 2GB soak (10 min)
+      run: bash scripts/tier.sh pi4-2g up && bash scripts/tier.sh pi4-2g soak 10
+    - name: Tier teardown
+      if: always()
+      run: bash scripts/tier.sh pi4-2g down
+    - name: Upload perf results
+      if: always()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+      with:
+        name: perf-results
+        path: perf/results/*.json
+        if-no-files-found: ignore
+
   security-scan:
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
     needs: [test, lint]
@@ -185,7 +234,7 @@ jobs:
 
   build-and-push:
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
-    needs: [test, lint, frontend-test, standalone, security-scan]
+    needs: [test, lint, frontend-test, standalone, security-scan, perf]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     strategy:
       matrix:

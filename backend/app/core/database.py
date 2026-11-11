@@ -28,6 +28,7 @@ def _sqlite_pragmas(dbapi_conn, _record) -> None:
     cur = dbapi_conn.cursor()
     cur.execute("PRAGMA journal_mode=WAL")
     cur.execute(f"PRAGMA busy_timeout={BUSY_TIMEOUT_MS}")
+    cur.execute("PRAGMA synchronous=NORMAL")  # safe under WAL; spares SD cards an fsync per commit
     cur.execute("PRAGMA foreign_keys=ON")
     cur.close()
 
@@ -45,6 +46,8 @@ def make_engine(url: str, echo: bool = False):
         return eng
     return create_engine(
         url,
+        # stored times are naive UTC; never let a server's local zone shift them
+        connect_args={"options": "-c timezone=UTC"} if url.startswith("postgresql") else {},
         pool_pre_ping=True,
         pool_recycle=300,
         pool_size=10,

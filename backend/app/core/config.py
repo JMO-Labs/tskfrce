@@ -24,6 +24,14 @@ def normalize_claim_code(raw: str) -> str:
     return "".join(raw.split()).upper().translate(_LOOKALIKES)
 
 
+def normalize_db_url(url: str) -> str:
+    """postgres:// and postgresql:// mean Postgres via psycopg 3 (the only server driver shipped)."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url.removeprefix(prefix)
+    return url
+
+
 class Settings(BaseSettings):
     """
     Application settings loaded from environment variables.
@@ -86,6 +94,7 @@ class Settings(BaseSettings):
         self.DATA_DIR.mkdir(parents=True, exist_ok=True)
         if not self.DATABASE_URL:
             self.DATABASE_URL = f"sqlite:///{self.DATA_DIR}/task4ce.db"
+        self.DATABASE_URL = normalize_db_url(self.DATABASE_URL)
         generated = load_or_create_secrets(self.DATA_DIR)
         for name, value in generated.items():
             if not getattr(self, name):

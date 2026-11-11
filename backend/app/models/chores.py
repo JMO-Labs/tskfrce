@@ -122,6 +122,7 @@ class ChoreRun(Base):
             "kid_id",
             unique=True,
             sqlite_where=text("kid_id IS NOT NULL"),
+            postgresql_where=text("kid_id IS NOT NULL"),
         ),
         Index(
             "uq_run_shared_day",
@@ -129,6 +130,7 @@ class ChoreRun(Base):
             "day",
             unique=True,
             sqlite_where=text("kid_id IS NULL"),
+            postgresql_where=text("kid_id IS NULL"),
         ),
     )
 
