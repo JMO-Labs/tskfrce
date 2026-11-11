@@ -18,6 +18,7 @@ from app.lock import activity
 from app.lock.hints import apply_hint
 from app.lock.identity import note_identity_change
 from app.lock.loop import trigger
+from app.lock.relink import apply_relink
 from app.lock.rules import block_reason
 from app.lock.schedule import local_now
 from app.lock.state import Prefetch, desired_blocked, device_facts
@@ -194,7 +195,10 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
         try:
             db.flush()
             # a hint sends its own notice; no bell while the wizard is running
-            if not apply_hint(db, dev) and get_family(db).setup_step is None:
+            if (
+                not (apply_relink(db, dev) or apply_hint(db, dev))
+                and get_family(db).setup_step is None
+            ):
                 inbox.notify_parents(
                     db,
                     "new_device",
@@ -217,7 +221,11 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
             activity.log(db, dev.id, "address_change", now, detail=f"{old_ip} → {body.ip}")
         note_identity_change(db, dev, before[1], now)
         changed = before != (dev.mdns_name, dev.model, dev.dhcp_fp)
-        hinted = changed and dev.status == "unassigned" and apply_hint(db, dev)
+        hinted = (
+            changed
+            and dev.status == "unassigned"
+            and (apply_relink(db, dev) or apply_hint(db, dev))
+        )
     if new and dev.hostname:
         _note_new_address(db, dev, now)
     activity.sample(db, dev, now)

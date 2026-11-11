@@ -200,6 +200,7 @@ def list_devices(db: Session = Depends(get_db)):
         .options(
             selectinload(Device.owners), selectinload(Device.groups), selectinload(Device.ipv6_rows)
         )
+        .filter(Device.replaced.is_(False))
         .order_by(Device.id)
         .all()
     )
@@ -272,6 +273,8 @@ def undo_hint(device_id: int, db: Session = Depends(get_db)):
     d.owners, d.groups = [], []
     db.query(Override).filter(Override.device_id == d.id).delete()  # incl. the copied lock
     d.status = "unassigned"
+    if d.hint_reason == "relink":
+        db.query(Device).filter(Device.id == d.hint_of_id).update({"replaced": False})
     d.hint_of_id = d.hint_reason = None
     db.commit()
     trigger()
