@@ -25,6 +25,7 @@ from app.models.device_activity import DeviceEvent
 from app.models.family import get_family
 from app.models.homework import HomeworkActivity
 from app.models.lock import Device, Vlan
+from app.models.network import Network
 from app.schemas.homework import ActivityReport
 from app.services import inbox
 
@@ -137,6 +138,23 @@ class WorkaroundReport(BaseModel):
         return out
 
 
+class NetworkItem(BaseModel):
+    iface: str = Field(max_length=15)
+    subnet: str | None = None
+    auto_label: str = Field(max_length=50)
+
+    @field_validator("subnet")
+    @classmethod
+    def _subnet(cls, v: str | None) -> str | None:
+        if v is not None:
+            v = str(ipaddress.ip_network(v, strict=False))
+        return v
+
+
+class NetworksReport(BaseModel):
+    networks: list[NetworkItem] = Field(max_length=100)
+
+
 def _apply(dev: Device, body: SeenReport, now: datetime) -> None:
     dev.ip, dev.last_seen = body.ip, now
     dev.ipv6 = body.ipv6
@@ -243,11 +261,18 @@ def state(db: Session = Depends(get_db)) -> dict:
         rows = [(d, device_facts(db, d, fam, datetime.now(UTC), pre)) for d in devices]
         homework = state_map(db, rows, set(blocked))
 
+    # Build network enforce map: {iface+subnet: enforce_bool}
+    network_enforce = {}
+    for net in db.query(Network):
+        key = f"{net.iface}:{net.subnet}" if net.subnet else net.iface
+        network_enforce[key] = net.enforce
+
     return {
         "blocked": blocked,
         "homework": homework,
         "listen_only": fam.listen_only,
         "covered_vlans": covered,
+        "network_enforce": network_enforce,  # NEW: enforce state per network
     }
 
 
@@ -402,3 +427,34 @@ def homework_activity(body: ActivityReport, db: Session = Depends(get_db)) -> di
         stored += 1
     db.commit()
     return {"ok": True, "stored": stored}
+
+
+@router.post("/networks", dependencies=[Depends(require_token)])
+def report_networks(body: NetworksReport, db: Session = Depends(get_db)) -> dict:
+    """Upsert detected networks from blocker (interfaces, subnets, labels)."""
+    now = datetime.now(UTC).replace(tzinfo=None)
+    upserted = 0
+    for net_item in body.networks:
+        # Find or create network by (iface, subnet)
+        net = db.query(Network).filter(
+            Network.iface == net_item.iface,
+            Network.subnet == net_item.subnet,
+        ).first()
+        if net is None:
+            net = Network(
+                iface=net_item.iface,
+                subnet=net_item.subnet,
+                auto_label=net_item.auto_label,
+                enforce=True,  # default: enforce on all new networks
+            )
+            db.add(net)
+        else:
+            # Update auto_label if it changed
+            if net.auto_label != net_item.auto_label:
+                net.auto_label = net_item.auto_label
+        net.last_seen = now
+        db.flush()
+        upserted += 1
+    db.commit()
+    _touch(db)
+    return {"ok": True, "upserted": upserted}
