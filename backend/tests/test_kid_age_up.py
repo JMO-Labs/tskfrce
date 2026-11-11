@@ -112,8 +112,18 @@ def test_confirm_moves_group_and_applies_preset(db, client, parent, kid, parent_
     _kid(db, "kid", set_ago=365 * 5)
     get_family(db).preset_style = "balanced"
     db.commit()
+    from app.services import preset_state, presets
+
+    want = presets.kid_plan("teen", "balanced")
+    before = preset_state.current(db, kid)
+    assert before["screen"] != want["screen"] and before["bedtime"] != want["bedtime"]
     r = client.post(f"{K}/{kid.id}/age-up", headers=parent_headers)
     assert r.status_code == 200 and r.json()["age_group"] == "teen"
+    db.expire_all()
+    now = preset_state.current(db, kid)
+    for key in ("screen", "bedtime", "lock", "trust", "photo"):
+        assert now[key] == want[key], key
+    assert now["chores"] == sorted(want["chores"])
     db.refresh(kid)
     assert kid.age_group == "teen" and kid.age_group_set_at is not None
     assert (datetime.utcnow() - kid.age_group_set_at).days == 0
