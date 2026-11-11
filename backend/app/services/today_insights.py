@@ -11,7 +11,6 @@ from app.models.chores import ChoreRun
 from app.models.family import get_family
 from app.models.goal import Goal, GoalContribution
 from app.services import chores as chore_svc
-from app.services import goals as goal_svc
 
 GOAL_PCT = 75
 SERIES_DAYS = 14
@@ -66,7 +65,7 @@ def week(db: Session, today: date, tz: ZoneInfo) -> dict:
     per: dict[date, list[int]] = {}  # day -> [on time, counted]
     when = [[0] * 7 for _ in range(3)]
     for r in runs:
-        if r.status == "done":
+        if r.status in ("done", "submitted"):
             d = _done_at(r)
             if d is not None and (d.replace(tzinfo=UTC).astimezone(tz).date() >= first):
                 s, w = _slot(d, tz)
@@ -110,9 +109,16 @@ def goals(db: Session, now: datetime) -> list[dict]:
         .group_by(GoalContribution.goal_id)
         .all()
     )
+    active = db.query(Goal).filter(Goal.status == "active", Goal.target > 0).all()
+    totals = dict(
+        db.query(GoalContribution.goal_id, func.sum(GoalContribution.amount))
+        .filter(GoalContribution.goal_id.in_([g.id for g in active]))
+        .group_by(GoalContribution.goal_id)
+        .all()
+    )
     out = []
-    for g in db.query(Goal).filter(Goal.status == "active", Goal.target > 0).all():
-        saved = goal_svc.saved(db, g.id)
+    for g in active:
+        saved = int(totals.get(g.id) or 0)
         rate = (earned.get(g.id) or 0) / EARN_DAYS
         left = max(g.target - saved, 0)
         eta = 0 if left == 0 else math.ceil(left / rate) if rate > 0 else None
