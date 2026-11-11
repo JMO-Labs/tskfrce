@@ -16,7 +16,8 @@ type Manager struct {
 	lanIface        string
 	sites           map[uint16]*Site // VID -> Site
 	logger          *slog.Logger
-	createdIfaces   map[string]bool // Interface names created by us
+	createdIfaces   map[string]bool // Interface names created by us (protected by mu)
+	stopped         bool             // True if Stop() has been called (protected by mu)
 }
 
 // Site represents a VLAN site with its interface and DHCP state
@@ -48,8 +49,12 @@ func (m *Manager) Sync(coveredVLANs []uint16) error {
 		return nil
 	}
 
-	// Build list of VLANs to stop/create under lock
+	// Build list of VLANs to stop/create under lock; check stopped flag
 	m.mu.Lock()
+	if m.stopped {
+		m.mu.Unlock()
+		return nil // Sync after Stop is a no-op
+	}
 	toStop := make([]*Site, 0)
 	for vid, site := range m.sites {
 		found := false
@@ -87,6 +92,13 @@ func (m *Manager) Sync(coveredVLANs []uint16) error {
 			continue
 		}
 		m.mu.Lock()
+		// Double-check stopped flag before inserting
+		if m.stopped {
+			// Stop was called while we were creating; tear down immediately
+			m.mu.Unlock()
+			m.teardownSite(site)
+			continue
+		}
 		m.sites[vid] = site
 		m.mu.Unlock()
 	}
@@ -225,22 +237,44 @@ func (m *Manager) waitForLease(site *Site, timeout time.Duration) {
 	}
 }
 
-// teardownSite removes a VLAN site (F53)
+// teardownSite removes a VLAN site (F53) - acquires lock for createdIfaces access
 func (m *Manager) teardownSite(site *Site) {
-	// F53: heal + stop watch, kill udhcpc, delete interface only if box created it
+	m._teardownSite(site, false)
+}
+
+// _teardownSite is the internal implementation (F53: heal+stop+kill udhcpc+delete)
+// lockHeld: true if caller already holds m.mu (as in Stop), false if we need to acquire it
+func (m *Manager) _teardownSite(site *Site, lockHeld bool) {
 	m.logger.Info("tearing down site", "vid", site.VID, "iface", site.IfaceName)
 
 	// Stop DHCP if running
 	// TODO: Kill udhcpc process via pidfile
 
 	// Delete interface only if we created it
-	if site.CreatedByUs && m.createdIfaces[site.IfaceName] {
-		if link, err := netlink.LinkByName(site.IfaceName); err == nil {
-			if err := netlink.LinkDel(link); err != nil {
-				m.logger.Error("failed to delete interface", "iface", site.IfaceName, "err", err)
+	if site.CreatedByUs {
+		// Guard createdIfaces access with mutex
+		if !lockHeld {
+			m.mu.Lock()
+		}
+		wasCreated := m.createdIfaces[site.IfaceName]
+		if !lockHeld {
+			m.mu.Unlock()
+		}
+
+		if wasCreated {
+			if link, err := netlink.LinkByName(site.IfaceName); err == nil {
+				if err := netlink.LinkDel(link); err != nil {
+					m.logger.Error("failed to delete interface", "iface", site.IfaceName, "err", err)
+				}
+			}
+			if !lockHeld {
+				m.mu.Lock()
+			}
+			delete(m.createdIfaces, site.IfaceName)
+			if !lockHeld {
+				m.mu.Unlock()
 			}
 		}
-		delete(m.createdIfaces, site.IfaceName)
 	}
 }
 
@@ -256,15 +290,17 @@ func (m *Manager) GetSites() map[uint16]*Site {
 	return result
 }
 
-// Stop shuts down all sites
+// Stop shuts down all sites (F53 + race safety)
 func (m *Manager) Stop() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	m.stopped = true // Prevent Sync from inserting new sites
 	for _, site := range m.sites {
-		m.teardownSite(site)
+		m._teardownSite(site, true) // lockHeld=true, we hold mu
 	}
 	m.sites = make(map[uint16]*Site)
+	m.createdIfaces = make(map[string]bool)
 }
 
 // GetInfrastructureExclusions returns gateway and box IPs for infrastructure exclusion (F54)

@@ -4,6 +4,7 @@ package homework
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -128,4 +129,82 @@ func TimeoutForPair(ttl int, now time.Time, until time.Time) int {
 		timeout = 1
 	}
 	return timeout
+}
+
+// SessionState tracks per-session follow-window state (H6)
+type SessionState struct {
+	LastAllowedName string    // Name of last allowed query (for gate follow)
+	LastAllowedTime time.Time // Time of last allowed query (gate window reset)
+	NamesSeen       int       // Total names seen this session (H6 cap: 5000)
+}
+
+// Manager implements homework decision logic per MAC (H2, H6)
+type Manager struct {
+	mu       sync.Mutex
+	state    *HomeworkState // Current state: allow/block lists + until
+	session  SessionState   // Gate follow state
+	now      func() time.Time // For testing
+}
+
+// NewManager creates a homework manager (H1-H6)
+func NewManager(hw *HomeworkState) *Manager {
+	return &Manager{
+		state: hw,
+		now:   time.Now,
+	}
+}
+
+// SetState updates the homework state (called on /state reconcile)
+func (m *Manager) SetState(hw *HomeworkState) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.state = hw
+}
+
+// Decide evaluates if a domain name is allowed under homework mode (H2, H6)
+// Returns (allowed, via) where via is "list" or "follow"; both reject if allowed=false
+func (m *Manager) Decide(domain string) (allowed bool, via string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// No homework state → allow all
+	if m.state == nil {
+		return true, "none"
+	}
+
+	// Homework expired → allow all
+	if !m.state.Until.IsZero() && m.now().After(m.state.Until) {
+		return true, "none"
+	}
+
+	// Check block list FIRST (H6: blocked names denied even inside window)
+	for _, blocked := range m.state.Block {
+		if strings.EqualFold(domain, blocked) || strings.HasSuffix(domain, "."+blocked) {
+			return false, "blocked"
+		}
+	}
+
+	// Check allow list (H2: allowed names are always granted)
+	for _, allowed := range m.state.Allow {
+		if strings.EqualFold(domain, allowed) || strings.HasSuffix(domain, "."+allowed) {
+			m.session.LastAllowedName = domain
+			m.session.LastAllowedTime = m.now()
+			m.session.NamesSeen++
+			return true, "list"
+		}
+	}
+
+	// Check follow window (H6: gate window 10s, cap 5000 names)
+	if m.session.NamesSeen >= MaxNamesPerSession {
+		return false, "cap_exceeded"
+	}
+
+	// Follow window: only if we've seen an allowed name AND within window
+	if m.session.LastAllowedName != "" && m.now().Sub(m.session.LastAllowedTime) <= time.Duration(FollowWindowSecs)*time.Second {
+		m.session.NamesSeen++
+		return true, "follow"
+	}
+
+	// Name not in list and not in follow window
+	return false, "unlisted"
 }

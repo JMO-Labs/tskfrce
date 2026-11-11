@@ -320,3 +320,163 @@ func findSubstring(s, substr string) bool {
 	}
 	return false
 }
+
+// TestDecideUnlistedDenied: unlisted name with no prior allowed is denied (H6 gate)
+func TestDecideUnlistedDenied(t *testing.T) {
+	now := time.Now()
+	hw := &HomeworkState{
+		Allow: []string{"google.com"},
+		Block: []string{"blocked.com"},
+		Until: now.Add(1 * time.Hour),
+	}
+	m := NewManager(hw)
+	m.now = func() time.Time { return now }
+
+	allowed, via := m.Decide("example.com")
+	if allowed || via != "unlisted" {
+		t.Errorf("Decide(unlisted, no prior allowed) = (%v, %q), want (false, unlisted)", allowed, via)
+	}
+}
+
+// TestDecideBlockedDeniedInWindow: blocked name denied even inside follow window (H6)
+func TestDecideBlockedDeniedInWindow(t *testing.T) {
+	now := time.Now()
+	hw := &HomeworkState{
+		Allow: []string{"google.com"},
+		Block: []string{"blocked.com"},
+		Until: now.Add(1 * time.Hour),
+	}
+	m := NewManager(hw)
+	m.now = func() time.Time { return now }
+
+	// Allow a name first to open the gate
+	allowed, via := m.Decide("google.com")
+	if !allowed || via != "list" {
+		t.Fatalf("Decide(google.com) = (%v, %q), want (true, list)", allowed, via)
+	}
+
+	// Move time to 5s later (still in 10s window)
+	m.now = func() time.Time { return now.Add(5 * time.Second) }
+
+	// Try blocked name in the window - should still be denied
+	allowed, via = m.Decide("blocked.com")
+	if allowed {
+		t.Errorf("Decide(blocked.com in window) = (%v, %q), want (false, blocked)", allowed, via)
+	}
+	if via != "blocked" {
+		t.Errorf("Decide(blocked.com) via = %q, want blocked", via)
+	}
+}
+
+// TestDecideName11sAfterAllowedDenied: name 11s after allowed is denied (H6 gate 10s)
+func TestDecideName11sAfterAllowedDenied(t *testing.T) {
+	now := time.Now()
+	hw := &HomeworkState{
+		Allow: []string{"google.com"},
+		Block: []string{},
+		Until: now.Add(1 * time.Hour),
+	}
+	m := NewManager(hw)
+	m.now = func() time.Time { return now }
+
+	// Allow a name
+	allowed, via := m.Decide("google.com")
+	if !allowed || via != "list" {
+		t.Fatalf("Decide(google.com) = (%v, %q), want (true, list)", allowed, via)
+	}
+
+	// Move time to 11s later (past 10s window)
+	m.now = func() time.Time { return now.Add(11 * time.Second) }
+
+	// Try unlisted name - should be denied (outside window)
+	allowed, via = m.Decide("example.com")
+	if allowed {
+		t.Errorf("Decide(unlisted 11s later) = (%v, %q), want (false, unlisted)", allowed, via)
+	}
+}
+
+// TestDecideName3sAfterAllowedFollowed: name 3s after allowed is followed (H6 gate 10s)
+func TestDecideName3sAfterAllowedFollowed(t *testing.T) {
+	now := time.Now()
+	hw := &HomeworkState{
+		Allow: []string{"google.com"},
+		Block: []string{},
+		Until: now.Add(1 * time.Hour),
+	}
+	m := NewManager(hw)
+	m.now = func() time.Time { return now }
+
+	// Allow a name
+	allowed, via := m.Decide("google.com")
+	if !allowed || via != "list" {
+		t.Fatalf("Decide(google.com) = (%v, %q), want (true, list)", allowed, via)
+	}
+
+	// Move time to 3s later (within 10s window)
+	m.now = func() time.Time { return now.Add(3 * time.Second) }
+
+	// Try unlisted name - should be followed
+	allowed, via = m.Decide("example.com")
+	if !allowed || via != "follow" {
+		t.Errorf("Decide(unlisted 3s later) = (%v, %q), want (true, follow)", allowed, via)
+	}
+}
+
+// TestDecideAllowListAlwaysGranted: names in allow list always granted (H2)
+func TestDecideAllowListAlwaysGranted(t *testing.T) {
+	now := time.Now()
+	hw := &HomeworkState{
+		Allow: []string{"google.com"},
+		Block: []string{},
+		Until: now.Add(1 * time.Hour),
+	}
+	m := NewManager(hw)
+	m.now = func() time.Time { return now }
+
+	// google.com should be granted immediately
+	allowed, via := m.Decide("google.com")
+	if !allowed || via != "list" {
+		t.Errorf("Decide(allowed name) = (%v, %q), want (true, list)", allowed, via)
+	}
+
+	// Subdomain should also be granted
+	allowed, via = m.Decide("mail.google.com")
+	if !allowed || via != "list" {
+		t.Errorf("Decide(allowed subdomain) = (%v, %q), want (true, list)", allowed, via)
+	}
+}
+
+// TestDecideCapEnforcement: 5000 name cap enforced (H6)
+func TestDecideCapEnforcement(t *testing.T) {
+	now := time.Now()
+	hw := &HomeworkState{
+		Allow: []string{"google.com"},
+		Block: []string{},
+		Until: now.Add(1 * time.Hour),
+	}
+	m := NewManager(hw)
+	m.now = func() time.Time { return now }
+
+	// Allow a name to open the gate
+	allowed, via := m.Decide("google.com")
+	if !allowed {
+		t.Fatalf("Decide(google.com) failed")
+	}
+
+	// Simulate seeing 5000 names
+	for i := 0; i < MaxNamesPerSession; i++ {
+		allowed, _ := m.Decide("example.com")
+		if !allowed && i < MaxNamesPerSession-1 {
+			t.Fatalf("Decide() unexpectedly denied at i=%d", i)
+		}
+	}
+
+	// Next name should be denied (cap exceeded)
+	allowed, via = m.Decide("toolate.com")
+	if allowed {
+		t.Errorf("Decide() allowed after cap exceeded: (%v, %q), want (false, cap_exceeded)", allowed, via)
+	}
+	if via != "cap_exceeded" {
+		t.Errorf("Decide() via = %q, want cap_exceeded", via)
+	}
+}
