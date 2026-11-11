@@ -48,6 +48,58 @@ def parse(ip_json: str, sys: Path = SYS) -> list[tuple[str, str]]:
     return out
 
 
+def parse_networks(ip_json: str, sys: Path = SYS) -> list[tuple[str, ipaddress.IPv4Network]]:
+    """(iface, subnet) pairs, same A2 filter as parse()."""
+    out = []
+    for link in json.loads(ip_json or "[]"):
+        name = link.get("ifname", "")
+        if not is_lan_link(name, (link.get("linkinfo") or {}).get("info_kind"), sys):
+            continue
+        for a in link.get("addr_info", []):
+            if a.get("family") == "inet" and is_lan_ip(a["local"]):
+                out.append(
+                    (
+                        name,
+                        ipaddress.ip_network(
+                            f"{a['local']}/{a.get('prefixlen', 32)}", strict=False
+                        ),
+                    )
+                )
+    return out
+
+
+_NET_CACHE: tuple[float, list] = (0.0, [])
+
+
+def lan_networks(ttl: float = 30) -> list[tuple[str, ipaddress.IPv4Network]]:
+    """Cached (iface, subnet) list; refreshed at most every `ttl` seconds."""
+    global _NET_CACHE
+    import time
+
+    if time.monotonic() - _NET_CACHE[0] > ttl:
+        try:
+            r = subprocess.run(
+                ["ip", "-j", "-d", "-4", "addr", "show", "up"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+            _NET_CACHE = (time.monotonic(), parse_networks(r.stdout))
+        except (OSError, ValueError, subprocess.SubprocessError):
+            log.exception("listing interface subnets failed")
+    return _NET_CACHE[1]
+
+
+def iface_for_ip(ip: str | None, nets: list[tuple[str, ipaddress.IPv4Network]]) -> str | None:
+    """The managed interface whose subnet holds ip, or None (not on any home network we manage)."""
+    try:
+        a = ipaddress.ip_address(ip or "")
+    except ValueError:
+        return None
+    return next((name for name, net in nets if a in net), None)
+
+
 def lan_addrs() -> list[tuple[str, str]]:
     try:
         r = subprocess.run(

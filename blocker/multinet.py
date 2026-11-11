@@ -220,7 +220,7 @@ class InterfaceManager:
         """Return set of MACs currently resisting enforcement."""
         with self._lock:
             macs: set[str] = set()
-            for _, (_, _, watch) in self._managers.items():
+            for _, _, watch in self._managers.values():
                 if watch is not None:
                     macs.update(watch.counter.resisting())
             return macs
@@ -229,7 +229,7 @@ class InterfaceManager:
         """Return (gateway_macs, gateway_ips) to never enforce/spoof. Includes IPv6."""
         with self._lock:
             macs, ips = set(), set()
-            for _, (_, redir, _) in self._managers.items():
+            for _, redir, _ in self._managers.values():
                 try:
                     lan = redir._lanfacts()
                     if lan.gateway_mac:

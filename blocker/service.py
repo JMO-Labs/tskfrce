@@ -30,7 +30,7 @@ from blocker.discovery import run_discovery
 from blocker.hits import HitCounter
 from blocker.homework import HomeworkGate
 from blocker.hw_wiring import HomeworkWiring
-from blocker.ifaces import PerAddress
+from blocker.ifaces import PerAddress, iface_for_ip, lan_networks
 from blocker.multinet import InterfaceManager
 from blocker.portal import run_dns, run_http
 from blocker.resist import ResistanceCounter, ResistanceWatch, Tally
@@ -237,19 +237,15 @@ class Service:
         return base, by_vid
 
     def _by_interface(self, devs: dict[str, TargetAddrs]) -> dict[str, dict[str, TargetAddrs]]:
-        """Organize targets per interface for InterfaceManager.
-
-        Devices must have a known interface. Devices with iface=None are skipped
-        with a warning (shouldn't happen when using InterfaceManager).
-        """
+        """Targets per managed interface: where discovery saw the device, else the interface whose
+        subnet holds its IP. Neither: it isn't on a network we manage, so there's nothing to enforce
+        there (never spoof onto other networks)."""
+        nets = lan_networks()
         by_iface: dict[str, dict[str, TargetAddrs]] = {}
         for m, a in devs.items():
-            iface = self._iface_of.get(m)
+            iface = self._iface_of.get(m) or iface_for_ip(a.ip, nets)
             if iface is None:
-                log.warning(
-                    "device %s has unknown interface when using InterfaceManager; skipping",
-                    m,
-                )
+                log.info("device %s (%s) is on no managed network; not enforcing", m, a.ip)
                 continue
             by_iface.setdefault(iface, {})[m] = a
         return by_iface
@@ -267,12 +263,12 @@ class Service:
         if self._using_iface_mgr:
             # Return the first available gateway IP from any interface
             try:
-                for _, (_, redir, _) in self._iface_manager._managers.items():
+                for _, redir, _ in self._iface_manager._managers.values():
                     lan = redir._lanfacts()
                     if lan.gateway_ip:
                         return lan.gateway_ip
-            except Exception:
-                pass
+            except (OSError, ValueError):
+                log.exception("reading gateway from managed interfaces failed")
             return None
         else:
             lan = self._lan()
@@ -338,7 +334,8 @@ class Service:
             self._devices[seen.mac] = TargetAddrs(mac=seen.mac, ip=seen.ip, ip6=tuple(seen.ipv6))
             self._seen_at[seen.mac] = self._clock()
             self._vid_of[seen.mac] = seen.vid
-            self._iface_of[seen.mac] = seen.iface  # track interface for InterfaceManager
+            if seen.iface:  # never forget a known interface because a report lacked one
+                self._iface_of[seen.mac] = seen.iface
             self._seg_seen[(seen.mac, seen.vid)] = (self._devices[seen.mac], self._clock())
         if seen.mac in self.store.current():
             self._apply(self.store.current())
@@ -455,10 +452,9 @@ class Service:
             self._fw.enable_forwarding()
         except Exception:
             log.exception("enable_forwarding failed")
-        if not self._using_iface_mgr:
-            if self._watch is None:
-                counter = ResistanceCounter(self._redir._lanfacts(), lan_cidrs=self._lan_cidrs)
-                self._watch = ResistanceWatch(self.cfg, counter)
+        if not self._using_iface_mgr and self._watch is None:
+            counter = ResistanceCounter(self._redir._lanfacts(), lan_cidrs=self._lan_cidrs)
+            self._watch = ResistanceWatch(self.cfg, counter)
         self._spawn(self._reconcile_loop)
         self._spawn(self._resist_loop)
         if self._using_iface_mgr:
@@ -586,7 +582,7 @@ class Service:
             if self._iface_manager:
                 with self._iface_manager._lock:
                     for iface in list(self._iface_manager._managers):
-                        stop_ev, redir, watch = self._iface_manager._managers.pop(iface)
+                        _stop_ev, redir, watch = self._iface_manager._managers.pop(iface)
                         try:
                             redir.stop_all()
                         except Exception:

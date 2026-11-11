@@ -499,15 +499,21 @@ def test_single_redir_used_when_lan_iface_set():
     assert svc._redir is redir
 
 
-def test_device_with_unknown_iface_skipped():
-    """Devices with iface=None are skipped when using InterfaceManager."""
+def test_device_iface_falls_back_to_subnet_else_skipped(monkeypatch):
+    """No discovery iface: use the managed network whose subnet holds the IP; none = skip."""
+    import ipaddress
+
+    from blocker import service as service_mod
+
+    nets = [("wlo1", ipaddress.ip_network("10.0.5.0/24"))]
+    monkeypatch.setattr(service_mod, "lan_networks", lambda: nets)
     fw = FakeFirewall()
     svc = Service(CFG_MULTINET, firewall=fw, sleep=lambda *_: None, portal_ip="192.168.1.2")
     svc.store.set_blocked([MAC])
     svc._on_seen(Seen(mac=MAC, ip="192.168.1.50", ipv6=[], hostname=None, vendor=None))
-    # iface_of is not set (defaults to None), so _by_interface should skip this device
-    by_iface = svc._by_interface({MAC: TargetAddrs(mac=MAC, ip="192.168.1.50")})
-    assert by_iface == {}  # Device is skipped
+    assert svc._by_interface({MAC: TargetAddrs(mac=MAC, ip="192.168.1.50")}) == {}
+    hit = TargetAddrs(mac=MAC, ip="10.0.5.7")
+    assert svc._by_interface({MAC: hit}) == {"wlo1": {MAC: hit}}
 
 
 def test_interface_manager_stop_synchronously_stops_managers():
