@@ -64,3 +64,24 @@ def test_concurrency_unchanged(wf):
 
 def test_build_and_push_still_main_or_tag_push_only(wf):
     assert "github.event_name == 'push'" in wf["jobs"]["build-and-push"]["if"]
+
+
+def test_perf_off_the_critical_path(wf, on):
+    # Owner decision: perf (~13 min) is nightly + main PRs + tags + merge queue + dispatch + perf/** PRs only
+    assert on["schedule"][0]["cron"]
+    for name, job in wf["jobs"].items():
+        needs = job.get("needs", [])
+        needs = [needs] if isinstance(needs, str) else needs
+        assert "perf" not in needs, name
+    cond = wf["jobs"]["changes"]["outputs"]["perf"]
+    for term in ["'schedule'", "'merge_group'", "'workflow_dispatch'", "refs/tags/v", "base_ref == 'main'"]:
+        assert term in cond
+    assert wf["jobs"]["perf"]["if"] == "needs.changes.outputs.perf == 'true'"
+
+
+@pytest.mark.parametrize("job", ["lint", "test", "frontend-test", "standalone", "installer", "security-scan"])
+def test_schedule_runs_only_perf(wf, job):
+    outs = wf["jobs"]["changes"]["outputs"]
+    cond = wf["jobs"][job]["if"]
+    keys = [k for k in outs if f"outputs.{k} ==" in cond]
+    assert keys and all("github.event_name != 'schedule'" in outs[k] for k in keys)

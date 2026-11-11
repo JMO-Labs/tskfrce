@@ -8,6 +8,8 @@ on:
   pull_request:
     branches: [ main, dev, 'feat/**' ]
   merge_group:  # merge queue: the only place the network lab gates a merge
+  schedule:
+    - cron: '0 3 * * *'  # nightly Pi 4 2GB perf gate against dev; every other job stands down on schedule events
 
 # One run per PR/branch: a new push to a PR cancels its stale run. main/tags never cancel.
 concurrency:
@@ -27,11 +29,13 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      py: ${{ !(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.py == 'true' }}
-      fe: ${{ !(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.fe == 'true' }}
-      pg: ${{ !(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.pg == 'true' }}
-      installer: ${{ !(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.installer == 'true' }}
-      perf: ${{ !(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.perf == 'true' }}
+      py: ${{ github.event_name != 'schedule' && (!(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.py == 'true') }}
+      fe: ${{ github.event_name != 'schedule' && (!(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.fe == 'true') }}
+      pg: ${{ github.event_name != 'schedule' && (!(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.pg == 'true') }}
+      installer: ${{ github.event_name != 'schedule' && (!(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.installer == 'true') }}
+      # perf (~13 min): nightly, main-bound PRs, release tags, merge queue, manual runs, and PRs touching perf/**
+      perf: ${{ github.event_name == 'schedule' || github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'pull_request' && (github.base_ref == 'main' || steps.f.outputs.perf == 'true')) }}
+      sec: ${{ github.event_name != 'schedule' }}
       dbs: ${{ (!(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.pg == 'true') && '["sqlite","postgres"]' || '["sqlite"]' }}
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -45,7 +49,7 @@ jobs:
           fe: ['frontend/**', 'registry/**', '.github/workflows/ci-cd.yml']
           pg: ['backend/alembic/**', 'backend/app/models/**', 'backend/app/core/database.py', 'backend/app/services/db_move.py', 'backend/app/utils/backup_db.py', 'backend/requirements.txt', '.github/workflows/ci-cd.yml']
           installer: ['install.sh', 'scripts/**', 'edge/**', 'registry/scripts/**', 'docker-compose*.yml', '.github/workflows/ci-cd.yml']
-          perf: ['backend/**', 'frontend/**', 'perf/**', 'scripts/**', 'docker-compose*.yml', '.github/workflows/ci-cd.yml']
+          perf: ['perf/**', 'scripts/tier.sh']
 
   lint:
     needs: changes
@@ -238,11 +242,16 @@ jobs:
   # or on memory growth over a compressed soak. Needs the production frontend build, so not the home runner.
   perf:
     runs-on: ubuntu-latest
-    needs: changes  # was [lint, test]: perf uses neither's output, so it no longer waits for the slowest job
+    needs: changes  # no other job needs perf: it never blocks them
     if: needs.changes.outputs.perf == 'true'
     timeout-minutes: 45
+    permissions:
+      contents: read
+      issues: write  # nightly failure issue
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      with:
+        ref: ${{ github.event_name == 'schedule' && 'dev' || '' }}  # schedule runs the default-branch workflow; test dev
     - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
       with: { python-version: '3.11' }
     - name: Bench math tests
@@ -261,8 +270,20 @@ jobs:
         name: perf-results
         path: perf/results/*.json
         if-no-files-found: ignore
+    - name: Open/update nightly failure issue
+      if: failure() && github.event_name == 'schedule'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        title="Nightly Pi 4 2GB perf gate failed"
+        n=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
+        if [ -n "$n" ]; then gh issue comment "$n" --body "Failed again: $RUN_URL"
+        else gh issue create --title "$title" --body "The nightly perf gate on dev failed: $RUN_URL"; fi
 
   security-scan:
+    needs: changes
+    if: needs.changes.outputs.sec == 'true'
     runs-on: ubuntu-latest  # light job: GitHub-hosted (free, public repo); homelab keeps the CPU-heavy stages
     timeout-minutes: 10
     permissions:
@@ -296,7 +317,7 @@ jobs:
 
   build-and-push:
     runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
-    needs: [test, lint, frontend-test, standalone, security-scan, installer, lab, perf]
+    needs: [test, lint, frontend-test, standalone, security-scan, installer, lab]
     timeout-minutes: 45
     # !failure(): a skipped lab (main push after the merge queue) must not skip the image build
     if: ${{ !cancelled() && !failure() && github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) }}
