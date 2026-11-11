@@ -29,7 +29,7 @@ function ShhGame({ level, rng, onDone, easier }: MicroProps) {
             aria-label={i === ringing ? 'Alarm clock, ringing' : 'Alarm clock, quiet'}
             onClick={() => finish(i === ringing)}
           >
-            {i === ringing ? '⏰' : '🕰️'}
+            <img src="/art/fluent/pizza.webp" alt="pizza" width={50} height={50} />
           </button>
         ))}
       </div>

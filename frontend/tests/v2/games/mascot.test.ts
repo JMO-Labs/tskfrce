@@ -1,5 +1,5 @@
 import { describe, expect, test, beforeEach } from '@jest/globals'
-import { MascotAnimator } from '@/v2/games/mascot'
+import { MascotAnimator, deform } from '@/v2/games/mascot'
 
 describe('MascotAnimator', () => {
   let animator: MascotAnimator
@@ -143,5 +143,61 @@ describe('MascotAnimator', () => {
       animator.update(0, 'idle'); expect(animator.isLooping()).toBe(true)
       animator.update(0, 'cheer'); expect(animator.isLooping()).toBe(false)
     })
+  })
+})
+
+describe('deform function', () => {
+  test('feet planted at v=1 (no offset at bottom)', () => {
+    const states: Array<'idle' | 'cheer' | 'wince' | 'dance'> = ['idle', 'cheer', 'wince', 'dance']
+    for (const state of states) {
+      for (let u = 0; u <= 1; u += 0.5) {
+        const [dx, dy] = deform(state, u, 1, 0.5, 1.0, false)
+        expect(Math.abs(dx)).toBeLessThan(0.001)
+        expect(Math.abs(dy)).toBeLessThan(0.001)
+      }
+    }
+  })
+
+  test('deterministic: same inputs produce same output', () => {
+    const inputs = [
+      ['idle', 0.3, 0.5, 0.2, 1.0] as const,
+      ['cheer', 0.7, 0.8, 0.15, 1.2] as const,
+      ['wince', 0.5, 0.6, 0.1, 0.9] as const,
+      ['dance', 0.4, 0.75, 0.3, 1.1] as const,
+    ]
+    for (const [m, u, v, t, S] of inputs) {
+      const result1 = deform(m, u, v, t, S, false)
+      const result2 = deform(m, u, v, t, S, false)
+      expect(result1[0]).toBe(result2[0])
+      expect(result1[1]).toBe(result2[1])
+    }
+  })
+
+  test('returns zero displacement under reduced motion', () => {
+    const states: Array<'idle' | 'cheer' | 'wince' | 'dance'> = ['idle', 'cheer', 'wince', 'dance']
+    for (const state of states) {
+      const [dx, dy] = deform(state, 0.5, 0.5, 1.0, 1.0, true)
+      expect(dx).toBe(0)
+      expect(dy).toBe(0)
+    }
+  })
+
+  test('produces finite numbers for all states', () => {
+    const states: Array<'idle' | 'cheer' | 'wince' | 'dance'> = ['idle', 'cheer', 'wince', 'dance']
+    for (const state of states) {
+      for (let t = 0; t < 2; t += 0.1) {
+        const [dx, dy] = deform(state, 0.5, 0.5, t, 1.0, false)
+        expect(isFinite(dx)).toBe(true)
+        expect(isFinite(dy)).toBe(true)
+      }
+    }
+  })
+
+  test('varies displacement with vertical position', () => {
+    const v0 = deform('idle', 0.5, 0, 0.5, 1.0, false)
+    const v1 = deform('idle', 0.5, 1, 0.5, 1.0, false)
+    // v=0 (head) should have displacement, v=1 (feet) should not
+    expect(Math.abs(v0[1])).toBeGreaterThan(0.001)
+    expect(Math.abs(v1[1])).toBeLessThan(0.001)
   })
 })

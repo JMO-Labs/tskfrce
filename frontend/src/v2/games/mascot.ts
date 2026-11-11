@@ -2,6 +2,58 @@
 
 export type MascotState = 'idle' | 'cheer' | 'wince' | 'dance'
 
+/**
+ * Pure deform function: computes per-vertex offsets based on animation state.
+ * Deterministic and idempotent for same inputs.
+ * @param m Animation state
+ * @param u Horizontal position (0=left, 1=right)
+ * @param v Vertical position (0=feet, 1=head)
+ * @param t Time since state change (seconds)
+ * @param S Scale multiplier
+ * @param prefersReducedMotion If true, return zero displacement
+ * @returns [dx, dy] displacement in pixels
+ */
+export function deform(
+  m: MascotState,
+  u: number,
+  v: number,
+  t: number,
+  S: number,
+  prefersReducedMotion: boolean = false
+): [number, number] {
+  if (prefersReducedMotion) return [0, 0]
+
+  const up = 1 - v // 0 at feet, 1 at head
+  let dx = 0, dy = 0
+
+  if (m === 'idle') {
+    dy = -Math.sin(t * 2 * Math.PI / 3.2) * 0.035 * S * up
+    dx = Math.sin(t * 2 * Math.PI / 4.5) * 0.03 * S * up * up
+  }
+
+  if (m === 'cheer') {
+    const p = (t % 0.9) / 0.9
+    const hop = Math.sin(p * Math.PI)
+    dy = -hop * 0.28 * S * up - Math.sin(p * Math.PI * 2) * 0.06 * S * up
+    dx = Math.sin(t * 22) * 0.04 * S * up * up * hop
+  }
+
+  if (m === 'wince') {
+    const p = Math.min(t, 0.7) / 0.7
+    const k = Math.sin(p * Math.PI)
+    dy = k * 0.14 * S * up
+    dx = Math.sin(t * 60) * 0.025 * S * up * (1 - p) + (u - 0.5) * k * 0.12 * S * up
+  }
+
+  if (m === 'dance') {
+    const b = t * 2 * Math.PI / 0.55
+    dy = -Math.abs(Math.sin(b)) * 0.12 * S * up
+    dx = Math.sin(b / 2) * 0.12 * S * up * up
+  }
+
+  return [dx, dy]
+}
+
 export interface VertexOffset {
   x: number
   y: number
@@ -38,7 +90,7 @@ export class MascotAnimator {
   /**
    * Get current animation state time (since state change).
    */
-  private getStateTime(): number {
+  getStateTime(): number {
     return this.time - this.stateStartTime
   }
 

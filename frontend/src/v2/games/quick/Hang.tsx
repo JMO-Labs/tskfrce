@@ -23,7 +23,7 @@ function HangGame({ level, onDone, easier }: MicroProps) {
         <div className={s.pole} />
         <div className={s.target} />
         <span className={s.hanger} style={{ left }} aria-hidden="true">
-          {frozen !== null ? '🧥' : '👕'}
+          <img src="/art/fluent/banana.webp" alt="banana" width={50} height={50} />
         </span>
       </div>
       <button type="button" className={`${s.kb} ${s.sun}`} onClick={drop}>

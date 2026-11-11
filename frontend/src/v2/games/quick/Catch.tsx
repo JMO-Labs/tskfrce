@@ -26,7 +26,9 @@ function CatchGame({ level, onDone, easier }: MicroProps) {
   return (
     <div className={s.stage}>
       <div className={s.sky} aria-hidden="true">
-        <span className={s.key} style={{ top: `${top}px` }}>🔑</span>
+        <span className={s.key} style={{ top: `${top}px` }}>
+          <img src="/art/fluent/eggplant.webp" alt="eggplant" width={50} height={50} />
+        </span>
         <div className={s.ground} />
       </div>
       <button

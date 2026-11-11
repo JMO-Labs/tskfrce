@@ -4,6 +4,7 @@ import type { AgeGroup } from '../../types'
 import { seeded } from '../rng'
 import { useElapsed } from '../useElapsed'
 import { BOX_MS, EXTRA_MS, isFull, lift, newGame, place, prefill, rotate, shapeOf, shrink, undo, type Game, type Piece } from './logic'
+import { Mascot, type MascotState } from '../Mascot'
 import s from './PackBox.module.css'
 
 const POWER: Record<string, { icon: string; name: string }> = { undo: { icon: '↩️', name: 'Undo' }, shrink: { icon: '🔽', name: 'Shrink' } }
@@ -35,6 +36,8 @@ export function PackBox({ level, seed, age, upgrades = [], powerUp = null, held,
   const [g, setG] = useState<Game>(() => deal(0))
   const [sel, setSel] = useState<number | null>(null)
   const [pu, setPu] = useState(powerUp)
+  const [mascotState, setMascotState] = useState<MascotState>('idle')
+  const mascotReactRef = useRef<NodeJS.Timeout | null>(null)
   const total = BOX_MS + (upgrades.includes('extra_time') ? EXTRA_MS : 0)
   const ms = useElapsed()
   const over = ms >= total
@@ -43,6 +46,9 @@ export function PackBox({ level, seed, age, upgrades = [], powerUp = null, held,
   useEffect(() => { endCb.current = onEnd })
   useEffect(() => {
     if (over && !ended.current) { ended.current = true; endCb.current(score) }
+    return () => {
+      if (mascotReactRef.current) clearTimeout(mascotReactRef.current)
+    }
   }, [over, score])
 
   const open = g.pieces.filter((p) => !g.cover.includes(p.id))
@@ -50,13 +56,27 @@ export function PackBox({ level, seed, age, upgrades = [], powerUp = null, held,
   const next = upgrades.includes('preview') ? open[3] : undefined
 
   const apply = (ng: Game) => {
-    if (isFull(ng)) { setScore((n) => n + 1); setG(deal(score + 1)); setSel(null) } else setG(ng)
+    if (isFull(ng)) {
+      setMascotState('dance')
+      setScore((n) => n + 1)
+      setG(deal(score + 1))
+      setSel(null)
+    } else {
+      setScore((n) => n)
+      setG(ng)
+    }
   }
 
   const handlePlacePiece = useCallback((pieceId: number, row: number, col: number) => {
     if (over) return
     const ng = place(g, pieceId, row, col)
-    if (ng !== g) { setSel(null); apply(ng) }
+    if (ng !== g) {
+      setSel(null)
+      setMascotState('cheer')
+      if (mascotReactRef.current) clearTimeout(mascotReactRef.current)
+      mascotReactRef.current = setTimeout(() => setMascotState('idle'), 900)
+      apply(ng)
+    }
   }, [g, over, apply])
 
   const handleSelectPiece = useCallback((id: number) => {
@@ -104,6 +124,7 @@ export function PackBox({ level, seed, age, upgrades = [], powerUp = null, held,
     <div>
       <div className={s.hud}>
         <span>📦 {score}</span>
+        <Mascot state={mascotState} mascotName="dog-cowboy" />
         <span>⏱ {clock(total - ms)}</span>
       </div>
       <Suspense fallback={<div style={{ height: '300px' }} />}>

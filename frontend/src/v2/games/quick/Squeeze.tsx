@@ -14,11 +14,15 @@ function SqueezeGame({ level, onDone, easier }: MicroProps) {
   }
   return (
     <div className={s.stage}>
-      <div className={s.brush} aria-hidden>🪥</div>
+      <div className={s.brush} aria-hidden>
+        <img src="/art/fluent/pear.webp" alt="pear" width={50} height={50} />
+      </div>
       <div className={s.col}>
         <div className={s.bar} role="progressbar" aria-valuemin={0} aria-valuemax={need} aria-valuenow={Math.min(n, need)}><i style={{ width: `${Math.min(100, (n / need) * 100)}%` }} /></div>
         <button type="button" className={`${s.kb} ${s.sun} ${s.big}`} aria-label="Squeeze the tube" onClick={tap}>
-          <span className={s.tube} aria-hidden>🧴</span>
+          <span className={s.tube} aria-hidden>
+            <img src="/art/fluent/pear.webp" alt="pear" width={50} height={50} />
+          </span>
         </button>
       </div>
     </div>

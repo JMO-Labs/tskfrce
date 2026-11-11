@@ -4,6 +4,7 @@ import type { AgeGroup } from '../../types'
 import { seeded } from '../rng'
 import { useElapsed } from '../useElapsed'
 import { PEEK_MS, clockMs, isRight, lookMs, newRound } from './logic'
+import { Mascot, type MascotState } from '../Mascot'
 import s from './ShelfMemory.module.css'
 
 type Pu = string | { key: string } | null
@@ -34,6 +35,8 @@ export function ShelfMemory({ level, age, seed, upgrades = [], powerUp = null, o
   const [locked, setLocked] = useState(false)
   const [used, setUsed] = useState(false)
   const [score, setScore] = useState(0)
+  const [mascotState, setMascotState] = useState<MascotState>('idle')
+  const mascotReactRef = useRef<NodeJS.Timeout | null>(null)
 
   const ms = useElapsed()
   const total = clockMs(upgrades)
@@ -56,8 +59,15 @@ export function ShelfMemory({ level, age, seed, upgrades = [], powerUp = null, o
   useEffect(() => {
     if (!over || ended.current) return
     ended.current = true
+    setMascotState('dance')
     endCb.current(scoreRef.current)
   }, [over])
+
+  useEffect(() => {
+    return () => {
+      if (mascotReactRef.current) clearTimeout(mascotReactRef.current)
+    }
+  }, [])
 
   const key = typeof powerUp === 'string' ? powerUp : powerUp?.key
   const puName = key && key in PU ? PU[key as keyof typeof PU] : null
@@ -79,6 +89,9 @@ export function ShelfMemory({ level, age, seed, upgrades = [], powerUp = null, o
   const putSlot = (i: number) => {
     if (over || looking || sel === null || placed[i]) return
     if (!isRight(sel, i, locked)) {
+      setMascotState('wince')
+      if (mascotReactRef.current) clearTimeout(mascotReactRef.current)
+      mascotReactRef.current = setTimeout(() => setMascotState('idle'), 700)
       setSel(null)
       return
     }
@@ -86,6 +99,9 @@ export function ShelfMemory({ level, age, seed, upgrades = [], powerUp = null, o
     next[sel] = true
     scoreRef.current += 1
     setScore(scoreRef.current)
+    setMascotState('cheer')
+    if (mascotReactRef.current) clearTimeout(mascotReactRef.current)
+    mascotReactRef.current = setTimeout(() => setMascotState('idle'), 900)
     setLocked(false)
     setSel(null)
     if (next.every(Boolean)) {
@@ -102,6 +118,7 @@ export function ShelfMemory({ level, age, seed, upgrades = [], powerUp = null, o
     <div>
       <div className={s.hud}>
         <span>🧠 {score}</span>
+        <Mascot state={mascotState} mascotName="owl-scholar" />
         <span>⏱ {clock(total - ms)}</span>
       </div>
       <p className={s.msg}>

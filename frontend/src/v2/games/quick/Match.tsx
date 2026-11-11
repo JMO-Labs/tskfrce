@@ -24,7 +24,9 @@ function MatchGame({ level, rng, onDone, easier }: MicroProps) {
   return (
     <div className={s.stage}>
       <div className={s.pot} data-testid="pot" data-size={pot} aria-label="Pot">
-        <div className={s.potBody} style={{ width: w(pot) }}>🍲</div>
+        <div className={s.potBody} style={{ width: w(pot) }}>
+          <img src="/art/fluent/shoe.webp" alt="shoe" width={50} height={50} />
+        </div>
       </div>
       <div className={s.row}>
         {lids.map((size) => (

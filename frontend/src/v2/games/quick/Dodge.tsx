@@ -37,11 +37,12 @@ function DodgeGame({ level, rng, onDone, easier }: MicroProps) {
               {i === lane && (<>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img className={s.mascot} src={`/celebrate/mascots/${mascot}.svg`} alt="Sleeping friend" />
-                <span className={s.zz} aria-hidden>💤</span>
               </>)}
             </div>
           ))}
-          <div className={s.vac} style={{ transform: `translateX(${pos * 100}%)` }} aria-hidden>🤖</div>
+          <div className={s.vac} style={{ transform: `translateX(${pos * 100}%)` }} aria-hidden>
+            <img src="/art/fluent/flag.webp" alt="flag" width={50} height={50} />
+          </div>
         </div>
         <div className={s.ctl}>
           <button type="button" className={`${s.kb} ${s.sun}`} aria-label="Left" onClick={() => move(-1)}>◀ Left</button>

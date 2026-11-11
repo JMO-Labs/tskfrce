@@ -40,7 +40,9 @@ function WaterGame({ level, onDone, easier }: MicroProps) {
   return (
     <div className={s.stage}>
       <div className={s.waterWrap}>
-        <span className={s.plant} aria-hidden="true">{fill > hi ? '🌊' : '🌱'}</span>
+        <span className={s.plant} aria-hidden="true">
+          <img src="/art/fluent/book.webp" alt="book" width={50} height={50} />
+        </span>
         <div className={s.meter} aria-hidden="true">
           <div className={s.band} style={{ bottom: `${lo}%`, height: `${hi - lo}%` }} />
           <div className={s.fill} style={{ height: `${fill}%` }} />
@@ -56,7 +58,7 @@ function WaterGame({ level, onDone, easier }: MicroProps) {
         onKeyDown={(e) => { if (keyOk(e)) down() }}
         onKeyUp={(e) => { if (e.key === ' ') up() }}
       >
-        🪣 Hold, let go in the green
+        Hold, let go in the green
       </button>
     </div>
   )

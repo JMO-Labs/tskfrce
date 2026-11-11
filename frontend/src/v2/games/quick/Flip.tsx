@@ -19,7 +19,9 @@ function FlipGame({ level, rng, onDone, easier }: MicroProps) {
     <div className={s.stage}>
       <button type="button" className={s.panWrap} aria-label="Flip the pancake" data-hot={hot ? '1' : '0'} onClick={tap}>
         <div className={s.pan} />
-        <div className={`${s.cake} ${flipped ? s.flipped : ''}`}>🥞</div>
+        <div className={`${s.cake} ${flipped ? s.flipped : ''}`}>
+          <img src="/art/fluent/apple.webp" alt="apple" width={50} height={50} />
+        </div>
       </button>
       <div className={s.hint}>{hot ? 'NOW!' : 'Wait for the sizzle…'}</div>
     </div>

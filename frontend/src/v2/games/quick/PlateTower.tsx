@@ -16,7 +16,9 @@ function PlateTowerGame({ level, onDone, easier }: MicroProps) {
   return (
     <div className={`${s.stage} ${s.plateStage}`}>
       <div className={s.rail} aria-hidden="true">
-        <span className={s.slider} style={{ left: `${50 + x * 38}%` }}>🍽️</span>
+        <span className={s.slider} style={{ left: `${50 + x * 38}%` }}>
+          <img src="/art/fluent/cookie.webp" alt="cookie" width={50} height={50} />
+        </span>
       </div>
       <div className={s.stack} aria-hidden="true">
         {[0, 1, 2, 3].map((i) => <span key={i} className={s.plate} />)}

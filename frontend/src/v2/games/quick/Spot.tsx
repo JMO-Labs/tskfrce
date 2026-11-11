@@ -18,7 +18,7 @@ function SpotGame({ level, rng, onDone, easier }: MicroProps) {
         {Array.from({ length: cells }, (_, i) => (
           <button key={i} type="button" className={s.tile} aria-label={`Footprint ${i + 1}`}
             data-muddy={i === muddy ? '' : undefined} onClick={() => pick(i)}>
-            <span className={i === muddy ? s.mud : undefined} aria-hidden>👣</span>
+            <img src="/art/fluent/dog.webp" alt="dog" width={50} height={50} className={i === muddy ? s.mud : undefined} aria-hidden />
           </button>
         ))}
       </div>
