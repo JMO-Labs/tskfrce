@@ -2,7 +2,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { Tooltip } from '@mantine/core'
 import { useThreads } from '@/v2/hooks/useChat'
-import { Bell } from '@/v2/components/Bell'
 import { Icon } from './Icon'
 
 interface RailItem {
@@ -19,7 +18,6 @@ export function Rail({ onLogout }: { onLogout?: () => void }) {
 
   const items: RailItem[] = [
     { icon: '@', label: 'Logo' }, // Logo placeholder
-    { icon: 'notifications', label: 'Bell' }, // Bell with separate placement
     { icon: 'home', href: '/', label: 'Today' },
     { icon: 'devices', href: '/devices', label: 'Devices' },
     { icon: 'group', href: '/kids', label: 'Kids & chores' },
@@ -38,14 +36,6 @@ export function Rail({ onLogout }: { onLogout?: () => void }) {
             <Link key={idx} href="/" className="p-rail-logo" aria-label="t@sk4ce">
               t@
             </Link>
-          )
-        if (item.label === 'Bell')
-          return (
-            <div key={idx} className="p-rail-bell">
-              <Tooltip label="Notifications" position="right" withArrow openDelay={400} closeDelay={100}>
-                <Bell placement="rail" />
-              </Tooltip>
-            </div>
           )
         if (item.label === 'Log out')
           return (

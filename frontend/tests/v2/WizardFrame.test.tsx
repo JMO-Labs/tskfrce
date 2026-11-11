@@ -204,6 +204,20 @@ describe('WizardFrame', () => {
     expect(onStepClick).toHaveBeenCalledWith(1)
   })
 
+  test('footer uses chevrons: Back chevron_left, Next chevron_right, Finish check', () => {
+    const at = (nextLabel?: string) => (
+      <WizardFrame step={3} onBack={() => {}} onNext={() => {}} nextLabel={nextLabel}>
+        <div />
+      </WizardFrame>
+    )
+    const icon = (name: string) => screen.getByRole('button', { name }).querySelector('.ms')?.textContent
+    const { rerender } = wrap(at())
+    expect(icon('Back')).toBe('chevron_left')
+    expect(icon('Next')).toBe('chevron_right')
+    rerender(<MantineProvider>{at('Finish')}</MantineProvider>)
+    expect(icon('Finish')).toBe('check')
+  })
+
   test('optional eyebrow on step 4 only', () => {
     const at = (n: number) => (
       <WizardFrame step={n} title="T" onNext={() => {}}>

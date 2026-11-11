@@ -26,8 +26,6 @@ const needs = [
   { type: 'chore', id: 304, kid_id: 5, kid_name: 'Ava', title: 'Help with dishes', attempt: 1, submitted_at: iso(15), day: dstr(0), photos: [], subtasks_total: 0, subtasks_done: 0 },
   { type: 'screen_time', id: 501, kid_id: 3, kid_name: 'Maya', title: '30 min screen time', device_name: "Maya's iPad", cost: 60, kid_balance: 240, submitted_at: iso(5) },
   { type: 'reward', id: 502, kid_id: 4, kid_name: 'Leo', title: 'Pick dinner', cost: 150, kid_balance: 190, submitted_at: iso(45) },
-  { type: 'goal_full', id: 2, kid_id: 5, kid_name: 'Ava', title: 'Pizza + movie night', cost: 300, submitted_at: iso(30) },
-  { type: 'goal_suggested', id: 7, kid_id: 4, kid_name: 'Leo', title: 'Skateboard', cost: null, submitted_at: iso(50) },
   { type: 'note', id: 503, kid_id: 5, kid_name: 'Ava', title: 'Water plants', note: "I can't reach the top shelf", submitted_at: iso(10) },
 ]
 export const today = () => ({ day: dstr(0), pending_approvals: 7, new_devices: [devices[8]], try_trust_kid: 4, waiting_at_reset_days: 0, needs_you: needs,
@@ -83,23 +81,6 @@ const activity = { counts: { bypass: 2, locked_tries: 4, outside_hours: 1, wrong
 const happy = { active: [{ id: 1, starts_at: iso(15), ends_at: fut(45), multiplier: 2, mult_x10: 20, source: 'parent', kid_ids: null }], recent: [{ id: 2, starts_at: iso(3000), ends_at: iso(2940), multiplier: 1.5, mult_x10: 15, source: 'auto', kid_ids: [4] }], upcoming: [] }
 const runDetail = (id) => ({ id, title: 'Homework', points: 30, state: 'needs_you', due_time: null, kid_ids: [4], steps: [{ id: 1, title: 'Math sheet', done: true, due_time: null, due_at: null, after_previous: false, locked: false }, { id: 2, title: 'Reading', done: true, due_time: null, due_at: null, after_previous: true, locked: false }], due_at: null, type: types[2], sent_back: true, note: null, can_move: true, attempt: 2, photos: [] })
 
-// Goals mock. G toggles: party (kid goal party), age (kid age mode), kid (kid id served by /kid/*).
-export const G = { party: process.env.PARTY === '1', age: 'kid', kid: 4 }
-const gl = (id, name, emoji, o = {}) => ({ id, name, emoji, kind: 'custom', family: false, kid_id: null, kid_name: null, target: 1000, saved: 0, minutes: null, status: 'active', waiting_on: null, mine: 0, siblings: null, created_at: iso(3000), fulfilled_at: null, ...o })
-const gSettings = { on: true, suggest: true, withdraw: true, siblings: true, auto: true, auto_pct: 25, max_little: 1, max_kid: 2, max_teen: 3, screen_on: true, screen_price: 200, screen_minutes: 60, jail_on: true, jail_price: 500, screen_ok: true }
-const parentGoals = () => ({ settings: gSettings,
-  waiting: [gl(2, 'Pizza + movie night', '🍕', { kid_id: 5, kid_name: 'Ava', target: 300, saved: 300, status: 'full', waiting_on: 'Dad' }), gl(7, 'Skateboard', '🛹', { kid_id: 4, kid_name: 'Leo', target: null, status: 'suggested' })],
-  family: [gl(3, 'Disney trip', '🏰', { family: true, target: 20000, saved: 6800, siblings: [{ name: 'Maya', amount: 1900 }, { name: 'Leo', amount: 1200 }, { name: 'Ava', amount: 700 }] })],
-  kids: [gl(1, 'New bike', '🚲', { kid_id: 3, kid_name: 'Maya', target: 2000, saved: 1240 }), gl(4, 'Game system', '🎮', { kid_id: 4, kid_name: 'Leo', target: 3000, saved: 540 })],
-  done: [gl(9, 'Lego set', '🧱', { kid_id: 3, kid_name: 'Maya', target: 800, saved: 800, status: 'fulfilled', fulfilled_at: iso(8000) })] })
-const kidGoals = () => ({ on: true, suggest: true, withdraw: true, auto: true, auto_pct: 25, auto_goal_id: 1, can_add: true, free: 300, builtins: [{ kind: 'screen', name: '60 min extra screen time', target: 200, minutes: 60 }],
-  goals: [gl(1, 'New bike', '🚲', { kid_id: G.kid, kid_name: 'Me', target: 2000, saved: 1240, mine: 1240 }), gl(2, 'Pizza + movie night', '🍕', { kid_id: G.kid, kid_name: 'Me', target: 300, saved: 300, status: 'full', waiting_on: 'Mom', mine: 300 }), gl(3, 'Disney trip', '🏰', { family: true, target: 20000, saved: 6800, mine: 1900, siblings: null })],
-  done: [], party: G.party ? [{ goal_id: 2, name: 'Pizza + movie night', by: 'Mom' }] : [] })
-const kidToday = () => ({ locked: false, chores: kidChores[G.kid] ?? [], points_balance: 300, points_held: 0, timezone: 'UTC', age_group: G.age, locks_at: null, celebrate: 'full', happy_hour: null, trust: null,
-  progress: { level: 7, title: 'Rising star', xp: 340, floor: 300, next: 500, streak: 4, freezes_held: 1, frozen: [] } })
-const kidRewards = () => ({ balance: 300, screen_time_price: 20, screen_time_enabled: true, rewards: rewards.filter((r) => r.visible).map(({ id, name, price, icon, needs_approval }) => ({ id, name, price, icon, needs_approval })), pending: [],
-  screen: { options: [{ group_id: null, scope: 'all', name: 'All devices', icon: 'devices', price: 20 }], enabled: true, price: 20, auto: false, only_in_hours: false, max_today: 120, saved: 0, bought_today: 0, left_today: 120, min_points: null, in_hours: true } })
-
 export const S = { setup: { needed: false }, step: null }
 // Fake a state per path: FAKE="mode=regex;mode=regex" with mode = hang (never answers: the loading state), err (400 with a message), net (the box is unreachable), empty (an empty list or a family with nothing in it). First matching rule wins.
 const FAKE = (process.env.FAKE || '').split(';').filter(Boolean).map((x) => { const [m, ...re] = x.split('='); return [m, new RegExp(re.join('='))] })
@@ -125,13 +106,6 @@ export function route(r, misses) {
     '/blocker': { online: true, last_seen: iso(0) }, '/leaderboard': { week_start: dstr(5), rows: kids.map((k, i) => ({ kid_id: k.id, name: k.full_name, avatar: null, score: 300 - i * 80, level: 7 - i * 2, title: 'x', rank: i + 1 })) },
     '/profiles': [], '/integrations': [], '/integrations/catalog': [], '/integration-widgets': [], '/integration-local/permissions': [], '/integration-local/keys': [],
   }
-  if (p === '/goals') return j(parentGoals())
-  if (p === '/goals/settings') return j(gSettings)
-  if (p === '/kid/goals') return j(kidGoals())
-  if (p === '/kid/today') return j(kidToday())
-  if (p === '/kid/rewards') return j(kidRewards())
-  if (p === '/kid/whoami') return j({ device: null, kids: kids.map((k) => ({ id: k.id, full_name: k.full_name, avatar: null, has_pin: k.has_pin })) })
-  if (p === '/kid/celebrations') return j([])
   if (p in M) return j(M[p])
   if (p.startsWith('/recap')) return j(recap)
   if (p.startsWith('/redemptions/history')) return j(histFor(u))

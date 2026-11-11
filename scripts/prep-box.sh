@@ -21,8 +21,9 @@ have() { command -v "$1" >/dev/null 2>&1; }
 [ "$(id -u)" != "0" ] || die "Run this as your normal user, not root (it uses sudo itself)."
 have apt-get || die "This script needs Ubuntu or Debian (apt)."
 case "$(uname -m)" in x86_64 | amd64 | aarch64 | arm64) ;; *) die "Unsupported CPU: $(uname -m). Use 64-bit OS." ;; esac
+# Passwordless sudo first: sudo-rs (Ubuntu 26.04+) -v prompts even under NOPASSWD (MAAS/cloud users).
 # shellcheck disable=SC2024 # tty redirect feeds the password prompt under curl|sh
-sudo -v </dev/tty || die "sudo is needed."
+sudo -n true 2>/dev/null || sudo -v </dev/tty || die "sudo is needed."
 
 say "Updating the system (can take a while)"
 $APT update -q

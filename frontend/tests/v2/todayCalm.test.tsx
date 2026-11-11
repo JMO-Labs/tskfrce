@@ -43,7 +43,7 @@ const wrap = () =>
 beforeEach(() => {
   localStorage.clear()
   fakeRouter.reset('/')
-  state = { fam: { penalties_enabled: true, timezone: 'UTC', hh_auto_boost: true, streak_freeze: true, hh_default_mult_x10: 20, hh_default_minutes: 60 }, today: base(), devices: [], widgets: [], hh: [], dismissed: ['onboard.parent'] }
+  state = { fam: { timezone: 'UTC', hh_auto_boost: true, streak_freeze: true, hh_default_mult_x10: 20, hh_default_minutes: 60 }, today: base(), devices: [], widgets: [], hh: [], dismissed: ['onboard.parent'] }
   apiMock.mockReset()
   apiMock.mockImplementation(async (p, init) => {
     if (init?.method) return {}

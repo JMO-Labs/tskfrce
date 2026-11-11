@@ -18,6 +18,7 @@ Both networks are `internal: true`; nothing reaches the real internet.
 
 ## Run
 
+    export PW_VERSION=$(bash scripts/lab.sh pw-version)   # e2e image tag, from frontend/package.json
     export INTERNAL_TOKEN=labtoken   # needed to interpolate the parent compose file
     docker compose -f lab/docker-compose.lab.yml up -d --build
     docker compose -f lab/docker-compose.lab.yml exec kid1 curl -s -m 3 http://203.0.113.1/
@@ -25,7 +26,7 @@ Both networks are `internal: true`; nothing reaches the real internet.
 
 ## Driver script and tests
 
-`bash scripts/lab.sh up` builds the lab, runs first-time setup (user `labparent`) and marks the kid and parent containers as guests; `down` tears it down. `e2e` starts the frontend and runs the browser tests (screenshots land in `frontend/e2e-artifacts`). Helpers: `block|unblock|check|check6|portal|resist|reset|resisting|test-block <kid1|kid2|parent>`. Run it with no arguments for usage.
+`bash scripts/lab.sh up` builds the lab, runs first-time setup (user `labparent`) and marks the kid and parent containers as guests; `down` tears it down. `e2e` starts the frontend and runs the browser tests (screenshots land in `frontend/e2e-artifacts`); `pw-version` prints the Playwright image tag it uses (from `@playwright/test` in `frontend/package.json`). Helpers: `block|unblock|check|check6|portal|resist|reset|resisting|test-block <kid1|kid2|parent>`. Run it with no arguments for usage.
 
 Journey tests (real ARP, nftables, portal): `cd blocker && RUN_INTEGRATION=1 python -m pytest tests/lab -v`. CI runs both, see [docs/engineering.md](../docs/engineering.md#testing).
 

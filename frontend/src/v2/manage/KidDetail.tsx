@@ -12,9 +12,7 @@ import { OVERLAY, useFocusParam, type Focus } from '@/v2/parent/useFocusParam'
 import type { Kid } from '@/v2/types'
 import { ConfirmDelete } from './ConfirmDelete'
 import { ChoresRow, DevicesRow, SettingsRow, TrustRow } from './KidRows'
-import { HomeworkRow } from './KidHomeworkSites'
 import { PointsForm } from './PointsForm'
-import { PenaltyList } from './PenaltyList'
 import { PointsPop } from './PointsPop'
 import { initial, nameOf } from './choreMeta'
 import { useSingle } from './useSingle'
@@ -142,12 +140,10 @@ export function KidDetail({ kid, onDeleted, guardRef }: { kid: Kid; onDeleted: (
           }}
         />
       )}
-      <PenaltyList kidId={kid.id} name={name} />
       <FocusArea focus={rows} label={`${name}'s page`}>
         <TrustRow kid={kid} focus={gated} />
         <DevicesRow kid={kid} focus={gated} />
         <ChoresRow kid={kid} focus={gated} />
-        <HomeworkRow kid={kid} focus={gated} />
         <SettingsRow
           kid={kid}
           focus={gated}

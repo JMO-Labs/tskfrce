@@ -56,3 +56,11 @@ Retaken 2026-11-08 after polish pass 5 (rail t@ and lime tile, 44px phone contro
 - `trust-kid.jpg`: Retaken 2026-11-08, polish pass 5
 - `recap.jpg`: Retaken 2026-11-08, polish pass 5
 - `site/img/today-hero.jpg`, `today-parent.jpg`, `needs-you.jpg`: Retaken 2026-11-08, polish pass 5
+
+Retaken 2026-11-10 from the current UI after the polish passes and the header-tools change (#73, #74: boxed account and … buttons, phone Settings back link **‹ More**), mocked API (`scripts/shots/declutter`, light, focus ring cleared with `BLUR=1`, mouse parked, 1280x700 desktop or 390x844 phone at 2x resized to 600 wide, JPEG quality 82):
+- `group-price.jpg`: `/devices?tab=groups&item=1&open=gset`
+- `extras.jpg`: `/settings?section=family&open=bed`
+- `wasnt-done.jpg`: Maya's **Trust** row, **More for Clean room** → **Wasn't done**
+- `happy-hour-start.jpg`: Today **…** menu → **Start Happy Hour**
+- `setup-devices.jpg`: `/setup?open=need` at step 6, **Owner** pop-over for Dad's laptop
+- `site/img/needs-you.jpg`: `/?focus=needs` scrolled so the **Needs you** card starts at the top (`SCROLLTO=.pt-needs SCROLLBLOCK=start`); the alt text now names the note row

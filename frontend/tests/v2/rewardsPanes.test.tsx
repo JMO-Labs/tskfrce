@@ -282,6 +282,14 @@ describe('rewards: history', () => {
     expect(leo).not.toHaveTextContent('Mom')
   })
 
+  test('the Declined chip has no ×; Auto keeps its bolt (audit 26)', async () => {
+    data({ '/redemptions/history?days=30': hist })
+    const pane = open()
+    const declined = (await within(pane).findAllByText('Declined')).find((e) => e.classList.contains('p-chip')) as HTMLElement
+    expect(declined.querySelector('[data-icon]')).toBeNull()
+    expect(within(pane).getByText('Auto').querySelector('[data-icon]')).toHaveAttribute('data-icon', 'bolt')
+  })
+
   test('totals pop-over holds all four figures', async () => {
     data({ '/redemptions/history?days=30': hist })
     const pane = open()

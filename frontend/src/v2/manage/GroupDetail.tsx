@@ -72,7 +72,7 @@ function Existing({ group, devices, kids, groups, rules, onSelect, onRequestOver
         owners={owners}
         timeZone={timeZone}
         pendingAction={pendingAction}
-        onOverride={(action, minutes) => onRequestOverride({ kind: 'group', id: group.id, action, minutes })}
+        onOverride={(action) => onRequestOverride({ kind: 'group', id: group.id, action })}
         onRename={rename}
         onDelete={open}
       />
@@ -80,7 +80,7 @@ function Existing({ group, devices, kids, groups, rules, onSelect, onRequestOver
       <FocusArea focus={rows} label="Group">
         <SummaryRow
           id="gdev"
-          icon={ico('devices_other')}
+          icon={ico('devices')}
           title="Devices"
           summary={`${members.length} of ${devices.length} ${devices.length === 1 ? 'device' : 'devices'}`}
           line2={<span className="p-kn">{members.length ? members.map((d) => d.name).join(', ') : 'No devices in this group yet'}</span>}

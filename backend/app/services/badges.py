@@ -90,7 +90,6 @@ def _task_metrics(db: Session, kid: User, fam: FamilySettings) -> dict[str, int]
         .filter(
             chore_svc.kid_runs_filter(kid.id),
             ChoreRun.status == "done",
-            ChoreRun.penalty_id.is_(None),
             or_(ChoreRun.approved_by_id.isnot(None), ChoreRun.approved_via.in_(TRUSTED)),
         )
         .order_by(ChoreRun.day, ChoreRun.id)

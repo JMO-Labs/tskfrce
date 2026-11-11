@@ -98,12 +98,6 @@ class FamilyPatch(BaseModel):
     bedtime_auto: bool | None = None
     bedtime_auto_at: str | None = None
     recap_weekly: bool | None = None
-    penalties_enabled: bool | None = None
-    penalty_sizes: dict | None = None
-    makeup_chores: (
-        list[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]]
-        | None
-    ) = Field(default=None, min_length=1, max_length=12)
     accent: (
         Literal[
             "neon", "sun", "tangerine", "bubblegum", "lilac", "sky", "aqua", "mint", "peach", "ice"
@@ -115,12 +109,5 @@ class FamilyPatch(BaseModel):
     @classmethod
     def _dedupe_replies(cls, v: list[str] | None) -> list[str] | None:
         return None if v is None else list(dict.fromkeys(v))  # keep order, drop repeats
-
-    @field_validator("penalty_sizes")
-    @classmethod
-    def _sizes(cls, v):
-        from app.schemas.penalty import check_sizes
-
-        return check_sizes(v)
 
     _rt = field_validator("reset_time", "bedtime_auto_at")(_hhmm)

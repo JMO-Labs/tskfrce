@@ -49,11 +49,52 @@ test('reward approve and decline go to the redemption, never the chore with the 
   expect(apiMock).not.toHaveBeenCalledWith('/chores/11/approve', expect.anything())
 })
 
-test('a screen-time request names the device, and still renders without one', () => {
-  const t: NeedsItem = { type: 'screen_time', id: 5, kid_id: 1, kid_name: 'Mia', title: '30 min of screen time', cost: 40, kid_balance: 60 }
-  show([t, { ...t, id: 6, title: '15 min of screen time', device_name: "Mia's iPad" }])
-  expect(card('30 min of screen time')).toHaveTextContent('40 pts · has 60')
-  expect(card('15 min of screen time')).toHaveTextContent("from Mia's iPad · 40 pts")
+const st: NeedsItem = { type: 'screen_time', id: 5, kid_id: 1, kid_name: 'Mia', title: '30 min of screen time', cost: 40, kid_balance: 60 }
+const openMenu = async (title: string, item = 'Decline') => {
+  await userEvent.click(within(card(title)).getByRole('button', { name: `More for ${title}` }))
+  const first = await screen.findByRole('menuitem', { name: item })
+  return first.closest('[role="menu"]') as HTMLElement
+}
+
+test('a request sub is only time and points; device and balance move to the menu', async () => {
+  show([st, { ...st, id: 6, title: '15 min of screen time', device_name: "Mia's iPad" }])
+  expect(card('30 min of screen time')).toHaveTextContent('40 pts')
+  expect(card('30 min of screen time')).not.toHaveTextContent('has 60')
+  expect(card('15 min of screen time')).not.toHaveTextContent("from Mia's iPad")
+  const text = (await openMenu('15 min of screen time')).textContent ?? ''
+  const at = (s: string) => text.indexOf(s)
+  expect(at("From Mia's iPad")).toBeGreaterThan(-1)
+  expect(at('Has 60 pts')).toBeGreaterThan(-1)
+  expect(at("From Mia's iPad")).toBeLessThan(at('Decline'))
+  expect(at('Has 60 pts')).toBeLessThan(at('Decline'))
+})
+
+test('info lines are not actions', async () => {
+  show([{ ...st, device_name: "Mia's iPad" }])
+  const btn = within(card('30 min of screen time')).getByRole('button', { name: 'More for 30 min of screen time' })
+  expect(btn).toHaveClass('p-ib')
+  expect(btn).not.toHaveClass('p-htool')
+  await openMenu('30 min of screen time')
+  const items = screen.queryAllByRole('menuitem', { hidden: true })
+  expect(items).toHaveLength(1)
+  expect(items[0]).toHaveAccessibleName('Decline')
+  await userEvent.click(screen.getByText('Has 60 pts'))
+  expect(apiMock.mock.calls.map(([p]) => p).filter((p) => p !== '/family')).toEqual([])
+  expect(btn).toHaveAttribute('aria-expanded', 'true')
+})
+
+test('a request without a device or balance shows no empty info lines', async () => {
+  show([{ ...st, device_name: null, kid_balance: undefined }])
+  const menu = await openMenu('30 min of screen time')
+  expect(menu.querySelectorAll('.p-mi-info')).toHaveLength(0)
+  expect(menu).not.toHaveTextContent(/From|Has|undefined/)
+})
+
+test('chore rows keep their sub and get no info lines', async () => {
+  show([chore])
+  expect(card('Dishes')).toHaveTextContent(/2nd try · Done \S/)
+  const menu = await openMenu('Dishes', 'Send back')
+  expect(menu.querySelectorAll('.p-mi-info')).toHaveLength(0)
 })
 
 test('send back needs a note, then posts it', async () => {

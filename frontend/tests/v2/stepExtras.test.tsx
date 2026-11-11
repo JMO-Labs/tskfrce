@@ -8,7 +8,7 @@ const kid = (id: number, name: string, age_group: Kid['age_group']) => ({ id, fu
 const kids = [kid(1, 'Maya', 'kid'), kid(2, 'Leo', 'teen'), kid(3, 'Sam', 'little')]
 
 function show(over: Partial<Parameters<typeof StepExtras>[0]> = {}) {
-  const props = { kids, trust: [] as number[], bedtime: false, goals: true, onGoals: jest.fn(), onTrust: jest.fn(), onBedtime: jest.fn(), penalties: false, onPenalties: jest.fn(), ...over }
+  const props = { kids, trust: [] as number[], bedtime: false, onTrust: jest.fn(), onBedtime: jest.fn(), ...over }
   render(<StepExtras {...props} />)
   return props
 }
@@ -42,11 +42,4 @@ test('no kids: no trust card, bedtime still offered', () => {
   show({ kids: [] })
   expect(screen.queryByText('Trust mode')).toBeNull()
   expect(screen.getByRole('switch', { name: 'Bedtime auto-approve' })).toBeInTheDocument()
-})
-
-test('Goals switch is on by default and reports a flip', async () => {
-  const p = show()
-  expect(screen.getByRole('switch', { name: 'Goals' })).toHaveAttribute('aria-checked', 'true')
-  await userEvent.click(screen.getByRole('switch', { name: 'Goals' }))
-  expect(p.onGoals).toHaveBeenCalledWith(false)
 })

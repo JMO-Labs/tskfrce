@@ -110,7 +110,7 @@ export interface Kid extends KidTrustFields {
 /** GET/PATCH /family */
 export type AccentKey = 'neon' | 'sun' | 'tangerine' | 'bubblegum' | 'lilac' | 'sky' | 'aqua' | 'mint' | 'peach' | 'ice'
 
-export interface Family extends FamilyExtrasFields, FamilyPenaltyFields {
+export interface Family extends FamilyExtrasFields {
   name: string
   timezone: string
   reset_time: string
@@ -243,7 +243,7 @@ export interface TodayKid {
 
 /** Item in GET /today needs_you. */
 export interface NeedsItem extends RunTrustFields {
-  type: 'chore' | 'redo' | 'screen_time' | 'reward' | 'note' | 'integration' | 'homework' | 'goal_full' | 'goal_suggested'
+  type: 'chore' | 'redo' | 'screen_time' | 'reward' | 'note' | 'integration'
   id: number
   kid_id: number | null
   kid_name: string | null
@@ -361,10 +361,6 @@ export interface KidToday extends KidTodayPenaltyFields {
   happy_hour?: { ends_at: string; multiplier: number } | null
   /** null = trust mode off */
   trust?: KidTrust | null
-  /** homework mode until timestamp; null = not in homework mode */
-  homework?: { until: string } | null
-  /** true if kid has a pending homework request */
-  homework_pending?: boolean
 }
 
 /** GET /kids/{id}/push */

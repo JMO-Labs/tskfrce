@@ -108,6 +108,23 @@ def waiting_runs(db: Session):
     return with_detail(q, photos=False).order_by(ChoreRun.day, ChoreRun.id)
 
 
+def day_or_waiting(db: Session, day: date, skipped: bool = False):
+    """Query: day_runs plus waiting runs from any other day, in one go."""
+    gone = ["cancelled"] if skipped else ["cancelled", "skipped"]
+    return db.query(ChoreRun).filter(
+        or_(
+            and_(ChoreRun.day == day, ChoreRun.status.notin_(gone)),
+            ChoreRun.status == "submitted",
+        )
+    )
+
+
+def waiting_runs(db: Session):
+    """Query: every run waiting on a parent, any day, oldest first, with detail loaded."""
+    q = db.query(ChoreRun).filter(ChoreRun.status == "submitted")
+    return with_detail(q, photos=False).order_by(ChoreRun.day, ChoreRun.id)
+
+
 def with_detail(q, kids: bool = True, photos: bool = True):
     """Eager-load everything chore_out/steps_out/state/photo_count read (no per-run queries)."""
     return q.options(
@@ -298,13 +315,7 @@ def run_reset(db: Session, day: date) -> int:
     one-time assignments.
     No new runs while the setup wizard is open: nothing pauses a device during setup."""
     fam = get_family(db)
-    # make-up runs never go missed: roll them to today so the kid can still finish them
-    db.query(ChoreRun).filter(
-        ChoreRun.day < day, ChoreRun.status == "todo", ChoreRun.penalty_id.isnot(None)
-    ).update({"day": day}, synchronize_session=False)
-    for r in db.query(ChoreRun).filter(
-        ChoreRun.day < day, ChoreRun.status == "todo", ChoreRun.penalty_id.is_(None)
-    ):
+    for r in db.query(ChoreRun).filter(ChoreRun.day < day, ChoreRun.status == "todo"):
         r.status = "missed"  # counts against streaks and boost; cancelled doesn't
     if fam.setup_step is None and any(
         not r.spot_check and not chore_of(r).always_check and not trust.was_caught(db, r.id)

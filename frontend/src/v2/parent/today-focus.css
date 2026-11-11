@@ -20,6 +20,7 @@
 }
 @media (hover: hover) { [data-look='parent'] .pt-krow:hover { background: var(--p-soft); } }
 [data-look='parent'] .pt-kname { flex: 1; min-width: 72px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; font-weight: 700; font-size: 15px; }
+[data-look='parent'] .pt-kname .p-kn { max-width: 100%; text-overflow: ellipsis; } /* column flex sizes it to the text: cap it so a long name ellipsizes before the ring */
 [data-look='parent'] .pt-kpts { font-weight: 700; font-size: 13px; min-width: 52px; text-align: right; white-space: nowrap; }
 [data-look='parent'] .pt-kchev { color: var(--p-sub); transition: transform 180ms; }
 [data-look='parent'] .pt-kcard[data-open] .pt-kchev { transform: rotate(90deg); }
@@ -70,7 +71,6 @@
   [data-look='parent'] .pt-kcard[data-open] { grid-column: 1 / -1; }
   [data-look='parent'] .pt-krow { padding: 14px 10px 14px 6px; gap: 6px; }
   [data-look='parent'] .pt-kmain .p-ring { gap: 4px; font-size: 12px; }
-  [data-look='parent'] .pt-kmain .p-ring svg { width: 26px; height: 26px; }
   [data-look='parent'] .pt-kav { width: 36px; height: 36px; font-size: 14px; }
   [data-look='parent'] .pt-kmain { padding-left: 8px; gap: 0; }
   [data-look='parent'] .pt-kpts { min-width: 0; margin-right: 8px; }

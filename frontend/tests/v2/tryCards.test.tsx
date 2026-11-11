@@ -15,11 +15,11 @@ const apiMock = api as unknown as Mock<(p: string, o?: { method?: string; body?:
 const TODAY = new Date().toLocaleDateString('en-CA')
 const fam = { penalties_enabled: true, hh_auto_boost: true, streak_freeze: true, hh_default_mult_x10: 20, hh_default_minutes: 60 }
 const mia = { id: 1, full_name: 'Mia', username: 'mia', age_group: 'kid', celebrate: null }
-let s: { goals: unknown; dismissed: string[]; fam: Record<string, unknown>; kids: unknown[]; active: unknown[]; quiet: boolean; trust: number | null; waiting: number }
+let s: { dismissed: string[]; fam: Record<string, unknown>; kids: unknown[]; active: unknown[]; quiet: boolean; trust: number | null; waiting: number }
 
 beforeEach(() => {
   localStorage.clear()
-  s = { goals: { settings: { on: false }, waiting: [], family: [], kids: [], done: [] }, dismissed: [], fam: { ...fam }, kids: [mia], active: [], quiet: false, trust: null, waiting: 0 }
+  s = { dismissed: [], fam: { ...fam }, kids: [mia], active: [], quiet: false, trust: null, waiting: 0 }
   apiMock.mockReset()
   apiMock.mockImplementation(async (p, o) => {
     if (p === '/me/tips') return { dismissed: s.dismissed }
@@ -27,7 +27,6 @@ beforeEach(() => {
     if (p === '/family') return o?.method === 'PATCH' ? { ...s.fam, ...(o.body as object) } : s.fam
     if (p === '/kids') return s.kids
     if (p === '/happy-hour') return { active: s.active, recent: [] }
-    if (p === '/goals') return s.goals
     if (p === '/today') return { kids: [{ id: 1, name: 'Mia', quiet: s.quiet }], try_trust_kid: s.trust, waiting_at_reset_days: s.waiting }
     return {}
   })
@@ -46,6 +45,13 @@ test('celebrations card comes first, with Preview, Turn off and Got it', async (
   show()
   expect(await screen.findByText(/comic-book cheer/)).toBeInTheDocument()
   for (const n of ['Preview', 'Turn off for all kids', 'Got it']) expect(screen.getByRole('button', { name: n })).toBeInTheDocument()
+})
+
+test('the celebrations tip uses the sparkle, not the party popper (audit 25)', async () => {
+  show()
+  const tip = (await screen.findByText(/comic-book cheer/)).closest('section') as HTMLElement
+  expect(tip).toHaveTextContent('auto_awesome')
+  expect(tip).not.toHaveTextContent('celebration')
 })
 
 test('Got it dismisses through the tips API and the next card waits for tomorrow', async () => {
@@ -283,34 +289,4 @@ test('bedtime card: time follows the stored time, capped by the reset; a failed 
   await waitFor(() => expect(patched('/family', { bedtime_auto: true, bedtime_auto_at: '19:45' })).toBe(true))
   expect(posted('/me/tips/try.bedtime/dismiss')).toBe(false)
   expect(screen.getByRole('button', { name: 'Turn on' })).toBeInTheDocument()
-})
-
-const goalsOn = (over: Record<string, unknown[]> = {}) => {
-  s.goals = { settings: { on: true }, waiting: [], family: [], kids: [], done: [], ...over }
-}
-const beforeGoals = [...allSeen, 'try.trust', 'try.bedtime']
-
-test('goals card last, when goals are on and none exist; Add a goal opens the pane', async () => {
-  s.dismissed = beforeGoals
-  goalsOn()
-  show()
-  expect(await screen.findByText('Kids can save up for something big, like a bike or a family trip.')).toBeInTheDocument()
-  expect(screen.getByRole('link', { name: 'Add a goal' })).toHaveAttribute('href', '/kids?section=rewards&item=goals')
-  await userEvent.click(screen.getByRole('button', { name: 'Got it' }))
-  await waitFor(() => expect(posted('/me/tips/try.goals/dismiss')).toBe(true))
-})
-
-test.each([
-  ['goals are off', () => (s.goals = { settings: { on: false }, waiting: [], family: [], kids: [], done: [] })],
-  ['a kid goal exists', () => goalsOn({ kids: [{ id: 1 }] })],
-  ['a done goal exists', () => goalsOn({ done: [{ id: 1 }] })],
-  ['a family goal exists', () => goalsOn({ family: [{ id: 1 }] })],
-  ['a goal is waiting', () => goalsOn({ waiting: [{ id: 1 }] })],
-])('no goals card when %s', async (_n, set) => {
-  s.dismissed = beforeGoals
-  set()
-  show()
-  await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/goals'))
-  await new Promise((r) => setTimeout(r, 50))
-  expect(screen.queryByText(/save up for something big/)).toBeNull()
 })

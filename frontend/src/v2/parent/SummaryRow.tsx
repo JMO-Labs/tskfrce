@@ -37,7 +37,10 @@ export function SummaryRow({ id, icon, title, summary, line2, aside, info, focus
     if (was && !open && focus.open === null) document.querySelector<HTMLElement>(`[data-focus-head="${id}"]`)?.focus({ preventScroll: true })
     const el = body.current
     if (!open || !el) return
-    ;(el.querySelector<HTMLElement>(FOCUSABLE) ?? el).focus({ preventScroll: true })
+    // Opened by a click or key press: the first control. Already open on mount (a URL): the region itself (tabindex=-1,
+    // outline none), since a fresh load counts as keyboard modality and a control would show its ring.
+    const target = opening ? el.querySelector<HTMLElement>(FOCUSABLE) ?? el : el
+    target.focus({ preventScroll: true })
     // Bring the whole row (head and body) into view; the other rows fold at once, so the target is already final.
     // A row taller than the screen lines its head up at the top instead of its end at the bottom.
     // A page that loads with this row already open (a link) stays put when the head is in view: its content is still arriving.

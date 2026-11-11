@@ -62,6 +62,14 @@
     display: none;
   }
 
+  /* Devices/Groups: only the tabs show, so no empty title row or divider (audit 20) */
+  [data-look='parent'] .p-list-header[data-list='devices'] {
+    padding-top: 8px;
+    padding-bottom: 8px;
+    gap: 0;
+    border-bottom: 0;
+  }
+
   [data-look='parent'] .p-tabbar {
     grid-column: 1;
     grid-row: 3;

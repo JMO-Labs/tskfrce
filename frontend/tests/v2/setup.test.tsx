@@ -137,11 +137,12 @@ describe('setup wizard', () => {
     expect(link).toHaveAttribute('href', '/login')
   })
 
-  test('Skip is on steps 4 (with kids) to 8 and off step 4 without kids', async () => {
+  test('Skip is off step 3, on steps 4 (with kids) to 8 and off step 4 without kids', async () => {
     const user = userEvent.setup()
     wrap()
     await finishAccount(user)
-    await user.click(screen.getByRole('button', { name: 'Skip' })) // 3 → 4, no kids yet
+    expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull() // step 3 has no Skip
+    await user.click(screen.getByRole('button', { name: 'Next' })) // 3 → 4, no kids yet
     expect(await screen.findByText('Add a kid first, or tap Next to go on.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Skip' })).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Back' }))
@@ -164,7 +165,7 @@ describe('setup wizard', () => {
     await toFamily(user)
     await user.click(screen.getByRole('button', { name: 'Next' }))
     await waitFor(() => expect(loginWithToken).toHaveBeenCalledWith('t', 'r', 1800))
-    await skipStep(user) // 3 → 4
+    await user.click(await screen.findByRole('button', { name: 'Next' })) // 3 → 4
     await nextNoSkip(user) // 4 → 5, no kids
     for (let i = 0; i < 4; i++) await skipStep(user) // 5 → finish
     expect(await screen.findByText('Hours start now.')).toBeInTheDocument() // no kids, no chores
@@ -254,7 +255,7 @@ describe('setup wizard', () => {
 
   const toHours = async (user: ReturnType<typeof userEvent.setup>) => {
     await finishAccount(user)
-    await skipStep(user) // 3 → 4
+    await user.click(await screen.findByRole('button', { name: 'Next' })) // 3 → 4
     await nextNoSkip(user) // 4 → 5
     for (let i = 0; i < 2; i++) await skipStep(user) // 5 → 7
     await screen.findByText('Allowed hours')
@@ -324,6 +325,7 @@ describe('setup wizard', () => {
     await user.type(screen.getByLabelText('Name'), 'Ben')
     await user.click(screen.getByRole('button', { name: 'Next' }))
     expect(await screen.findByText('Add Ben first or clear the field.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Name')).toBeInTheDocument() // still on step 3
   })
 
   test('a mismatched confirm password shows inline and blocks Next', async () => {
@@ -344,7 +346,7 @@ describe('setup wizard', () => {
     wrap()
     await finishAccount(user)
     const puts = () => apiMock.mock.calls.filter((c) => c[0] === '/setup/step').map((c) => (c[1] as { body: unknown }).body)
-    await skipStep(user) // 3 → 4
+    await user.click(await screen.findByRole('button', { name: 'Next' })) // 3 → 4
     await nextNoSkip(user) // 4 → 5, no kids
     await waitFor(() => expect(puts()).toEqual([{ step: 4 }, { step: 5 }]))
     for (let i = 0; i < 4; i++) await skipStep(user) // → finish

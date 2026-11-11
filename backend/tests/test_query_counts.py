@@ -21,9 +21,8 @@ from tests.factories import DAY, api_chore
 
 LIMIT = 16  # +1 batched deductions
 LIMITS = {
-    "/api/v1/penalties/options": 7,  # auth user, family x2, kids, devices, groups, recent counts; fixed for any family size
-    "/api/v1/today": 29,  # +1 goals waiting on a parent; +1 whole-kid block penalties (Prefetch); +1 paid points per self-approved chore (trust/bedtime; skipped when none; per run+kid, so it cannot fold into the per-kid earned sum); +1 approved-chore counts for kids with trust off (try card, skipped when none); +1 quiet kids (try-this nudge); +1 integration-pending runs, per-device lock facts and per-kid progress are batched; +1 reward prices, +1 deductions, +3 photo/message counts and earned, +1 homework requests
-    "/api/v1/kid/today": 24,  # +1 whole-kid block penalties (Prefetch), +1 penalty cards (fixed, not per make-up run; +3 in total when cards exist); +1 seen set, +1 locks_at, +1 held points, +1 Happy Hour, +2 homework timer and request
+    "/api/v1/today": 26,  # +1 paid points per self-approved chore (trust/bedtime; skipped when none; per run+kid, so it cannot fold into the per-kid earned sum); +1 approved-chore counts for kids with trust off (try card, skipped when none); +1 quiet kids (try-this nudge); +1 integration-pending runs, per-device lock facts and per-kid progress are batched; +1 reward prices, +1 deductions, +3 photo/message counts and earned
+    "/api/v1/kid/today": 20,  # +1 seen set, +1 locks_at, +1 held points, +1 Happy Hour
 }
 
 
