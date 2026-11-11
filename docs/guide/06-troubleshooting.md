@@ -187,6 +187,22 @@ Adding to the home screen needs the box's secure address (starts with `https`). 
 
 An iPhone or iPad keeps the home-screen icon apart from Safari, so the icon starts empty. Open the icon, tap **I have a code**, and type the short code (like `AB3D-7KMN`) the welcome page showed after you scanned. The code works once and runs out after 15 minutes. If it ran out, a parent makes a new QR code (see above) and you scan it again.
 
+## If a blocked phone still gets online
+
+The box can only block traffic that goes through home Wi-Fi. Two things on the phone let it slip past. You can close both.
+
+**Android (Google Family Link)**
+
+1. In Family Link, lock or restrict mobile data for the phone.
+2. On the phone, open the home Wi-Fi, then Privacy, and choose **Use device MAC**.
+
+**iPhone (Screen Time)**
+
+1. Screen Time > Content & Privacy > Cellular Data Changes: choose **Don't Allow**.
+2. On the phone, open the home Wi-Fi and turn **Private Wi-Fi Address** off. Then lock Wi-Fi changes with Screen Time.
+
+**Still getting online on Wi-Fi?** Your Wi-Fi access point may stop the box from seeing the phone's traffic. On UniFi, turn off **Proxy ARP** and **client isolation** (also called guest or L2 isolation) for the home network.
+
 ## A lost phone
 
 Open the kid's page, find **Phones and tablets**, and tap **Remove** next to the phone. It signs out right away. The phone shows "This phone was removed. Ask a parent for a new code." To add a phone back, scan a new code.
