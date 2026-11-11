@@ -1,0 +1,16 @@
+[Unit]
+Description=t@sk4ce Unattended Update Check
+Documentation=https://jmo-labs.github.io/tskfrce/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/update-check.sh
+User=root
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tskfrce-update
+
+[Install]
+WantedBy=multi-user.target

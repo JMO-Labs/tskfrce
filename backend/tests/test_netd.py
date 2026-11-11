@@ -1,6 +1,7 @@
 """Host network daemon (scripts/tskfrce-netd.py): validation, secrets out of argv, keyfile safety."""
 
 import importlib.util
+import os
 import stat
 from pathlib import Path
 from types import SimpleNamespace
@@ -176,3 +177,17 @@ def test_wpa3_only_and_hidden(nmcli):
 def test_bad_security_options_rejected(nmcli, bad):
     req = {"cmd": "join", "ssid": "Home", "password": PSK, **bad}
     assert netd.handle(req) == {"error": "bad_security"} and nmcli.calls == []
+
+
+def test_read_small_refuses_symlink_fifo_and_reads_8_bytes(tmp_path):
+    secret = tmp_path / "shadow"
+    secret.write_text("root:secret-hash")
+    link = tmp_path / "country"
+    link.symlink_to(secret)
+    assert netd.read_small(link) is None
+    fifo = tmp_path / "fifo"
+    os.mkfifo(fifo)
+    assert netd.read_small(fifo) is None  # returns at once, no hang
+    big = tmp_path / "big"
+    big.write_text("DE" + "x" * 10_000)
+    assert netd.read_small(big) == "DExxxxxx"

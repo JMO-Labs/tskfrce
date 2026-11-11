@@ -87,7 +87,7 @@ test.each([
   expect(await env.BOXES.get('seen:abc123')).toBeNull()
 })
 
-test.each(['jmolabs.dev', 'www.jmolabs.dev', 'a.b.taskfrce.jmolabs.dev', 'abc123.taskfrce.jmolabsXdev'])('out-of-scope name %s throws, no CF call', async (name) => {
+test.each(['jmolabs.dev', 'www.jmolabs.dev', 'a.b.taskfrce.jmolabs.dev', 'abc123.taskfrce.jmolabsXdev', 'abc123-1.taskfrce.jmolabs.dev', 'abc123-9.taskfrce.jmolabs.dev'])('out-of-scope name %s throws, no CF call', async (name) => {
   const env = await makeEnv(), cf = fakeCf()
   await expect(upsertRecord(env, cf, 'A', name, '10.0.0.1')).rejects.toThrow()
   expect(cf.calls).toHaveLength(0)
@@ -135,4 +135,76 @@ test('report without CF-Connecting-IP leaves family fields unchanged', async () 
   const got = JSON.parse((await env.BOXES.get('seen:abc123'))!)
   expect(got).toMatchObject({ ...fam, lanIp: '192.168.1.40' })
   expect(got.seenAt).toBeGreaterThan(22)
+})
+
+test('networks array: single network creates id record', async () => {
+  const env = await makeEnv(), cf = fakeCf()
+  const res = await handle(post('/api/ip', { networks: [{ ip: '192.168.1.40', label: 'Wired' }] }, basic('abc123', 's3cret'), '203.0.113.9'), env, cf)
+  expect(res.status).toBe(204)
+  expect(cf.calls.some((c) => c.method === 'POST' && c.body.name === 'abc123.taskfrce.jmolabs.dev' && c.body.content === '192.168.1.40')).toBe(true)
+  const seen = JSON.parse((await env.BOXES.get('seen:abc123'))!)
+  expect(seen).toMatchObject({ networks: [{ ip: '192.168.1.40', label: 'Wired' }], publicIp4: '203.0.113.9' })
+})
+
+test('networks array: multiple networks create id, id-2, id-3 records', async () => {
+  const env = await makeEnv(), cf = fakeCf()
+  const nets = [
+    { ip: '192.168.1.40', label: 'Wired' },
+    { ip: '10.0.0.5', label: 'Wi-Fi' },
+    { ip: '172.20.0.1', label: 'VLAN 100' },
+  ]
+  const res = await handle(post('/api/ip', { networks: nets }, basic('abc123', 's3cret')), env, cf)
+  expect(res.status).toBe(204)
+  expect(cf.calls.some((c) => c.method === 'POST' && c.body.name === 'abc123.taskfrce.jmolabs.dev' && c.body.content === '192.168.1.40')).toBe(true)
+  expect(cf.calls.some((c) => c.method === 'POST' && c.body.name === 'abc123-2.taskfrce.jmolabs.dev' && c.body.content === '10.0.0.5')).toBe(true)
+  expect(cf.calls.some((c) => c.method === 'POST' && c.body.name === 'abc123-3.taskfrce.jmolabs.dev' && c.body.content === '172.20.0.1')).toBe(true)
+  const seen = JSON.parse((await env.BOXES.get('seen:abc123'))!)
+  expect(seen.networks).toEqual(nets)
+})
+
+test('networks with invalid IP rejected', async () => {
+  const env = await makeEnv(), cf = fakeCf()
+  const res = await handle(post('/api/ip', { networks: [{ ip: '8.8.8.8', label: 'Bad' }] }, basic('abc123', 's3cret')), env, cf)
+  expect(res.status).toBe(400)
+  expect(cf.calls).toHaveLength(0)
+})
+
+test('empty networks array rejected', async () => {
+  const env = await makeEnv(), cf = fakeCf()
+  const res = await handle(post('/api/ip', { networks: [] }, basic('abc123', 's3cret')), env, cf)
+  expect(res.status).toBe(400)
+  expect(cf.calls).toHaveLength(0)
+})
+
+test('networks capped at 8', async () => {
+  const env = await makeEnv(), cf = fakeCf()
+  const nets = Array.from({ length: 9 }, (_, i) => ({ ip: `10.0.0.${i + 1}`, label: `Net${i}` }))
+  const res = await handle(post('/api/ip', { networks: nets }, basic('abc123', 's3cret')), env, cf)
+  expect(res.status).toBe(400)
+  expect(cf.calls).toHaveLength(0)
+})
+
+test('label capped at 32 chars', async () => {
+  const env = await makeEnv(), cf = fakeCf()
+  const res = await handle(post('/api/ip', { networks: [{ ip: '10.0.0.1', label: 'x'.repeat(33) }] }, basic('abc123', 's3cret')), env, cf)
+  expect(res.status).toBe(400)
+  expect(cf.calls).toHaveLength(0)
+})
+
+test('empty label rejected', async () => {
+  const env = await makeEnv(), cf = fakeCf()
+  const res = await handle(post('/api/ip', { networks: [{ ip: '10.0.0.1', label: '' }] }, basic('abc123', 's3cret')), env, cf)
+  expect(res.status).toBe(400)
+  expect(cf.calls).toHaveLength(0)
+})
+
+test('8 networks accepted', async () => {
+  const env = await makeEnv(), cf = fakeCf()
+  const nets = Array.from({ length: 8 }, (_, i) => ({ ip: `10.0.0.${i + 1}`, label: `N${i}` }))
+  const res = await handle(post('/api/ip', { networks: nets }, basic('abc123', 's3cret')), env, cf)
+  expect(res.status).toBe(204)
+  // Verify all 8 records: id., id-2., id-3., ..., id-8.
+  expect(cf.calls.some((c) => c.body?.name === 'abc123.taskfrce.jmolabs.dev')).toBe(true)
+  expect(cf.calls.some((c) => c.body?.name === 'abc123-2.taskfrce.jmolabs.dev')).toBe(true)
+  expect(cf.calls.some((c) => c.body?.name === 'abc123-8.taskfrce.jmolabs.dev')).toBe(true)
 })
