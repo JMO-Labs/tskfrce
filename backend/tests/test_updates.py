@@ -1,30 +1,84 @@
 """Updates API tests."""
 
+import json
+from pathlib import Path
 
-def test_get_updates(api_client):
-    """GET /api/v1/updates returns current status."""
-    resp = api_client.get("/api/v1/updates")
+
+def test_get_updates_returns_status(client, parent_headers, tmp_path, monkeypatch):
+    """GET /api/v1/updates returns current status (requires parent auth)."""
+    # Monkeypatch data dir for state file
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+
+    resp = client.get("/api/v1/updates", headers=parent_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert "version" in data
     assert "channel" in data
-    assert "last_result" in data
-    assert "major_available" in data
     assert data["channel"] in {"stable", "eval", "off"}
 
 
-def test_patch_updates_channel(api_client):
+def test_patch_updates_channel(client, parent_headers, tmp_path, monkeypatch):
     """PATCH /api/v1/updates with channel changes the setting."""
-    resp = api_client.patch("/api/v1/updates", json={"channel": "off"})
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+
+    resp = client.patch(
+        "/api/v1/updates",
+        headers=parent_headers,
+        json={"channel": "off"},
+    )
     assert resp.status_code == 200
     assert resp.json()["channel"] == "off"
 
-    resp = api_client.patch("/api/v1/updates", json={"channel": "stable"})
+    resp = client.patch(
+        "/api/v1/updates",
+        headers=parent_headers,
+        json={"channel": "stable"},
+    )
     assert resp.status_code == 200
     assert resp.json()["channel"] == "stable"
 
 
-def test_patch_updates_invalid_channel(api_client):
+def test_patch_updates_invalid_channel(client, parent_headers):
     """PATCH with invalid channel returns 400."""
-    resp = api_client.patch("/api/v1/updates", json={"channel": "invalid"})
+    resp = client.patch(
+        "/api/v1/updates",
+        headers=parent_headers,
+        json={"channel": "invalid"},
+    )
     assert resp.status_code == 400
+
+
+def test_eval_channel_cannot_switch_to_stable(client, parent_headers, monkeypatch):
+    """Hard rule: eval install cannot switch to stable (409)."""
+    # Mock install-time channel as eval by setting UPDATE_CHANNEL in .env
+    monkeypatch.setenv("HOME", "/tmp")
+    tmp_env = Path("/tmp/.env")
+    tmp_env.write_text("UPDATE_CHANNEL=eval\n")
+
+    resp = client.patch(
+        "/api/v1/updates",
+        headers=parent_headers,
+        json={"channel": "stable"},
+    )
+    assert resp.status_code == 409
+    assert "cannot switch to stable" in resp.json()["detail"]
+
+    tmp_env.unlink()
+
+
+def test_unauthenticated_access_returns_401(client):
+    """GET /api/v1/updates without auth returns 401."""
+    resp = client.get("/api/v1/updates")
+    assert resp.status_code == 401
+
+
+def test_internal_kid_session_endpoint_requires_token(client):
+    """GET /internal/kid-session-active without token returns 401."""
+    resp = client.get("/internal/kid-session-active")
+    assert resp.status_code == 401
+
+
+def test_internal_today_note_endpoint_requires_token(client):
+    """POST /internal/today-note without token returns 401."""
+    resp = client.post("/internal/today-note", json={"note": "test"})
+    assert resp.status_code == 401

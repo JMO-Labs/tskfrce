@@ -6,8 +6,8 @@
 set -eu
 
 DIR="${TASK4CE_DIR:-$HOME/task4ce}"
+STATE_FILE="$DIR/data/update-state.json"
 ENV_FILE="$DIR/.env"
-DIGESTS_FILE="$DIR/.digests.json"
 LOG_FILE="$DIR/update-check.log"
 COMPOSE_FILE="$DIR/docker-compose.prod.yml"
 
@@ -109,11 +109,14 @@ main() {
   say "=== Update check ==="
 
   local channel
-  channel=$(env_value UPDATE_CHANNEL)
-  if [ -z "$channel" ]; then
-    say "UPDATE_CHANNEL not set; skipping"
-    return 0
+  # Read channel from JSON state file (prefer), fallback to .env UPDATE_CHANNEL
+  if [ -f "$STATE_FILE" ]; then
+    channel=$(grep -o '"channel":\s*"[^"]*"' "$STATE_FILE" | cut -d'"' -f4)
   fi
+  [ -z "$channel" ] && channel=$(env_value UPDATE_CHANNEL)
+  [ -z "$channel" ] && channel="stable"
+
+  say "Update channel: $channel"
 
   if [ "$channel" = "off" ]; then
     say "Updates are off; skipping"

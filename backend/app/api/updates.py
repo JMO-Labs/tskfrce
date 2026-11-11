@@ -1,6 +1,8 @@
 """Box updates: version, channel, and upgrade management."""
 
+import json
 import os
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -21,9 +23,10 @@ class UpdatesOut(BaseModel):
     """Current update status and settings."""
 
     version: str
-    channel: str  # "stable", "eval", or "off"
-    last_result: str | None  # "success", "failed", or None
-    major_available: str | None  # e.g. "3" if 4 is available
+    channel: str
+    last_result: str | None
+    last_version: str | None
+    major_available: str | None
 
 
 class UpdatesPatch(BaseModel):
@@ -33,71 +36,94 @@ class UpdatesPatch(BaseModel):
     pull_major: str | None = None
 
 
-def _env_value(key: str) -> str:
-    """Read from .env file."""
-    env_file = os.path.expanduser("~/.env")
-    if not os.path.exists(env_file):
-        return ""
-    with open(env_file) as f:
-        for line in f:
-            if line.startswith(f"{key}="):
+def _state_file() -> Path:
+    """Get update state file path ($DIR/data/update-state.json from settings or env)."""
+    try:
+        # Try settings first (configured data dir)
+        data_dir = os.environ.get("DATA_DIR") or os.environ.get("TASK4CE_DATA_DIR")
+        if data_dir:
+            return Path(data_dir) / "update-state.json"
+    except Exception:
+        pass
+    # Fallback
+    return Path("/app/data/update-state.json")
+
+
+def _read_state() -> dict:
+    """Read update state from JSON file."""
+    try:
+        path = _state_file()
+        if path.exists():
+            return json.loads(path.read_text())
+    except Exception:
+        pass
+    return {
+        "channel": "stable",
+        "auto": True,
+        "last_result": None,
+        "last_version": None,
+        "major_available": None,
+        "requested_major": None,
+    }
+
+
+def _write_state(data: dict) -> None:
+    """Write update state to JSON file."""
+    try:
+        path = _state_file()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data, indent=2))
+    except Exception:
+        pass
+
+
+def _get_install_channel() -> str:
+    """Get immutable install-time channel from .env UPDATE_CHANNEL."""
+    env_file = Path.home() / ".env"
+    if env_file.exists():
+        for line in env_file.read_text().splitlines():
+            if line.startswith("UPDATE_CHANNEL="):
                 return line.split("=", 1)[1].strip()
-    return ""
-
-
-def _update_env(key: str, value: str) -> None:
-    """Write or update .env value."""
-    env_file = os.path.expanduser("~/.env")
-    lines = []
-    found = False
-    if os.path.exists(env_file):
-        with open(env_file) as f:
-            for line in f:
-                if line.startswith(f"{key}="):
-                    lines.append(f"{key}={value}\n")
-                    found = True
-                else:
-                    lines.append(line)
-    if not found:
-        lines.append(f"{key}={value}\n")
-    with open(env_file, "w") as f:
-        f.writelines(lines)
+    return "stable"
 
 
 @router.get("/updates")
 def get_updates(db: Session = Depends(get_db)) -> UpdatesOut:
     """Get current update status."""
-    channel = _env_value("UPDATE_CHANNEL") or "stable"
-    last_result = _env_value("UPDATE_LAST_RESULT")
-
-    # Major version check: if current is 2.x and 3 exists, show 3 as available
-    major_available = None
-    current_major = int(__version__.split(".")[0])
-    if current_major < 3:
-        major_available = "3"
+    state = _read_state()
+    install_channel = _get_install_channel()
 
     return UpdatesOut(
         version=__version__,
-        channel=channel,
-        last_result=last_result if last_result else None,
-        major_available=major_available,
+        channel=state.get("channel", install_channel),
+        last_result=state.get("last_result"),
+        last_version=state.get("last_version"),
+        major_available=state.get("major_available"),
     )
 
 
 @router.patch("/updates")
 def patch_updates(body: UpdatesPatch, db: Session = Depends(get_db)) -> UpdatesOut:
     """Update settings or trigger update pull."""
+    state = _read_state()
+    install_channel = _get_install_channel()
+
     if body.channel is not None:
+        # Hard rule: eval install cannot switch to stable (owner mandate)
+        if install_channel == "eval" and body.channel == "stable":
+            raise HTTPException(409, "Eval channel cannot switch to stable")
         if body.channel not in {"stable", "eval", "off"}:
             raise HTTPException(400, "Channel must be 'stable', 'eval', or 'off'")
-        _update_env("UPDATE_CHANNEL", body.channel)
+        state["channel"] = body.channel
+        _write_state(state)
 
     if body.pull_major is not None:
         current = int(__version__.split(".")[0])
         requested = int(body.pull_major)
         if requested <= current:
             raise HTTPException(400, f"Major version {requested} not available")
-        _update_env("TASK4CE_TAG", f":{requested}")
+        state["requested_major"] = requested
+        _write_state(state)
         trigger(force=True)
 
     return get_updates(db)
@@ -106,12 +132,17 @@ def patch_updates(body: UpdatesPatch, db: Session = Depends(get_db)) -> UpdatesO
 # Internal endpoints (token-protected, used by updater and reboot hook)
 
 
-@internal_router.get("/kid-session-active")
-async def kid_session_active_check(
-    db: Session = Depends(get_db),
-    token: str = Depends(require_token),
-) -> dict[str, bool]:
-    """Check if any kid session is active (reboot and updater skip hook)."""
+# Set up internal router with token auth
+internal_router_with_auth = APIRouter(
+    prefix="/internal",
+    tags=["updates-internal"],
+    dependencies=[Depends(require_token)],
+)
+
+
+@internal_router_with_auth.get("/kid-session-active")
+async def kid_session_active_check(db: Session = Depends(get_db)) -> dict[str, bool]:
+    """Check if any kid session is active."""
     fam = get_family(db)
     from app.models.lock import Device
 
@@ -125,13 +156,9 @@ async def kid_session_active_check(
     return {"active": active}
 
 
-@internal_router.post("/today-note")
-async def post_today_note(
-    body: dict[str, str],
-    db: Session = Depends(get_db),
-    token: str = Depends(require_token),
-) -> dict[str, str]:
-    """Add a note to the Today page (update status messages, max 256 chars)."""
+@internal_router_with_auth.post("/today-note")
+async def post_today_note(body: dict[str, str], db: Session = Depends(get_db)) -> dict[str, str]:
+    """Add a note to the Today page (max 256 chars)."""
     fam = get_family(db)
     note = body.get("note", "")[:256]
     if note:
@@ -141,14 +168,9 @@ async def post_today_note(
     return {"status": "ok"}
 
 
-@internal_router.post("/telemetry")
-async def post_telemetry(
-    body: dict[str, str],
-    db: Session = Depends(get_db),
-    token: str = Depends(require_token),
-) -> dict[str, str]:
-    """Record telemetry event (e.g. update_failed for eval boxes)."""
-    # Telemetry integration via Umami; for now, just acknowledge
+@internal_router_with_auth.post("/telemetry")
+async def post_telemetry(body: dict[str, str], db: Session = Depends(get_db)) -> dict[str, str]:
+    """Record telemetry event."""
     event = body.get("event", "")
     if event == "update_failed":
         pass  # Future: log to telemetry system
