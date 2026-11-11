@@ -33,6 +33,7 @@ from app.services import (
     chat,
     chore_actions,
     economy,
+    goals_jail,
     happy_hour,
     homework,
     inbox,
@@ -216,6 +217,7 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
         ),
         **homework.kid_state(db, kid, now),
         "penalties": _penalty_cards(db, kid.id),
+        "jail_cards": goals_jail.cards(db, kid.id),
     }
 
 

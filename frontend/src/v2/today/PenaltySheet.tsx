@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Modal } from "@mantine/core";
 import {
   useGivePenalty,
+  useGoalPenalty,
   usePenaltyOptions,
   type GiveBody,
 } from "../hooks/usePenalties";
@@ -24,6 +25,8 @@ interface Props {
   onClose: () => void;
   from?: PenaltyFrom;
   reason?: string;
+  /** the sheet is for the whole family (offers family-goal options even with one kid) */
+  everyone?: boolean;
   /** render without the Modal (inside another sheet) */
   inline?: boolean;
   /** inline only: report the current choices instead of showing a Give button (the host gives it) */
@@ -44,11 +47,14 @@ function Body({
   from,
   reason: r0 = "",
   onDraft,
+  everyone,
   opts,
 }: Props & { opts: PenaltyOptions }) {
   const give = useGivePenalty();
+  const goalPen = useGoalPenalty();
   const kids = opts.kids.filter((k) => kidIds.includes(k.id));
   const family = kidIds.length > 1;
+  const goals = (family || everyone) && !onDraft ? opts.goals : [];
   const kid = family ? undefined : kids[0];
   const recent = Math.max(0, ...kids.map((k) => k.recent));
   const first = presetFor(recent);
@@ -71,7 +77,7 @@ function Body({
     setDraft((d) => ({ ...d, ...patch }));
   };
   const build = () => {
-    const { reason, device_id, group_id, makeup, ...core } = draft;
+    const { reason, device_id, group_id, makeup, goal: _goal, ...core } = draft;
     const body = {
       kid_ids: kidIds,
       ...core,
@@ -83,7 +89,15 @@ function Body({
     };
     return body as GiveBody;
   };
-  const submit = () => give.mutate(build(), { onSuccess: onClose });
+  const submit = () => {
+    const { goal, amount, reason } = draft;
+    if (!goal) return give.mutate(build(), { onSuccess: onClose });
+    const body = { goal_id: goal.id, mode: goal.mode, amount };
+    goalPen.mutate(
+      reason.trim() ? { ...body, reason: reason.trim() } : body,
+      { onSuccess: onClose },
+    );
+  };
   useEffect(() => {
     onDraft?.(build());
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -115,14 +129,17 @@ function Body({
           open={open === "what"}
           onOpen={toggle("what")}
           onChange={edit}
+          goals={goals}
         />
-        <EarnLine
-          draft={draft}
-          makeupChores={opts.makeup_chores}
-          open={open === "earn"}
-          onOpen={toggle("earn")}
-          onChange={(p) => setDraft((d) => ({ ...d, ...p }))}
-        />
+        {!draft.goal && (
+          <EarnLine
+            draft={draft}
+            makeupChores={opts.makeup_chores}
+            open={open === "earn"}
+            onOpen={toggle("earn")}
+            onChange={(p) => setDraft((d) => ({ ...d, ...p }))}
+          />
+        )}
         <ReasonLine
           value={draft.reason}
           name={name}
@@ -135,8 +152,8 @@ function Body({
         <button
           type="button"
           className="p-pen-give"
-          disabled={give.isPending}
-          aria-busy={give.isPending}
+          disabled={give.isPending || goalPen.isPending}
+          aria-busy={give.isPending || goalPen.isPending}
           onClick={submit}
         >
           Give penalty

@@ -12,3 +12,6 @@
 [data-mantine-color-scheme='dark'] .k-pen { background: #2a2418; border-color: #4a3d22; color: #f6ead2; }
 .k-pen-todo { min-height: 44px; }
 .k-pen-todo:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.k-pen-jail { margin-top: 10px; min-height: 44px; padding: 0 14px; font: inherit; font-weight: 700; color: inherit; background: transparent; border: 2px solid currentColor; border-radius: 12px; cursor: pointer; }
+.k-pen-jail:disabled { opacity: 0.6; cursor: default; }
+.k-pen-jail:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }

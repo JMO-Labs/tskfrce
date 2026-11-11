@@ -128,7 +128,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
       <>
         {children}
         <HappyHourBanner hh={d.happy_hour} onGo={goChore} />
-        <PenaltyCards list={d.penalties} done={done} />
+        <PenaltyCards list={d.penalties} jail={d.jail_cards} done={done} />
         <Mode
           d={d}
           focusId={focusId}

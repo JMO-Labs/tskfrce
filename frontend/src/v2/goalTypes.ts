@@ -71,6 +71,7 @@ export interface KidGoals {
   auto_pct: number
   auto_goal_id: number | null
   can_add: boolean
+  cards: number
   free: number
   builtins: GoalBuiltin[]
   goals: Goal[]
