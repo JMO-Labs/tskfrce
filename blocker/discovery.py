@@ -27,12 +27,12 @@ def resolve_hostname(ip: str) -> str | None:
         return None
 
 
-def _scapy_send(kind: str, cfg: Config):
+def _scapy_send(kind: str, cfg: Config, iface: str | None = None):
     """Real scapy I/O. Returns (answered, unanswered) where answered holds
-    (sent, rcv) pairs and rcv exposes `.ip` and `.mac`."""
+    (sent, rcv) pairs and rcv exposes `.ip` and `.mac`. iface overrides cfg.lan_iface."""
     from blocker.scapy_lite import ARP, Ether, ICMPv6EchoRequest, IPv6, get_if_addr, srp
 
-    iface = cfg.lan_iface or None
+    iface = iface or cfg.lan_iface or None
     if kind == "arp":
         net = ".".join(get_if_addr(iface or "eth0").split(".")[:3]) + ".0/24"
         pkt = Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=net)
@@ -52,13 +52,14 @@ def scan_once(
     send: Callable = _scapy_send,
     resolve: Callable[[str], str | None] = resolve_hostname,
     vid: int | None = None,
+    iface: str | None = None,
 ) -> list[Seen]:
     v4: dict[str, str] = {}
-    for _, rcv in send("arp", cfg)[0]:
+    for _, rcv in send("arp", cfg, iface)[0]:
         v4[_norm(rcv.mac)] = rcv.ip
     v6: dict[str, list[str]] = {}
     try:
-        for _, rcv in send("ndp", cfg)[0]:
+        for _, rcv in send("ndp", cfg, iface)[0]:
             addrs = v6.setdefault(_norm(rcv.mac), [])
             if rcv.ip not in addrs:
                 addrs.append(rcv.ip)
@@ -75,6 +76,7 @@ def scan_once(
             hostname=hostname[:MAX_STR] if hostname else hostname,
             vendor=vendor[:MAX_STR] if vendor else vendor,
             vid=vid,
+            iface=iface,
         )
         report_seen(cfg, seen)
         seen_list.append(seen)

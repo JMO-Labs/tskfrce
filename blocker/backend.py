@@ -26,6 +26,7 @@ class Seen:
     model: str | None = None
     dhcp_fp: str | None = None
     vid: int | None = None  # tagged VLAN; None = the untagged LAN
+    iface: str | None = None  # base interface name (eno2, wlo1, etc.); None when using LAN_IFACE
 
     def __post_init__(self) -> None:
         for f in ("mdns_name", "model", "dhcp_fp"):
@@ -37,7 +38,7 @@ class Seen:
         return {k: v for k, v in asdict(self).items() if v is not None or k not in _OPTIONAL}
 
 
-_OPTIONAL = ("mdns_name", "model", "dhcp_fp", "vid")
+_OPTIONAL = ("mdns_name", "model", "dhcp_fp", "vid", "iface")
 
 
 def _request(cfg: Config, path: str, body: dict | None = None):
