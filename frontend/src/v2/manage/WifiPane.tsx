@@ -123,8 +123,8 @@ export function WifiPane() {
           type="button"
           className="p-btn"
           onClick={handleScan}
-          disabled={scan.isPending}
-          aria-busy={scan.isPending}
+          disabled={scan.isFetching}
+          aria-busy={scan.isFetching}
         >
           <Icon name={listOpen ? 'expand_less' : 'wifi_find'} size={17} />
           {listOpen ? 'Hide' : 'Scan'} Networks
@@ -132,7 +132,7 @@ export function WifiPane() {
 
         {listOpen && (
           <div className="wifi-list-wrap">
-            {scan.isPending && <div className="pn-help">Scanning...</div>}
+            {scan.isFetching && <div className="pn-help">Scanning...</div>}
             {scan.isError && <div className="pn-help" style={{ color: 'var(--p-err)' }}>Failed to scan</div>}
             {scan.data && (
               <div className="wifi-list">
