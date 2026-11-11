@@ -6,8 +6,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt
-COPY . /opt/blocker
-COPY --chmod=755 udhcpc.sh /app/udhcpc.sh
+COPY blocker/ /opt/blocker
+COPY --chmod=755 blocker/udhcpc.sh /app/udhcpc.sh
 RUN pip install --no-cache-dir "scapy>=2.6"
 
 # Runs as root ON PURPOSE: ARP/NDP spoofing and nftables need NET_RAW and
