@@ -16,7 +16,6 @@ from app.models.family import get_family
 from app.services import inbox
 
 router = APIRouter(prefix="/api/v1", tags=["updates"], dependencies=[Depends(require_parent)])
-internal_router = APIRouter(prefix="/internal", tags=["updates-internal"])
 
 
 class UpdatesOut(BaseModel):
@@ -97,13 +96,10 @@ def _write_state(data: dict, install_channel: str | None = None) -> None:
 
 
 def _get_install_channel() -> str:
-    """Get immutable install-time channel from .env UPDATE_CHANNEL."""
-    env_file = Path.home() / ".env"
-    if env_file.exists():
-        for line in env_file.read_text().splitlines():
-            if line.startswith("UPDATE_CHANNEL="):
-                return line.split("=", 1)[1].strip()
-    return "stable"
+    """Install-time channel, passed in by compose from the host .env (immutable at runtime)."""
+    # ponytail: env var, not a file read; the container never sees the host .env
+    ch = os.environ.get("UPDATE_CHANNEL", "").strip()
+    return ch if ch in {"stable", "eval", "off"} else "stable"
 
 
 @router.get("/updates")
