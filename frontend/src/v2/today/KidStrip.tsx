@@ -1,6 +1,6 @@
 import { Icon } from '../parent/Icon'
 import type { TodayKid } from '../types'
-import { initial } from './KidFacts'
+import { badgesFor } from '@/v2/KidAv'
 
 /** Top of a focused Today: back to all kids, one avatar per kid (lavender count = waiting, tick = all done), Needs total. */
 export function KidStrip({ kids, selected, onSelect, onAll, waiting, onNeeds }: {
@@ -12,6 +12,7 @@ export function KidStrip({ kids, selected, onSelect, onAll, waiting, onNeeds }: 
   /** Omit when the Needs list itself is open: the pill would point at where you are. */
   onNeeds?: () => void
 }) {
+  const badge = badgesFor(kids)
   return (
     <nav className="pt-strip" aria-label="Kids">
       <button type="button" className="p-btn" onClick={onAll}>
@@ -23,9 +24,10 @@ export function KidStrip({ kids, selected, onSelect, onAll, waiting, onNeeds }: 
         const on = k.id === selected
         const allDone = !!k.total && k.done === k.total
         const name = k.name ?? 'Kid'
+        const b = badge(k.id, k.name)
         return (
-          <button key={k.id} type="button" className="pt-strip-kid" aria-pressed={on} aria-label={n > 0 && !on ? `${name}, ${n} waiting` : name} onClick={() => onSelect(k.id)}>
-            {initial(k.name)}
+          <button key={k.id} type="button" style={b.style} className="pt-strip-kid" aria-pressed={on} aria-label={n > 0 && !on ? `${name}, ${n} waiting` : name} onClick={() => onSelect(k.id)}>
+            {b.label}
             {!on && n > 0 && <i data-tone="lav" aria-hidden>{n}</i>}
             {!on && !n && allDone && (
               <i data-tone="acc" aria-hidden>

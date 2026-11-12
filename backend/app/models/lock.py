@@ -51,10 +51,20 @@ class Device(Base):
     model = Column(String(255), nullable=True)
     dhcp_fp = Column(String(255), nullable=True)
     hint_of_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), nullable=True)
-    hint_reason = Column(String(10), nullable=True)  # name | model | timing
+    hint_reason = Column(String(10), nullable=True)  # name | model | timing | relink
     vlan_id = Column(Integer, nullable=True)  # null = the untagged LAN
+    network_id = Column(Integer, ForeignKey("networks.id", ondelete="SET NULL"), nullable=True)
     blocked_since = Column(DateTime, nullable=True)
+    replaced = Column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )  # superseded by a relinked private MAC; kept for history, hidden from the list
     exempt = Column(Boolean, nullable=False, default=False, server_default="0")  # never locked
+    is_gateway = Column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )  # reported by blocker
+    is_box = Column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )  # reported by blocker
 
     ipv6_rows = relationship("DeviceIPv6", cascade="all, delete-orphan")
     owners = relationship("User", secondary=device_owners, backref="devices")

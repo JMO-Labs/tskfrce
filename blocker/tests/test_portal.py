@@ -68,9 +68,7 @@ def portal(tmp_path):
     "path,host",
     [
         ("/anything", "example.com"),
-        ("/hotspot-detect.html", "captive.apple.com"),
-        ("/generate_204", "connectivitycheck.gstatic.com"),
-        ("/connecttest.txt", "www.msftconnecttest.com"),
+        ("/", "captive.apple.com"),
     ],
 )
 def test_portal_http_redirects_to_kid_screen(portal, path, host):
@@ -81,6 +79,24 @@ def test_portal_http_redirects_to_kid_screen(portal, path, host):
     assert r.status == 302
     assert r.getheader("Location") == cfg.portal_redirect_url
     c.close()
+
+
+@pytest.mark.parametrize(
+    "path,host,status,body",
+    [
+        ("/hotspot-detect.html", "captive.apple.com", 200, b"Success</BODY>"),
+        ("/generate_204", "connectivitycheck.gstatic.com", 204, b""),
+        ("/connecttest.txt", "www.msftconnecttest.com", 200, b"Microsoft Connect Test"),
+    ],
+)
+def test_portal_answers_os_probes_as_online(portal, path, host, status, body):
+    port, _, hits = portal
+    c = http.client.HTTPConnection("127.0.0.1", port)
+    c.request("GET", path, headers={"Host": host})
+    r = c.getresponse()
+    assert r.status == status and body in r.read()
+    c.close()
+    assert hits == []  # probes are not kid hits
 
 
 def test_portal_http_calls_on_hit_and_still_redirects(portal):

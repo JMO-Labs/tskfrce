@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_db, require_parent
 from app.lock import activity, blocker_client, hours
+from app.lock.device_names import display_device_name, guess_maker_from_signals
 from app.lock.loop import trigger
 from app.lock.overrides import clear_override, set_homework, set_override
 from app.lock.rules import block_reason, open_reason
@@ -33,8 +34,38 @@ router = APIRouter(prefix="/api/v1", tags=["devices"], dependencies=[Depends(req
 # Box reports resistance every 15s and polls state every 30s; 3 missed beats = offline.
 BLOCKER_STALE = timedelta(seconds=90)
 
+# Setup rescan rate limit: once per 10 seconds per box
+RESCAN_INTERVAL = 10
+
 
 SEEN_NOW = timedelta(minutes=5)  # the box rescans every ~20 s; allow for sleepy phones
+
+
+def _setup_devices(devs: list[Device]) -> list[dict]:
+    """Format devices for onboarding setup: name/maker guessing, no admin-level fields."""
+    out = []
+    for d in devs:
+        display_name, name_source = display_device_name(
+            d.mdns_name, d.hostname, d.dhcp_fp, d.vendor
+        )
+        maker_guess = guess_maker_from_signals(d.dhcp_fp, d.mdns_name)
+        item = {
+            "id": d.id,
+            "display_name": display_name,
+            "name_source": name_source,
+            "mac": d.mac,
+            "ip": d.ip,
+            "vendor": d.vendor,
+            "maker_guess": maker_guess,
+            "random_mac": d.random_mac,
+            "status": d.status,
+            "owner_ids": sorted(o.id for o in d.owners),
+        }
+        # ponytail: network field is optional until PR #136 supplies it in backend
+        if d.vlan_id is not None:
+            item["network"] = d.vlan_id
+        out.append(item)
+    return out
 
 
 def device_out(
@@ -169,12 +200,40 @@ def list_devices(db: Session = Depends(get_db)):
         .options(
             selectinload(Device.owners), selectinload(Device.groups), selectinload(Device.ipv6_rows)
         )
+        .filter(Device.replaced.is_(False))
         .order_by(Device.id)
         .all()
     )
+    # During setup, filter out gateway and box devices, add name/maker fields
+    if fam.setup_step is not None:
+        devs = [d for d in devs if not d.is_gateway and not d.is_box]
+        return _setup_devices(devs)
+
     pre = Prefetch(db, devs)
     stats = activity.device_stats(db, now)
     return [device_out(db, d, fam, now, pre, addresses=True, stats=stats) for d in devs]
+
+
+@router.post("/devices/rescan")
+def rescan_devices(db: Session = Depends(get_db)):
+    """Trigger immediate device discovery sweep. Rate-limited to once per 10 seconds."""
+    fam = get_family(db)
+    now = datetime.now(UTC).replace(tzinfo=None)
+
+    # Check rate limit
+    if fam.last_rescan_at and (now - fam.last_rescan_at) < timedelta(seconds=RESCAN_INTERVAL):
+        seconds_ago = int((now - fam.last_rescan_at).total_seconds())
+        wait = RESCAN_INTERVAL - seconds_ago
+        raise HTTPException(429, f"Rescan available in {wait} seconds")
+
+    # Update timestamp and commit before calling blocker
+    fam.last_rescan_at = now
+    db.commit()
+
+    # Ask blocker to rescan (best-effort, failures logged)
+    blocker_client.rescan()
+
+    return {"ok": True, "last_scanned": utc_z(now)}
 
 
 @router.patch("/devices/{device_id}")
@@ -214,6 +273,8 @@ def undo_hint(device_id: int, db: Session = Depends(get_db)):
     d.owners, d.groups = [], []
     db.query(Override).filter(Override.device_id == d.id).delete()  # incl. the copied lock
     d.status = "unassigned"
+    if d.hint_reason == "relink":
+        db.query(Device).filter(Device.id == d.hint_of_id).update({"replaced": False})
     d.hint_of_id = d.hint_reason = None
     db.commit()
     trigger()

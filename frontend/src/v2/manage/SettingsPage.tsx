@@ -18,6 +18,8 @@ import { AppearancePane } from './AppearancePane'
 import { HomeworkPane } from './HomeworkPane'
 import { NotificationsPane } from './NotificationsPane'
 import { UpdatesPane } from './UpdatesPane'
+import { HomeNetworkPane } from './HomeNetworkPane'
+import { WifiPane } from './WifiPane'
 import { accentHex } from '@/v2/parent/accent'
 import { toastFail, toastOk } from '@/v2/notify'
 
@@ -75,6 +77,8 @@ function SettingsBody() {
         {section === 'homework' && <HomeworkPane />}
         {section === 'parents' && <ParentsPane />}
         {section === 'integrations' && <IntegrationsPane />}
+        {section === 'network' && <HomeNetworkPane />}
+        {section === 'wifi' && <WifiPane />}
         {section === 'updates' && <UpdatesPane />}
       </div>
     </ParentShell>

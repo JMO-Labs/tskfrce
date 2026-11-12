@@ -128,7 +128,7 @@ write_env() {
     echo "FRONTEND_PORT=0.0.0.0:$PORT"
     echo "BACKEND_PORT=127.0.0.1:$API_PORT"
     echo "BLOCKER_BACKEND_URL=http://127.0.0.1:$API_PORT"
-    echo "LAN_IFACE=$(lan_iface)"
+    echo "LAN_IFACE=" # empty = enforce on every LAN interface; set only to restrict to one
     [ -z "${TASK4CE_SUBNET:-}" ] || echo "TASK4CE_SUBNET=$TASK4CE_SUBNET"
     [ -z "${TASK4CE_BRIDGE_GW:-}" ] || echo "TASK4CE_BRIDGE_GW=$TASK4CE_BRIDGE_GW"
     [ -z "${TASK4CE_FRONTEND_IP:-}" ] || echo "TASK4CE_FRONTEND_IP=$TASK4CE_FRONTEND_IP"
@@ -164,7 +164,6 @@ install_updater() {
   fi
   say "Installing unattended update service..."
   $root install -m 0755 "$DIR/install/update-check.sh" /usr/local/bin/update-check.sh
-  $root install -m 0755 "$DIR/install/pre-reboot-hook.sh" /usr/local/bin/pre-reboot-hook.sh
   $root install -m 0644 "$DIR/install/update-check.timer" /etc/systemd/system/update-check.timer
   # The service runs as root, so tell it where this install lives.
   sed "s|^ExecStart=.*|Environment=TASK4CE_DIR=$DIR\nExecStart=/usr/local/bin/update-check.sh|" \

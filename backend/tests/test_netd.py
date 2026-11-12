@@ -191,3 +191,21 @@ def test_read_small_refuses_symlink_fifo_and_reads_8_bytes(tmp_path):
     big = tmp_path / "big"
     big.write_text("DE" + "x" * 10_000)
     assert netd.read_small(big) == "DExxxxxx"
+
+
+def test_online_follows_kernel_default_route_not_nm(nmcli, monkeypatch):
+    """A networkd-managed wired link (NM 'unmanaged') still counts as online."""
+    real = netd.subprocess.run
+
+    def run(argv, **kw):
+        if argv[:3] == ["ip", "-j", "-4"]:
+            return SimpleNamespace(returncode=0, stdout=nmcli.state.get("routes", "[]"), stderr="")
+        return real(argv, **kw)
+
+    monkeypatch.setattr(netd.subprocess, "run", run)
+    assert netd.online() is False
+    nmcli.state["routes"] = '[{"dst": "default", "gateway": "192.168.1.1", "dev": "eno2"}]'
+    assert netd.online() is True
+    nmcli.state["routes"] = '[{"dst": "default", "dev": "wlo1"}]'
+    nmcli.state["active"] = [("tskfrce-setup", "802-11-wireless", "wlo1")]
+    assert netd.online() is False  # only the hotspot itself

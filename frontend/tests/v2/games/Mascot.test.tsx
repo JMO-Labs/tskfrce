@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, jest, test } from '@jest/globals'
+import { beforeEach, describe, expect, test } from '@jest/globals'
 import { render, screen, waitFor } from '@testing-library/react'
 import { Mascot } from '@/v2/games/Mascot'
 
@@ -15,6 +15,11 @@ const motion = (reduce: boolean) => {
 }
 
 describe('Mascot', () => {
+  test('pixi.js is mocked (module factory applied)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    expect(() => require('pixi.js')).toThrow('no webgl in jsdom')
+  })
+
   beforeEach(() => motion(false))
 
   test('reduced motion shows the static drawing, no canvas', () => {

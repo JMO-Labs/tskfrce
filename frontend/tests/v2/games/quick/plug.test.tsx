@@ -1,4 +1,4 @@
-import { expect, jest, test } from '@jest/globals'
+import { expect, test } from '@jest/globals'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { plug } from '@/v2/games/quick/Plug'
 import { seeded } from '@/v2/games/rng'

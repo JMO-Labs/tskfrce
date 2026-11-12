@@ -83,8 +83,8 @@ If a paused device keeps reaching the internet, you get a notification, "<device
 What kids try, and what happens (details in [the home box notes](../blocker.md)):
 
 - Changing network settings or using a VPN app: does not work.
-- Forgetting the Wi-Fi to get a new address: the new address looks like a new device and starts paused.
-- Using a phone hotspot or mobile data: **not covered**. It is only home Wi-Fi.
+- Forgetting the Wi-Fi to get a new address: the box usually matches the phone back to its owner, so rules still apply. You can undo a wrong match.
+- Using a phone hotspot or mobile data: **not covered**. The box can't block mobile data. See [If a blocked phone still gets online](#if-a-blocked-phone-still-gets-online).
 - Using another device that isn't set up: **not covered**. Put every device on the Devices page.
 - Unplugging the box: the internet comes back on, and you get an alert.
 
@@ -186,6 +186,27 @@ Adding to the home screen needs the box's secure address (starts with `https`). 
 ## The iPhone icon asks me to sign in
 
 An iPhone or iPad keeps the home-screen icon apart from Safari, so the icon starts empty. Open the icon, tap **I have a code**, and type the short code (like `AB3D-7KMN`) the welcome page showed after you scanned. The code works once and runs out after 15 minutes. If it ran out, a parent makes a new QR code (see above) and you scan it again.
+
+## If a blocked phone still gets online
+
+The box can only block traffic that goes through home Wi-Fi. Two things on the phone let it slip past. You can close both.
+
+**Android (Google Family Link)**
+
+1. In Family Link, lock or restrict mobile data for the phone.
+2. On a Samsung phone, open Settings > Connections > Wi-Fi > **Intelligent Wi-Fi** and turn off **Switch to mobile data**. It sends apps over mobile data while Wi-Fi still shows connected. Keep mobile data locked in Family Link (step 1) so it cannot be turned back on.
+3. On the phone, open the home Wi-Fi, then Privacy, and choose **Use device MAC**.
+
+**iPhone (Screen Time)**
+
+1. Screen Time > Content & Privacy > Cellular Data Changes: choose **Don't Allow**.
+2. On the phone, open the home Wi-Fi and turn **Private Wi-Fi Address** off. Then lock Wi-Fi changes with Screen Time.
+
+**Still getting online on Wi-Fi?** Your Wi-Fi access point may stop the box from seeing the phone's traffic. On UniFi, turn off **Proxy ARP** and **client isolation** (also called guest or L2 isolation) for the home network.
+
+## The block page doesn't show on https sites
+
+This is expected. A blocked phone stays on Wi-Fi and shows "Connected". Plain `http://` sites show the block page. `https://` sites just close, because the box has no certificate for them and won't fake one. The internet is still blocked. To see the reason, the kid can open the t@sk4ce app, which says why the device is blocked.
 
 ## A lost phone
 

@@ -1,0 +1,13 @@
+/* Wi-Fi Settings (wifi pane) */
+[data-look='parent'] .wifi-current { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+[data-look='parent'] .wifi-name { font-weight: 600; font-size: 14px; color: var(--p-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-look='parent'] .wifi-badge { background: rgba(22, 163, 74, 0.12); color: #16a34a; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+[data-look='parent'] .wifi-list-wrap { margin-top: 12px; }
+[data-look='parent'] .wifi-list { border: 1px solid var(--p-line); border-radius: 8px; display: flex; flex-direction: column; max-height: 360px; overflow-y: auto; }
+[data-look='parent'] .wifi-item { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; min-width: 0; padding: 10px 14px; background: none; border: 0; border-bottom: 1px solid var(--p-line); color: var(--p-ink2, var(--p-ink)); font: inherit; font-size: 14px; cursor: pointer; text-align: left; }
+[data-look='parent'] .wifi-item > div { min-width: 0; }
+[data-look='parent'] .wifi-item:last-child { border-bottom: 0; }
+@media (hover: hover) { [data-look='parent'] .wifi-item:hover { background: var(--p-soft); } }
+[data-look='parent'] .wifi-select-wrap { display: grid; gap: 8px; }
+[data-look='parent'] .wifi-select { width: 100%; max-width: 320px; padding: 8px 10px; border: 1px solid var(--p-line); border-radius: 6px; font: inherit; font-size: 14px; background: var(--p-card); color: var(--p-ink); }
+[data-look='parent'] .wifi-select:focus { outline: none; border-color: var(--p-acc); }
