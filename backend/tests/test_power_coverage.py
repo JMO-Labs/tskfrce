@@ -28,6 +28,7 @@ def test_run_forever_survives_oserror_then_cancels(monkeypatch):
     async def fake_sleep(_):
         if len(calls) >= 2:
             raise asyncio.CancelledError
+
     monkeypatch.setattr(box_power, "heartbeat", beat)
     monkeypatch.setattr(box_power.asyncio, "sleep", fake_sleep)
     with pytest.raises(asyncio.CancelledError):
@@ -46,6 +47,7 @@ def test_startup_and_shutdown_power_wiring(monkeypatch, tmp_path):
 
     async def forever():
         await asyncio.sleep(3600)
+
     monkeypatch.setattr(box_power, "run_forever", forever)
 
     async def run():
@@ -75,5 +77,6 @@ def test_box_power_rule_bad_timezone_falls_back_to_utc(db, monkeypatch):
 def test_storage_full_ignores_unreadable_disk(db, monkeypatch):
     def boom(p):
         raise OSError("gone")
+
     monkeypatch.setattr(system_warnings.shutil, "disk_usage", boom)
     assert system_warnings.storage_full(db, datetime.utcnow()) == []
