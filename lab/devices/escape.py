@@ -106,7 +106,8 @@ def score(base_rc, lock_rcs, alerted, expect_alert, restored):
     if 3 in lock_rcs:
         return "PARTIAL", flags
     if any(rc not in (1, 124) for rc in lock_rcs):
-        flags.append("PROBE_ERROR")
+        # a probe that errored proves nothing: never let it pass as BLOCKED
+        return "INVALID", flags + ["PROBE_ERROR"]
     if expect_alert and not alerted:
         return "ALERT_MISS", flags
     if alerted and not expect_alert:
@@ -224,7 +225,7 @@ def selftest():
         ((0, [1], False, True, True), ("ALERT_MISS", [])),
         ((0, [124], True, False, True), ("ALERT_FALSE", [])),
         ((0, [1], True, True, False), ("BLOCKED", ["NO_RESTORE"])),
-        ((0, [255], False, False, True), ("BLOCKED", ["PROBE_ERROR"])),
+        ((0, [255], False, False, True), ("INVALID", ["PROBE_ERROR"])),
     ]
     for args, want in cases:
         assert score(*args) == want, (args, score(*args), want)
