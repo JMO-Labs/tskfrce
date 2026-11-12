@@ -55,6 +55,7 @@ def test_startup_and_shutdown_power_wiring(db, monkeypatch, tmp_path):
     async def run():
         await main.startup_event()
         task = main.fastapi_app.state.power_task
+        await asyncio.sleep(0)  # let the task start so forever() body runs
         assert not task.done()
         await main.shutdown_event()
         await asyncio.sleep(0)
