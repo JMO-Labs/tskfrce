@@ -309,7 +309,3 @@ class TestTokenEpochRevocation:
         payload = auth.verify_token(refresh_token)
         assert payload is not None
         assert auth.check_epoch(payload) is False
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

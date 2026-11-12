@@ -182,14 +182,14 @@ def forgot_pin(
 
         # Notify parent via Today inbox
         try:
-            from app.services.notify import notify_parents
+            from app.services.inbox import notify_parents
 
             notify_parents(
-                db,
-                "Parent PIN was reset with the box code.",
-                kind="box_reset_pin",
+                db, kind="box_reset_pin", title="Parent PIN was reset with the box code."
             )
+            db.commit()
         except Exception as e:
+            db.rollback()
             logger.warning("Failed to notify parents of PIN reset", error=str(e))
 
         return {
