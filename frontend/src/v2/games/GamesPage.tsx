@@ -14,6 +14,7 @@ import { Results } from './Results'
 import { partScore } from './scoring'
 import { Shelf } from './Shelf'
 import type { FinishResult, GamePart, PowerUp, StartedPlay } from './types'
+import { useGameTelemetry } from '@/v2/eval/gameEvents'
 import { useFinishGame, useGamesShelf, useStartGame } from './useGames'
 import { Wheel } from './Wheel'
 import { useFeatureOpen } from '@/v2/eval/featureMap'
@@ -55,10 +56,11 @@ function GamesFlow({ mode, celebrate, preview, autoStart = false, name = 'your k
   const [hint, setHint] = useState<string | null>(null)
   const [welcome, setWelcome] = useState(() => !preview && !welcomeSeen(kidId))
   const sent = useRef(false)
+  const tele = useGameTelemetry()
 
   const begin = () => {
     setHint(null)
-    start.mutate({}, { onSuccess: (p) => { setPlay(p); setArmed(null); setPhase('wheel') }, onError: (e) => setHint(msg(e)) })
+    start.mutate({}, { onSuccess: (p) => { tele.started(p.game); setPlay(p); setArmed(null); setPhase('wheel') }, onError: (e) => setHint(msg(e)) })
   }
   const d = shelf.data
   const auto = useRef(autoStart)
@@ -72,6 +74,7 @@ function GamesFlow({ mode, celebrate, preview, autoStart = false, name = 'your k
   const end = (score: number, parts: GamePart[] | null) => {
     if (!play || sent.current) return
     sent.current = true
+    tele.finished(score)
     setPhase('results')
     setResult(null)
     finish.mutate({ token: play.token, score, parts, power_up: armed }, {
