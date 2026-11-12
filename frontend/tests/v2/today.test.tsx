@@ -133,7 +133,7 @@ describe('TodayPage', () => {
     expect(await screen.findAllByText('860 pts')).toHaveLength(2)
     const avatar = await screen.findByRole('button', { name: 'Kid1 details' })
     expect(avatar).toHaveTextContent('K')
-    expect(avatar).toHaveClass('pt-kav')
+    expect(avatar.querySelector('.pt-kav')).not.toBeNull()
     await userEvent.click(avatar)
     const pop = await screen.findByText('Streak')
     const facts = pop.closest('.p-kid-facts') as HTMLElement

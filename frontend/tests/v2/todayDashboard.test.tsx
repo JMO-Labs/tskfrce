@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MantineProvider } from '@mantine/core'
 import { api } from '@/v2/api'
 import { TodayPage } from '@/v2/today/TodayPage'
+import { KID_COLORS } from '@/v2/KidAv'
 import { fakeRouter } from './helpers/fakeRouter'
 jest.mock('@/v2/api', () => ({ api: jest.fn(), kidToken: () => null }))
 jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
@@ -135,5 +136,21 @@ describe('kid card', () => {
     await userEvent.click(await screen.findByRole('button', { name: CARD }))
     expect(fakeRouter.query.kid).toBe('3')
     expect(await screen.findByRole('region', { name: /Maya.*s day/ })).toBeInTheDocument()
+  })
+
+  test('kid colour shows only on the KidAv name bubble; chart marks stay accent + neutrals', async () => {
+    const base = apiMock.getMockImplementation()!
+    apiMock.mockImplementation(async (p, i) => (p === '/kids' ? [{ id: 3, full_name: 'Maya' }] : base(p, i)))
+    const { container } = wrap()
+    const bubble = await screen.findByText('Ma')
+    expect(bubble).toHaveClass('pt-kav')
+    expect(bubble.style.background).toBe('rgb(57, 135, 229)') // KID_COLORS[0]
+    const card = container.querySelector('.pt-kcard') as HTMLElement
+    const hex = KID_COLORS[0].toLowerCase()
+    const tinted = Array.from(card.querySelectorAll('*')).filter((el) => {
+      const attrs = ['style', 'fill', 'stroke'].map((a) => (el.getAttribute(a) ?? '').toLowerCase())
+      return attrs.some((v) => v.includes(hex) || v.includes('57, 135, 229'))
+    })
+    expect(tinted).toEqual([bubble])
   })
 })

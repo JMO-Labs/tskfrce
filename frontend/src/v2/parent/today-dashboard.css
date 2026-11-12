@@ -31,8 +31,9 @@
 @media (min-width: 1100px) { [data-look='parent'] .pt-kids { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 [data-look='parent'] .pt-kcard[data-open] { grid-column: 1 / -1; }
 [data-look='parent'] .pt-kmain { position: relative; display: block; padding: 0; }
-[data-look='parent'] .pt-kmain .pt-kav, [data-look='parent'] .pt-kmain > :first-child { position: absolute; top: 12px; left: 12px; z-index: 1; }
+[data-look='parent'] .pt-kmain > :first-child { position: absolute; top: 12px; left: 12px; z-index: 1; }
 [data-look='parent'] .pt-kav { width: 28px; height: 28px; font-size: 12px; }
+[data-look='parent'] .pt-kavbtn { display: block; padding: 0; border: 0; background: none; border-radius: 50%; cursor: pointer; line-height: 0; }
 [data-look='parent'] .pt-krow { width: 100%; display: flex; flex-direction: column; align-items: stretch; gap: 12px; padding: 12px 14px 14px; }
 [data-look='parent'] .pt-khead { display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 36px; min-height: 28px; }
 [data-look='parent'] .pt-khead .pt-kname { flex: 1; min-width: 0; flex-direction: row; align-items: center; gap: 6px; font-size: 14px; }
