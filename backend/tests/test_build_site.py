@@ -37,3 +37,27 @@ def test_feature_guides_empty_when_source_dir_missing(tmp_path, monkeypatch):
 
     monkeypatch.setattr(build_site, "FEATURES_SOURCE", tmp_path / "nope")
     assert build_site.feature_guides() == []
+
+
+def test_site_check_and_home_cover_every_feature_guide():
+    """Each docs/guide/features/*.md is in FEATURES (check.mjs) and linked from the home page."""
+    check = (ROOT / "site/check.mjs").read_text()
+    home = (ROOT / "site/index.html").read_text()
+    for src in (ROOT / "docs/guide/features").glob("*.md"):
+        if src.name == "README.md":
+            continue
+        assert f"'{src.stem}'" in check, src.stem
+        assert f'href="guide/features/{src.stem}.html"' in home, src.stem
+    for phrase in ("multi-network", "block page", "relink", "mobile data"):
+        assert phrase in home.lower(), phrase
+
+
+def test_feature_page_links_to_docs_go_to_github():
+    """Feature pages sit two folders deep, so ../../blocker.md must also map to GitHub."""
+    import build_site
+
+    html = build_site.rewrite_links(
+        '<a href="../../blocker.md">b</a> <a href="../../routers.md">r</a>', Path("features/x.md")
+    )
+    assert "../../" not in html
+    assert html.count("https://github.com/JMO-Labs/tskfrce/blob/main/docs/") == 2

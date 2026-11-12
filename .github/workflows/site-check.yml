@@ -1,0 +1,43 @@
+name: Site check
+
+on:
+  pull_request:
+    branches: [dev, main]
+    paths:
+      - 'site/**'
+      - 'docs/guide/**'
+      - 'docs/releases/**'
+      - 'scripts/build_site.py'
+      - 'scripts/build_releases.py'
+      - 'scripts/site_templates.py'
+      - '.github/workflows/site-check.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: site-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  site-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      - run: pip install markdown==3.10.2
+      - run: python scripts/build_site.py
+      - run: cd frontend && npm ci --ignore-scripts && npx playwright install --with-deps chromium
+      - name: Smoke check (1280/390 px, light/dark)
+        run: |
+          python -m http.server 8811 --directory site &
+          sleep 2
+          node site/check.mjs http://127.0.0.1:8811
