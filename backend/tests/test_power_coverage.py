@@ -1,6 +1,7 @@
 """Coverage for power heartbeat wiring (startup/shutdown), run_forever, and two fallbacks."""
 
 import asyncio
+import contextlib
 import json
 from datetime import datetime
 
@@ -36,7 +37,8 @@ def test_run_forever_survives_oserror_then_cancels(monkeypatch):
     assert len(calls) == 2
 
 
-def test_startup_and_shutdown_power_wiring(monkeypatch, tmp_path):
+def test_startup_and_shutdown_power_wiring(db, monkeypatch, tmp_path):
+    monkeypatch.setattr(database, "SessionLocal", lambda: contextlib.nullcontext(db))
     monkeypatch.setattr(database, "init_database", lambda: None)
     monkeypatch.setattr(push, "write_conf", lambda f: None)
     monkeypatch.setattr(settings, "LOCK_LOOP_ENABLED", False)
