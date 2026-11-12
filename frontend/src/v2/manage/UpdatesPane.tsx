@@ -4,6 +4,7 @@ import { ErrorPanel, Skeleton } from '@/v2/parent/states'
 import { Icon } from '@/v2/parent/Icon'
 import { toastFail, toastOk } from '@/v2/notify'
 import { PaneCard, PaneHead } from './PaneParts'
+import { useFeatureOpen } from '@/v2/eval/featureMap'
 
 // ponytail: eval channel detected server-side; if channel === 'eval', show as "Beta" and hide major UI
 function isEval(channel: string): boolean {
@@ -32,6 +33,7 @@ function statusDisplay(result: string | null): string {
 }
 
 export function UpdatesPane() {
+  useFeatureOpen('updates')
   const updates = useUpdates()
   const patch = usePatchUpdates()
   const data = updates.data

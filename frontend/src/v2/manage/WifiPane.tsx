@@ -3,6 +3,7 @@ import { Checkbox, Modal, NativeSelect, PasswordInput, TextInput } from '@mantin
 import { Icon } from '@/v2/parent/Icon'
 import { useWifiStatus, useWifiScan, useWifiJoin, useWifiForget, useWifiCountry, type WifiNetwork } from '@/v2/hooks/useWifi'
 import { PaneCard, PaneHead } from './PaneParts'
+import { useFeatureOpen } from '@/v2/eval/featureMap'
 
 const COUNTRIES = [
   { code: 'US', label: 'United States' },
@@ -28,6 +29,7 @@ interface JoinDialogState {
 }
 
 export function WifiPane() {
+  useFeatureOpen('wifi')
   const status = useWifiStatus()
   const scan = useWifiScan()
   const join = useWifiJoin()

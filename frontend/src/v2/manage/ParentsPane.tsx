@@ -8,6 +8,7 @@ import { toastFail } from '../notify'
 import { PaneCard, PaneHead } from './PaneParts'
 import { PasswordCard } from './PasswordCard'
 import { lastActive } from './settingsMeta'
+import { useFeatureOpen } from '@/v2/eval/featureMap'
 
 const left = (s: number) => (s >= 3600 ? `${Math.ceil(s / 3600)} h` : `${Math.max(1, Math.ceil(s / 60))} min`)
 
@@ -61,6 +62,7 @@ function InviteCard({ invite, onDone }: { invite: ReturnType<typeof useInvite>; 
 
 /** Settings → Parents (mockup 02): everyone who can manage the family, plus invites not yet used. */
 export function ParentsPane() {
+  useFeatureOpen('parents')
   const parents = useParents()
   const invites = useInvites()
   const cancel = useCancelInvite()

@@ -6,9 +6,11 @@ import type { Family } from '@/v2/types'
 import { toastFail } from '../notify'
 import { multText, HappyHourButton } from '../today/HappyHourButton'
 import { Switch } from './RewardDetail'
+import { useFeatureOpen } from '@/v2/eval/featureMap'
 
 /** Rewards → Happy Hour: defaults and the two automatic Happy Hours. Each change saves on its own. */
 export function HappyHourPane() {
+  useFeatureOpen('happy_hour')
   const q = useFamily()
   const patch = usePatchFamily()
   const fam = q.data

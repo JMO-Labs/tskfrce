@@ -8,6 +8,7 @@ import { IntegrationDetail } from './IntegrationDetail'
 import { LocalKeyForm } from './LocalKeyForm'
 import { usePushUrl } from './pushUrl'
 import type { CatalogItem, InstallOut, InstallStatus } from './types'
+import { useFeatureOpen } from '@/v2/eval/featureMap'
 
 const STATUS: Record<string, [string, string]> = {
   active: ['Active', 'acc'],
@@ -30,6 +31,7 @@ function InstallRow({ i, onOpen }: { i: InstallOut; onOpen: (id: number) => void
 
 /** Settings → Integrations: what is connected, and what can be added. */
 export function IntegrationsPane() {
+  useFeatureOpen('integrations')
   const installs = useInstalls()
   const catalog = useCatalog()
   const [adding, setAdding] = useState<CatalogItem | null>(null)

@@ -8,9 +8,11 @@ import { MoreMenu } from '@/v2/parent/MoreMenu'
 import { toastFail, toastOk } from '../notify'
 import { GoalForm } from './GoalForm'
 import { GoalRow, NumberAsk, nameOf, num } from './GoalRows'
+import { useFeatureOpen } from '@/v2/eval/featureMap'
 
 /** Rewards → Goals: what's waiting on the parent, family and kid goals, new goal, settings. */
 export function GoalsPane({ onSettings }: { onSettings: () => void }) {
+  useFeatureOpen('goals')
   const q = useGoals()
   const act = useGoalAction()
   const [pricing, setPricing] = useState<number | null>(null)

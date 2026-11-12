@@ -2,6 +2,7 @@ import { tokenManager } from '@/services/tokenManager'
 
 import { KID_TOKEN_KEY } from './kid/tokenStore'
 import { refreshKid } from './kid/kidDevice'
+import { trackMutation } from './eval/featureMap'
 
 export { KID_TOKEN_KEY }
 
@@ -85,6 +86,8 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
     data = undefined
   }
   if (res.status === 401) throw new AuthError(detailOf(data, 401), !!init.kid)
+  const method = init.method ?? 'GET'
+  if (method !== 'GET') trackMutation(method, path, init.body, res.ok, !!init.kid)
   if (!res.ok) throw new ApiError(res.status, detailOf(data, res.status))
   return data as T
 }

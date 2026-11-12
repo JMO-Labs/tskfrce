@@ -15,6 +15,7 @@ import { useSaveQueue } from '@/v2/hooks/useSaveQueue'
 import { IphoneBody, IphoneHelp, iphoneSummary, useBoxPush } from './IphoneRows'
 import { PlaceDetail, PlaceSwitch } from './PlaceDetail'
 import { PlaceForm } from './PlaceForm'
+import { useFeatureOpen } from '@/v2/eval/featureMap'
 
 const QUIET = { quiet_start: '21:30', quiet_end: '07:00' }
 type Save = (p: SettingsPatch) => Promise<boolean>
@@ -70,6 +71,7 @@ function AddressBody({ s, save, fallback }: { s: NotifySettings; save: Save; fal
 const hostOf = (url: string) => { try { return new URL(url).host } catch { return url } }
 
 export function NotificationsPane() {
+  useFeatureOpen('notifications')
   const places = usePlaces()
   const settings = useNotifySettings()
   const family = useFamily().data

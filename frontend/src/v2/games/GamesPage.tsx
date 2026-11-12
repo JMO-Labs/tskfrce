@@ -16,6 +16,7 @@ import { Shelf } from './Shelf'
 import type { FinishResult, GamePart, PowerUp, StartedPlay } from './types'
 import { useFinishGame, useGamesShelf, useStartGame } from './useGames'
 import { Wheel } from './Wheel'
+import { useFeatureOpen } from '@/v2/eval/featureMap'
 
 type Phase = 'shelf' | 'wheel' | 'arm' | 'play' | 'results'
 const msg = (e: unknown) => (e instanceof ApiError ? e.detail : 'Something went wrong. Try again.')
@@ -25,6 +26,7 @@ type Props = { mode: AgeGroup; celebrate: CelebrateLevel; preview: boolean; auto
 
 /** The Games tab. In development, /kid?micro=<key> runs one microgame on repeat (screenshots, play-testing). */
 export function GamesPage(p: Props) {
+  useFeatureOpen('minigames', true)
   const [dev] = useState(() => (typeof window === 'undefined' ? null : devMicro(window.location.search)))
   const [game] = useState(() => (typeof window === 'undefined' ? null : devGame(window.location.search)))
   if (dev) return <QuickFire age={p.mode} startLevel={2} seed={1} micros={MICROS.filter((m) => m.key === dev)} onEnd={() => {}} />
