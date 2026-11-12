@@ -5,7 +5,6 @@ import subprocess
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import text
 from app.core import lockout
 from app.core.auth import AuthService
 from app.core.config import settings
@@ -13,6 +12,7 @@ from app.models import FamilySettings
 from app.models.family import get_family
 from app.models.user import User
 from app.services import reset as svc
+from sqlalchemy import text
 
 CODE = "K7M2QXA9PB"
 R = "/api/v1/settings"
