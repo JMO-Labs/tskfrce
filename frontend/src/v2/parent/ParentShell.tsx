@@ -24,6 +24,7 @@ export function ParentShell({
   phone,
   back,
   above,
+  meta,
 }: {
   title: string
   /** phone back-link label above a detail when it is not the title (e.g. "Rewards") */
@@ -35,6 +36,8 @@ export function ParentShell({
   actions?: ReactNode
   /** full-width row between the header and the page (a "‹ Today" back row) */
   above?: ReactNode
+  /** small text next to the title (Today: weekday and time) */
+  meta?: ReactNode
 }) {
   const { logout, user } = useUnifiedAuth()
   const router = useRouter()
@@ -99,7 +102,14 @@ export function ParentShell({
       {!small && <Rail onLogout={logOut} />}
       <div className="p-content">
         <header className="p-header">
-          <h1 tabIndex={-1}>{title}</h1>
+          {meta ? (
+            <div className="p-head-title">
+              <h1 tabIndex={-1}>{title}</h1>
+              <span className="p-head-meta">{meta}</span>
+            </div>
+          ) : (
+            <h1 tabIndex={-1}>{title}</h1>
+          )}
           {actions}
           {small && phoneTools}
         </header>

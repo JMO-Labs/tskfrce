@@ -14,6 +14,8 @@ export function DevicesSection({
   tab = 'devices',
   onTabChange,
   unknownOpen = false,
+  netFilter,
+  onNetFilter,
 }: {
   devices: Device[]
   kids: Kid[]
@@ -22,6 +24,8 @@ export function DevicesSection({
   tab?: 'devices' | 'groups'
   onTabChange?: (tab: 'devices' | 'groups') => void
   unknownOpen?: boolean
+  netFilter?: string
+  onNetFilter?: (net: string) => void
 }) {
   const router = useRouter()
   const item = first(router.query.item)
@@ -58,6 +62,8 @@ export function DevicesSection({
       selectedUnknown={unknownOpen}
       tab={tab}
       onTabChange={onTabChange}
+      netFilter={netFilter}
+      onNetFilter={onNetFilter}
     />
   )
 }

@@ -42,5 +42,12 @@ export function waitingStats(items: NeedsItem[], now: number): Waiting {
 /** 42 → "42m", 135 → "2h 15m". */
 export const ageText = (min: number) => (min < 60 ? `${min}m` : `${Math.floor(min / 60)}h${min % 60 ? ` ${min % 60}m` : ''}`)
 
+/** Header stamp: "Wednesday · 4:12 PM" (phones: "4:12 PM"), in the family's time zone. */
+export function headerStamp(now: number, tz: string | undefined, phone: boolean): string {
+  const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: tz }).format(now)
+  if (phone) return time
+  return `${new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: tz }).format(now)} · ${time}`
+}
+
 /** Amber after this many minutes. */
 export const STALE_MIN = 30

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.lock.device_names import display_device_name
 from app.models.chores import ChoreAssignment, ChoreRun
 from app.models.family import get_family
 from app.models.goal import Goal, GoalContribution
@@ -267,12 +268,25 @@ def family_parent(db: Session, now: datetime) -> list[dict]:
     ]
 
 
+def _short_name(d: Device) -> str:
+    """Best display name, minus any DNS domain suffix (after the first dot)."""
+    name = d.name or display_device_name(d.mdns_name, d.hostname, d.dhcp_fp, d.vendor)[0]
+    return name.split(".", 1)[0] or name
+
+
 def devices_unknown(db: Session, now: datetime) -> list[dict]:
-    devs = db.query(Device).filter(Device.status == "unassigned").order_by(Device.id).all()
+    devs = (
+        db.query(Device)
+        .filter(
+            Device.status == "unassigned", Device.is_gateway.is_(False), Device.is_box.is_(False)
+        )
+        .order_by(Device.id)
+        .all()
+    )
     if not devs:
         return []
     more = f" and {len(devs) - 2} more" if len(devs) > 2 else ""
-    names = ", ".join(d.name for d in devs[:2]) + more
+    names = ", ".join(_short_name(d) for d in devs[:2]) + more
     return [
         _s(
             "devices.unknown",
