@@ -176,6 +176,11 @@ def _allowing(allowed_sets, off, t: datetime) -> bool:
     )
 
 
+def allowing(allowed_sets, off, t: datetime) -> bool:
+    """Public: do the resolved hours allow time t (local)?"""
+    return _allowing(allowed_sets, off, t)
+
+
 def locks_at(allowed_sets, off, now_local: datetime) -> datetime | None:
     """First whole minute within 24 h where hours stop allowing, else None."""
     # ponytail: minute scan (1440 steps); window edges are whole minutes

@@ -26,7 +26,7 @@ from app.models.lock import (
     device_group_members,
 )
 from app.models.user import User, UserRole
-from app.schemas.lock import DevicePatch, GroupIn, OverrideIn, utc_z
+from app.schemas.lock import DeviceBulk, DevicePatch, GroupIn, OverrideIn, utc_z
 from app.services import economy
 
 router = APIRouter(prefix="/api/v1", tags=["devices"], dependencies=[Depends(require_parent)])
@@ -204,9 +204,8 @@ def list_devices(db: Session = Depends(get_db)):
         .order_by(Device.id)
         .all()
     )
-    # During setup, filter out gateway and box devices, add name/maker fields
+    devs = [d for d in devs if not d.is_gateway and not d.is_box]  # never the router or our box
     if fam.setup_step is not None:
-        devs = [d for d in devs if not d.is_gateway and not d.is_box]
         return _setup_devices(devs)
 
     pre = Prefetch(db, devs)
@@ -234,6 +233,25 @@ def rescan_devices(db: Session = Depends(get_db)):
     blocker_client.rescan()
 
     return {"ok": True, "last_scanned": utc_z(now)}
+
+
+@router.post("/devices/bulk")
+def bulk_devices(body: DeviceBulk, db: Session = Depends(get_db)):
+    """Set status (and owners, for assigned) on many devices in one transaction."""
+    devs = _devices(db, body.ids)
+    kids: list[User] = []
+    if body.status == "assigned":
+        kids = db.query(User).filter(User.id.in_(body.owner_ids), User.role == UserRole.KID).all()
+        if not kids or len(kids) != len(set(body.owner_ids)):
+            raise HTTPException(400, "Pick one or more existing kids to assign these devices to.")
+    for d in devs:
+        d.status = body.status
+        d.owners = list(kids)
+    _commit(db, "Those devices just changed somewhere else. Refresh and try again.")
+    trigger()
+    fam, now = get_family(db), datetime.now(UTC)
+    pre = Prefetch(db, devs)
+    return [device_out(db, d, fam, now, pre, addresses=True) for d in devs]
 
 
 @router.patch("/devices/{device_id}")

@@ -91,7 +91,7 @@ describe('Today kid focus', () => {
     expect(strip.getByRole('button', { name: /^Maya/ })).toHaveAttribute('aria-pressed', 'true')
     expect(strip.getByRole('button', { name: /All/ })).toBeInTheDocument()
     expect(document.querySelectorAll('.pt-kcard')).toHaveLength(1)
-    expect(screen.queryByRole('button', { name: /^Needs you ·/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Review/ })).toBeNull()
   })
 
   test('‹ All returns to calm', async () => {

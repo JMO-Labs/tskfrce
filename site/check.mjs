@@ -11,7 +11,7 @@ const require = createRequire(new URL('../frontend/package.json', import.meta.ur
 const { chromium } = require('playwright')
 
 const BASE = (process.argv[2] || 'http://127.0.0.1:8811').replace(/\/$/, '')
-const FEATURES = ['homework', 'time-banking', 'group-pricing', 'less-parent-work', 'calm-screens', 'rewards-celebrations', 'minigames', 'goals', 'small-devices']
+const FEATURES = ['homework', 'time-banking', 'group-pricing', 'less-parent-work', 'calm-screens', 'rewards-celebrations', 'minigames', 'goals', 'small-devices', 'bypass-alerts', 'integrations', 'remote-access', 'routers']
 const CHAPTERS = ['01-what-you-need', '02-install', '03-first-setup', '04-everyday-use', '05-for-kids', '06-troubleshooting', '07-faq', 'remote-access', 'integrations-protocol', 'features/index', ...FEATURES.map((f) => `features/${f}`)]
 const PAGES = ['/', '/engineering.html', '/guide/', ...CHAPTERS.map((c) => `/guide/${c}.html`), '/releases/', '/releases/2.13.0.html']
 const problems = []

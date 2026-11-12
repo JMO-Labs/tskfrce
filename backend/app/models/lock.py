@@ -34,7 +34,9 @@ device_group_members = Table(
 class Device(Base):
     __tablename__ = "devices"
     __table_args__ = (
-        CheckConstraint("status IN ('unassigned','assigned','guest')", name="ck_device_status"),
+        CheckConstraint(
+            "status IN ('unassigned','assigned','guest','ignored')", name="ck_device_status"
+        ),
     )
 
     id = Column(Integer, primary_key=True)
