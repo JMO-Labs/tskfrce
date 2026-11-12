@@ -277,7 +277,9 @@ def _short_name(d: Device) -> str:
 def devices_unknown(db: Session, now: datetime) -> list[dict]:
     devs = (
         db.query(Device)
-        .filter(Device.status == "unassigned", Device.is_gateway.is_(False), Device.is_box.is_(False))
+        .filter(
+            Device.status == "unassigned", Device.is_gateway.is_(False), Device.is_box.is_(False)
+        )
         .order_by(Device.id)
         .all()
     )
