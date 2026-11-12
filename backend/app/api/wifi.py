@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_parent, security, user_from_token
 from app.core.client_ip import client_ip
-from app.models.user import User, UserRole
 from app.eval.events import box_fault
+from app.models.user import User, UserRole
 from app.services import network_wifi
 
 router = APIRouter(
