@@ -1,7 +1,8 @@
 import { useState, type ChangeEvent, type CSSProperties } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { IconCheck, IconX } from '@tabler/icons-react'
-import { api } from '../api'
+import { api, AuthError } from '../api'
+import { useDebounced } from '../hooks/useDebounced'
 import { PasswordEye } from '@/v2/components/PasswordEye'
 
 export interface ParentForm { username: string; password: string; again: string; fullName: string }
@@ -49,13 +50,19 @@ export function StepParent({ value, showError, onChange }: Props) {
   const [showPassword, setShowPassword] = useState(false)
   const [showAgain, setShowAgain] = useState(false)
 
-  // Check username availability (uses anonymous endpoint before setup, auth after)
+  // Check username availability (anonymous endpoint before setup, auth after). Debounced: the
+  // server allows 10 checks/min per IP; only a 401 falls back to the auth endpoint.
+  const username = useDebounced(value.username, 400)
+  const settled = username === value.username
+  const check = (path: string) => api<{ available: boolean }>(`${path}?u=${encodeURIComponent(username)}`)
   const usernameQuery = useQuery({
-    queryKey: ['username-available', value.username],
+    queryKey: ['username-available', username],
     queryFn: () =>
-      api<{ available: boolean }>(`/setup/username-available?u=${encodeURIComponent(value.username)}`)
-        .catch(() => api<{ available: boolean }>(`/setup/username-available-auth?u=${encodeURIComponent(value.username)}`)),
-    enabled: !!value.username && !err.username,
+      check('/setup/username-available').catch((e: unknown) => {
+        if (e instanceof AuthError) return check('/setup/username-available-auth')
+        throw e
+      }),
+    enabled: !!username && !parentErrors({ ...value, username }).username,
     staleTime: Infinity,
   })
   const usernameAvailable = usernameQuery.data?.available ?? false
@@ -107,7 +114,7 @@ export function StepParent({ value, showError, onChange }: Props) {
             style={{
               width: '100%',
               padding: '10px 12px',
-              border: (showError || usernameSeen) && (err.username || (usernameQuery.isSuccess && !usernameAvailable)) ? '1px solid #ff9b8f' : '1px solid var(--p-line)',
+              border: (showError || usernameSeen) && (err.username || (settled && usernameQuery.isSuccess && !usernameAvailable)) ? '1px solid #ff9b8f' : '1px solid var(--p-line)',
               borderRadius: '8px',
               fontSize: '14px',
               backgroundColor: 'var(--p-card)',
@@ -118,11 +125,16 @@ export function StepParent({ value, showError, onChange }: Props) {
           {value.username && (
             <>
               <ValidationRule met={usernameFormatValid} text="3+ letters, numbers, dots, dashes or underscores" />
-              {usernameFormatValid && usernameQuery.isPending && (
+              {usernameFormatValid && (!settled || usernameQuery.isPending) && (
                 <div style={{ fontSize: '12px', color: 'var(--p-sub)', marginTop: '4px' }}>Checking...</div>
               )}
-              {usernameFormatValid && usernameQuery.isSuccess && (
+              {usernameFormatValid && settled && usernameQuery.isSuccess && (
                 <ValidationRule met={usernameAvailable} text={usernameAvailable ? 'Available' : 'Taken, try another'} />
+              )}
+              {usernameFormatValid && settled && usernameQuery.isError && (
+                <div style={{ fontSize: '12px', color: 'var(--p-sub)', marginTop: '4px' }}>
+                  Couldn&apos;t check this username right now. Try again in a minute.
+                </div>
               )}
             </>
           )}
