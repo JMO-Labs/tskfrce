@@ -46,11 +46,7 @@ export function ChoresList({ chores, kids, selected, onSelect }: Props) {
               {ids.slice(0, MAX_AVATARS).map((id) => {
                 const k = byId.get(id)
                 const name = k ? nameOf(k) : 'Unknown kid'
-                return (
-                  <span key={id} title={name} aria-label={name} role="img" style={{ display: 'contents' }}>
-                    <KidAv id={id} name={name} />
-                  </span>
-                )
+                return <KidAv key={id} id={id} name={name} title={name} alt={name} />
               })}
               {ids.length > MAX_AVATARS && <span className="pk-av">+{ids.length - MAX_AVATARS}</span>}
             </span>

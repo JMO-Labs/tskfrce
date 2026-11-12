@@ -83,3 +83,10 @@ test('ActionRow disabled main button does not fire', async () => {
   await user.click(screen.getByRole('button', { name: 'Approve' }))
   expect(ok).not.toHaveBeenCalled()
 })
+
+test('ActionRow with a label is a named group; without one it is not', () => {
+  wrap(<><ActionRow icon="check" iconLabel="x" title="Dishes" label="Dishes" main={{ label: 'Approve', onClick: jest.fn() }} />
+    <ActionRow icon="check" iconLabel="x" title="Sweep" /></>)
+  expect(screen.getAllByRole('group')).toHaveLength(1)
+  expect(screen.getByRole('group', { name: 'Dishes' })).toContainElement(screen.getByRole('button', { name: 'Approve' }))
+})
