@@ -84,6 +84,43 @@ def setup_needed(db: Session = Depends(get_db)):
     }
 
 
+def _limit_username_check(request: Request) -> None:
+    limit(f"username-check:{client_ip(request)}", 10, 60)
+
+
+def _validate_username(u: str, db: Session) -> dict:
+    """Check username format and availability."""
+    if not u or len(u) < 3 or len(u) > 50 or not all(c.isalnum() or c in "._-" for c in u):
+        return {"available": False}
+    taken = db.query(User.id).filter(User.username == u).first() is not None
+    return {"available": not taken}
+
+
+@router.get("/username-available", dependencies=[Depends(_limit_username_check)])
+def username_available(u: str = "", db: Session = Depends(get_db)):
+    """Check if a username is available (before setup, anonymous)."""
+    has_users = db.query(User.id).first() is not None
+    if has_users:
+        # Redirect to authenticated endpoint
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, "Authenticate for this endpoint during setup."
+        )
+    return _validate_username(u, db)
+
+
+@router.get("/username-available-auth", dependencies=[Depends(_limit_username_check)])
+def username_available_auth(
+    u: str = "",
+    db: Session = Depends(get_db),
+    _: User = Depends(require_parent),
+):
+    """Check if a username is available (during active setup, parent auth required)."""
+    fam = get_family(db)
+    if fam.setup_step is None or fam.setup_step > LAST_STEP:
+        raise HTTPException(status.HTTP_409_CONFLICT, DONE)
+    return _validate_username(u, db)
+
+
 class ClaimIn(BaseModel):
     code: str = Field(max_length=32)
 

@@ -118,6 +118,26 @@ describe('setup wizard', () => {
     expect(screen.getByLabelText('Password')).toBeInTheDocument()
   })
 
+  test('password fields have show/hide toggles', async () => {
+    const user = userEvent.setup()
+    wrap()
+    const pw = screen.getByLabelText('Password')
+    expect(pw).toHaveAttribute('type', 'password')
+    await user.click(screen.getByRole('button', { name: 'Show password' }))
+    expect(pw).toHaveAttribute('type', 'text')
+    await user.click(screen.getByRole('button', { name: 'Hide password' }))
+    expect(pw).toHaveAttribute('type', 'password')
+    await user.click(screen.getByRole('button', { name: 'Show confirm password' }))
+    expect(screen.getByLabelText('Type it again')).toHaveAttribute('type', 'text')
+  })
+
+  test('family step has a labelled time zone selector', async () => {
+    const user = userEvent.setup()
+    wrap()
+    await toFamily(user)
+    expect(screen.getByLabelText('Time zone', { selector: 'input' })).toHaveValue(tz)
+  })
+
   test('short password blocks Next', async () => {
     const user = userEvent.setup()
     wrap()

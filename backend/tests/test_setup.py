@@ -127,3 +127,108 @@ def test_finished_setup_step_is_locked(client, db):
     assert r.status_code == 409 and r.json()["detail"] == "Setup is already finished."
     assert get_family(db).setup_step is None
     assert client.put("/api/v1/setup/step", json={"step": None}, headers=h).status_code == 200
+
+
+def test_username_available_before_setup(client):
+    """Username check works before setup (anonymous, rate-limited)."""
+    r = client.get("/api/v1/setup/username-available?u=alice")
+    assert r.status_code == 200
+    assert r.json() == {"available": True}
+
+
+def test_username_available_no_claim_check(client, db, monkeypatch):
+    """Username check works while a claim is pending (no code sent, no 403)."""
+    from app.core import claim
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "CLAIM_CODE", "K7M2QXA9PB")
+    assert claim.required(db) is True
+    r = client.get("/api/v1/setup/username-available?u=alice")
+    assert r.status_code == 200 and r.json() == {"available": True}
+
+
+def test_username_available_rate_limited(client):
+    """Anonymous check: 10 per minute per IP, then 429."""
+    for _ in range(10):
+        assert client.get("/api/v1/setup/username-available?u=alice").status_code == 200
+    assert client.get("/api/v1/setup/username-available?u=alice").status_code == 429
+
+
+def test_username_available_auth_shares_rate_limit(client):
+    """Auth check shares the username-check:<ip> bucket, so it is limited too."""
+    token = client.post("/api/v1/setup", json=BODY).json()["access_token"]
+    h = {"Authorization": f"Bearer {token}"}
+    url = "/api/v1/setup/username-available-auth?u=bob"
+    for _ in range(10):
+        assert client.get(url, headers=h).status_code == 200
+    assert client.get(url, headers=h).status_code == 429
+    assert client.get("/api/v1/setup/username-available?u=bob").status_code == 429
+
+
+def test_username_check_requires_auth_during_setup(client, db):
+    """Anonymous username check fails once setup has started (returns 401)."""
+    r = client.post("/api/v1/setup", json=BODY)
+    assert r.status_code == 201
+    # Try anonymous check after setup started
+    r = client.get("/api/v1/setup/username-available?u=bob")
+    assert r.status_code == 401
+
+
+def test_username_check_auth_endpoint_works(client, db):
+    """Authenticated endpoint works during setup."""
+    r = client.post("/api/v1/setup", json=BODY)
+    assert r.status_code == 201
+    token = r.json()["access_token"]
+    h = {"Authorization": f"Bearer {token}"}
+    r = client.get("/api/v1/setup/username-available-auth?u=bob", headers=h)
+    assert r.status_code == 200
+
+
+def test_username_taken_during_setup(client, db):
+    """Username check detects taken usernames (authenticated endpoint)."""
+    r = client.post("/api/v1/setup", json=BODY)
+    assert r.status_code == 201
+    token = r.json()["access_token"]
+    h = {"Authorization": f"Bearer {token}"}
+    r = client.get("/api/v1/setup/username-available-auth?u=rich", headers=h)
+    assert r.status_code == 200
+    assert r.json() == {"available": False}
+
+
+def test_username_available_new_one_during_setup(client, db):
+    """Username check works for new usernames after setup (authenticated)."""
+    r = client.post("/api/v1/setup", json=BODY)
+    assert r.status_code == 201
+    token = r.json()["access_token"]
+    h = {"Authorization": f"Bearer {token}"}
+    r = client.get("/api/v1/setup/username-available-auth?u=alice", headers=h)
+    assert r.status_code == 200
+    assert r.json() == {"available": True}
+
+
+def test_username_check_after_setup_done(client, db):
+    """Username check blocked after setup is completely done (authenticated)."""
+    r = client.post("/api/v1/setup", json=BODY)
+    assert r.status_code == 201
+    token = r.json()["access_token"]
+    h = {"Authorization": f"Bearer {token}"}
+    get_family(db).setup_step = None
+    db.commit()
+    r = client.get("/api/v1/setup/username-available-auth?u=bob", headers=h)
+    assert r.status_code == 409
+
+
+def test_username_validation_rules(client):
+    """Username check validates format."""
+    # Too short
+    r = client.get("/api/v1/setup/username-available?u=ab")
+    assert r.json() == {"available": False}
+    # Too long
+    r = client.get("/api/v1/setup/username-available?u=" + "a" * 51)
+    assert r.json() == {"available": False}
+    # Invalid chars
+    r = client.get("/api/v1/setup/username-available?u=alice@home")
+    assert r.json() == {"available": False}
+    # Empty
+    r = client.get("/api/v1/setup/username-available?u=")
+    assert r.json() == {"available": False}
