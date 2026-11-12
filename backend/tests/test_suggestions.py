@@ -368,6 +368,7 @@ def _orphan(db, table, col):
     db.execute(text(f"UPDATE {table} SET {col}=9999"))
     db.commit()
     db.execute(text(on))
+    db.commit()
 
 
 def test_chore_skipped_ignores_missing_kid(db, client, parent, kid, parent_headers):
