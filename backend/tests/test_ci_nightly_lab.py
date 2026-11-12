@@ -1,4 +1,4 @@
-"""Nightly lab + Node 22 rules (#73). Checks the staged wq-workflows/ci-cd.yml until the owner promotes it."""
+"""Nightly lab + Node 22 rules (#73) in the promoted .github/workflows/ci-cd.yml."""
 
 from pathlib import Path
 
@@ -6,13 +6,12 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-STAGED = ROOT / "wq-workflows" / "ci-cd.yml"
-pytestmark = pytest.mark.skipif(not STAGED.exists(), reason="promoted to .github/workflows")
+WORKFLOW = ROOT / ".github" / "workflows" / "ci-cd.yml"
 
 
 @pytest.fixture(scope="module")
 def wf():
-    return yaml.safe_load(STAGED.read_text())
+    return yaml.safe_load(WORKFLOW.read_text())
 
 
 def test_lab_runs_on_schedule_against_dev(wf):

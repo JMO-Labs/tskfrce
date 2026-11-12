@@ -47,13 +47,19 @@ def test_cheap_jobs_not_gated(wf, job):
 
 
 def test_only_image_build_needs_lab_and_survives_a_skip(wf):
-    # build-and-push waits for the lab, but a skipped lab (main push after the queue) must not skip it
+    # build-and-push waits for the lab (plus the nightly failure alert), but a skipped lab (main push after the queue) must not skip it
     for name, job in wf["jobs"].items():
         needs = job.get("needs", [])
         needs = [needs] if isinstance(needs, str) else needs
-        if "lab" in needs:
-            assert name == "build-and-push"
-            assert "!failure()" in str(job["if"]) and "!cancelled()" in str(job["if"])
+        if "lab" not in needs:
+            continue
+        cond = str(job["if"])
+        if name == "lab-nightly-alert":  # #73: failure-only alert, never a build path
+            assert "failure()" in cond and "github.event_name == 'schedule'" in cond
+            assert "!failure()" not in cond
+            continue
+        assert name == "build-and-push"
+        assert "!failure()" in cond and "!cancelled()" in cond
 
 
 def test_concurrency_unchanged(wf):
