@@ -131,15 +131,17 @@ https) R=$($C --resolve $H:443:$IP "https://$H$P" 2>/dev/null) ;;
 h3) R=$($C --http3-only --resolve $H:443:$IP "https://$H$P" 2>/dev/null) ;;
 alt:*) PT=${T#alt:}; R=$($C --resolve $H:$PT:$IP "https://$H:$PT$P" 2>/dev/null) ;;
 http80)
-  # CF answers :80 with a 301 to https; the Location carries the secret path, proof it is CF's edge
-  L=$($C --resolve $H:80:$IP -o /dev/null -w '%{redirect_url}' "http://$H$P" 2>/dev/null)
-  [ "$L" = "https://$H$P" ] && R=canary:$TOK ;;
+  # CF answers :80 with a 301 to https; a Location echoing our token proves CF's edge answered.
+  # Non-secret path: never send the canary secret over cleartext.
+  L=$($C --resolve $H:80:$IP -o /dev/null -w '%{redirect_url}' "http://$H/p80/$TOK" 2>/dev/null)
+  [ "$L" = "https://$H/p80/$TOK" ] && R=canary:$TOK ;;
 ws)
   WI=$(ping -c1 -W3 tunnel.jmolabs.dev 2>/dev/null | sed -n 's/^PING [^(]*(\([0-9.]*\)).*/\1/p')
   [ -n "$WI" ] || { echo "$T $TOK 1" >>/data/local/tmp/canary.log; exit 1; }
-  # IP in the URL (no resolv.conf on Android); SNI + Host name the tunnel (cert not verifiable by IP; trust = exact token reply)
-  $K/wstunnel client -L tcp://127.0.0.1:18080:canary:8080 --http-upgrade-path-prefix "$S" \
-    --tls-sni-override tunnel.jmolabs.dev -H "Host: tunnel.jmolabs.dev" \
+  # IP in the URL (no resolv.conf on Android); cert verified against the SNI name so the secret
+  # upgrade path is never sent to an unverified server
+  SSL_CERT_FILE=$K/ca-bundle.crt $K/wstunnel client -L tcp://127.0.0.1:18080:canary:8080 --http-upgrade-path-prefix "$S" \
+    --tls-verify-certificate --tls-sni-override tunnel.jmolabs.dev -H "Host: tunnel.jmolabs.dev" \
     "wss://$WI:443" >/dev/null 2>&1 &
   WP=$!
   i=0; R=
