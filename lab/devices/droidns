@@ -27,10 +27,15 @@ leave() {  # drop the link like a phone switching identity: no DHCPRELEASE
   in_ns ip link set "$IF" down
 }
 
-join() {  # join [hostname] [vendor-class]
+valid_host() { [[ $1 =~ ^[A-Za-z0-9-]{1,32}$ ]]; }
+valid_vendor() { [[ $1 =~ ^[A-Za-z0-9._:-]{1,48}$ ]]; }
+
+join() {  # join [hostname] [vendor-class]; validated here so every caller is covered
+  [ -z "${1:-}" ] || valid_host "$1" || die "bad hostname"
+  [ -z "${2:-}" ] || valid_vendor "$2" || die "bad vendor class"
   local args=(-f "$DHCONF" -4 -w -t 30 -c /bin/true)
-  [ -n "${1:-}" ] && args+=(-h "$1")
-  [ -n "${2:-}" ] && args+=(-i "$2")
+  [ -n "${1:-}" ] && args+=("--hostname=$1")
+  [ -n "${2:-}" ] && args+=("--vendorclassid=$2")
   in_ns ip link set "$IF" up
   in_ns pgrep -f "wpa_supplicant.*-i $IF" >/dev/null ||
     in_ns wpa_supplicant -B -i "$IF" -c "$CONF" -P /run/droid-wpa.pid
@@ -67,6 +72,8 @@ mac)  # mac random|hw|<unicast mac>: rejoin under a new MAC (private-MAC rotatio
   hw) m=$HW_MAC ;;
   esac
   valid_mac "$m" || die "bad mac '$m' (want lowercase unicast aa:bb:cc:dd:ee:ff, random or hw)"
+  [ -z "${3:-}" ] || valid_host "$3" || die "bad hostname"
+  [ -z "${4:-}" ] || valid_vendor "$4" || die "bad vendor class"
   leave
   in_ns ip link set "$IF" address "$m"
   join "${3:-}" "${4:-}"
@@ -74,8 +81,8 @@ mac)  # mac random|hw|<unicast mac>: rejoin under a new MAC (private-MAC rotatio
   ;;
 rejoin)  # rejoin [hostname] [vendor-class]: reconnect with this DHCP identity
   h=${2:-} v=${3:-}
-  [ -z "$h" ] || [[ $h =~ ^[A-Za-z0-9-]{1,32}$ ]] || die "bad hostname"
-  [ -z "$v" ] || [[ $v =~ ^[A-Za-z0-9._:-]{1,48}$ ]] || die "bad vendor class"
+  [ -z "$h" ] || valid_host "$h" || die "bad hostname"   # check before dropping the link
+  [ -z "$v" ] || valid_vendor "$v" || die "bad vendor class"
   leave
   join "$h" "$v"
   "$0" status
