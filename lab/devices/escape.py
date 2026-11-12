@@ -67,7 +67,15 @@ def box(cmd, mac=MAC):
 
 
 def sh(platform, cmd, timeout):
-    """Run a shell string on a platform; returns (rc, stdout). Only A (adb shell) for now."""
+    """Run a shell string on a platform; returns (rc, stdout). A = adb shell, H = this host."""
+    if (
+        platform == "H"
+    ):  # host-side hooks, e.g. `sudo -n droidns mac random` to rotate the Wi-Fi MAC
+        try:
+            r = subprocess.run(["bash", "-c", cmd], capture_output=True, text=True, timeout=timeout)
+            return r.returncode, r.stdout
+        except subprocess.TimeoutExpired:
+            return 124, "timeout"
     if platform != "A":
         return 255, f"no driver for {platform}"
     return adb("shell", cmd, timeout=timeout)
@@ -119,6 +127,8 @@ def run_one(sc, platform, opt):
     try:
         box("unlock")
         time.sleep(opt.base_wait)
+        if sc.get("host_setup"):
+            sh("H", sc["host_setup"], 120)
         if sc.get("setup"):
             sh(platform, sc["setup"], 60)
         base_rc, out = sh(platform, probe, to)
@@ -129,6 +139,8 @@ def run_one(sc, platform, opt):
         before = box("status")
         box("lock")
         time.sleep(opt.settle)
+        if sc.get("host_locked_setup"):  # host-side kid move while paused (MAC rotation, static IP)
+            sh("H", sc["host_locked_setup"], 120)
         if sc.get("locked_setup"):  # the kid's move made while paused (e.g. flip Private DNS)
             sh(platform, sc["locked_setup"], 60)
         rcs, outs = [], []
@@ -153,6 +165,8 @@ def run_one(sc, platform, opt):
         try:
             if sc.get("teardown"):
                 sh(platform, sc["teardown"], 60)
+            if sc.get("host_teardown"):
+                sh("H", sc["host_teardown"], 120)
             box("unlock")
         except Exception as e:
             row.flags.append(f"CLEANUP_ERR:{e!r}"[:80])

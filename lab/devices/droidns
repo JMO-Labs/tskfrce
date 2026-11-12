@@ -2,13 +2,45 @@
 # Lab-only: give the Android emulator its own MAC on the home LAN without touching enp1s0.
 # Moves the spare Wi-Fi card (phy0/wlp3s0) into netns "droid", joins Wi-Fi there, and
 # runs commands inside it as the unprivileged lab user. The box then sees the emulator
-# as a normal Wi-Fi phone (MAC of wlp3s0).
+# as a normal Wi-Fi phone (MAC of wlp3s0). Identity commands (mac/rejoin/static) let tests
+# act like a phone rotating its private MAC or changing its DHCP fingerprint.
 # Installed root-owned to /usr/local/sbin/droidns; sudoers allows only this script.
+# Runs as root: every argument is validated against a strict pattern before use.
 set -euo pipefail
-NS=droid IF=wlp3s0 PHY=phy0 RUN_AS=user
+NS=droid IF=wlp3s0 PHY=phy0 RUN_AS=user HW_MAC=c4:8b:66:54:72:0d
 # root-owned 0600: wpa_supplicant config can load shared libs (pkcs11/opensc), so never user-writable
 CONF=/etc/tskfrce-lab/wpa.conf
+# root-owned dhcpcd config: MAC-based client id (a real phone's new MAC carries no old DUID)
+DHCONF=/etc/tskfrce-lab/dhcpcd.conf
 in_ns() { ip netns exec "$NS" "$@"; }
+die() { echo "droidns: $*" >&2; exit 2; }
+
+valid_mac() { [[ $1 =~ ^[0-9a-f]{2}(:[0-9a-f]{2}){5}$ ]] && (( (16#${1:0:2} & 1) == 0 )); }
+valid_ip() { [[ $1 =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})$ ]] &&
+  for o in "${BASH_REMATCH[@]:1}"; do ((o <= 255)) || return 1; done; }
+
+leave() {  # drop the link like a phone switching identity: no DHCPRELEASE
+  in_ns dhcpcd -x "$IF" >/dev/null 2>&1 || true
+  [ -f /run/droid-wpa.pid ] && kill "$(cat /run/droid-wpa.pid)" 2>/dev/null || true
+  sleep 1
+  in_ns ip -4 addr flush dev "$IF"
+  in_ns ip link set "$IF" down
+}
+
+join() {  # join [hostname] [vendor-class]
+  local args=(-f "$DHCONF" -4 -w -t 30 -c /bin/true)
+  [ -n "${1:-}" ] && args+=(-h "$1")
+  [ -n "${2:-}" ] && args+=(-i "$2")
+  in_ns ip link set "$IF" up
+  in_ns pgrep -f "wpa_supplicant.*-i $IF" >/dev/null ||
+    in_ns wpa_supplicant -B -i "$IF" -c "$CONF" -P /run/droid-wpa.pid
+  for _ in $(seq 30); do in_ns iw dev "$IF" link | grep -q Connected && break; sleep 1; done
+  in_ns dhcpcd "${args[@]}" "$IF"
+  dns=$(in_ns dhcpcd -4 -U "$IF" 2>/dev/null | sed -n "s/^domain_name_servers='\{0,1\}\([^' ]*\).*/\1/p")
+  gw=$(in_ns ip -4 route show default | awk '{print $3; exit}')
+  mkdir -p /etc/netns/$NS
+  echo "nameserver ${dns:-$gw}" >/etc/netns/$NS/resolv.conf
+}
 
 case "${1:-}" in
 up)
@@ -17,16 +49,7 @@ up)
   # phy is only visible in the root ns until moved; skip if already moved
   iw phy "$PHY" info >/dev/null 2>&1 && iw phy "$PHY" set netns name "$NS"
   in_ns ip link set lo up
-  in_ns ip link set "$IF" up
-  in_ns pgrep -f "wpa_supplicant.*-i $IF" >/dev/null ||
-    in_ns wpa_supplicant -B -i "$IF" -c "$CONF" -P /run/droid-wpa.pid
-  for _ in $(seq 30); do in_ns iw dev "$IF" link | grep -q Connected && break; sleep 1; done
-  # -c /bin/true: no hooks, so dhcpcd can't rewrite the host's resolv.conf or hostname
-  in_ns ip -4 addr show "$IF" | grep -q inet || in_ns dhcpcd -4 -w -t 30 -c /bin/true "$IF"
-  dns=$(in_ns dhcpcd -4 -U "$IF" 2>/dev/null | sed -n "s/^domain_name_servers='\{0,1\}\([^' ]*\).*/\1/p")
-  gw=$(in_ns ip -4 route show default | awk '{print $3; exit}')
-  mkdir -p /etc/netns/$NS
-  echo "nameserver ${dns:-$gw}" >/etc/netns/$NS/resolv.conf
+  in_ns ip -4 addr show "$IF" | grep -q inet || join
   "$0" status
   ;;
 down)
@@ -37,7 +60,39 @@ down)
   ip netns del "$NS" 2>/dev/null || true   # phy returns to root ns
   rfkill block wlan
   ;;
+mac)  # mac random|hw|<unicast mac>: rejoin under a new MAC (private-MAC rotation)
+  m=${2:-}
+  case "$m" in
+  random) m=$(printf '%02x' $(( (RANDOM & 0xfc) | 0x02 )))$(od -An -N5 -tx1 /dev/urandom | tr ' ' ':' | tr -d '\n') ;;
+  hw) m=$HW_MAC ;;
+  esac
+  valid_mac "$m" || die "bad mac '$m' (want lowercase unicast aa:bb:cc:dd:ee:ff, random or hw)"
+  leave
+  in_ns ip link set "$IF" address "$m"
+  join "${3:-}" "${4:-}"
+  "$0" status
+  ;;
+rejoin)  # rejoin [hostname] [vendor-class]: reconnect with this DHCP identity
+  h=${2:-} v=${3:-}
+  [ -z "$h" ] || [[ $h =~ ^[A-Za-z0-9-]{1,32}$ ]] || die "bad hostname"
+  [ -z "$v" ] || [[ $v =~ ^[A-Za-z0-9._:-]{1,48}$ ]] || die "bad vendor class"
+  leave
+  join "$h" "$v"
+  "$0" status
+  ;;
+static)  # static IP GW: fixed IPv4 /24, no DHCP (kid sets a static address)
+  valid_ip "${2:-}" && valid_ip "${3:-}" || die "usage: static IP GW"
+  leave
+  in_ns ip link set "$IF" up
+  in_ns pgrep -f "wpa_supplicant.*-i $IF" >/dev/null ||
+    in_ns wpa_supplicant -B -i "$IF" -c "$CONF" -P /run/droid-wpa.pid
+  for _ in $(seq 30); do in_ns iw dev "$IF" link | grep -q Connected && break; sleep 1; done
+  in_ns ip addr add "$2/24" dev "$IF"
+  in_ns ip route replace default via "$3"
+  "$0" status
+  ;;
 status)
+  in_ns ip -br link show "$IF"
   in_ns iw dev "$IF" link | sed -n '1,3p'
   in_ns ip -br addr show "$IF"
   in_ns ip route show default
@@ -48,5 +103,5 @@ run)
   # drop to the lab user inside the namespace; never runs anything as root
   exec ip netns exec "$NS" setpriv --reuid="$RUN_AS" --regid="$RUN_AS" --init-groups --reset-env -- "$@"
   ;;
-*) echo "usage: droidns up|down|status|run CMD..." >&2; exit 2 ;;
+*) echo "usage: droidns up|down|status|mac random|hw|MAC [host [vendor]]|rejoin [host [vendor]]|static IP GW|run CMD..." >&2; exit 2 ;;
 esac

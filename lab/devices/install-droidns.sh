@@ -18,6 +18,16 @@ if [ -f "$SRC_CONF" ]; then
 fi
 [ -f /etc/tskfrce-lab/wpa.conf ] || { echo "missing /etc/tskfrce-lab/wpa.conf" >&2; exit 1; }
 
+# dhcpcd config for droidns: client id from the current MAC (no persistent DUID linking identities)
+cat >/etc/tskfrce-lab/dhcpcd.conf <<'EOF'
+clientid
+option domain_name_servers, domain_name, domain_search, host_name
+option classless_static_routes, interface_mtu
+require dhcp_server_identifier
+nohook resolv.conf
+EOF
+chmod 644 /etc/tskfrce-lab/dhcpcd.conf
+
 tmp=$(mktemp)
 echo "$LAB_USER ALL=(root) NOPASSWD: /usr/local/sbin/droidns" >"$tmp"
 visudo -cf "$tmp" >/dev/null
