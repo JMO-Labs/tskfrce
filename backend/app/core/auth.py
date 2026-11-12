@@ -195,10 +195,6 @@ class AuthService:
         if payload is None or payload.get("type") != "access":
             return None
 
-        # Check epoch first (revocation check)
-        if not self.check_epoch(payload):
-            return None
-
         user_id = payload.get("sub")
         if user_id is None:
             return None
@@ -212,12 +208,16 @@ class AuthService:
         if user is None or not user.is_active:
             return None
 
+        # Revocation check; reuse the loaded user (no second users query)
+        if not self.check_epoch(payload, user):
+            return None
+
         sid = payload.get("sid")
         if sid is not None and (user.role != UserRole.KID or not self._device_alive(sid, user.id)):
             return None  # enrolled phone removed (or idle-expired): revoked at once
         return user
 
-    def check_epoch(self, payload: dict) -> bool:
+    def check_epoch(self, payload: dict, user: User | None = None) -> bool:
         """
         Check if JWT token_epoch matches current family epoch (revocation check).
 
@@ -226,21 +226,17 @@ class AuthService:
 
         Args:
             payload: Decoded JWT payload
+            user: Already-loaded token subject (skips the lookup)
 
         Returns:
             True if epoch valid or not applicable, False if revoked (token_epoch mismatch)
         """
-        user_id = payload.get("sub")
-        if user_id is None:
-            return False
-
-        try:
-            user_id = int(user_id)
-        except (ValueError, TypeError):
-            return False
-
-        user = self.user_service.get_user(user_id)
         if user is None:
+            try:
+                user = self.user_service.get_user(int(payload.get("sub")))
+            except (ValueError, TypeError):
+                return False
+        if user is None or str(user.id) != str(payload.get("sub")):
             return False
 
         # Check token_epoch only for parent/admin (kids not affected)

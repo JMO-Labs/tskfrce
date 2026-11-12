@@ -165,7 +165,7 @@ async def refresh_token(refresh_data: RefreshTokenRequest, db: Session = Depends
         )
 
     # Check epoch in refresh token (revocation: reject pre-reset refresh tokens)
-    if not auth_service.check_epoch(payload):
+    if not auth_service.check_epoch(payload, user):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session invalidated. Log in again.",
