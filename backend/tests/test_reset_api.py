@@ -10,6 +10,7 @@ from app.core.auth import AuthService
 from app.core.config import settings
 from app.models import FamilySettings
 from app.models.family import get_family
+from app.models.inbox import Notification
 from app.models.user import User
 from app.services import reset as svc
 from sqlalchemy import text
@@ -112,10 +113,11 @@ def test_forgot_pin_wrong_code_then_lockout(client, owner):
 def test_forgot_pin_resets_password_and_bumps_epoch(client, db, owner):
     fam = get_family(db)
     before = fam.token_epoch or 0
-    with patch("app.services.notify.notify_parents", create=True) as notify:
-        r = _forgot(client)
+    r = _forgot(client)
     assert r.status_code == 200 and r.json()["ok"] is True
-    notify.assert_called_once()
+    db.expire_all()
+    note = db.query(Notification).filter_by(user_id=owner.id, kind="box_reset_pin").one()
+    assert "PIN" in note.title
     db.expire_all()
     assert get_family(db).token_epoch == before + 1
     user = db.query(User).filter(User.id == owner.id).one()
@@ -123,14 +125,15 @@ def test_forgot_pin_resets_password_and_bumps_epoch(client, db, owner):
 
 
 def test_forgot_pin_survives_notify_failure(client, owner):
-    with patch("app.services.notify.notify_parents", create=True, side_effect=RuntimeError("x")):
+    with patch("app.services.inbox.notify_parents", side_effect=RuntimeError("x")) as notify:
         assert _forgot(client).status_code == 200
+    assert notify.call_args.kwargs["kind"] == "box_reset_pin"
 
 
 def _dangling_owner(db):
     """Point owner_id at a missing user (FKs off; SQLite only)."""
     if db.get_bind().dialect.name != "sqlite":
-        pytest.skip("dangling FK needs SQLite")
+        pytest.skip("dangling FK needs SQLite")  # pragma: no cover
     db.execute(text("PRAGMA foreign_keys=OFF"))
     get_family(db).owner_id = 987654
     db.commit()
