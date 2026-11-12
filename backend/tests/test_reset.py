@@ -7,8 +7,8 @@ import pytest
 from app.core.auth import AuthService
 from app.models import Chore, FamilySettings, Points, User
 from app.models.chores import ChoreType
-from app.models.points import PointsType
 from app.models.family import get_family
+from app.models.points import PointsType
 from app.models.user import UserRole
 from app.services.reset import backup_export, reset_app_data
 from sqlalchemy.orm import Session
