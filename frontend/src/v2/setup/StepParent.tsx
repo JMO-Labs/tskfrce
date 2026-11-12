@@ -163,6 +163,9 @@ export function StepParent({ value, showError, onChange }: Props) {
             }}
           />
           {value.again && <ValidationRule met={!err.again} text="Passwords match" />}
+          {(showError || againSeen) && err.again && (
+            <div role="alert" style={{ fontSize: '12px', color: '#c0392b', marginTop: '4px' }}>{err.again}</div>
+          )}
         </div>
       </div>
     </div>
