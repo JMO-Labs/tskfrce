@@ -209,6 +209,7 @@ def test_backup_export_empty_without_family(db):
 def test_backup_export_includes_kids_and_rewards(db, kid):
     from app.models import Reward
 
+    get_family(db)
     db.add(Reward(name="Ice cream", price=10))
     db.commit()
     data = json.loads(svc.backup_export(db))
@@ -219,6 +220,7 @@ def test_backup_export_includes_kids_and_rewards(db, kid):
 def test_backup_export_includes_points_and_chores(db, kid, parent):
     from app.models import Chore, ChoreType, Points, PointsType
 
+    get_family(db)
     ct = ChoreType(name="bk", glyph="x", builtin=False, position=98)
     db.add(ct)
     db.flush()
