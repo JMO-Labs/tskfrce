@@ -209,5 +209,3 @@ def test_username_validation_rules(client):
     # Empty
     r = client.get("/api/v1/setup/username-available?u=")
     assert r.json() == {"available": False}
-
-

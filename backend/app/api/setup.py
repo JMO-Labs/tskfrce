@@ -90,7 +90,7 @@ def _limit_username_check(request: Request) -> None:
 
 def _validate_username(u: str, db: Session) -> dict:
     """Check username format and availability."""
-    if not u or len(u) < 3 or len(u) > 50 or not all(c.isalnum() or c in '._-' for c in u):
+    if not u or len(u) < 3 or len(u) > 50 or not all(c.isalnum() or c in "._-" for c in u):
         return {"available": False}
     taken = db.query(User.id).filter(User.username == u).first() is not None
     return {"available": not taken}
@@ -102,7 +102,9 @@ def username_available(u: str = "", db: Session = Depends(get_db)):
     has_users = db.query(User.id).first() is not None
     if has_users:
         # Redirect to authenticated endpoint
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Authenticate for this endpoint during setup.")
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED, "Authenticate for this endpoint during setup."
+        )
     return _validate_username(u, db)
 
 
