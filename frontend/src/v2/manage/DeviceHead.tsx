@@ -7,6 +7,7 @@ import type { MenuItem } from '@/v2/parent/MoreMenu'
 import { Icon } from '@/v2/parent/Icon'
 import type { Device, Override } from '@/v2/types'
 import { ActionButton } from './ActionButton'
+import { useNetworkLabels } from '@/v2/hooks/useNetworks'
 import { DEVICE_TYPE_ICON, getDeviceType } from './deviceMeta'
 import { homeworkItems } from './homeworkMenu'
 import { toastFail, toastOk } from '../notify'
@@ -53,6 +54,7 @@ export function deviceMenu(o: {
 /** Device header: type tile, name, the one status chip (its pop-over explains it), the main action and the "…" menu. */
 export function DeviceHead({ device, locked, ov, timeZone, blockNew, pendingAction, onOverride, onActivity, onRename, onDelete }: Props) {
   const test = useTestBlock()
+  const netLabel = useNetworkLabels().labelFor(device)
   const forgive = usePenaltyAction()
   const pen = device.penalty
   const onceTest = useSingleFlight() // a slow test must not swallow the next save
@@ -111,6 +113,7 @@ export function DeviceHead({ device, locked, ov, timeZone, blockNew, pendingActi
     <DetailHeader
       media={<span className="pk-tile pk-tile-lg"><Icon name={DEVICE_TYPE_ICON[getDeviceType(device.name, device.vendor)]} size={26} /></span>}
       title={device.name}
+      sub={netLabel ? <span className="p-chip" data-tone="grey" data-net={device.network_id}>{netLabel}</span> : undefined}
       status={status}
       main={pen ? (
         <ActionButton icon="favorite" busy={forgive.isPending} disabled={forgive.isPending} onClick={() => forgive.mutate({ id: pen.id, action: 'forgive' })}>Forgive</ActionButton>

@@ -142,6 +142,7 @@ def device_out(
         "model": d.model,
         "random_mac": d.random_mac,
         "vlan_id": d.vlan_id,
+        "network_id": d.network_id,
         "exempt": bool(d.exempt),
         "reason": reason or open_reason(f, now_local),
         "chores_done": sum(o.approved for o in f.owners),

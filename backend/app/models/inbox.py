@@ -50,6 +50,7 @@ KINDS = (
     "goal_suggested",
     "jail_card",
     "box_update",
+    "box_reset_pin",
 )
 
 

@@ -58,6 +58,7 @@ export interface Device extends DevicePenaltyFields {
   random_mac?: boolean
   /** null/absent = the untagged LAN */
   vlan_id?: number | null
+  network_id?: number | null
   /** Setup step: best display name (mdns > hostname > fingerprint guess > vendor) */
   display_name?: string
   /** Setup step: which source gave the display_name */

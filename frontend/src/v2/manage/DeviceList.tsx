@@ -6,6 +6,7 @@ import { Tooltip } from '@mantine/core'
 import { ListHeader } from '@/v2/parent/ListHeader'
 import { SegmentedControl } from '@/v2/parent/SegmentedControl'
 import type { Device, Group as DeviceGroup, Kid } from '@/v2/types'
+import { useNetworkLabels } from '@/v2/hooks/useNetworks'
 import { deviceSubline, DEVICE_TYPE_ICON, getDeviceType, type DeviceType } from './deviceMeta'
 
 interface Props {
@@ -20,6 +21,9 @@ interface Props {
   selectedUnknown?: boolean
   tab?: 'devices' | 'groups'
   onTabChange?: (tab: 'devices' | 'groups') => void
+  /** selected network id ('' = All) and its setter; the filter shows with 2+ networks */
+  netFilter?: string
+  onNetFilter?: (net: string) => void
 }
 
 type Tone = 'acc' | 'red' | 'amb' | 'grey'
@@ -82,7 +86,10 @@ export function DeviceList({
   selectedUnknown,
   tab = 'devices',
   onTabChange,
+  netFilter = '',
+  onNetFilter,
 }: Props) {
+  const { networks, labelFor } = useNetworkLabels()
   const unknown = devices.filter((d) => d.status === 'unassigned').length
   // ignored devices live in the pane too, so keep the entry reachable for their undo
   const ignored = devices.filter((d) => d.status === 'ignored').length
@@ -117,6 +124,7 @@ export function DeviceList({
           <div className="p-device-name" title={d.name}>{d.name}</div>
           <div className="p-device-meta">
             <span>{deviceSubline(d, owner)}</span>
+            {labelFor(d) && <span className="p-chip" data-tone="grey" data-net={d.network_id}>{labelFor(d)}</span>}
             {d.exempt && (
               <span className="p-chip" data-tone="lav">Exempt</span>
             )}
@@ -152,6 +160,12 @@ export function DeviceList({
       <div className="p-list-items">
         {/* Devices tab */}
         <div role="tabpanel" aria-label="Devices" hidden={tab !== 'devices'}>
+          {networks.length > 0 && (
+            <select className="p-net-filter" aria-label="Network" value={netFilter} onChange={(e) => onNetFilter?.(e.target.value)}>
+              <option value="">All networks</option>
+              {networks.map((n) => <option key={n.id} value={n.id}>{n.label}</option>)}
+            </select>
+          )}
           {unknown + ignored > 0 && (
             <button
               type="button"
