@@ -575,15 +575,22 @@ def _enforce_svc(monkeypatch, cfg, state_enforce):
     if cfg.lan_iface == "":
         svc._iface_manager = Mock()
         svc._iface_manager.infra.return_value = (set(), set())
-    svc._on_seen(Seen(mac=MAC, ip="192.168.1.50", ipv6=[], hostname=None, vendor=None, iface="eth0"))
+    svc._on_seen(
+        Seen(mac=MAC, ip="192.168.1.50", ipv6=[], hostname=None, vendor=None, iface="eth0")
+    )
     return svc, fw, redir, states
 
 
 @pytest.mark.parametrize("cfg", [CFG, CFG_MULTINET], ids=["legacy", "multinet"])
 @pytest.mark.parametrize(
     "enforce,expected",
-    [({}, True), ({"eth0:192.168.1.0/24": True}, True), ({"eth0:192.168.1.0/24": False}, False),
-     ({"eth0": False}, False), ({"wlan0:10.0.0.0/24": False}, True)],
+    [
+        ({}, True),
+        ({"eth0:192.168.1.0/24": True}, True),
+        ({"eth0:192.168.1.0/24": False}, False),
+        ({"eth0": False}, False),
+        ({"wlan0:10.0.0.0/24": False}, True),
+    ],
 )
 def test_network_enforce_switch(monkeypatch, cfg, enforce, expected):
     svc, fw, redir, _ = _enforce_svc(monkeypatch, cfg, enforce)

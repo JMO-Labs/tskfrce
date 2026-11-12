@@ -242,7 +242,9 @@ class Service:
         if iface is None:
             return True
         keys = [f"{n}:{net}" for n, net in nets if n == iface and _in_net(ip, net)] + [iface]
-        return next((bool(self._network_enforce[k]) for k in keys if k in self._network_enforce), True)
+        return next(
+            (bool(self._network_enforce[k]) for k in keys if k in self._network_enforce), True
+        )
 
     def _by_segment(self, devs: dict[str, TargetAddrs], unsafe: set[str]):
         """Split targets per segment. A MAC is redirected on every segment it was seen on within
