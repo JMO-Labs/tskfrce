@@ -7,7 +7,7 @@
 # Installed root-owned to /usr/local/sbin/droidns; sudoers allows only this script.
 # Runs as root: every argument is validated against a strict pattern before use.
 set -euo pipefail
-NS=droid IF=wlp3s0 PHY=phy0 RUN_AS=user HW_MAC=c4:8b:66:54:72:0d
+NS=droid IF=wlp3s0 PHY=phy0 RUN_AS=user HW_MAC=c4:8b:66:54:72:0d TAP=droidtap
 # root-owned 0600: wpa_supplicant config can load shared libs (pkcs11/opensc), so never user-writable
 CONF=/etc/tskfrce-lab/wpa.conf
 # root-owned dhcpcd config: MAC-based client id (a real phone's new MAC carries no old DUID)
@@ -98,6 +98,43 @@ static)  # static IP GW: fixed IPv4 /24, no DHCP (kid sets a static address)
   in_ns ip route replace default via "$3"
   "$0" status
   ;;
+tap)  # tap prep|attach|down: Android Wi-Fi via a TAP in the netns (emulator itself runs in the
+  # root ns, so its simulated cellular exits via the host = independent "mobile data")
+  case "${2:-}" in
+  prep)  # before emulator start: user-owned TAP in the root ns so the emulator can open it
+    ip link show "$TAP" >/dev/null 2>&1 || ip tuntap add dev "$TAP" mode tap user "$RUN_AS"
+    ;;
+  attach)  # emulator's -net-tap-script-up: move the opened TAP into the netns and route it out Wi-Fi
+    ip link show "$TAP" >/dev/null 2>&1 && ip link set "$TAP" netns "$NS"
+    in_ns ip link set "$TAP" up
+    in_ns ip addr replace 10.0.77.1/24 dev "$TAP"
+    in_ns ip -6 addr replace fd77::1/64 dev "$TAP"
+    in_ns sysctl -qw net.ipv4.ip_forward=1 net.ipv6.conf.all.forwarding=1
+    # forwarding turns off RA acceptance; keep the Wi-Fi uplink's IPv6 default route
+    in_ns sysctl -qw "net.ipv6.conf.$IF.accept_ra=2"
+    in_ns nft -f - <<EOF
+table inet droidnat
+delete table inet droidnat
+table inet droidnat {
+  chain post { type nat hook postrouting priority 100; oifname "$IF" masquerade; }
+}
+EOF
+    dns=$(awk '/^nameserver/{print $2; exit}' /etc/netns/$NS/resolv.conf)
+    in_ns pkill -f "dnsmasq.*$TAP" || true
+    # DHCP + IPv6 RA only (port=0: no DNS server); DNS = what the home router hands out
+    in_ns dnsmasq --port=0 --interface="$TAP" --bind-interfaces --except-interface=lo \
+      --dhcp-range=10.0.77.10,10.0.77.50,12h --dhcp-option=6,"${dns:-10.0.77.1}" \
+      --dhcp-range=::,constructor:"$TAP",ra-stateless --enable-ra \
+      --pid-file=/run/droid-dnsmasq.pid --dhcp-leasefile=/run/droid-dnsmasq.leases
+    ;;
+  down)
+    [ -f /run/droid-dnsmasq.pid ] && kill "$(cat /run/droid-dnsmasq.pid)" 2>/dev/null || true
+    in_ns nft delete table inet droidnat 2>/dev/null || true
+    in_ns ip link del "$TAP" 2>/dev/null || ip link del "$TAP" 2>/dev/null || true
+    ;;
+  *) die "usage: tap prep|attach|down" ;;
+  esac
+  ;;
 status)
   in_ns ip -br link show "$IF"
   in_ns iw dev "$IF" link | sed -n '1,3p'
@@ -110,5 +147,5 @@ run)
   # drop to the lab user inside the namespace; never runs anything as root
   exec ip netns exec "$NS" setpriv --reuid="$RUN_AS" --regid="$RUN_AS" --init-groups --reset-env -- "$@"
   ;;
-*) echo "usage: droidns up|down|status|mac random|hw|MAC [host [vendor]]|rejoin [host [vendor]]|static IP GW|run CMD..." >&2; exit 2 ;;
+*) echo "usage: droidns up|down|status|tap prep|attach|down|mac random|hw|MAC [host [vendor]]|rejoin [host [vendor]]|static IP GW|run CMD..." >&2; exit 2 ;;
 esac
