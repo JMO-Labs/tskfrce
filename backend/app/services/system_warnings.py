@@ -26,8 +26,9 @@ def blocker_down(db: Session, now: datetime) -> list[dict]:
     if seen is None:  # never reported: still being set up, not a failure
         return []
     live = now - seen <= BLOCKER_STALE
-    nets = db.query(Network).filter(Network.enforce.is_(True)).all()
-    if live and nets:
+    nets = db.query(Network).all()
+    # No networks reported yet (legacy LAN_IFACE mode / first report): blocking works.
+    if live and (not nets or any(n.enforce for n in nets)):
         return []
     why = (
         "The blocker hasn't checked in for a while, so nothing is being blocked."

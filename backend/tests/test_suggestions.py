@@ -163,6 +163,25 @@ def test_devices_unknown(db, client, parent, kid, parent_headers):
     assert "Mystery phone" in s["body"]
 
 
+def _unknown(client, h):
+    return next((i for i in _get(client, h)["items"] if i["rule"] == "devices.unknown"), None)
+
+
+def test_devices_unknown_hides_router_and_box(db, client, parent, kid, parent_headers):
+    db.add(Device(mac="aa:bb:cc:dd:ee:01", name="router", status="unassigned", is_gateway=True))
+    db.add(Device(mac="aa:bb:cc:dd:ee:02", name="thebox", status="unassigned", is_box=True))
+    db.commit()
+    assert _unknown(client, parent_headers) is None
+
+
+def test_devices_unknown_strips_domain(db, client, parent, kid, parent_headers):
+    db.add(Device(mac="aa:bb:cc:dd:ee:01", name="kids-pc.lab_lab", status="unassigned"))
+    db.add(Device(mac="aa:bb:cc:dd:ee:02", name="router", status="unassigned", is_gateway=True))
+    db.commit()
+    s = _unknown(client, parent_headers)
+    assert "kids-pc" in s["body"] and ".lab_lab" not in s["body"] and "router" not in s["body"]
+
+
 def test_feature_homework(db, client, parent, kid, parent_headers):
     _quiet(db, parent, kid)
     make_chore(db, parent, "Homework", kids=[kid])
