@@ -136,10 +136,33 @@ def test_username_available_before_setup(client):
     assert r.json() == {"available": True}
 
 
-def test_username_available_no_claim_check(client):
-    """Username check does not enforce claim gate (avoids lockout)."""
+def test_username_available_no_claim_check(client, db, monkeypatch):
+    """Username check works while a claim is pending (no code sent, no 403)."""
+    from app.core import claim
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "CLAIM_CODE", "K7M2QXA9PB")
+    assert claim.required(db) is True
     r = client.get("/api/v1/setup/username-available?u=alice")
-    assert r.status_code == 200  # Never returns 403 for missing claim
+    assert r.status_code == 200 and r.json() == {"available": True}
+
+
+def test_username_available_rate_limited(client):
+    """Anonymous check: 10 per minute per IP, then 429."""
+    for _ in range(10):
+        assert client.get("/api/v1/setup/username-available?u=alice").status_code == 200
+    assert client.get("/api/v1/setup/username-available?u=alice").status_code == 429
+
+
+def test_username_available_auth_shares_rate_limit(client):
+    """Auth check shares the username-check:<ip> bucket, so it is limited too."""
+    token = client.post("/api/v1/setup", json=BODY).json()["access_token"]
+    h = {"Authorization": f"Bearer {token}"}
+    url = "/api/v1/setup/username-available-auth?u=bob"
+    for _ in range(10):
+        assert client.get(url, headers=h).status_code == 200
+    assert client.get(url, headers=h).status_code == 429
+    assert client.get("/api/v1/setup/username-available?u=bob").status_code == 429
 
 
 def test_username_check_requires_auth_during_setup(client, db):
