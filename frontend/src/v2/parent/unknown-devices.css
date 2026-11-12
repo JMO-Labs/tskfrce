@@ -39,3 +39,6 @@
   .p-unk-table td, .p-unk-row[data-on] td { padding: 0; border: 0; background: none; }
   .p-unk-nm b { max-width: none; }
 }
+.p-unk-n { color: var(--p-sub); font-weight: 400; }
+.p-unk-chk { width: 32px; }
+.p-unk-own { white-space: nowrap; }

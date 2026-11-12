@@ -361,7 +361,7 @@ describe('devices page', () => {
     apiMock.mockImplementation(async (path) => (path === '/devices' ? devices : path === '/kids' ? kids : path === '/groups' ? [] : {}))
 
   test('opens the first device and Lock now calls the box', async () => {
-    serve([device])
+    serve([{ ...device, status: 'guest' }])
     render(wrap(<DevicesPage />))
     await userEvent.click(await screen.findByRole('button', { name: /lock now/i }))
     await waitFor(() =>
