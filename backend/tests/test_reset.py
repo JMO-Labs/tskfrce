@@ -5,8 +5,7 @@ from unittest.mock import patch
 
 import pytest
 from app.core.auth import AuthService
-from app.models import Chore, FamilySettings, Points, User
-from app.models.chores import ChoreType
+from app.models import Chore, ChoreType, FamilySettings, Points, User
 from app.models.family import get_family
 from app.models.points import PointsType
 from app.models.user import UserRole
