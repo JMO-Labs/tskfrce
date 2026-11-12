@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Icon } from '@/v2/parent/Icon'
 import { useBulkDevices, usePatchDevice } from '@/v2/hooks/useDevices'
 import type { Device, Kid } from '@/v2/types'
@@ -10,18 +10,15 @@ const kidName = (k: Kid) => k.full_name || k.username
 export function UnknownDevices({ devices, kids }: { devices: Device[]; kids: Kid[] }) {
   const unknown = devices.filter((d) => d.status === 'unassigned')
   const ignored = devices.filter((d) => d.status === 'ignored')
-  const [picked, setPicked] = useState<number[]>([])
+  const [rawPicked, setPicked] = useState<number[]>([])
   const patch = usePatchDevice()
   const bulk = useBulkDevices()
 
-  // a device that was just handled drops out of the selection
-  useEffect(() => {
-    setPicked((p) => (p.every((id) => unknown.some((d) => d.id === id)) ? p : p.filter((id) => unknown.some((d) => d.id === id))))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [devices])
+  // a device that was just handled drops out of the selection (derived, no effect)
+  const picked = rawPicked.filter((id) => unknown.some((d) => d.id === id))
 
   const allOn = unknown.length > 0 && picked.length === unknown.length
-  const toggle = (id: number) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
+  const toggle = (id: number) => setPicked(picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id])
   const run = (status: 'assigned' | 'guest' | 'ignored', owner_ids: number[] = []) => bulk.mutate({ ids: picked, status, owner_ids })
   const setOwner = (d: Device, v: string) => {
     if (v === 'guest') patch.mutate({ id: d.id, patch: { status: 'guest', owner_ids: [] } })
