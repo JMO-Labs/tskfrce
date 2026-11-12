@@ -79,23 +79,97 @@ def test_ruleset_sends_blocked_https_through_gate_but_not_box_pages():
     assert any("@hw_out tcp dport 443 return" in ln for ln in lines[:gate])
 
 
-def test_pipe_cuts_a_passed_connection_after_the_cap():
-    src_a, src_b = socket.socketpair()
-    dst_a, dst_b = socket.socketpair()
-    src_a.sendall(b"x" * 5000)
-    src_a.close()
-    sni_gate._pipe(src_b, dst_a, cap=1200)
+def _hello12(name: str) -> bytes:
+    ctx = ssl.create_default_context()
+    ctx.maximum_version = ssl.TLSVersion.TLSv1_2
+    out = ssl.MemoryBIO()
+    try:
+        ctx.wrap_bio(ssl.MemoryBIO(), out, server_hostname=name).do_handshake()
+    except ssl.SSLWantReadError:
+        pass
+    return out.read()
+
+
+def _rec(kind: int, n: int) -> bytes:
+    return bytes([kind, 3, 3]) + n.to_bytes(2, "big") + b"r" * n
+
+
+def test_reply_limits_allow_a_ticket_only_when_the_client_offers_tls13_resumption():
+    assert sni_gate.reply_limits(_hello("www.google.com")) == [
+        sni_gate.TICKET_MAX,
+        sni_gate.REPLY_MAX,
+    ]
+    assert sni_gate.reply_limits(_hello12("www.google.com")) == [sni_gate.REPLY_MAX]
+    psk_ke_only = _hello("www.google.com").replace(
+        b"\x00\x2d\x00\x02\x01\x01", b"\x00\x2d\x00\x02\x01\x00"
+    )
+    assert sni_gate.reply_limits(psk_ke_only) == [sni_gate.REPLY_MAX]
+
+
+def _session(hello: bytes, before: list[bytes], after: list[bytes]) -> bytes:
+    """Client sends hello, gets `before`, sends its first app-data record, then upstream sends
+    `after`. Returns everything the client received after its app-data record."""
+    a, b = socket.socketpair()
+    up_a, up_b = socket.socketpair()
+    t = threading.Thread(
+        target=sni_gate._serve, args=(b,), kwargs={"connect": lambda *_, **__: up_a}, daemon=True
+    )
+    t.start()
+    a.settimeout(5)
+    up_b.settimeout(5)
+    a.sendall(hello)
+    assert up_b.recv(len(hello)) == hello
+    pre = b"".join(before)
+    up_b.sendall(pre)
     got = b""
-    while chunk := dst_b.recv(65536):
+    while len(got) < len(pre):
+        got += a.recv(65536)
+    req = _rec(0x14, 1) + _rec(0x17, 53) + _rec(0x17, 229)
+    a.sendall(req)
+    seen = b""
+    while len(seen) < len(req):
+        seen += up_b.recv(65536)
+    for r in after:
+        try:
+            up_b.sendall(r)
+        except OSError:
+            break
+    up_b.shutdown(socket.SHUT_WR)  # server done (Android's probe asks for Connection: close)
+    got = b""
+    while chunk := a.recv(65536):
         got += chunk
-    assert got == b"x" * 1200
+    a.close()
+    up_b.close()
+    t.join(5)
+    return got
 
 
-def test_budget_reserves_per_connection_and_resets_each_window(monkeypatch):
-    monkeypatch.setattr(sni_gate, "_spent", {})
-    shares = [sni_gate._allowance("10.0.0.9", 100.0) for _ in range(4)]
-    assert shares == [8192, 8192, 8192, 0]  # 24 KB per window, reserved up front
-    sni_gate._refund("10.0.0.9", 8192 - 4700)  # a probe-sized connection gives back the rest
-    assert sni_gate._allowance("10.0.0.9", 101.0) == 8192 - 4700
-    assert sni_gate._allowance("10.0.0.9", 100.0 + sni_gate.BUDGET_WINDOW) == 8192
-    assert sni_gate._allowance("10.0.0.8", 101.0) == 8192  # per device
+# Measured on the beta box 2026-11-12: Android's probe gets a 559 B ticket then a 220 B
+# "204 No Content"; the smallest readable www.google.com reply seen is ~790 B (Range on robots.txt).
+HANDSHAKE = [_rec(0x16, 128), _rec(0x14, 1), _rec(0x17, 2648)]
+
+
+def test_gate_passes_androids_probe_profile():
+    after = [_rec(0x17, 559), _rec(0x17, 220)]
+    assert _session(_hello("www.google.com"), HANDSHAKE, after) == b"".join(after)
+
+
+def test_gate_cuts_a_reply_too_big_for_a_probe():
+    after = [_rec(0x17, 559), _rec(0x17, 1395)]
+    assert _session(_hello("www.google.com"), HANDSHAKE, after) == after[0]
+
+
+def test_gate_cuts_extra_records_after_the_probe_reply():
+    after = [_rec(0x17, 583), _rec(0x17, 57), _rec(0x17, 26)]  # h2: ticket, SETTINGS, ack
+    assert _session(_hello("www.google.com"), HANDSHAKE, after) == b"".join(after[:2])
+
+
+def test_gate_without_tickets_gives_no_room_for_a_ticket_sized_reply():
+    after = [_rec(0x17, 700)]
+    assert _session(_hello12("www.google.com"), [_rec(0x16, 3000)], after) == b""
+    after = [_rec(0x16, 200), _rec(0x17, 220)]  # TLS 1.2 handshake records are not counted
+    assert _session(_hello12("www.google.com"), [_rec(0x16, 3000)], after) == b"".join(after)
+
+
+def test_gate_caps_total_bytes_down():
+    assert _session(_hello("www.google.com"), [_rec(0x16, 4000)], [_rec(0x16, 4500)]) == b""
