@@ -120,6 +120,20 @@ def seen_counts(day: str) -> tuple[int, int]:
     return int("parent" in whos), sum(w.startswith("kid:") for w in whos)
 
 
+def active_days(since: str, until: str) -> int:
+    """Distinct days in [since, until] with any parent or kid activity."""
+    rows = _run("SELECT COUNT(DISTINCT day) FROM seen WHERE day BETWEEN ? AND ?", (since, until))
+    return rows[0][0]
+
+
+def feature_areas(since: str, until: str) -> set[str]:
+    rows = _run(
+        "SELECT DISTINCT name FROM counters WHERE name LIKE 'feat:%' AND day BETWEEN ? AND ?",
+        (since, until),
+    )
+    return {r[0][5:] for r in rows}
+
+
 def set_kid_age(kid_id: int, group: str) -> None:
     _run("INSERT OR REPLACE INTO kid_ages(kid_id, age_group) VALUES(?, ?)", (kid_id, group))
 

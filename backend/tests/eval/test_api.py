@@ -135,3 +135,9 @@ def test_feedback_strips_nul(client, eval_on, parent_headers):
     assert _fb(client, parent_headers, {"text": "a\x00b"}).status_code == 200
     assert _rows("feedback")[0].body["text"] == "ab"
     assert _fb(client, parent_headers, {"text": "\x00"}).status_code == 422
+
+
+def test_feature_event_counts_area(client, eval_on, parent_headers):
+    body = {"name": "feature", "props": {"area": "goals", "action": "open"}}
+    assert client.post(f"{P}/event", json=body, headers=parent_headers).status_code == 204
+    assert store.counters(store.local_day()).get("feat:goals") == 1
