@@ -6,11 +6,13 @@ import { MantineProvider } from '@mantine/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fridgeTheme } from '@/v2/theme'
 import { api } from '@/v2/api'
+import { track } from '@/v2/eval/track'
 import { ResetForm } from '@/v2/login/ResetForm'
 
 const replace = jest.fn()
 jest.mock('next/router', () => ({ useRouter: () => ({ replace }) }))
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
+jest.mock('@/v2/eval/track', () => ({ track: jest.fn() }))
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 const apiMock = api as unknown as Mock<(p: string, i?: unknown) => Promise<unknown>>
 
@@ -113,5 +115,17 @@ describe('ResetForm', () => {
       await userEvent.click(showButton)
       expect(passwordInput).toHaveAttribute('type', 'text')
     }
+  })
+
+
+  test('emits auth reset_pin results', async () => {
+    await shown()
+    await userEvent.type(screen.getByLabelText(/New password/), 'longenough')
+    await userEvent.type(screen.getByLabelText('Type it again'), 'longenough')
+    await userEvent.click(screen.getByRole('button', { name: 'Save password' }))
+    await waitFor(() => expect(track).toHaveBeenCalledWith('auth', { step: 'reset_pin', result: 'ok' }))
+    apiMock.mockRejectedValue({ status: 400 })
+    await userEvent.click(screen.getByRole('button', { name: 'Save password' }))
+    await waitFor(() => expect(track).toHaveBeenCalledWith('auth', { step: 'reset_pin', result: 'fail_code' }))
   })
 })

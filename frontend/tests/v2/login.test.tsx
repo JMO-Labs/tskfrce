@@ -7,12 +7,14 @@ import { MantineProvider } from '@mantine/core'
 import { fridgeTheme } from '@/v2/theme'
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext'
 import { api } from '@/v2/api'
+import { track } from '@/v2/eval/track'
 import { footerText, LoginForm, safeNext } from '@/v2/login/LoginForm'
 
 const replace = jest.fn()
 const login = jest.fn()
 let query: Record<string, string> = {}
 jest.mock('next/router', () => ({ useRouter: () => ({ replace, query }) }))
+jest.mock('@/v2/eval/track', () => ({ track: jest.fn() }))
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 jest.mock('@/contexts/UnifiedAuthContext', () => ({ useUnifiedAuth: jest.fn() }))
 
@@ -144,4 +146,25 @@ test('the session-expired note survives React strict mode running effects twice'
     </React.StrictMode>,
   )
   expect(await screen.findByText('Please log in again.')).toBeInTheDocument()
+
+
+  test('emits auth ok / fail_pin / locked', async () => {
+    login.mockRejectedValueOnce({ status: 401 } as never)
+    wrap()
+    await fill()
+    await screen.findByRole('alert')
+    expect(track).toHaveBeenCalledWith('auth', { step: 'login', result: 'fail_pin' })
+    login.mockRejectedValueOnce({ status: 429 } as never)
+    await userEvent.click(screen.getByRole('button', { name: 'Log in' }))
+    await waitFor(() => expect(track).toHaveBeenCalledWith('auth', { step: 'login', result: 'locked' }))
+    login.mockResolvedValueOnce(null as never)
+    await userEvent.click(screen.getByRole('button', { name: 'Log in' }))
+    await waitFor(() => expect(track).toHaveBeenCalledWith('auth', { step: 'login', result: 'ok' }))
+  })
+
+  test('opening forgot password emits forgot_pin', async () => {
+    wrap()
+    await userEvent.click(screen.getByRole('button', { name: 'Forgot password?' }))
+    expect(track).toHaveBeenCalledWith('auth', { step: 'forgot_pin', result: 'ok' })
+  })
 })

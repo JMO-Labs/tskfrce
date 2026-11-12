@@ -20,21 +20,44 @@ beforeEach(() => {
 const sent = () => apiMock.mock.calls.map((c) => c[1].body)
 
 test('buffers before login then flushes in order', () => {
-  track('screen_view', { route: 'A' })
-  track('screen_view', { route: 'B' })
+  track('error_shown', { route: 'A' })
+  track('error_shown', { route: 'B' })
   expect(apiMock).not.toHaveBeenCalled()
   tok.mockReturnValue('t')
-  track('screen_view', { route: 'C' })
+  track('error_shown', { route: 'C' })
   expect(sent().map((b) => b.props.route)).toEqual(['A', 'B', 'C'])
   expect(apiMock.mock.calls[0]).toEqual(['/eval/event', expect.objectContaining({ method: 'POST' })])
 })
 
 test('buffer caps at 20', () => {
-  for (let i = 0; i < 25; i++) track('screen_view', { route: String(i) })
+  for (let i = 0; i < 25; i++) track('error_shown', { route: String(i) })
   tok.mockReturnValue('t')
   track('wizard_done')
   expect(apiMock).toHaveBeenCalledTimes(21)
   expect(sent()[0].props.route).toBe('5')
+})
+
+test('pre-login auth/screen_view/wifi feature go to anon-event, not the buffer', () => {
+  track('auth', { step: 'login', result: 'fail_pin' })
+  track('screen_view', { route: '/login' })
+  track('feature', { area: 'wifi', action: 'start' })
+  expect(apiMock.mock.calls.map((c) => c[0])).toEqual(['/eval/anon-event', '/eval/anon-event', '/eval/anon-event'])
+  expect(sent()[0]).toEqual({ name: 'auth', props: { step: 'login', result: 'fail_pin' } })
+  tok.mockReturnValue('t')
+  apiMock.mockClear()
+  track('wizard_done')
+  expect(apiMock).toHaveBeenCalledTimes(1)
+})
+
+test('pre-login non-wifi feature is buffered, not sent anon', () => {
+  track('feature', { area: 'goals', action: 'open' })
+  expect(apiMock).not.toHaveBeenCalled()
+})
+
+test('logged-in auth event uses the normal endpoint', () => {
+  tok.mockReturnValue('t')
+  track('auth', { step: 'login', result: 'ok' })
+  expect(apiMock.mock.calls[0][0]).toBe('/eval/event')
 })
 
 test('kid without token drops', () => {

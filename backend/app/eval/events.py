@@ -47,6 +47,8 @@ AREAS = frozenset(
 ACTIONS = frozenset(
     {"open", "start", "done", "fail", "toggle_on", "toggle_off", "create", "delete"}
 )
+AUTH_STEPS = frozenset({"login", "register", "join", "reset_pin", "forgot_pin"})
+AUTH_RESULTS = frozenset({"ok", "fail_pin", "fail_code", "locked", "error"})
 FORMS = ("chore", "kid", "window", "feedback")
 WIZARD_STEPS = 7  # frontend/src/v2/setup/WizardFrame.tsx STEPS
 _ERR = re.compile(r"^(http_[1-5]\d\d|network|other)$")
@@ -65,6 +67,11 @@ def clean(name: str, props: dict) -> dict | None:
         a, act = props.get("area"), props.get("action")
         if isinstance(a, str) and isinstance(act, str) and a in AREAS and act in ACTIONS:
             return {"area": a, "action": act}
+        return None
+    if name == "auth":
+        st, res = props.get("step"), props.get("result")
+        if isinstance(st, str) and isinstance(res, str) and st in AUTH_STEPS and res in AUTH_RESULTS:
+            return {"step": st, "result": res}
         return None
     if name == "wizard_step":
         s, state = props.get("step"), props.get("state")

@@ -3,7 +3,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WifiSetupPage } from '@/v2/setup/WifiSetupPage'
 import { MantineProvider } from '@mantine/core'
+import { track } from '@/v2/eval/track'
 
+jest.mock('@/v2/eval/track', () => ({ track: jest.fn() }))
 jest.mock('@/v2/hooks/useSetupWifi', () => ({
   useSetupWifiStatus: jest.fn(() => ({
     data: { phase: 'idle' },
@@ -56,5 +58,25 @@ describe('WifiSetup page', () => {
     // Check for emoji using Unicode Extended_Pictographic property
     const hasEmoji = /\p{Extended_Pictographic}/gu.test(textContent)
     expect(hasEmoji).toBe(false)
+  })
+
+  test('emits screen_view on open and feature start on join', () => {
+    wrap(<WifiSetupPage />)
+    expect(track).toHaveBeenCalledWith('screen_view', { route: '/wifi-setup' })
+    fireEvent.click(screen.getByText('TestWifi'))
+    const btn = screen.queryByRole('button', { name: /connect|join/i })
+    if (btn) fireEvent.click(btn)
+    const calls = (track as jest.Mock).mock.calls.filter((c) => c[0] === 'feature')
+    expect(calls.every((c) => (c[1] as { area: string }).area === 'wifi')).toBe(true)
+  })
+
+  test('emits feature done / fail from the join phase', () => {
+    const m = jest.requireMock('@/v2/hooks/useSetupWifi') as { useSetupWifiStatus: jest.Mock }
+    m.useSetupWifiStatus.mockReturnValueOnce({ data: { phase: 'connected' }, isPending: false })
+    wrap(<WifiSetupPage />)
+    expect(track).toHaveBeenCalledWith('feature', { area: 'wifi', action: 'done' })
+    m.useSetupWifiStatus.mockReturnValueOnce({ data: { phase: 'failed' }, isPending: false })
+    wrap(<WifiSetupPage />)
+    expect(track).toHaveBeenCalledWith('feature', { area: 'wifi', action: 'fail' })
   })
 })

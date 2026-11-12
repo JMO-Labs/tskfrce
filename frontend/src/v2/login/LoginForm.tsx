@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext'
 import { api } from '@/v2/api'
+import { authResult, trackAuth } from '@/v2/eval/authResult'
 import { useLook } from '@/v2/parent/useLook'
 import { Icon } from '@/v2/parent/Icon'
 import type { SetupStatus } from '@/v2/types'
@@ -71,7 +72,9 @@ export function LoginForm() {
     try {
       keepSession(remember)
       await login({ username: username.trim(), password, remember }) // the effect above redirects
+      trackAuth('login', 'ok')
     } catch (err) {
+      trackAuth('login', authResult(err, 'fail_pin'))
       setError(err instanceof Error ? err.message : "That username and password don't match.")
       setBusy(false)
     }
@@ -155,7 +158,10 @@ export function LoginForm() {
                   </i>
                   Keep me logged in
                 </label>
-                <button type="button" className="p-auth-link" ref={forgotBtn} onClick={() => setShowForgot(true)}>
+                <button type="button" className="p-auth-link" ref={forgotBtn} onClick={() => {
+                  trackAuth('forgot_pin', 'ok')
+                  setShowForgot(true)
+                }}>
                   Forgot password?
                 </button>
               </div>

@@ -2,12 +2,13 @@
  * @fileoverview Captive portal for Wi-Fi setup during box initialization
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button, Modal, PasswordInput, Select, Stack, Text, TextInput, Group, Alert, Loader, Center, Box, Checkbox } from '@mantine/core'
 import { IconWifi, IconPlus } from '@tabler/icons-react'
 import { useSetupWifiStatus, useSetupWifiScan } from '@/v2/hooks/useSetupWifi'
 import { api, ApiError } from '@/v2/api'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { track } from '@/v2/eval/track'
 import styles from '@/v2/setup/wifiSetup.module.css'
 
 interface NetworkItem {
@@ -72,6 +73,16 @@ export function WifiSetupPage() {
   const isSuccess = statusQuery.data?.phase === 'connected'
   const isError = statusQuery.data?.phase === 'failed'
 
+  useEffect(() => {
+    track('screen_view', { route: '/wifi-setup' })
+  }, [])
+  useEffect(() => {
+    if (isSuccess) track('feature', { area: 'wifi', action: 'done' })
+  }, [isSuccess])
+  useEffect(() => {
+    if (isError) track('feature', { area: 'wifi', action: 'fail' })
+  }, [isError])
+
   const handleNetworkClick = (net: NetworkItem) => {
     setSelectedNetwork(net)
     setManualSsid(net.ssid)
@@ -85,6 +96,7 @@ export function WifiSetupPage() {
       hidden: false,
     }
     setPendingJoin(joinParams)
+    track('feature', { area: 'wifi', action: 'start' })
     joinMutation.mutate(joinParams)
   }
 

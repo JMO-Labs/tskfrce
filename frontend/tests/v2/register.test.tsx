@@ -5,12 +5,14 @@ import userEvent from '@testing-library/user-event'
 import { MantineProvider } from '@mantine/core'
 import { fridgeTheme } from '@/v2/theme'
 import { api } from '@/v2/api'
+import { track } from '@/v2/eval/track'
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext'
 import { RegisterForm } from '@/v2/login/RegisterForm'
 
 const replace = jest.fn()
 const login = jest.fn()
 jest.mock('next/router', () => ({ useRouter: () => ({ replace }) }))
+jest.mock('@/v2/eval/track', () => ({ track: jest.fn() }))
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
 jest.mock('@/contexts/UnifiedAuthContext', () => ({ useUnifiedAuth: jest.fn() }))
 
@@ -116,5 +118,18 @@ describe('RegisterForm', () => {
     const form = document.querySelector('.p-auth-form') as HTMLElement
     const segments = form.querySelectorAll('.p-auth-strength i')
     expect(segments.length).toBeGreaterThanOrEqual(4)
+  })
+
+
+  test('emits auth ok and fail_code', async () => {
+    await wrap(invite())
+    apiMock.mockRejectedValue({ status: 410 })
+    await userEvent.type(screen.getByLabelText(/Choose a password/), 'longenough')
+    await userEvent.type(screen.getByLabelText('Type it again'), 'longenough')
+    await userEvent.click(screen.getByRole('button', { name: 'Join' }))
+    await waitFor(() => expect(track).toHaveBeenCalledWith('auth', { step: 'register', result: 'fail_code' }))
+    apiMock.mockResolvedValue({ user_id: 3, username: 'dad' })
+    await userEvent.click(screen.getByRole('button', { name: 'Join' }))
+    await waitFor(() => expect(track).toHaveBeenCalledWith('auth', { step: 'register', result: 'ok' }))
   })
 })

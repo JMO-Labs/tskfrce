@@ -135,3 +135,46 @@ def test_feedback_strips_nul(client, eval_on, parent_headers):
     assert _fb(client, parent_headers, {"text": "a\x00b"}).status_code == 200
     assert _rows("feedback")[0].body["text"] == "ab"
     assert _fb(client, parent_headers, {"text": "\x00"}).status_code == 422
+
+
+def _anon(client, name, props, **kw):
+    return client.post(f"{P}/anon-event", json={"name": name, "props": props}, **kw)
+
+
+def test_anon_event_accepts_auth_and_screen_view(client, eval_on):
+    r = _anon(client, "auth", {"step": "login", "result": "fail_pin", "name": "Mia"})
+    assert r.status_code == 204
+    assert _anon(client, "screen_view", {"route": "/wifi-setup"}).status_code == 204
+    rows = _rows("umami")
+    assert [x.body["payload"]["name"] for x in rows] == ["auth", "screen_view"]
+    d = rows[0].body["payload"]["data"]
+    assert d["source"] == "anon"
+    assert d["step"] == "login" and d["result"] == "fail_pin"
+    assert "name" not in d and "age_group" not in d
+
+
+def test_anon_event_feature_wifi_only_via_feature(client, eval_on):
+    r = _anon(client, "feature", {"area": "wifi", "action": "start"})
+    assert r.status_code == 204
+    assert [x.body["payload"]["name"] for x in _rows("umami")] == ["feature"]
+
+
+def test_anon_event_rejects_other_names(client, eval_on):
+    for n in ("wizard_done", "form_abandoned", "error_shown", "heartbeat"):
+        assert _anon(client, n, {}).status_code == 204
+    assert _rows("umami") == []
+    assert _anon(client, "feature", {"area": "goals", "action": "open"}).status_code == 204
+    assert _rows("umami") == []
+
+
+def test_anon_event_rate_limited(client, eval_on):
+    codes = [_anon(client, "screen_view", {"route": "/"}).status_code for _ in range(31)]
+    assert codes[:30] == [204] * 30
+    assert codes[30] == 429
+    assert len(_rows("umami")) == 30
+
+
+def test_anon_event_off_is_noop(client, monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "DATA_DIR", tmp_path)
+    assert _anon(client, "auth", {"step": "login", "result": "ok"}).status_code == 204
+    assert not (tmp_path / "eval.db").exists()
