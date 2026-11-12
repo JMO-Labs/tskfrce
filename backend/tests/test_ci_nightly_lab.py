@@ -1,4 +1,5 @@
 """Nightly lab + Node 22 rules (#73). Checks the staged wq-workflows/ci-cd.yml until the owner promotes it."""
+
 from pathlib import Path
 
 import pytest
