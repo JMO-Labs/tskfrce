@@ -1,7 +1,7 @@
 """box reset: token_epoch for session invalidation
 
 Revision ID: 31ec443cea32
-Revises: z9c0d1e2f3a4
+Revises: e7f8a9b0c1d2
 Create Date: 2026-11-11 10:47:47.376791
 
 Tracks JWT/session token epoch per family. On reset or forgot-PIN,
@@ -15,7 +15,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "31ec443cea32"
-down_revision: str | Sequence[str] | None = "b1r2t3h4d5a6"
+down_revision: str | Sequence[str] | None = "e7f8a9b0c1d2"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
