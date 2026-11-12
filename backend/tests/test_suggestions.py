@@ -357,11 +357,18 @@ def _orphan(db, table, col):
     """Point every row at a nonexistent user (FK enforcement off just for this)."""
     from sqlalchemy import text
 
+    pg = db.get_bind().dialect.name == "postgresql"
+    off, on = (
+        ("SET session_replication_role = replica", "SET session_replication_role = DEFAULT")
+        if pg
+        else ("PRAGMA foreign_keys=OFF", "PRAGMA foreign_keys=ON")
+    )
     db.commit()
-    db.execute(text("PRAGMA foreign_keys=OFF"))
+    db.execute(text(off))
     db.execute(text(f"UPDATE {table} SET {col}=9999"))
     db.commit()
-    db.execute(text("PRAGMA foreign_keys=ON"))
+    db.execute(text(on))
+    db.commit()
 
 
 def test_chore_skipped_ignores_missing_kid(db, client, parent, kid, parent_headers):
