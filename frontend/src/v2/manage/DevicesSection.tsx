@@ -13,6 +13,7 @@ export function DevicesSection({
   focus,
   tab = 'devices',
   onTabChange,
+  unknownOpen = false,
 }: {
   devices: Device[]
   kids: Kid[]
@@ -20,6 +21,7 @@ export function DevicesSection({
   focus: number
   tab?: 'devices' | 'groups'
   onTabChange?: (tab: 'devices' | 'groups') => void
+  unknownOpen?: boolean
 }) {
   const router = useRouter()
   const item = first(router.query.item)
@@ -33,6 +35,11 @@ export function DevicesSection({
     [router],
   )
 
+  const handleSelectUnknown = useCallback(() => {
+    const { tab: _t, ...rest } = withoutFocus(router.query)
+    router.push({ pathname: router.pathname, query: { ...rest, item: 'unknown' } }, undefined, { shallow: true })
+  }, [router])
+
   const handleSelectGroup = useCallback(
     (id: number | 'new') => router.push({ pathname: router.pathname, query: { ...withoutFocus(router.query), item: id, tab: 'groups' } }, undefined, { shallow: true }),
     [router],
@@ -43,10 +50,12 @@ export function DevicesSection({
       devices={devices}
       kids={kids}
       groups={groups}
-      selectedDevice={selectedId === 'new' ? null : selectedId}
+      selectedDevice={unknownOpen || selectedId === 'new' ? null : selectedId}
       selectedGroup={selectedId}
       onSelectDevice={handleSelectDevice}
       onSelectGroup={handleSelectGroup}
+      onSelectUnknown={handleSelectUnknown}
+      selectedUnknown={unknownOpen}
       tab={tab}
       onTabChange={onTabChange}
     />

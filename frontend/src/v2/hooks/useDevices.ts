@@ -57,6 +57,13 @@ export const usePatchDevice = () =>
   useRefreshing(({ id, patch }: { id: number; patch: DevicePatch }) =>
     api(`/devices/${id}`, { method: 'PATCH', body: patch }),
   )
+/** One call for many devices: status plus owners (assigned only). */
+export const useBulkDevices = () =>
+  useRefreshing(({ ids, status, owner_ids = [] }: { ids: number[]; status: DeviceStatus; owner_ids?: number[] }) =>
+    api('/devices/bulk', { method: 'POST', body: { ids, status, owner_ids } }),
+  )
+/** Ask the box for a discovery sweep now (rate-limited server side), then refetch devices. */
+export const useRescanDevices = () => useRefreshing(() => api('/devices/rescan', { method: 'POST' }), 'Scanning your network')
 export const useTestBlock = () =>
   useMutation({
     mutationFn: (id: number) => api<{ reason: string; message: string }>(`/devices/${id}/test-block`, { method: 'POST' }),
