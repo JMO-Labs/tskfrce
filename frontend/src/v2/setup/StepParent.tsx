@@ -139,6 +139,9 @@ export function StepParent({ value, showError, onChange }: Props) {
             }}
           />
           {value.password && <ValidationRule met={!err.password} text="8+ characters" />}
+          {(showError || passwordSeen) && err.password && (
+            <div role="alert" style={{ fontSize: '12px', color: '#c0392b', marginTop: '4px' }}>{err.password}</div>
+          )}
         </div>
 
         <div style={{ marginBottom: '0' }}>
