@@ -21,8 +21,7 @@ test.describe('parent journeys', () => {
     await expect(needs.getByText('E2E sweep')).toHaveCount(0)
 
     // approving the other one clears it too
-    const approve = needs.getByRole('button', { name: 'Approve', exact: true })
-    await needs.locator('div').filter({ hasText: 'E2E dishes' }).filter({ has: approve }).last().getByRole('button', { name: 'Approve', exact: true }).click()
+    await needs.getByRole('group', { name: 'E2E dishes' }).getByRole('button', { name: 'Approve', exact: true }).click()
     await expect(needs.getByText('E2E dishes')).toHaveCount(0)
   })
 
