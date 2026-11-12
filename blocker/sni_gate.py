@@ -40,11 +40,12 @@ _PSK_DHE_KE, _TLS13 = 1, b"\x03\x04"
 WINDOW = 60.0
 WINDOW_CONNS = 30
 WINDOW_BYTES = 64 * 1024
-PER_CLIENT = 4  # concurrent passed connections per device
+PER_SOURCE = 8  # open gate connections per source IP, checked at accept
 MAX_CONNS = 64  # concurrent gate connections overall (each passed one uses 2 threads)
+HELLO_DEADLINE = 3.0  # the whole ClientHello must be in by then
 LIFETIME = 15.0  # the probe is done in ~1 s
 IDLE = 5.0
-_use: dict[str, list[float]] = {}  # client ip -> [window start, conns, bytes, open now]
+_use: dict[str, list[float]] = {}  # client ip -> [window start, conns, bytes]
 _use_lock = threading.Lock()
 
 GATE_PORT = 8443
@@ -59,25 +60,18 @@ def _roll(u: list[float], now: float) -> None:
 def _admit(client: str, now: float) -> bool:
     """Count a new passed connection against the client's window; False = refuse it."""
     with _use_lock:
-        u = _use.setdefault(client, [now, 0, 0, 0])
+        u = _use.setdefault(client, [now, 0, 0])
         _roll(u, now)
-        if u[1] >= WINDOW_CONNS or u[2] >= WINDOW_BYTES or u[3] >= PER_CLIENT:
+        if u[1] >= WINDOW_CONNS or u[2] >= WINDOW_BYTES:
             return False
         u[1] += 1
-        u[3] += 1
         return True
-
-
-def _release(client: str) -> None:
-    with _use_lock:
-        if client in _use:
-            _use[client][3] = max(0, _use[client][3] - 1)
 
 
 def _charge(client: str, n: int, now: float) -> bool:
     """Spend n bytes of the client's window; False (nothing spent) if that would overrun it."""
     with _use_lock:
-        u = _use.setdefault(client, [now, 0, 0, 0])
+        u = _use.setdefault(client, [now, 0, 0])
         _roll(u, now)
         if u[2] + n > WINDOW_BYTES:
             return False
@@ -85,52 +79,140 @@ def _charge(client: str, n: int, now: float) -> bool:
         return True
 
 
-def _extensions(rec: bytes, server: bool = False) -> dict[int, bytes]:
-    """Extensions of a TLS ClientHello (or ServerHello) record; {} if it isn't one."""
+class _Bad(Exception):
+    """Malformed hello: fail closed."""
+
+
+def _u16(b: bytes, i: int) -> int:
+    if i + 2 > len(b):
+        raise _Bad
+    return int.from_bytes(b[i : i + 2], "big")
+
+
+def _hello_end(buf: bytes) -> int | None:
+    """Offset just past the TLS records that complete the first handshake message in buf;
+    0 = need more bytes, None = buf doesn't start with handshake records."""
+    msg, p = b"", 0
+    while len(buf) - p >= 5:
+        if buf[p] != 0x16:
+            return None
+        n = _u16(buf, p + 3)
+        if len(buf) - p - 5 < n:
+            return 0
+        msg += buf[p + 5 : p + 5 + n]
+        p += 5 + n
+        if len(msg) >= 4 and len(msg) >= 4 + int.from_bytes(msg[1:4], "big"):
+            return p
+    return 0
+
+
+def _client_hello(raw: bytes) -> bytes:
+    """Body of the ClientHello carried by raw, which must be whole handshake records (as a
+    server reassembles them: a hello may span records) holding exactly that one message."""
+    msg, p = b"", 0
+    while p < len(raw):
+        if raw[p] != 0x16 or len(raw) - p < 5:
+            raise _Bad
+        n = _u16(raw, p + 3)
+        if not 0 < n <= 16384 or p + 5 + n > len(raw):
+            raise _Bad
+        msg += raw[p + 5 : p + 5 + n]
+        p += 5 + n
+    if len(msg) < 4 or msg[0] != 1 or len(msg) != 4 + int.from_bytes(msg[1:4], "big"):
+        raise _Bad
+    return msg[4:]
+
+
+def _hello_exts(body: bytes, server: bool = False) -> dict[int, bytes]:
+    """Extensions of a ClientHello/ServerHello body, strictly within the declared lengths."""
+    p = 2 + 32  # version, random
+    if p >= len(body) or body[p] > 32:
+        raise _Bad
+    p += 1 + body[p]  # session id
+    if server:
+        p += 2 + 1  # chosen cipher suite, compression method
+    else:
+        n = _u16(body, p)
+        if n == 0 or n % 2:
+            raise _Bad
+        p += 2 + n  # cipher suites
+        if p >= len(body) or body[p] == 0:
+            raise _Bad
+        p += 1 + body[p]  # compression methods
+    end = p + 2 + _u16(body, p)
+    if end != len(body):
+        raise _Bad
+    p += 2
     exts: dict[int, bytes] = {}
-    try:
-        if rec[0] != 0x16 or rec[5] != (2 if server else 1):  # handshake record, *Hello
-            return exts
-        p = 9 + 2 + 32  # record(5) + handshake hdr(4), version, random
-        p += 1 + rec[p]  # session id
-        if server:
-            p += 2 + 1  # chosen cipher suite, compression method
-        else:
-            p += 2 + int.from_bytes(rec[p : p + 2], "big")  # cipher suites
-            p += 1 + rec[p]  # compression methods
-        end = p + 2 + int.from_bytes(rec[p : p + 2], "big")
-        p += 2
-        while p + 4 <= end:
-            kind = int.from_bytes(rec[p : p + 2], "big")
-            size = int.from_bytes(rec[p + 2 : p + 4], "big")
-            exts[kind] = rec[p + 4 : p + 4 + size]
-            p += 4 + size
-    except IndexError:
-        pass  # truncated: keep what was read
+    while p < end:
+        kind, n = _u16(body, p), _u16(body, p + 2)
+        if kind in exts or p + 4 + n > end:
+            raise _Bad
+        exts[kind] = body[p + 4 : p + 4 + n]
+        p += 4 + n
     return exts
 
 
+def _client_exts(raw: bytes) -> dict[int, bytes] | None:
+    try:
+        return _hello_exts(_client_hello(raw))
+    except _Bad:
+        return None
+
+
+def _vector(data: bytes, width: int = 1) -> bytes:
+    """Contents of a length-prefixed vector that must fill data exactly."""
+    if len(data) < width or int.from_bytes(data[:width], "big") != len(data) - width:
+        raise _Bad
+    return data[width:]
+
+
 def sni_of(hello: bytes) -> str | None:
-    """Server name from a TLS ClientHello record, or None if absent/unparsable."""
-    sni = _extensions(hello).get(0)  # server_name: list len(2), type(1), name len(2), name
-    if not sni:
+    """Server name from a ClientHello's TLS records; None if absent, ambiguous or malformed."""
+    exts = _client_exts(hello)
+    if exts is None or 0 not in exts:
         return None
     try:
-        return sni[5 : 5 + int.from_bytes(sni[3:5], "big")].decode("ascii").lower().rstrip(".")
-    except UnicodeDecodeError:
+        lst, p, names = _vector(exts[0], 2), 0, []
+        while p < len(lst):  # entries: type(1), len(2), name
+            n = _u16(lst, p + 1)
+            if p + 3 + n > len(lst):
+                raise _Bad
+            if lst[p] == 0:
+                names.append(lst[p + 3 : p + 3 + n])
+            p += 3 + n
+        if len(names) != 1:
+            raise _Bad
+        return names[0].decode("ascii").lower().rstrip(".")
+    except (_Bad, UnicodeDecodeError):
         return None
 
 
 def offers_ticket(hello: bytes) -> bool:
     """ClientHello offers TLS 1.3 and (EC)DHE resumption, so a TLS 1.3 server sends a ticket."""
-    exts = _extensions(hello)
-    versions = exts.get(_VERSIONS, b"")  # len(1), then 2-byte versions
-    tls13 = any(versions[i : i + 2] == _TLS13 for i in range(1, len(versions) - 1, 2))
-    return tls13 and _PSK_DHE_KE in exts.get(_PSK_MODES, b"")[1:]
+    exts = _client_exts(hello)
+    if exts is None or sni_of(hello) is None:
+        return False
+    try:
+        versions = _vector(exts.get(_VERSIONS, b""))
+        modes = _vector(exts.get(_PSK_MODES, b""))
+    except _Bad:
+        return False
+    if len(versions) % 2:
+        return False
+    tls13 = any(versions[i : i + 2] == _TLS13 for i in range(0, len(versions), 2))
+    return tls13 and _PSK_DHE_KE in modes
 
 
-def picked_tls13(server_hello: bytes) -> bool:
-    return _extensions(server_hello, server=True).get(_VERSIONS) == _TLS13
+def picked_tls13(rec: bytes) -> bool:
+    """The server's first record is a ServerHello choosing TLS 1.3."""
+    try:
+        if rec[0] != 0x16 or rec[5] != 2:
+            return False
+        body = rec[9 : 9 + int.from_bytes(rec[6:9], "big")]
+        return _hello_exts(body, server=True).get(_VERSIONS) == _TLS13
+    except (_Bad, IndexError):
+        return False
 
 
 _CACHE: dict[str, tuple[float, str]] = {}
@@ -221,43 +303,55 @@ def _serve(conn: socket.socket, connect=socket.create_connection) -> None:
         timer.cancel()
 
 
-def _serve_open(conn: socket.socket, connect, socks: list[socket.socket]) -> None:
-    conn.settimeout(IDLE)
+def _read_hello(conn: socket.socket) -> tuple[bytes, bytes] | None:
+    """(the TLS records holding the ClientHello, any bytes after them), read whole however TCP
+    splits them, before HELLO_DEADLINE; None if it isn't a handshake or doesn't arrive in time."""
+    deadline, buf = time.monotonic() + HELLO_DEADLINE, b""
     try:
-        hello = conn.recv(_HELLO_MAX)
-        # a big ClientHello (post-quantum key share) can span TCP segments: read all of it
-        while 5 <= len(hello) < min(_HELLO_MAX, 5 + int.from_bytes(hello[3:5], "big")):
-            if not (more := conn.recv(_HELLO_MAX)):
-                break
-            hello += more
-    except OSError:
+        while not (end := _hello_end(buf)):
+            if end is None or len(buf) >= _HELLO_MAX:
+                return None
+            left = deadline - time.monotonic()
+            if left <= 0:
+                return None
+            conn.settimeout(left)
+            if not (chunk := conn.recv(_HELLO_MAX)):
+                return None
+            buf += chunk
+    except (OSError, _Bad):
+        return None
+    return buf[:end], buf[end:]
+
+
+def _serve_open(conn: socket.socket, connect, socks: list[socket.socket]) -> None:
+    got = _read_hello(conn)
+    if got is None:
         return
+    hello, rest = got
     name = sni_of(hello)
     if name not in PASS_NAMES:
-        return  # closing is the block
+        return  # closing is the block (malformed hellos land here too)
     try:
         client = conn.getpeername()[0]
     except (OSError, IndexError):
         client = "?"
     if not _admit(client, time.monotonic()):
-        return  # this device is over its window budget or concurrency cap
+        return  # this device is over its window budget
     try:
-        try:
-            up = connect((name, 443), timeout=IDLE)  # by name: a spoofed dest IP can't steer us
-        except OSError:
-            return
-        with up:
-            socks.append(up)
-            up.settimeout(IDLE)
-            asked = threading.Event()
-            t = threading.Thread(
-                target=_pipe_down, args=(up, conn, asked, offers_ticket(hello), client), daemon=True
-            )
-            t.start()
-            _pipe_up(conn, up, hello, asked)
-            t.join(LIFETIME)
-    finally:
-        _release(client)
+        up = connect((name, 443), timeout=IDLE)  # by name: a spoofed dest IP can't steer us
+    except OSError:
+        return
+    with up:
+        socks.append(up)
+        conn.settimeout(IDLE)
+        up.settimeout(IDLE)
+        asked = threading.Event()
+        t = threading.Thread(
+            target=_pipe_down, args=(up, conn, asked, offers_ticket(hello), client), daemon=True
+        )
+        t.start()
+        _pipe_up(conn, up, hello + rest, asked)
+        t.join(LIFETIME)
 
 
 def run_gate(stop: threading.Event, host: str = "0.0.0.0", port: int = GATE_PORT) -> None:
@@ -271,22 +365,40 @@ def run_gate(stop: threading.Event, host: str = "0.0.0.0", port: int = GATE_PORT
         return
     srv.settimeout(0.5)
     slots = threading.BoundedSemaphore(MAX_CONNS)
+    open_by: dict[str, int] = {}
+    lock = threading.Lock()
 
-    def serve(conn: socket.socket) -> None:
+    def done(ip: str) -> None:
+        with lock:
+            open_by[ip] -= 1
+            if not open_by[ip]:
+                del open_by[ip]
+
+    def serve(conn: socket.socket, ip: str) -> None:
         try:
             _serve(conn)
         finally:
             slots.release()
+            done(ip)
 
     try:
         while not stop.is_set():
             try:
-                conn, _ = srv.accept()
+                conn, addr = srv.accept()
             except TimeoutError:
                 continue
+            ip = addr[0]
+            with lock:  # per-source cap first, so one device can't take the shared slots
+                full = open_by.get(ip, 0) >= PER_SOURCE
+                if not full:
+                    open_by[ip] = open_by.get(ip, 0) + 1
+            if full:
+                conn.close()
+                continue
             if not slots.acquire(blocking=False):
+                done(ip)
                 conn.close()  # full: refuse rather than queue
                 continue
-            threading.Thread(target=serve, args=(conn,), daemon=True).start()
+            threading.Thread(target=serve, args=(conn, ip), daemon=True).start()
     finally:
         srv.close()
