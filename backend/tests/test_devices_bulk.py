@@ -89,3 +89,18 @@ def test_bulk_requires_parent(client, db, kid_headers):
     body = {"ids": [1], "status": "guest"}
     r = client.post("/api/v1/devices/bulk", json=body, headers=kid_headers)
     assert r.status_code == 403
+
+
+def test_list_carries_network_id(client, db, parent_headers):
+    from app.models.network import Network
+
+    n = Network(iface="eth1", subnet="10.0.0.0/24", auto_label="Guest")
+    db.add(n)
+    db.commit()
+    _dev(db, 1, network_id=n.id)
+    _dev(db, 2)
+    got = {
+        d["mac"]: d["network_id"]
+        for d in client.get("/api/v1/devices", headers=parent_headers).json()
+    }
+    assert got == {"aa:bb:cc:dd:ee:01": n.id, "aa:bb:cc:dd:ee:02": None}
