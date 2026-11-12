@@ -129,6 +129,13 @@ class TestResetAppData:
 class TestBackupExport:
     """Test backup_export: JSON with family data, no secrets."""
 
+    def test_backup_export_without_family_returns_empty_object(self, db: Session):
+        """No FamilySettings row: export is an empty JSON object."""
+        db.query(FamilySettings).delete()
+        db.flush()
+
+        assert json.loads(backup_export(db)) == {}
+
     def test_backup_includes_family(self, db: Session, setup_family):
         """Backup JSON includes family name and config."""
         fam, parent, kids = setup_family
