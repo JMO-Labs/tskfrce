@@ -57,7 +57,7 @@ def test_feature_page_links_to_docs_go_to_github():
     import build_site
 
     html = build_site.rewrite_links(
-        '<a href="../../blocker.md">b</a> <a href="../../routers.md">r</a>', "features/x.md"
+        '<a href="../../blocker.md">b</a> <a href="../../routers.md">r</a>', Path("features/x.md")
     )
     assert "../../" not in html
     assert html.count("https://github.com/JMO-Labs/tskfrce/blob/main/docs/") == 2
