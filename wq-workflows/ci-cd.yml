@@ -1,0 +1,397 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, dev ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+  pull_request:
+    branches: [ main, dev, 'feat/**' ]
+  merge_group:  # merge queue: the only place the network lab gates a merge
+  schedule:
+    - cron: '0 3 * * *'  # nightly Pi 4 2GB perf gate + lab/e2e against dev; every other job stands down on schedule events
+
+# One run per PR/branch: a new push to a PR cancels its stale run. main/tags never cancel.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Path filter: docs/site-only PRs skip the heavy jobs (skipped counts as success). PRs and pushes to dev are filtered; main/tags/merge_group run everything.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      py: ${{ github.event_name != 'schedule' && (!(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.py == 'true') }}
+      fe: ${{ github.event_name != 'schedule' && (!(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.fe == 'true') }}
+      pg: ${{ github.event_name != 'schedule' && (!(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.pg == 'true') }}
+      installer: ${{ github.event_name != 'schedule' && (!(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.installer == 'true') }}
+      # perf (~13 min): nightly, main-bound PRs, release tags, merge queue, manual runs, and PRs touching perf/**
+      perf: ${{ github.event_name == 'schedule' || github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'pull_request' && (github.base_ref == 'main' || steps.f.outputs.perf == 'true')) }}
+      sec: ${{ github.event_name != 'schedule' }}
+      dbs: ${{ (!(github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')) || steps.f.outputs.pg == 'true') && '["sqlite","postgres"]' || '["sqlite"]' }}
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      if: github.event_name == 'push'  # paths-filter diffs with git on push events
+    - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+      id: f
+      if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/dev')
+      with:
+        filters: |
+          py: ['backend/**', 'blocker/**', 'examples/**', 'ruff.toml', '.github/workflows/ci-cd.yml']
+          fe: ['frontend/**', 'registry/**', '.github/workflows/ci-cd.yml']
+          pg: ['backend/alembic/**', 'backend/app/models/**', 'backend/app/core/database.py', 'backend/app/services/db_move.py', 'backend/app/utils/backup_db.py', 'backend/requirements.txt', 'backend/tests/conftest.py', 'backend/tests/test_suggestions.py', '.github/workflows/ci-cd.yml']
+          installer: ['install.sh', 'scripts/**', 'edge/**', 'registry/scripts/**', 'docker-compose*.yml', '.github/workflows/ci-cd.yml']
+          perf: ['perf/**', 'scripts/tier.sh']
+
+  lint:
+    needs: changes
+    if: needs.changes.outputs.py == 'true' || needs.changes.outputs.fe == 'true'
+    runs-on: ubuntu-latest  # light job: GitHub-hosted (free, public repo); homelab keeps the CPU-heavy stages
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+      with:
+        python-version: '3.11'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Set up Node.js
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: '22'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+    - name: Install dependencies
+      run: |
+        pip install ruff  # ruff is static; no backend deps needed
+        cd frontend
+        npm ci
+    - name: Cache eslint/tsc
+      uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      with:
+        path: |
+          frontend/node_modules/.cache/eslint
+          frontend/tsconfig.tsbuildinfo
+        key: fe-lint-${{ hashFiles('frontend/package-lock.json') }}-${{ github.sha }}
+        restore-keys: fe-lint-${{ hashFiles('frontend/package-lock.json') }}-
+    - name: Run linting
+      run: |
+        ruff format --check backend blocker examples && ruff check backend blocker examples
+        cd frontend
+        npm run lint
+        npm run type-check
+    - name: Set up Node.js 22 (registry)
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: '22'
+    - name: Registry typecheck and tests
+      run: cd registry && npm ci && npm run typecheck && npm test
+
+  test:
+    needs: changes
+    if: needs.changes.outputs.py == 'true'
+    runs-on: ubuntu-latest  # public repo: free 4-vCPU hosted runners, high concurrency; nothing here needs the home network
+    timeout-minutes: 30
+    env:
+      # PRs to dev get the sqlite backend suite (with coverage) from wq-ci; skip the duplicate run here.
+      WQ_COVERS: ${{ github.event_name == 'pull_request' && github.base_ref == 'dev' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        db: ${{ fromJSON(needs.changes.outputs.dbs) }}  # postgres leg only when db/models/migrations/deps change
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+    - name: Set up Python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+      with:
+        python-version: '3.11'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install dependencies
+      if: matrix.db == 'postgres' || env.WQ_COVERS != 'true'
+      run: pip install -r backend/requirements.txt pytest-xdist markdown==3.10.2
+    - name: Start Postgres
+      if: matrix.db == 'postgres'
+      run: |
+        docker run -d --name ci-pg-${{ github.run_id }} -p 127.0.0.1:55432:5432 \
+          -e POSTGRES_PASSWORD=pg -e POSTGRES_DB=task4ce postgres:16-alpine
+        for _ in $(seq 60); do
+          docker exec ci-pg-${{ github.run_id }} pg_isready -U postgres -d task4ce && exit 0
+          sleep 1
+        done
+        exit 1
+    - name: Run test suite
+      if: matrix.db == 'postgres' || env.WQ_COVERS != 'true'
+      env:
+        TEST_DATABASE_URL: ${{ matrix.db == 'postgres' && 'postgresql+psycopg://postgres:pg@127.0.0.1:55432/task4ce' || '' }}
+      run: cd backend && python -m pytest tests -q -n auto
+    - name: Run blocker test suite
+      if: matrix.db == 'sqlite'
+      run: |
+        pip install "scapy>=2.6" pytest pyyaml
+        python -m pytest blocker -q
+    - name: Stop Postgres
+      if: always() && matrix.db == 'postgres'
+      run: docker rm -f ci-pg-${{ github.run_id }}
+
+  # Next 16 needs Node >= 20.9, so the jest suites and the production build run on 22.
+  frontend-test:
+    needs: changes
+    if: needs.changes.outputs.fe == 'true'
+    runs-on: ubuntu-latest  # light job: GitHub-hosted (free, public repo); homelab keeps the CPU-heavy stages
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with: { node-version: '22', cache: 'npm', cache-dependency-path: frontend/package-lock.json }
+    - name: Frontend unit tests
+      run: cd frontend && npm ci && npm test -- --ci
+
+  standalone:
+    needs: changes
+    if: needs.changes.outputs.fe == 'true'
+    runs-on: ubuntu-latest  # needs no secrets; next build is too heavy for the home runner
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with: { node-version: '22', cache: 'npm', cache-dependency-path: frontend/package-lock.json }
+    - name: Standalone relay guard (production build)
+      run: cd frontend && npm ci && npm run test:standalone
+
+  installer:
+    needs: changes
+    if: needs.changes.outputs.installer == 'true'
+    runs-on: ubuntu-latest  # light job: GitHub-hosted (free, public repo); homelab keeps the CPU-heavy stages
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+    - name: Shellcheck
+      run: shellcheck install.sh scripts/test-install.sh scripts/start.sh scripts/prep-box.sh edge/edge.sh edge/test-edge.sh scripts/enable-hostname.sh scripts/test-enable-hostname.sh registry/scripts/new-box.sh registry/scripts/test-new-box.sh scripts/db-migrate.sh scripts/test-db-migrate.sh scripts/tier.sh
+    - name: Installer smoke test
+      run: bash scripts/test-install.sh
+    - name: Edge tests
+      run: bash edge/test-edge.sh
+    - name: Enable-hostname test
+      run: bash scripts/test-enable-hostname.sh
+    - name: New-box test
+      run: bash registry/scripts/test-new-box.sh
+    - name: DB migrate wrapper test
+      run: bash scripts/test-db-migrate.sh
+
+  lab:
+    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
+    # runs in parallel with lint/test; build-and-push still waits for it
+    # Heavy (~20-30 min): skipped on PR pushes; runs once per merge in the merge queue, on release tags,
+    # nightly against dev, and on demand. main pushes come from the queue, so the lab already passed on that exact commit.
+    if: github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || startsWith(github.ref, 'refs/tags/v')
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      issues: write  # nightly failure issue
+    # One lab at a time repo-wide (heavy, ~17 min); others wait in order without holding a runner.
+    concurrency:
+      group: lab-${{ github.repository }}
+      queue: max
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      with:
+        ref: ${{ github.event_name == 'schedule' && 'dev' || '' }}  # schedule runs the default-branch workflow; test dev
+    - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+      with: { python-version: '3.11' }
+    - run: pip install pytest pyyaml
+    - name: Enable IPv6 on Docker bridges
+      # homelab runners: dind sidecar already runs with --ipv6 (homelab_k3s arc/values.yaml)
+      if: runner.environment == 'github-hosted'
+      run: |
+        echo '{"ipv6": true, "fixed-cidr-v6": "fd00:d0c::/64"}' | sudo tee /etc/docker/daemon.json
+        sudo systemctl restart docker
+    - name: Lab static tests
+      run: cd blocker && python -m pytest tests/test_lab_compose.py tests/test_lab_pw_version.py -q
+    - name: Lab integration tests
+      run: |
+        bash scripts/lab.sh up
+        cd blocker && RUN_INTEGRATION=1 python -m pytest tests/lab -v  # leaves the lab up for e2e
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with: { node-version: '22', cache: 'npm', cache-dependency-path: frontend/package-lock.json }
+    # the e2e container sits on the offline lab network; it uses these node_modules
+    - run: cd frontend && npm ci
+    - name: Browser e2e
+      env:
+        CI: 'true'  # playwright retries; compose must pass CI through to the e2e service
+      run: bash scripts/lab.sh e2e  # reuses the integration step's lab (brings one up if it is down)
+    - name: Upload e2e screenshots
+      if: always()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+      with:
+        name: e2e-artifacts
+        path: frontend/e2e-artifacts
+        if-no-files-found: ignore
+    - name: Lab logs on failure
+      if: failure()
+      run: PW_VERSION=$(bash scripts/lab.sh pw-version) INTERNAL_TOKEN=labtoken docker compose -f lab/docker-compose.lab.yml --profile e2e logs --no-color  # e2e profile = frontend
+    - name: Lab teardown
+      if: always()
+      run: bash scripts/lab.sh down
+    - name: Open/update nightly lab failure issue
+      if: failure() && github.event_name == 'schedule'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        title="Nightly lab + e2e failed"
+        n=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
+        if [ -n "$n" ]; then gh issue comment "$n" --body "Failed again: $RUN_URL"
+        else gh issue create --title "$title" --body "The nightly lab integration + browser e2e on dev failed: $RUN_URL"; fi
+
+  # Pi 4 2GB tier (docs/superpowers/specs/2026-11-10-constrained-devices-design.md): fails on a target miss
+  # or on memory growth over a compressed soak. Needs the production frontend build, so not the home runner.
+  perf:
+    runs-on: ubuntu-latest
+    needs: changes  # no other job needs perf: it never blocks them
+    if: needs.changes.outputs.perf == 'true'
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      issues: write  # nightly failure issue
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      with:
+        ref: ${{ github.event_name == 'schedule' && 'dev' || '' }}  # schedule runs the default-branch workflow; test dev
+    - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+      with: { python-version: '3.11' }
+    - name: Bench math tests
+      run: pip install pytest && python -m pytest perf -q
+    - name: Pi 4 2GB gate
+      run: bash scripts/tier.sh pi4-2g gate
+    - name: Pi 4 2GB soak (10 min)
+      run: bash scripts/tier.sh pi4-2g up && bash scripts/tier.sh pi4-2g soak 10
+    - name: Tier teardown
+      if: always()
+      run: bash scripts/tier.sh pi4-2g down
+    - name: Upload perf results
+      if: always()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+      with:
+        name: perf-results
+        path: perf/results/*.json
+        if-no-files-found: ignore
+    - name: Open/update nightly failure issue
+      if: failure() && github.event_name == 'schedule'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        title="Nightly Pi 4 2GB perf gate failed"
+        n=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number // empty')
+        if [ -n "$n" ]; then gh issue comment "$n" --body "Failed again: $RUN_URL"
+        else gh issue create --title "$title" --body "The nightly perf gate on dev failed: $RUN_URL"; fi
+
+  security-scan:
+    needs: changes
+    if: needs.changes.outputs.sec == 'true'
+    runs-on: ubuntu-latest  # light job: GitHub-hosted (free, public repo); homelab keeps the CPU-heavy stages
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+      security-events: write  # upload-sarif; org default token is read-only
+
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Upload Trivy report as artifact
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+      if: always()
+      with:
+        name: trivy-results
+        path: trivy-results.sarif
+
+  build-and-push:
+    runs-on: ${{ github.event.pull_request.head.repo.fork && 'ubuntu-latest' || 'homelab' }}  # forks never touch the home runner
+    needs: [test, lint, frontend-test, standalone, security-scan, installer, lab]
+    timeout-minutes: 45
+    # !failure(): a skipped lab (main push after the merge queue) must not skip the image build
+    if: ${{ !cancelled() && !failure() && github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) }}
+    strategy:
+      matrix:
+        service: [backend, frontend, blocker, edge]
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+    # arm64 for Raspberry Pi; frontend compiles natively, python images use QEMU
+    - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4
+    - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Image tags
+      id: meta
+      uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}
+        tags: |
+          type=sha
+          type=raw,value=latest,enable={{is_default_branch}}
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}},enable={{is_semver}}
+          type=raw,value=eval,enable=${{ startsWith(github.ref, 'refs/tags/eval-') }}
+          type=semver,pattern=eval-{{version}},enable=${{ startsWith(github.ref, 'refs/tags/eval-') }}
+
+    - name: Build and push ${{ matrix.service }}
+      id: build
+      uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      with:
+        context: ./${{ matrix.service }}
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha,scope=${{ matrix.service }}
+        cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+    - name: Install cosign
+      uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4 pinned commit
+
+    - name: Sign images with cosign (keyless, by digest)
+      env:
+        COSIGN_EXPERIMENTAL: 1
+      run: |
+        digest="${{ steps.build.outputs.digest }}"
+        for image in ${{ steps.meta.outputs.tags }}; do
+          image_ref="${image%:*}@${digest#sha256:}"
+          cosign sign --yes "$image_ref"
+        done
