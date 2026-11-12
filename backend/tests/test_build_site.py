@@ -37,3 +37,16 @@ def test_feature_guides_empty_when_source_dir_missing(tmp_path, monkeypatch):
 
     monkeypatch.setattr(build_site, "FEATURES_SOURCE", tmp_path / "nope")
     assert build_site.feature_guides() == []
+
+
+def test_site_check_and_home_cover_every_feature_guide():
+    """Each docs/guide/features/*.md is in FEATURES (check.mjs) and linked from the home page."""
+    check = (ROOT / "site/check.mjs").read_text()
+    home = (ROOT / "site/index.html").read_text()
+    for src in (ROOT / "docs/guide/features").glob("*.md"):
+        if src.name == "README.md":
+            continue
+        assert f"'{src.stem}'" in check, src.stem
+        assert f'href="guide/features/{src.stem}.html"' in home, src.stem
+    for phrase in ("multi-network", "block page", "relink", "mobile data"):
+        assert phrase in home.lower(), phrase
