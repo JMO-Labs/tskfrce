@@ -5,6 +5,7 @@ Probe exit codes: 0 = reached the real internet (verified), 1 = blocked, 3 = par
 """
 
 import argparse
+import fcntl
 import fnmatch
 import json
 import subprocess
@@ -159,9 +160,13 @@ def run_one(sc, platform, opt):
     return row
 
 
-def load(path):
-    with open(path, "rb") as f:
-        return tomllib.load(f)["scenario"]
+def load(paths):
+    """Scenarios from every given TOML file (default: all scenarios*.toml next to this file)."""
+    out = []
+    for path in paths:
+        with open(path, "rb") as f:
+            out += tomllib.load(f).get("scenario", [])
+    return out
 
 
 def report(rows, prev):
@@ -226,7 +231,9 @@ def main():
     ap.add_argument("--restore-tries", type=int, default=12)
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--selftest", action="store_true")
-    ap.add_argument("--scenarios", default=str(HERE / "scenarios.toml"))
+    ap.add_argument(
+        "--scenarios", nargs="*", default=sorted(map(str, HERE.glob("scenarios*.toml")))
+    )
     opt = ap.parse_args()
     if opt.selftest:
         return selftest()
@@ -240,8 +247,15 @@ def main():
         return
     runs = HERE / "runs"
     runs.mkdir(exist_ok=True)
-    prevs = sorted(p for p in runs.iterdir() if (p / "results.json").exists())
-    prev = json.loads((prevs[-1] / "results.json").read_text()) if prevs else None
+    # one run at a time: runs lock/unlock the same real device on the box
+    lock = open(runs / ".lock", "w")
+    fcntl.flock(lock, fcntl.LOCK_EX)
+    # diff baseline: latest verdict per (id, platform) across all earlier runs, so subset runs compare fairly
+    latest = {}
+    for p in sorted(p for p in runs.iterdir() if (p / "results.json").exists()):
+        for r in json.loads((p / "results.json").read_text()):
+            latest[(r["id"], r["platform"])] = r
+    prev = list(latest.values()) or None
     out = runs / datetime.now().strftime("%Y%m%d-%H%M%S")
     out.mkdir()
     rows = []
