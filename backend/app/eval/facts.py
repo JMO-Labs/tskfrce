@@ -3,8 +3,13 @@
 import os
 import platform
 import re
+from datetime import datetime, timedelta
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
+from app.models.network import Network
 
 logger = get_logger(__name__)
 
@@ -18,6 +23,7 @@ KEYS = (
     "last_update_result",
     "uptime_bucket",
 )
+_NET_DAYS = 7
 _G = 1024**3
 _CHANNELS = frozenset({"stable", "eval", "off"})
 _RESULTS = frozenset({"success", "failed"})
@@ -61,21 +67,19 @@ def arch(m: str | None) -> str:
     return "arm" if re.fullmatch(r"armv\d.*", m) else "other"
 
 
-def net(status: dict | None) -> tuple[str, int]:
-    """(net_mode, network_count) from the netd status; no names ever leave this function."""
+def net(db: Session, status: dict | None) -> tuple[str, int]:
+    """(net_mode, network_count) from recent multinet rows, else netd; no names leave."""
+    since = datetime.utcnow() - timedelta(days=_NET_DAYS)
+    ifaces = db.scalars(select(Network.iface).where(Network.last_seen >= since)).all()
+    if ifaces:
+        wifi = any(i.startswith("wl") for i in ifaces)
+        wired = any(not i.startswith("wl") for i in ifaces)
+        return ("both" if wifi and wired else "wifi" if wifi else "wired"), len(ifaces)
     if not status:
         return "unknown", 0
-    wifi = bool(status.get("connected"))
-    wired = status.get("wired")
-    if wired is None:  # netd does not report wired: online without Wi-Fi means cable
-        wired = bool(status.get("online")) and not wifi
-    if wifi and wired:
-        return "both", 2
-    if wifi:
+    if status.get("connected"):
         return "wifi", 1
-    if wired:
-        return "wired", 1
-    return "unknown", 0
+    return ("wired", 1) if status.get("online") else ("unknown", 0)
 
 
 def update() -> tuple[str, str]:
@@ -114,8 +118,8 @@ def _netd() -> dict | None:
         return None
 
 
-def collect() -> dict:
-    mode, count = net(_netd())
+def collect(db: Session) -> dict:
+    mode, count = net(db, _netd())
     channel, result = update()
     return {
         "ram_class": ram_class(_ram_bytes()),

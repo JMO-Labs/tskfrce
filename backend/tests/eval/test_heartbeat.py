@@ -139,5 +139,5 @@ def test_events_dropped(eval_on, db):
 
 
 def test_build_includes_box_facts(eval_on, db, monkeypatch):
-    monkeypatch.setattr(heartbeat.facts, "collect", lambda: {"ram_class": "4G"})
+    monkeypatch.setattr(heartbeat.facts, "collect", lambda db: {"ram_class": "4G"})
     assert heartbeat.build(db, date(2026, 10, 24))["ram_class"] == "4G"

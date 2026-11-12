@@ -51,26 +51,65 @@ def test_arch(m, want):
     assert facts.arch(m) == want
 
 
+def _net(db, iface, days=0):
+    from datetime import datetime, timedelta
+
+    from app.models.network import Network
+
+    db.add(
+        Network(
+            iface=iface,
+            subnet=f"10.0.{len(iface)}.0/24",
+            auto_label="SecretLabel",
+            last_seen=datetime.utcnow() - timedelta(days=days),
+        )
+    )
+    db.commit()
+
+
+def test_net_wired(db):
+    _net(db, "eno2")
+    assert facts.net(db, None) == ("wired", 1)
+
+
+def test_net_wifi(db):
+    _net(db, "wlo1")
+    assert facts.net(db, None) == ("wifi", 1)
+
+
+def test_net_both(db):
+    _net(db, "eno2")
+    _net(db, "wlo1")
+    assert facts.net(db, None) == ("both", 2)
+
+
+def test_net_stale_excluded(db):
+    _net(db, "eno2")
+    _net(db, "wlo1", days=8)
+    assert facts.net(db, None) == ("wired", 1)
+
+
+def test_net_no_rows_unknown(db):
+    assert facts.net(db, None) == ("unknown", 0)
+    assert facts.net(db, {}) == ("unknown", 0)
+
+
 @pytest.mark.parametrize(
     "st,want",
     [
-        (None, ("unknown", 0)),
-        ({}, ("unknown", 0)),
-        ({"connected": True, "online": True}, ("wifi", 1)),
+        ({"connected": True}, ("wifi", 1)),
         ({"connected": False, "online": True}, ("wired", 1)),
         ({"connected": False, "online": False}, ("unknown", 0)),
-        ({"connected": True, "wired": True}, ("both", 2)),
-        ({"connected": False, "wired": True}, ("wired", 1)),
-        ({"connected": True, "wired": False}, ("wifi", 1)),
     ],
 )
-def test_net(st, want):
-    assert facts.net(st) == want
+def test_net_netd_fallback(db, st, want):
+    assert facts.net(db, st) == want
 
 
-def test_net_never_leaks_names():
-    out = facts.net({"connected": True, "ssid": "HomeNet", "online": True})
-    assert "HomeNet" not in str(out)
+def test_net_never_leaks_names(db):
+    _net(db, "wlo1")
+    out = facts.net(db, {"connected": True, "ssid": "HomeNet"})
+    assert "SecretLabel" not in str(out) and "wlo1" not in str(out)
 
 
 def test_update_facts(monkeypatch):
@@ -96,13 +135,13 @@ def test_update_facts_error(monkeypatch):
     assert facts.update() == ("unknown", "unknown")
 
 
-def test_collect_missing_everything(monkeypatch):
+def test_collect_missing_everything(monkeypatch, db):
     monkeypatch.setattr(facts, "_ram_bytes", lambda: None)
     monkeypatch.setattr(facts, "_uptime", lambda: None)
     monkeypatch.setattr(facts, "_netd", lambda: None)
     monkeypatch.setattr(facts.os, "cpu_count", lambda: None)
     monkeypatch.setattr(facts.platform, "machine", lambda: "")
-    out = facts.collect()
+    out = facts.collect(db)
     assert set(out) == set(facts.KEYS)
     assert out["ram_class"] == out["uptime_bucket"] == out["arch"] == "unknown"
     assert out["net_mode"] == "unknown" and out["network_count"] == 0

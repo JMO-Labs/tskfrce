@@ -69,7 +69,7 @@ def build(db: Session, day: date) -> dict[str, int | str]:
     out["active_days_7"] = store.active_days(since, iso)
     used = store.feature_areas(since, iso)
     out["features_used_7d"] = sum(1 << i for i, a in enumerate(FEATURE_ORDER) if a in used)
-    out.update(facts.collect())
+    out.update({k: v for k, v in facts.collect(db).items() if k in out})
     out["chores_stale_3d"] = stale_3d(db, day)
     out["devices_total"] = (
         db.scalar(select(func.count()).select_from(Device).where(Device.status == "assigned")) or 0
