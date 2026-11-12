@@ -197,7 +197,6 @@ jobs:
     timeout-minutes: 40
     permissions:
       contents: read
-      issues: write  # nightly failure issue
     # One lab at a time repo-wide (heavy, ~17 min); others wait in order without holding a runner.
     concurrency:
       group: lab-${{ github.repository }}
@@ -242,10 +241,20 @@ jobs:
     - name: Lab teardown
       if: always()
       run: bash scripts/lab.sh down
+
+  # gh is not on the homelab ARC runner image, so the nightly alert runs GitHub-hosted
+  lab-nightly-alert:
+    runs-on: ubuntu-latest
+    needs: lab
+    if: failure() && github.event_name == 'schedule'
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
     - name: Open/update nightly lab failure issue
-      if: failure() && github.event_name == 'schedule'
       env:
         GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}  # no checkout in this job
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
         title="Nightly lab + e2e failed"

@@ -22,9 +22,18 @@ def test_lab_runs_on_schedule_against_dev(wf):
 
 
 def test_nightly_lab_failure_opens_issue(wf):
-    steps = wf["jobs"]["lab"]["steps"]
-    assert any("schedule" in str(s.get("if", "")) and "failure()" in s["if"] for s in steps)
-    assert wf["jobs"]["lab"]["permissions"]["issues"] == "write"
+    # gh is not on the homelab ARC image: alert from a GitHub-hosted job instead
+    alert = wf["jobs"]["lab-nightly-alert"]
+    assert alert["needs"] in ("lab", ["lab"])
+    assert alert["runs-on"] == "ubuntu-latest"
+    assert "failure()" in alert["if"] and "schedule" in alert["if"]
+    assert alert["permissions"] == {"issues": "write"}
+    assert any(
+        "gh issue" in s.get("run", "") and "GH_REPO" in s.get("env", {}) for s in alert["steps"]
+    )
+    lab = wf["jobs"]["lab"]
+    assert lab["permissions"] == {"contents": "read"}
+    assert not any("gh issue" in s.get("run", "") for s in lab["steps"])
 
 
 def test_artifacts_still_uploaded(wf):
