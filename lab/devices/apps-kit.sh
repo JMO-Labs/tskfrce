@@ -24,10 +24,25 @@ print(v["file"]["name"].lstrip("/"), v["file"]["sha256"])
 PY
 }
 
+# The repo index is fetched from the same server as the APK, so its hash only proves transfer
+# integrity. Pin the APK hashes we verified and installed (2026-11-12); a changed upstream build is
+# refused unless APPS_ALLOW_NEW=1, which prints the new hash to review and pin.
+declare -A PIN=(
+  [com.aurora.store]=fd9c75d90d0f4a7c132b9b4a5a2cf1992a45e03b8d8ff988b7dcfbc0db2c4d11
+  [org.mozilla.fennec_fdroid]=c1caf99ca2bbed0e75bd53d5f9ba07a7d27cd6ed96218ecd3dd4f702adb2d4a3
+  [org.torproject.android]=6b79cb30d59278fd66b2740223e0592a1f8363274ac8498960491b0201b9b4f2
+)
+
 fdroid_install() { # REPO_URL PKG
   local repo=$1 pkg=$2 idx="$W/$(echo "$1" | md5sum | cut -c1-8).json"
-  [ -s "$idx" ] || curl -fsSL -o "$idx" "$repo/index-v2.json"
+  curl -fsSL -o "$idx" "$repo/index-v2.json"  # never reuse a cached index
   read -r name sha < <(fdroid_pick "$idx" "$pkg" x86_64)
+  name=$(basename -- "$name")  # index-supplied: never let it escape $W
+  [[ $name =~ ^[A-Za-z0-9._-]+\.apk$ ]] || { echo "refusing odd APK name '$name'" >&2; return 1; }
+  if [ "$sha" != "${PIN[$pkg]:-}" ] && [ "${APPS_ALLOW_NEW:-0}" != 1 ]; then
+    echo "$pkg: index hash $sha != pinned ${PIN[$pkg]:-none}; review, then pin or set APPS_ALLOW_NEW=1" >&2
+    return 1
+  fi
   curl -fsSL -o "$W/$name" "$repo/$name"
   echo "$sha  $W/$name" | sha256sum -c -
   "${ADB[@]}" install -r "$W/$name" | tail -1
