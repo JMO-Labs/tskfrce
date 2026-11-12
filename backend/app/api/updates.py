@@ -2,17 +2,17 @@
 
 import json
 import os
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app import __version__
 from app.api.deps import get_db, require_parent
 from app.api.internal import require_token
-from app.lock.loop import trigger
-from app.models.family import get_family
 from app.services import inbox
 
 router = APIRouter(prefix="/api/v1", tags=["updates"], dependencies=[Depends(require_parent)])
@@ -132,8 +132,8 @@ def patch_updates(body: UpdatesPatch, db: Session = Depends(get_db)) -> UpdatesO
         if requested <= current:
             raise HTTPException(400, f"Major version {requested} not available")
         state["requested_major"] = requested
+        # ponytail: picked up by the next nightly run; a "now" button needs a host trigger
         _write_state(state, install_channel)
-        trigger()
 
     if body.channel is not None:
         # Guard: eval install cannot switch to stable
@@ -160,37 +160,53 @@ internal_router_with_auth = APIRouter(
 
 @internal_router_with_auth.get("/kid-session-active")
 async def kid_session_active_check(db: Session = Depends(get_db)) -> dict[str, bool]:
-    """Check if any kid session is active."""
-    fam = get_family(db)
-    from app.models.lock import Device
+    """True while any timed override (unlock, lock, homework, penalty) is still running.
 
-    active = (
-        db.query(Device)
-        .filter(Device.family_id == fam.id, Device.kid_session_active == True)
-        .first()
-        is not None
-    )
+    The host updater and the pre-reboot hook skip the night rather than restart mid-timer.
+    """
+    from app.models.lock import Override
 
+    now = datetime.now(UTC).replace(tzinfo=None)
+    active = db.query(Override.id).filter(Override.expires_at > now).first() is not None
     return {"active": active}
 
 
-@internal_router_with_auth.post("/today-note")
-async def post_today_note(body: dict[str, str], db: Session = Depends(get_db)) -> dict[str, str]:
-    """Add a note to the Today page (max 256 chars)."""
-    fam = get_family(db)
-    note = body.get("note", "")[:256]
-    if note:
-        inbox.notify_parents(db, fam, note)
-        db.commit()
+@internal_router_with_auth.get("/update-state")
+def internal_update_state() -> dict:
+    """What the host updater should do tonight. The eval guard is applied here too."""
+    state = _read_state()
+    install = _get_install_channel()
+    channel = state.get("channel") or install
+    if install == "eval" and channel not in {"eval", "off"}:
+        channel = "eval"
+    if not state.get("auto", True):
+        channel = "off"
+    major = state.get("requested_major") if install != "eval" else None
+    return {"channel": channel, "requested_major": major}
 
+
+class UpdateResult(BaseModel):
+    result: Literal["success", "failed"]
+    version: str = Field(default="", max_length=40)
+    old_version: str = Field(default="", max_length=40)
+    rollback_healthy: bool = True  # False: the rolled-back stack still failed its health check
+
+
+@internal_router_with_auth.post("/update-result")
+def internal_update_result(body: UpdateResult, db: Session = Depends(get_db)) -> dict:
+    """Record the night's result and tell the parents (Today bell + ping)."""
+    state = _read_state()
+    state["last_result"] = body.result
+    state["last_at"] = datetime.now(UTC).replace(tzinfo=None).isoformat(timespec="seconds")
+    state["rollback_unhealthy"] = body.result == "failed" and not body.rollback_healthy
+    if body.result == "success":
+        state["last_version"] = body.version
+        state["requested_major"] = None
+        title = f"Updated to {body.version}" if body.version else "Box updated"
+    else:
+        title = f"Update to {body.version or 'the new version'} failed"
+        body_text = f"Still on {body.old_version or 'the current version'}. Will retry tomorrow."
+    _write_state(state)
+    inbox.notify_parents(db, "box_update", title, None if body.result == "success" else body_text)
+    db.commit()
     return {"status": "ok"}
-
-
-@internal_router_with_auth.post("/telemetry")
-async def post_telemetry(body: dict[str, str], db: Session = Depends(get_db)) -> dict[str, str]:
-    """Record telemetry event."""
-    event = body.get("event", "")
-    if event == "update_failed":
-        pass  # Future: log to telemetry system
-
-    return {"status": "recorded"}

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, jest, test } from '@jest/globals'
+import { afterEach, beforeEach, expect, test } from '@jest/globals'
 import { act, createEvent, fireEvent, render, screen } from '@testing-library/react'
 import type { Micro } from '@/v2/games/types'
 import { seeded } from '@/v2/games/rng'

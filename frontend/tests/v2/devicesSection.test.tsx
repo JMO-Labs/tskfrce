@@ -23,7 +23,7 @@ beforeAll(() => {
 beforeEach(() => { small = false })
 
 test('picking another device drops the previous device\'s open row', async () => {
-  fakeRouter.reset('/devices', { item: '1', open: 'activity', net: 'x' })
+  fakeRouter.reset('/devices', { item: '1', open: 'activity' })
   render(wrap(<DevicesSection devices={[dev(1, 'Tablet'), dev(2, 'Console')]} kids={kids} focus={1} />))
   await userEvent.click(await screen.findByText('Console'))
   await waitFor(() => expect(fakeRouter.push).toHaveBeenCalled())

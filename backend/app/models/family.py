@@ -53,6 +53,7 @@ class FamilySettings(Base):
     group_pricing = Column(Boolean, nullable=False, default=False, server_default="0")  # opt-in
     quick_replies = Column(Text, nullable=True)  # JSON list; NULL = defaults
     blocker_last_seen = Column(DateTime, nullable=True)  # naive UTC; home box heartbeat
+    last_rescan_at = Column(DateTime, nullable=True)  # naive UTC; device discovery rate limit
     quiet_start = Column(String(5), nullable=True)
     quiet_end = Column(String(5), nullable=True)
     quiet_security = Column(Boolean, nullable=False, default=True, server_default="1")

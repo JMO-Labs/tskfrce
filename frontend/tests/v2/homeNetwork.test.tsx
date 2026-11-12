@@ -6,9 +6,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MantineProvider } from '@mantine/core'
 import { api } from '@/v2/api'
 import { DeviceList } from '@/v2/manage/DeviceList'
-import { DeviceDetail } from '@/v2/manage/DeviceDetail'
 import { DevicesPage } from '@/v2/manage/DevicesPage'
-import type { Device } from '@/v2/types'
+import { HomeNetworkPane } from '@/v2/manage/HomeNetworkPane'
+import { SETTINGS_SECTIONS } from '@/v2/manage/settingsSections'
 import { fakeRouter } from './helpers/fakeRouter'
 
 jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
@@ -19,12 +19,10 @@ jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } 
 
 const apiMock = api as unknown as Mock<(p: string, i?: { method?: string; body?: unknown }) => Promise<unknown>>
 let blocked = true
-const show = (tab: 'devices' | 'groups' = 'devices') =>
+const wrap = (ui: React.ReactNode) =>
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MantineProvider env="test">
-        <DeviceList devices={[]} kids={[]} onSelectDevice={() => {}} tab={tab} />
-      </MantineProvider>
+      <MantineProvider env="test">{ui}</MantineProvider>
     </QueryClientProvider>,
   )
 const patches = () => apiMock.mock.calls.filter((c) => c[0] === '/family' && c[1]?.method === 'PATCH').map((c) => c[1]?.body)
@@ -45,62 +43,29 @@ beforeEach(() => {
   })
 })
 
-test('Home network is one calm row at the top of the Devices list', async () => {
-  show()
-  expect(await screen.findByText('New devices blocked · Box healthy')).toBeInTheDocument()
-  expect(screen.queryByRole('switch', { name: 'Block new devices' })).toBeNull()
+test('Home network is a Settings section next to Wi-Fi', () => {
+  const ids = SETTINGS_SECTIONS.map((s) => s.id)
+  expect(ids).toContain('network')
+  expect(Math.abs(ids.indexOf('network') - ids.indexOf('wifi'))).toBe(1)
 })
 
-test('it opens in place, and the switch autosaves', async () => {
-  show()
-  await userEvent.click(await screen.findByRole('button', { name: /^Home network/ }))
+test('the pane shows the policy switch and box health, and the switch autosaves', async () => {
+  wrap(<HomeNetworkPane />)
+  expect(await screen.findByText('Healthy')).toBeInTheDocument()
   await userEvent.click(await screen.findByRole('switch', { name: 'Block new devices' }))
   await waitFor(() => expect(patches()).toEqual([{ new_devices_blocked: false }]))
-  expect(await screen.findByText('Healthy')).toBeInTheDocument()
-  expect(screen.queryByText(/Box healthy/)).toBeNull() // the open row shows its form, not its summary
-  await userEvent.click(screen.getByRole('button', { name: /^Home network/ }))
-  await waitFor(() => expect(screen.getByText('New devices allowed · Box healthy')).toBeInTheDocument())
 })
 
-test('it is not on the Groups tab', async () => {
-  const { container } = show('groups')
-  await waitFor(() => expect(container.querySelector('[aria-label="Devices"]')).toHaveTextContent('Home network'))
-  expect(container.querySelector('[aria-label="Groups"]')).not.toHaveTextContent('Home network')
+test('the Devices list no longer has the Home network row', async () => {
+  const { container } = wrap(<DeviceList devices={[]} kids={[]} onSelectDevice={() => {}} />)
+  await waitFor(() => expect(container.querySelector('[aria-label="Devices"]')).toBeInTheDocument())
+  expect(screen.queryByText(/Home network/)).toBeNull()
 })
 
-const dev = { id: 1, name: 'Tablet', mac: 'aa:bb', vendor: null, status: 'assigned', owner_ids: [], group_ids: [], online: false, override: null, last_seen: null, resisting: false, exempt: false, reason: 'chores', chores_done: 0, chores_total: 0, locks_at: null, alerts: 0, address_changes: 0 } as Device
-
-test('opening a device row closes Home network; Esc closes the innermost first', async () => {
-  fakeRouter.reset('/devices', { item: '1', net: 'net' })
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MantineProvider env="test">
-        <DeviceList devices={[]} kids={[]} onSelectDevice={() => {}} />
-        <DeviceDetail device={dev} kids={[]} onRequestOverride={() => {}} />
-      </MantineProvider>
-    </QueryClientProvider>,
-  )
-  expect(await screen.findByRole('switch', { name: 'Block new devices' })).toBeInTheDocument()
-  await userEvent.click(screen.getByRole('button', { name: /^Details/ }))
-  expect(fakeRouter.query).toMatchObject({ open: 'details' })
-  expect(fakeRouter.query.net).toBeUndefined()
-  expect(screen.queryByRole('switch', { name: 'Block new devices' })).toBeNull()
-  // and back the other way: one Esc closes the Home network row, not the device row
-  await userEvent.click(screen.getByRole('button', { name: /^Home network/ }))
-  expect(fakeRouter.query).toMatchObject({ net: 'net' })
-  expect(fakeRouter.query.open).toBeUndefined()
-  await userEvent.keyboard('{Escape}')
-  expect(fakeRouter.query.net).toBeUndefined()
-})
-
-test('switching to the Groups tab drops net from the URL', async () => {
+test('an old Devices deep link (?net=net) opens the Settings section', async () => {
   fakeRouter.reset('/devices', { net: 'net' })
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MantineProvider env="test"><DevicesPage /></MantineProvider>
-    </QueryClientProvider>,
-  )
-  await userEvent.click(await screen.findByRole('button', { name: /^Groups/ }))
-  expect(fakeRouter.query.tab).toBe('groups')
-  expect(fakeRouter.query.net).toBeUndefined()
+  wrap(<DevicesPage />)
+  await waitFor(() => expect(fakeRouter.replace).toHaveBeenCalled())
+  const [target] = fakeRouter.replace.mock.calls[fakeRouter.replace.mock.calls.length - 1] as unknown[]
+  expect(target).toBe('/settings?section=network')
 })

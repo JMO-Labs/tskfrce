@@ -29,9 +29,15 @@ function DevicesBody() {
   // the tab lives in the URL: device and group ids overlap, so ?item alone can't say which one it is
   const tab = first(query.tab) === 'groups' ? 'groups' : 'devices'
   const setTab = (t: 'devices' | 'groups') => {
-    const { item: _drop, tab: _t, open: _o, net: _n, ...rest } = query
+    const { item: _drop, tab: _t, open: _o, ...rest } = query
     router.push({ pathname: router.pathname, query: t === 'groups' ? { ...rest, tab: t } : rest }, undefined, { shallow: true })
   }
+  // the Home network card moved to Settings; old ?net= links land there
+  const movedNet = !!query.net
+  useEffect(() => {
+    if (movedNet) router.replace('/settings?section=network')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [movedNet])
   const small = useMediaQuery('(max-width: 767px)')
   // desktop opens the first item rather than an empty detail pane; phone stays on the list
   const shown = tab === 'devices' ? all : groups.data ?? []

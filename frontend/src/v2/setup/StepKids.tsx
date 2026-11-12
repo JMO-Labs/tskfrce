@@ -8,6 +8,7 @@ import { Icon } from '../parent/Icon'
 import { InfoPop } from '../parent/InfoPop'
 import { motionProps } from '../parent/reduceMotion'
 import type { Kid } from '../types'
+import { BirthdayField, fromMonthValue } from '../manage/BirthdayField'
 import { AVATARS } from './starterChores'
 import styles from './stepCards.module.css'
 
@@ -23,14 +24,16 @@ export function StepKids({ kids, name, onName, draftError, onAdd }: Props) {
   const [avatar, setAvatar] = useState(AVATARS[0])
   const [picking, setPicking] = useState(false)
   const [pin, setPin] = useState('')
+  const [born, setBorn] = useState('')
   const pinBad = pin !== '' && !/^\d{4}$/.test(pin)
   const add = useMutation({
     mutationFn: () =>
-      api<Kid>('/kids', { method: 'POST', body: { full_name: name.trim(), avatar, pin: pin || null } }),
+      api<Kid>('/kids', { method: 'POST', body: { full_name: name.trim(), avatar, pin: pin || null, ...(born ? fromMonthValue(born) : {}) } }),
     onSuccess: (k) => {
       onAdd(k)
       onName('')
       setPin('')
+      setBorn('')
     },
   })
   const once = useSingleFlight()
@@ -80,6 +83,10 @@ export function StepKids({ kids, name, onName, draftError, onAdd }: Props) {
           <TextInput style={{ flex: 1, minWidth: 0 }} placeholder="4 digits" autoComplete="off" inputMode="numeric" maxLength={4} value={pin}
             label={<span className={styles.pinlabel}>PIN (optional) <InfoPop label="About PINs" width={260}>4 digits. Lets a kid prove it&apos;s them on a shared device.</InfoPop></span>}
             onChange={(e) => setPin(e.currentTarget.value)} onKeyDown={enterAdds} error={pinBad} />
+        </div>
+        <div>
+          <div className={styles.fldlabel}>Birthday (optional)</div>
+          <BirthdayField className={styles.avbtn} value={born} onChange={setBorn} />
         </div>
         {pinBad && <p role="alert" className={styles.pinerr}>Use exactly 4 digits.</p>}
         {add.error && <p role="alert">Couldn&apos;t add that kid. {errorText(add.error)}</p>}

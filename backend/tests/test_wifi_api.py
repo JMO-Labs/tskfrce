@@ -124,3 +124,14 @@ def test_fallback_join_on_a_set_up_box_needs_a_parent(
     assert all(c[0] != "setup_join" for c in daemon)
     assert client.post(SETUP, json=BODY, headers={**h, **parent_headers}).status_code == 200
     assert daemon[-1][0] == "setup_join"
+
+
+def test_setup_scan_is_hotspot_only(client, daemon, via_proxy):
+    assert (
+        client.get(
+            "/api/v1/network/wifi/setup/scan", headers={"X-Real-IP": "192.168.1.50"}
+        ).status_code
+        == 403
+    )
+    r = client.get("/api/v1/network/wifi/setup/scan", headers={"X-Real-IP": "10.42.0.5"})
+    assert r.status_code == 200 and "networks" in r.json()

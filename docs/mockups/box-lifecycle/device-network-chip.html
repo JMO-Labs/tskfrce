@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Devices with Network Chips</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1d;
+            line-height: 1.5;
+        }
+        @media (prefers-color-scheme: dark) {
+            body { background: #1d1d1d; color: #f5f5f7; }
+        }
+
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header {
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e5e5e7;
+        }
+        @media (prefers-color-scheme: dark) { .header { border-color: #424245; } }
+
+        h1 { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
+        .subtitle { font-size: 15px; color: #86868b; }
+        @media (prefers-color-scheme: dark) { .subtitle { color: #a1a1a6; } }
+
+        .filters {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+
+        .filter-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #fff;
+            border: 1px solid #d5d5d7;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        @media (prefers-color-scheme: dark) {
+            .filter-chip { background: #2c2c2e; border-color: #555558; }
+        }
+
+        .filter-chip:hover {
+            background: #e8e8ed;
+            border-color: #ccc;
+        }
+        @media (prefers-color-scheme: dark) {
+            .filter-chip:hover { background: #424245; border-color: #666; }
+        }
+
+        .filter-chip.active {
+            background: #007aff;
+            color: #fff;
+            border-color: #007aff;
+        }
+
+        .device-item {
+            background: #fff;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid #e5e5e7;
+        }
+        @media (prefers-color-scheme: dark) {
+            .device-item { background: #2c2c2e; border-color: #424245; }
+        }
+
+        .device-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+
+        .device-name {
+            font-size: 17px;
+            font-weight: 600;
+        }
+
+        .device-status {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+
+        .status-online {
+            background: #d1f4d1;
+            color: #2d6a2d;
+        }
+        @media (prefers-color-scheme: dark) {
+            .status-online { background: #1d4d1d; color: #66d966; }
+        }
+
+        .status-offline {
+            background: #f0f0f0;
+            color: #666;
+        }
+        @media (prefers-color-scheme: dark) {
+            .status-offline { background: #424245; color: #999; }
+        }
+
+        .status-locked {
+            background: #ffd4d1;
+            color: #a62d1f;
+        }
+        @media (prefers-color-scheme: dark) {
+            .status-locked { background: #5a2420; color: #ff9d99; }
+        }
+
+        .device-details {
+            font-size: 13px;
+            color: #86868b;
+            margin-bottom: 12px;
+        }
+        @media (prefers-color-scheme: dark) { .device-details { color: #a1a1a6; } }
+
+        .network-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .network-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #f5f5f7;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #1d1d1d;
+        }
+        @media (prefers-color-scheme: dark) {
+            .network-chip { background: #424245; color: #f5f5f7; }
+        }
+
+        .network-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .net-wired { background: #34c759; }
+        .net-wifi { background: #007aff; }
+        .net-guest { background: #ff9500; }
+
+        .vendor {
+            font-size: 12px;
+            color: #86868b;
+            margin-top: 8px;
+        }
+        @media (prefers-color-scheme: dark) { .vendor { color: #a1a1a6; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Devices</h1>
+            <p class="subtitle">View and manage by network</p>
+        </div>
+
+        <div class="filters">
+            <div class="filter-chip active">All (10)</div>
+            <div class="filter-chip">Wired (3)</div>
+            <div class="filter-chip">WiFi-Home (7)</div>
+            <div class="filter-chip">Guest (0)</div>
+        </div>
+
+        <!-- Wired device -->
+        <div class="device-item">
+            <div class="device-header">
+                <div class="device-name">iPad</div>
+                <div class="device-status status-online">Online</div>
+            </div>
+            <div class="device-details">
+                192.168.1.45 • Apple Inc.
+            </div>
+            <div class="network-chips">
+                <div class="network-chip">
+                    <span class="network-dot net-wired"></span>
+                    Wired
+                </div>
+            </div>
+            <div class="vendor">Apple iPad Air (5th gen)</div>
+        </div>
+
+        <!-- WiFi device -->
+        <div class="device-item">
+            <div class="device-header">
+                <div class="device-name">Alex's Phone</div>
+                <div class="device-status status-offline">Offline</div>
+            </div>
+            <div class="device-details">
+                192.168.1.112 • Apple Inc.
+            </div>
+            <div class="network-chips">
+                <div class="network-chip">
+                    <span class="network-dot net-wifi"></span>
+                    WiFi-Home
+                </div>
+            </div>
+            <div class="vendor">iPhone 13</div>
+        </div>
+
+        <!-- Multi-network device -->
+        <div class="device-item">
+            <div class="device-header">
+                <div class="device-name">Laptop</div>
+                <div class="device-status status-locked">Locked</div>
+            </div>
+            <div class="device-details">
+                192.168.1.88 • Dell Inc.
+            </div>
+            <div class="network-chips">
+                <div class="network-chip">
+                    <span class="network-dot net-wired"></span>
+                    Wired
+                </div>
+                <div class="network-chip">
+                    <span class="network-dot net-wifi"></span>
+                    WiFi-Home
+                </div>
+            </div>
+            <div class="vendor">Dell XPS 13</div>
+        </div>
+
+        <!-- Guest network device -->
+        <div class="device-item">
+            <div class="device-header">
+                <div class="device-name">Visitor's Phone</div>
+                <div class="device-status status-online">Online</div>
+            </div>
+            <div class="device-details">
+                10.0.100.52 • Google Inc.
+            </div>
+            <div class="network-chips">
+                <div class="network-chip">
+                    <span class="network-dot net-guest"></span>
+                    Guest VLAN 100
+                </div>
+            </div>
+            <div class="vendor">Google Pixel 7a</div>
+        </div>
+
+        <!-- Another WiFi device -->
+        <div class="device-item">
+            <div class="device-header">
+                <div class="device-name">Smart TV</div>
+                <div class="device-status status-online">Online</div>
+            </div>
+            <div class="device-details">
+                192.168.1.200 • Samsung Electronics
+            </div>
+            <div class="network-chips">
+                <div class="network-chip">
+                    <span class="network-dot net-wifi"></span>
+                    WiFi-Home
+                </div>
+            </div>
+            <div class="vendor">Samsung TV</div>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('.filter-chip').forEach(chip => {
+            chip.addEventListener('click', function() {
+                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

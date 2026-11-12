@@ -4,6 +4,27 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- Multi-network: with `LAN_IFACE` empty (the installer default), the box finds and blocks devices on every network it is attached to, and shows the block page on each.
+- Wi-Fi settings: Settings → Wi-Fi and the `/wifi-setup` captive page let you join or change the box's Wi-Fi without a cable.
+- Blocked phones stay on Wi-Fi: the phone still shows "Connected". Plain `http://` sites show the block page; `https://` sites just close, because the box has no certificate for them.
+- Auto-relink: a phone that forgets the network and returns with a new private Wi-Fi address keeps its owner and rules. A parent can undo a wrong match.
+- Kid notification: a kid sees why their device is blocked.
+- Guide for kids' phones: lock mobile data and the private Wi-Fi address (Family Link, Screen Time).
+- Today screen: a Goals card, a "This week" on-time trend and when-done grid, a Suggestions card (dismiss, mute or hide), a system warnings strip, and update and power suggestions.
+- Kids can have an optional birth month and year; Today suggests moving a kid up an age group.
+
+### Fixed
+
+- Block page now shows on every network in multi-network mode.
+- Google search results are blocked for a blocked phone, using a per-device byte budget so refreshing cannot piece a page together.
+- Nightly updater works; Wi-Fi API and setup screen fixes.
+
+### Docs
+
+- The box cannot block mobile data (Samsung "Switch to mobile data" sends apps over cellular while Wi-Fi shows connected); the fix is on the phone. UniFi Proxy ARP and client isolation can stop the box intercepting Wi-Fi devices. See [the home box notes](docs/blocker.md), [routers](docs/routers.md) and [Troubleshooting](docs/guide/06-troubleshooting.md).
+
 ## [2.13.0] - 2026-11-11
 
 Everything built on `feat/declutter` since 2.6.0 (2.7.0 to 2.12.0 were branch versions, never released).

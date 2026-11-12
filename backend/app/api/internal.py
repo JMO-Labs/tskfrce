@@ -18,6 +18,7 @@ from app.lock import activity
 from app.lock.hints import apply_hint
 from app.lock.identity import note_identity_change
 from app.lock.loop import trigger
+from app.lock.relink import apply_relink
 from app.lock.rules import block_reason
 from app.lock.schedule import local_now
 from app.lock.state import Prefetch, desired_blocked, device_facts
@@ -25,6 +26,7 @@ from app.models.device_activity import DeviceEvent
 from app.models.family import get_family
 from app.models.homework import HomeworkActivity
 from app.models.lock import Device, Vlan
+from app.models.network import Network
 from app.schemas.homework import ActivityReport
 from app.services import inbox
 
@@ -55,10 +57,14 @@ class SeenReport(BaseModel):
     model: str | None = Field(default=None, max_length=255)
     dhcp_fp: str | None = Field(default=None, max_length=255)
     vid: int | None = Field(default=None, ge=1, le=4094)  # null = untagged LAN
+    gateway_mac: str | None = Field(default=None, max_length=17)  # blocker's gateway MAC
+    box_mac: str | None = Field(default=None, max_length=17)  # blocker's own MAC
 
-    @field_validator("mac")
+    @field_validator("mac", "gateway_mac", "box_mac")
     @classmethod
-    def _mac(cls, v: str) -> str:
+    def _mac(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
         v = v.strip().lower().replace("-", ":")
         if not MAC_RE.match(v):
             raise ValueError("MAC address must look like aa:bb:cc:dd:ee:ff.")
@@ -137,6 +143,23 @@ class WorkaroundReport(BaseModel):
         return out
 
 
+class NetworkItem(BaseModel):
+    iface: str = Field(max_length=15)
+    subnet: str | None = None
+    auto_label: str = Field(max_length=50)
+
+    @field_validator("subnet")
+    @classmethod
+    def _subnet(cls, v: str | None) -> str | None:
+        if v is not None:
+            v = str(ipaddress.ip_network(v, strict=False))
+        return v
+
+
+class NetworksReport(BaseModel):
+    networks: list[NetworkItem] = Field(max_length=100)
+
+
 def _apply(dev: Device, body: SeenReport, now: datetime) -> None:
     dev.ip, dev.last_seen = body.ip, now
     dev.ipv6 = body.ipv6
@@ -146,6 +169,12 @@ def _apply(dev: Device, body: SeenReport, now: datetime) -> None:
         dev.vlan_id = body.vid
     for k in ("mdns_name", "model", "dhcp_fp"):
         setattr(dev, k, getattr(body, k) or getattr(dev, k))
+    # Set is_gateway if this MAC matches the gateway_mac reported by blocker
+    if body.gateway_mac:
+        dev.is_gateway = dev.mac == body.gateway_mac
+    # Set is_box if this MAC matches the box_mac reported by blocker
+    if body.box_mac:
+        dev.is_box = dev.mac == body.box_mac
 
 
 @router.post("/devices/seen", dependencies=[Depends(require_token)])
@@ -166,7 +195,10 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
         try:
             db.flush()
             # a hint sends its own notice; no bell while the wizard is running
-            if not apply_hint(db, dev) and get_family(db).setup_step is None:
+            if (
+                not (apply_relink(db, dev) or apply_hint(db, dev))
+                and get_family(db).setup_step is None
+            ):
                 inbox.notify_parents(
                     db,
                     "new_device",
@@ -189,7 +221,11 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
             activity.log(db, dev.id, "address_change", now, detail=f"{old_ip} → {body.ip}")
         note_identity_change(db, dev, before[1], now)
         changed = before != (dev.mdns_name, dev.model, dev.dhcp_fp)
-        hinted = changed and dev.status == "unassigned" and apply_hint(db, dev)
+        hinted = (
+            changed
+            and dev.status == "unassigned"
+            and (apply_relink(db, dev) or apply_hint(db, dev))
+        )
     if new and dev.hostname:
         _note_new_address(db, dev, now)
     activity.sample(db, dev, now)
@@ -243,11 +279,18 @@ def state(db: Session = Depends(get_db)) -> dict:
         rows = [(d, device_facts(db, d, fam, datetime.now(UTC), pre)) for d in devices]
         homework = state_map(db, rows, set(blocked))
 
+    # Build network enforce map: {iface+subnet: enforce_bool}
+    network_enforce = {}
+    for net in db.query(Network):
+        key = f"{net.iface}:{net.subnet}" if net.subnet else net.iface
+        network_enforce[key] = net.enforce
+
     return {
         "blocked": blocked,
         "homework": homework,
         "listen_only": fam.listen_only,
         "covered_vlans": covered,
+        "network_enforce": network_enforce,  # NEW: enforce state per network
     }
 
 
@@ -402,3 +445,38 @@ def homework_activity(body: ActivityReport, db: Session = Depends(get_db)) -> di
         stored += 1
     db.commit()
     return {"ok": True, "stored": stored}
+
+
+@router.post("/networks", dependencies=[Depends(require_token)])
+def report_networks(body: NetworksReport, db: Session = Depends(get_db)) -> dict:
+    """Upsert detected networks from blocker (interfaces, subnets, labels)."""
+    now = datetime.now(UTC).replace(tzinfo=None)
+    upserted = 0
+    for net_item in body.networks:
+        # Find or create network by (iface, subnet)
+        net = (
+            db.query(Network)
+            .filter(
+                Network.iface == net_item.iface,
+                Network.subnet == net_item.subnet,
+            )
+            .first()
+        )
+        if net is None:
+            net = Network(
+                iface=net_item.iface,
+                subnet=net_item.subnet,
+                auto_label=net_item.auto_label,
+                enforce=True,  # default: enforce on all new networks
+            )
+            db.add(net)
+        else:
+            # Update auto_label if it changed
+            if net.auto_label != net_item.auto_label:
+                net.auto_label = net_item.auto_label
+        net.last_seen = now
+        db.flush()
+        upserted += 1
+    db.commit()
+    _touch(db)
+    return {"ok": True, "upserted": upserted}

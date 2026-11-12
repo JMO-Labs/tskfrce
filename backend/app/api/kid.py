@@ -15,7 +15,7 @@ from app.core.client_ip import client_ip, norm_ip
 from app.core.ratelimit import check, hit
 from app.lock import activity
 from app.lock.loop import trigger
-from app.lock.rules import is_online
+from app.lock.rules import block_reason
 from app.lock.schedule import local_now
 from app.lock.state import Prefetch, device_facts
 from app.models.badge import BadgeAward
@@ -144,7 +144,10 @@ def login(body: KidLogin, request: Request, db: Session = Depends(get_db)):
     return {"access_token": auth.create_access_token(data={"sub": str(kid.id)})}
 
 
-def _locked(db: Session, kid: User, ip: str, now: datetime, counts: dict) -> bool:
+def _locked(
+    db: Session, kid: User, ip: str, now: datetime, counts: dict
+) -> tuple[bool, str | None, str | None]:
+    """(blocked, why, UTC ISO end). `why` is the rule engine's reason; the end is known for timed locks."""
     fam = get_family(db)
     all_devs = (
         db.query(Device).options(selectinload(Device.owners), selectinload(Device.groups)).all()
@@ -153,7 +156,22 @@ def _locked(db: Session, kid: User, ip: str, now: datetime, counts: dict) -> boo
     devs = [dev] if dev and kid in dev.owners else [d for d in all_devs if kid in d.owners]
     local = local_now(fam.timezone, now)
     pre = Prefetch(db, devs, counts, now=now)
-    return any(not is_online(device_facts(db, d, fam, now, pre), local) for d in devs)
+    naive = now.astimezone(UTC).replace(tzinfo=None)
+    for d in devs:
+        why = block_reason(device_facts(db, d, fam, now, pre), local)
+        if why is None:
+            continue
+        ends = [
+            o.expires_at
+            for o in pre.overrides.get(d.id, [])
+            if o.action == "lock" and o.expires_at and o.expires_at > naive
+        ]
+        until = min(ends).replace(tzinfo=UTC).isoformat() if ends and why in TIMED else None
+        return True, why, until
+    return False, None, None
+
+
+TIMED = {"manual", "penalty"}
 
 
 @router.get("/today")
@@ -187,12 +205,18 @@ def today(request: Request, db: Session = Depends(get_db), kid: User = Depends(v
         "age_group": kid.age_group,
         "celebrate": kid.celebrate_level,
         "locks_at": kid_view.locks_at(db, kid, fam, now),
-        "locked": _locked(
-            db,
-            kid,
-            "" if getattr(request.state, "previewing", False) else client_ip(request),
-            now,
-            {kid.id: (done, len(runs))},
+        **dict(
+            zip(
+                ("locked", "lock_reason", "lock_until"),
+                _locked(
+                    db,
+                    kid,
+                    "" if getattr(request.state, "previewing", False) else client_ip(request),
+                    now,
+                    {kid.id: (done, len(runs))},
+                ),
+                strict=True,
+            )
         ),
         "chores": [
             {

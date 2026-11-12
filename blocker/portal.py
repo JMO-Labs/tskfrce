@@ -12,6 +12,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 log = logging.getLogger(__name__)
 
 
+from blocker.sni_gate import real_ip
+
+
 def dns_response(query_wire: bytes, answer_ip: str) -> bytes | None:
     """Answer a genuine A query with answer_ip; AAAA/others get NOERROR with no answer.
 
@@ -60,7 +63,13 @@ def handle_query(
     """Per-packet work: report the qname to on_query (errors swallowed), return the reply."""
     if addr[1] == 53:
         return None
-    out = dns_response(data, box_ip)
+    # Real addresses, not the box's: Chrome refuses a public name that suddenly resolves to a
+    # private IP (rebinding / local-network protection), so the portal never loaded. The firewall
+    # catches the traffic instead (:80 -> portal, :443 -> sni_gate). Box IP only if lookup fails.
+    # ponytail: blocking getaddrinfo inline (cached 60 s); async upstream if DNS load matters.
+    name = qname_of(data)
+    ip = real_ip(name.rstrip(".").lower()) if name else None
+    out = dns_response(data, ip or box_ip)
     if out is not None and on_query is not None:
         try:
             name = qname_of(data)
@@ -158,14 +167,39 @@ def run_dns(
         sock.close()
 
 
+_APPLE_OK = b"<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>"
+# OS "is there internet?" probes, by path -> (status, body). Answering them as online keeps a
+# blocked phone on Wi-Fi (where we block it) instead of falling back to mobile data.
+# ponytail: path match on any host; Android's HTTPS probe still fails (443 dropped).
+PROBES = {
+    "/generate_204": (204, b""),
+    "/gen_204": (204, b""),
+    "/hotspot-detect.html": (200, _APPLE_OK),
+    "/library/test/success.html": (200, _APPLE_OK),
+    "/connecttest.txt": (200, b"Microsoft Connect Test"),
+    "/ncsi.txt": (200, b"Microsoft NCSI"),
+    "/success.txt": (200, b"success\n"),
+}
+
+
 class PortalHTTP(BaseHTTPRequestHandler):
-    """Redirect every request (including OS captive-check hosts) to the kid screen."""
+    """Answer OS connectivity probes as online; redirect everything else to the kid screen."""
 
     config = None
     timeout = 5
     on_hit = None  # Callable[[str], None] | None; set as a staticmethod
 
     def _redirect(self):
+        probe = PROBES.get(self.path.split("?", 1)[0])
+        if probe:
+            status, body = probe
+            self.send_response(status)
+            self.send_header("Content-Type", "text/html" if body.startswith(b"<") else "text/plain")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            if self.command != "HEAD":
+                self.wfile.write(body)
+            return
         hit = type(self).on_hit
         if hit is not None:
             try:

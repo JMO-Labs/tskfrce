@@ -1,8 +1,9 @@
-import { useMantineColorScheme } from '@mantine/core'
+import { Switch, useMantineColorScheme } from '@mantine/core'
 import { ACCENTS, type AccentKey } from '@/v2/parent/accent'
+import { useHideSuggestions, useResetMuted, useShowSuggestions, useSuggestions } from '@/v2/hooks/useSuggestions'
 import { useResetTips } from '@/v2/hooks/useTips'
 import { Icon } from '@/v2/parent/Icon'
-import { toastOk } from '@/v2/notify'
+import { toastFail, toastOk } from '@/v2/notify'
 import type { Family } from '@/v2/types'
 import { PaneCard, PaneHead } from './PaneParts'
 
@@ -20,6 +21,10 @@ const MODES = [
 export function AppearancePane({ current, onChange }: AppearancePaneProps) {
   const { setColorScheme, colorScheme } = useMantineColorScheme()
   const resetTips = useResetTips()
+  const sugg = useSuggestions().data
+  const hide = useHideSuggestions()
+  const show = useShowSuggestions()
+  const resetMuted = useResetMuted()
 
   return (
     <div className="pn">
@@ -82,6 +87,27 @@ export function AppearancePane({ current, onChange }: AppearancePaneProps) {
           >
             <Icon name="help" size={17} />
             Show tips again
+          </button>
+        </div>
+      </PaneCard>
+
+      <PaneCard icon="lightbulb" title="Suggestions">
+        <p className="pn-help">Ideas on Today that come from what your family actually does.</p>
+        <Switch
+          className="pn-sw"
+          label="Show suggestions on Today"
+          checked={!sugg?.hidden}
+          onChange={(e) => (e.currentTarget.checked ? show : hide).mutate(undefined, { onError: toastFail })}
+        />
+        <div>
+          <button
+            type="button"
+            className="p-btn"
+            disabled={resetMuted.isPending}
+            onClick={() => resetMuted.mutate(undefined, { onSuccess: () => toastOk('Muted suggestions reset'), onError: toastFail })}
+          >
+            <Icon name="restart_alt" size={17} />
+            Reset muted suggestions
           </button>
         </div>
       </PaneCard>

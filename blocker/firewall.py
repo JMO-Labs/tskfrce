@@ -17,6 +17,8 @@ from collections.abc import Iterable, Mapping
 log = logging.getLogger(__name__)
 
 TABLE = "task4ce"
+from blocker.sni_gate import GATE_PORT
+
 DNS_PORT = 53
 
 
@@ -90,18 +92,23 @@ def render_ruleset(
     lines.append(_hw_set_decl("hw_out", "ether_addr . ipv4_addr", _hw_elems(hw_out, out=True)))
     lines.append(_hw_set_decl("hw_back", "ipv4_addr . ipv4_addr", _hw_elems(hw_back, out=False)))
     # Redirect blocked HTTP/DNS to the captive portal; HTTPS can't be portal-ed, so drop it.
-    # Portal redirect needs a valid box IP. Without one, omit the dnat rules
-    # entirely (an invalid target would make `nft -f` reject the WHOLE ruleset,
-    # silently dropping all enforcement) — the forward-chain drops below still
-    # block the device; it just gets no friendly portal page.
+    # With a box IP, dnat there. Without one (multi-network: one portal per interface address),
+    # `redirect` sends to the address of the interface the packet arrived on. Never dnat to an
+    # empty target: `nft -f` would reject the WHOLE ruleset and drop all enforcement.
     lines.append("  chain prerouting {")
     lines.append("    type nat hook prerouting priority -100; policy accept;")
-    if portal_ip:
-        lines.append(f"    ip saddr @blocked_v4 udp dport 53 dnat ip to {portal_ip}:{DNS_PORT}")
-        lines.append(f"    ip saddr @blocked_v4 tcp dport 53 dnat ip to {portal_ip}:{DNS_PORT}")
-        # Homework: HTTP to an allowed IP goes through (DNS stays on the portal resolver)
-        lines.append("    ether saddr . ip daddr @hw_out tcp dport 80 return")
-        lines.append(f"    ip saddr @blocked_v4 tcp dport 80 dnat ip to {portal_ip}:{portal_port}")
+    dns_to = f"dnat ip to {portal_ip}:{DNS_PORT}" if portal_ip else f"redirect to :{DNS_PORT}"
+    web_to = f"dnat ip to {portal_ip}:{portal_port}" if portal_ip else f"redirect to :{portal_port}"
+    lines.append(f"    ip saddr @blocked_v4 udp dport 53 {dns_to}")
+    lines.append(f"    ip saddr @blocked_v4 tcp dport 53 {dns_to}")
+    # Homework: HTTP to an allowed IP goes through (DNS stays on the portal resolver)
+    lines.append("    ether saddr . ip daddr @hw_out tcp dport 80 return")
+    lines.append(f"    ip saddr @blocked_v4 tcp dport 80 {web_to}")
+    # HTTPS leaving the box (not to its own pages) goes through the SNI gate (sni_gate.py)
+    lines.append("    ether saddr . ip daddr @hw_out tcp dport 443 return")
+    lines.append(
+        f"    ip saddr @blocked_v4 fib daddr type != local tcp dport 443 redirect to :{GATE_PORT}"
+    )
     lines.append("  }")
     lines.append("  chain forward {")
     lines.append("    type filter hook forward priority 0; policy accept;")

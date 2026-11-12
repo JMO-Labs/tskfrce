@@ -1,4 +1,4 @@
-import { expect, jest, test } from '@jest/globals'
+import { expect, test } from '@jest/globals'
 import { act, render, screen } from '@testing-library/react'
 import { ErrorPanel } from '@/v2/parent/states'
 

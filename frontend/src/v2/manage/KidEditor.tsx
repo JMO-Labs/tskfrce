@@ -5,6 +5,7 @@ import { SaveBar } from '@/v2/parent/SaveBar'
 import type { AgeGroup, Kid } from '@/v2/types'
 import { EmojiPicker } from '@/v2/components/EmojiPicker'
 import { AGES } from './ageGroups'
+import { BirthdayField, fromMonthValue, toMonthValue } from './BirthdayField'
 import { useSingle } from './useSingle'
 import { toastFail, toastOk } from '../notify'
 
@@ -47,6 +48,7 @@ export function KidEditor({ onCreated }: { onCreated?: (id: number) => void }) {
   const [name, setName] = useState('')
   const [avatar, setAvatar] = useState('')
   const [age, setAge] = useState<AgeGroup>('kid')
+  const [born, setBorn] = useState('')
   const pin = usePin()
 
   const save = () => {
@@ -54,6 +56,7 @@ export function KidEditor({ onCreated }: { onCreated?: (id: number) => void }) {
     const body: KidBody = { full_name: name.trim() }
     if (avatar) body.avatar = avatar
     if (age !== 'kid') body.age_group = age
+    if (born) Object.assign(body, fromMonthValue(born))
     if (pin.pin) body.pin = pin.pin
     createOnce(body, {
       onError: toastFail,
@@ -84,6 +87,10 @@ export function KidEditor({ onCreated }: { onCreated?: (id: number) => void }) {
             ))}
           </div>
         </div>
+        <label className="pk-field">
+          <span className="pk-label">Birthday (month/year), optional</span>
+          <BirthdayField className="pk-input" value={born} onChange={setBorn} />
+        </label>
         <label className="pk-field">
           <span className="pk-label">PIN (4 digits)</span>
           <input className="pk-input" aria-invalid={pin.bad || pin.letters} {...pin.props} />
@@ -127,11 +134,12 @@ export function KidProfileForm({ kid, focusPin, onSaved, onCancel, onDirty, tail
   const [name, setName] = useState(kid.full_name ?? '')
   const [avatar, setAvatar] = useState(kid.avatar ?? '')
   const [age, setAge] = useState<AgeGroup>(kid.age_group ?? 'kid')
+  const [born, setBorn] = useState(toMonthValue(kid.birth_month, kid.birth_year))
   const pin = usePin()
   const pinRef = useRef<HTMLInputElement>(null)
   const nameRef = useRef<HTMLInputElement>(null)
 
-  const dirty = name.trim() !== (kid.full_name ?? '') || avatar !== (kid.avatar ?? '') || age !== (kid.age_group ?? 'kid') || pin.pin !== ''
+  const dirty = name.trim() !== (kid.full_name ?? '') || avatar !== (kid.avatar ?? '') || age !== (kid.age_group ?? 'kid') || born !== toMonthValue(kid.birth_month, kid.birth_year) || pin.pin !== ''
   useEffect(() => { onDirty?.(dirty) }, [dirty, onDirty])
   useEffect(() => () => onDirty?.(false), [onDirty])
   // Edit can start with the row already open (nothing else moves focus then, and Edit hides): land on Name, or the PIN for the PIN nudge
@@ -150,6 +158,7 @@ export function KidProfileForm({ kid, focusPin, onSaved, onCancel, onDirty, tail
     if (name.trim() !== (kid.full_name ?? '')) body.full_name = name.trim()
     if (avatar !== (kid.avatar ?? '')) body.avatar = avatar
     if (age !== (kid.age_group ?? 'kid')) body.age_group = age
+    if (born !== toMonthValue(kid.birth_month, kid.birth_year)) Object.assign(body, fromMonthValue(born))
     if (pin.pin) body.pin = pin.pin
     patchOnce({ id: kid.id, body }, { onError: toastFail, onSuccess: () => { toastOk('Saved'); onSaved() } })
   }
@@ -159,6 +168,7 @@ export function KidProfileForm({ kid, focusPin, onSaved, onCancel, onDirty, tail
       <div className="kd-list kd-kvs">
         {row('Name', <input ref={nameRef} className="pk-input kd-in" aria-label="Name" value={name} maxLength={100} onChange={(e) => setName(e.currentTarget.value)} />)}
         {row('Age group', <AgeSelect value={age} onChange={setAge} />)}
+        {row('Birthday (optional)', <BirthdayField value={born} onChange={setBorn} />)}
         {row(kid.has_pin ? 'New PIN (4 digits)' : 'PIN (4 digits)', <input ref={pinRef} className="pk-input kd-in" aria-invalid={pin.bad || pin.letters} {...pin.props} />)}
         {(pin.bad || pin.letters) && <div className="kd-kv">{pinError(pin)}</div>}
         {kid.has_pin && !pin.bad && (
@@ -172,7 +182,7 @@ export function KidProfileForm({ kid, focusPin, onSaved, onCancel, onDirty, tail
         {tail}
         <div className="kd-kv"><span>Avatar</span><EmojiPicker inline className="kd-pick" label="Avatar (an emoji)" value={avatar} onChange={setAvatar} /></div>
       </div>
-      <SaveBar inline dirty saving={patch.isPending} disabled={!dirty || !name.trim() || pin.bad} onSave={save} onCancel={() => onCancel?.()} />
+      <SaveBar inline dirty saving={patch.isPending} disabled={!dirty || !name.trim() || pin.bad || fromMonthValue(born) === undefined} onSave={save} onCancel={() => onCancel?.()} />
     </>
   )
 }

@@ -296,6 +296,6 @@ describe('replace option and withoutFocus', () => {
     expect(screen.getByTestId('open').textContent).toBe('')
   })
   test('withoutFocus drops every focus param and keeps the rest', () => {
-    expect(withoutFocus({ item: '3', tab: 'groups', open: 'a', edit: '1', pin: '1', pick: '2', net: 'x' })).toEqual({ item: '3', tab: 'groups' })
+    expect(withoutFocus({ item: '3', tab: 'groups', open: 'a', edit: '1', pin: '1', pick: '2' })).toEqual({ item: '3', tab: 'groups' })
   })
 })

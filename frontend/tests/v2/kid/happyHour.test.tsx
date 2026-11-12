@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, jest, test } from '@jest/globals'
+import { afterEach, beforeEach, describe, expect, test } from '@jest/globals'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { HappyHourBanner } from '@/v2/kid/HappyHourBanner'
 import { boosted, hhLeft, mmss } from '@/v2/kid/happyHour'

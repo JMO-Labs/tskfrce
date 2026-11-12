@@ -33,8 +33,10 @@ services:
       NTFY_UPSTREAM_URL: ${NTFY_UPSTREAM_URL-https://ntfy.sh}
       NTFY_UPSTREAM_TOKEN: ${NTFY_UPSTREAM_TOKEN:-}
       BLOCKER_URL: http://${TASK4CE_BRIDGE_GW:-172.29.50.1}:7777
+      EDGE_DATA_DIR: /app/edge
     volumes:
       - task4ce_data:/app/data
+      - edge_data:/app/edge:ro  # lego certs for cert.expiring (EDGE_DATA_DIR)
       - ntfy_conf:/ntfy-conf
       - /run/tskfrce:/run/tskfrce:ro  # network daemon socket (dir mount survives daemon restarts)
     group_add:
@@ -69,7 +71,7 @@ services:
         ipv4_address: ${TASK4CE_FRONTEND_IP:-172.29.50.10}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/api/health"]
       interval: 15s
       timeout: 10s
       retries: 5
