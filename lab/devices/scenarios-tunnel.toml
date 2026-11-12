@@ -1,0 +1,74 @@
+# Escape rows that need our locked-down canary (canary.jmolabs.dev, wstunnel at tunnel.jmolabs.dev).
+# Probe rc 0 only on the exact reply canary:<fresh token>. Needs the kit with canary.secret (android-kit.sh).
+
+[[scenario]]
+id = "canary.https"
+title = "Own canary over HTTPS (Cloudflare, direct)"
+category = "canary"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/canary.sh hit https c$(date +%s%N)'''
+timeout = 20
+
+[[scenario]]
+id = "canary.h3"
+title = "Own canary over HTTP/3 (UDP 443)"
+category = "canary"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/canary.sh hit h3 c$(date +%s%N)'''
+timeout = 20
+
+[[scenario]]
+id = "canary.ws"
+title = "WebSocket tunnel over Cloudflare to the canary (the free-VPN pattern)"
+category = "canary"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/canary.sh hit ws c$(date +%s%N)'''
+timeout = 45
+
+[[scenario]]
+id = "canary.http80"
+title = "Own canary on port 80 (CF 301 carrying the secret path)"
+category = "canary"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/canary.sh hit http80 c$(date +%s%N)'''
+timeout = 20
+
+[[scenario]]
+id = "canary.altport.8443"
+title = "Own canary over HTTPS on Cloudflare alt port 8443"
+category = "canary"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/canary.sh hit alt:8443 c$(date +%s%N)'''
+timeout = 20
+
+[[scenario]]
+id = "canary.altport.2053"
+title = "Own canary over HTTPS on Cloudflare alt port 2053"
+category = "canary"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/canary.sh hit alt:2053 c$(date +%s%N)'''
+timeout = 20
+
+[[scenario]]
+id = "canary.altport.2083"
+title = "Own canary over HTTPS on Cloudflare alt port 2083"
+category = "canary"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/canary.sh hit alt:2083 c$(date +%s%N)'''
+timeout = 20
+
+[[scenario]]
+id = "canary.altport.2087"
+title = "Own canary over HTTPS on Cloudflare alt port 2087"
+category = "canary"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/canary.sh hit alt:2087 c$(date +%s%N)'''
+timeout = 20
+
+[[scenario]]
+id = "canary.altport.2096"
+title = "Own canary over HTTPS on Cloudflare alt port 2096"
+category = "canary"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/canary.sh hit alt:2096 c$(date +%s%N)'''
+timeout = 20

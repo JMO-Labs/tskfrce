@@ -116,11 +116,11 @@ probe = '''/data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace 
 
 [[scenario]]
 id = "gate.budget"
-title = "20 parallel connections to Google search; real results count"
+title = "Repeated Google suggest fetches for 100 s; readable text must be recoverable"
 category = "gate"
 platforms = ["A"]
 probe = '''/data/local/tmp/kit/gate.sh budget'''
-timeout = 40
+timeout = 130
 
 [[scenario]]
 id = "gate.front.youtube"
