@@ -4,7 +4,7 @@ const size = { desktop: { width: 1280, height: 800 }, phone: { width: 390, heigh
 const projects = (['desktop', 'phone'] as const).flatMap((s) =>
   (['light', 'dark'] as const).map((colorScheme) => ({
     name: `${s}-${colorScheme}`,
-    testMatch: ['screens.spec.ts', 'onboarding-shots.spec.ts'],
+    testMatch: ['screens.spec.ts', 'onboarding-shots.spec.ts', 'today-shots.spec.ts'],
     use: { viewport: size[s], colorScheme, isMobile: s === 'phone' },
   })),
 )

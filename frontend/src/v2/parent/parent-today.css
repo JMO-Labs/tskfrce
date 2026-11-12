@@ -201,7 +201,7 @@
 .pt-sheet-body > .pc-grid { flex: 1; }
 
 /* focus rings on every small control in Today */
-[data-look='parent'] :is(.pt-rp, .pt-amt, .pt-chat-head button, .pt-strip-kid, .pt-kav, .pt-krow, .pt-needs-head, .p-pill, .p-needs-thumb, .p-onboard-dismiss, .p-onboard-item a, .p-bell, .p-bell-tab, .p-bell-mark-read):focus-visible {
+[data-look='parent'] :is(.pt-rp, .pt-amt, .pt-chat-head button, .pt-strip-kid, .pt-kav, .pt-kavbtn, .pt-krow, .pt-needs-head, .p-pill, .p-needs-thumb, .p-onboard-dismiss, .p-onboard-item a, .p-bell, .p-bell-tab, .p-bell-mark-read):focus-visible {
   outline: 2px solid var(--p-focus);
   outline-offset: 2px;
 }

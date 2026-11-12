@@ -68,6 +68,7 @@ import '../src/v2/components/bell.css';
 import '../src/v2/interactions.css';
 import '../src/v2/parent/declutter.css';
 import '../src/v2/parent/today-focus.css';
+import '../src/v2/parent/today-dashboard.css';
 import '../src/v2/parent/kid-focus.css';
 import '../src/v2/parent/penalty.css';
 import '../src/v2/parent/chore-focus.css';

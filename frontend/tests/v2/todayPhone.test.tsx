@@ -38,7 +38,7 @@ test('phone Today: the Needs you strip opens the combined list, with the kid str
       </MantineProvider>
     </QueryClientProvider>,
   )
-  await userEvent.click(await screen.findByRole('button', { name: /^Needs you · 1/ }))
+  await userEvent.click(await screen.findByRole('button', { name: /^Review/ }))
   expect(await screen.findByText('Homework')).toBeInTheDocument()
   const strip = within(screen.getByRole('navigation', { name: 'Kids' }))
   expect(strip.getByRole('button', { name: /^Mia/ })).toBeInTheDocument()

@@ -26,7 +26,17 @@ from app.models.points import Points
 from app.models.reward import Redemption, Reward
 from app.models.user import User, UserRole
 from app.schemas.lock import FamilyPatch, utc_z
-from app.services import bedtime, boost, goals_out, inbox, penalties, progression, push, trust
+from app.services import (
+    bedtime,
+    boost,
+    goals_out,
+    inbox,
+    penalties,
+    progression,
+    push,
+    today_kid,
+    trust,
+)
 from app.services import chores as svc
 
 router = APIRouter(prefix="/api/v1", tags=["family"], dependencies=[Depends(require_parent)])
@@ -331,6 +341,7 @@ def today(db: Session = Depends(get_db)):
     )
     # solo runs only: team chores do not count toward the 10
     try_trust = next((i for i in untrusted if approved.get(i, 0) >= 10), None)
+    slots = today_kid.online_slots(db, devices, fam, now_local.date())
     kids = []
     for k in kid_rows:
         devs = [device_out(db, d, fam, now, pre) for d in kid_devs[k.id]]
@@ -352,6 +363,7 @@ def today(db: Session = Depends(get_db)):
                 "earned": earned.get(k.id, 0),
                 "next_reward": _next_reward(prices, balances.get(k.id, 0)),
                 "locks_at": _locks_at(pre, k.id, now_local),
+                **today_kid.day_facts(db, k, kid_devs[k.id], now, mine, pre, slots),
                 "chores": [
                     _chore_out(
                         t,

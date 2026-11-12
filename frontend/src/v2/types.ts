@@ -258,6 +258,16 @@ export interface TodayKid {
   next_reward?: number | null
   /** UTC ISO end of today's allowed hours; null = no hours set or already outside them */
   locks_at?: string | null
+  /** minutes today the kid's devices were online inside the allowed windows (10-min slots, counted once) */
+  online_minutes?: number
+  /** total minutes of today's allowed windows, clipped to the 7am-9pm timeline */
+  allowed_minutes?: number
+  /** today's allowed windows as [start, end] minutes since midnight */
+  allowed?: Array<[number, number]>
+  /** why the kid is offline right now; null = online or no devices */
+  lock_reason?: 'hours' | 'chores' | 'manual' | null
+  /** chores done today with their completion time (UTC ISO) */
+  completions?: Array<{ title: string; at: string }>
   chores: TodayChore[]
   devices: TodayDevice[]
 }
