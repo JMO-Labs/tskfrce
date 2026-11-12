@@ -110,3 +110,16 @@ def test_loopback_bind_failure_stops_and_flags(monkeypatch):
     monkeypatch.setattr(svc, "stop", lambda: stopped.append(1))
     svc._start_api_multi(["127.0.0.1", "172.29.50.1"], 7777)
     assert svc.failed and stopped == [1]
+
+
+def test_loopback_bind_failure_reports_fault(monkeypatch):
+    def fake_make_api(state, token, tester, host, port):
+        raise OSError(98, "Address in use")
+
+    sent = []
+    monkeypatch.setattr(svc_mod, "make_api", fake_make_api)
+    monkeypatch.setattr(svc_mod, "report_fault", lambda cfg, kind: sent.append(kind))
+    svc = _svc()
+    monkeypatch.setattr(svc, "stop", lambda: None)
+    svc._start_api_multi(["127.0.0.1"], 7777)
+    assert sent == ["bind_fail"]

@@ -43,13 +43,13 @@ class Seen:
 _OPTIONAL = ("mdns_name", "model", "dhcp_fp", "vid", "iface", "gateway_mac", "box_mac")
 
 
-def _request(cfg: Config, path: str, body: dict | None = None):
+def _request(cfg: Config, path: str, body: dict | None = None, base: str = _BASE):
     data = json.dumps(body).encode() if body is not None else None
     headers = {"X-Internal-Token": cfg.internal_token}
     if data is not None:
         headers["Content-Type"] = "application/json"
     req = urllib.request.Request(
-        cfg.backend_url.rstrip("/") + _BASE + path,
+        cfg.backend_url.rstrip("/") + base + path,
         data=data,
         headers=headers,
         method="POST" if data is not None else "GET",
@@ -147,4 +147,14 @@ def report_networks(cfg: Config, networks: list[dict]) -> bool:
         return True
     except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
         log.warning("report_networks failed: %s", e)
+        return False
+
+
+def report_fault(cfg: Config, kind: str) -> bool:
+    """Anonymous eval telemetry (enum only). Best effort: never raises, never blocks startup long."""
+    try:
+        _request(cfg, "/fault", {"component": "blocker", "kind": kind}, base="/internal/eval")
+        return True
+    except Exception as e:  # noqa: BLE001 - best effort
+        log.warning("report_fault failed: %s", e)
         return False

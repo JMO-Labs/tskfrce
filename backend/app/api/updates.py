@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app import __version__
 from app.api.deps import get_db, require_parent
 from app.api.internal import require_token
+from app.eval.events import box_fault
 from app.services import inbox
 
 router = APIRouter(prefix="/api/v1", tags=["updates"], dependencies=[Depends(require_parent)])
@@ -190,6 +191,7 @@ class UpdateResult(BaseModel):
     result: Literal["success", "failed"]
     version: str = Field(default="", max_length=40)
     old_version: str = Field(default="", max_length=40)
+    reason: Literal["sig_fail", "rollback"] | None = None
 
 
 @internal_router_with_auth.post("/update-result")
@@ -205,6 +207,8 @@ def internal_update_result(body: UpdateResult, db: Session = Depends(get_db)) ->
         title = f"Update to {body.version or 'the new version'} failed"
         body_text = f"Still on {body.old_version or 'the current version'}. Will retry tomorrow."
     _write_state(state)
+    if body.result == "failed":
+        box_fault("updater", body.reason or "update_fail")
     inbox.notify_parents(db, "box_update", title, None if body.result == "success" else body_text)
     db.commit()
     return {"status": "ok"}

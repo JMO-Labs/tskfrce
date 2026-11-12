@@ -19,6 +19,7 @@ from blocker.arp import RedirectionManager, TargetAddrs
 from blocker.backend import (
     Seen,
     fetch_state,
+    report_fault,
     report_hits,
     report_homework_activity,
     report_networks,
@@ -541,6 +542,7 @@ class Service:
             except OSError:
                 log.exception("failed to bind API to loopback %s; stopping service", host)
                 self.failed = True
+                report_fault(self.cfg, "bind_fail")
                 self.stop()  # heal + delete table, then main exits non-zero so Docker restarts us
                 return
 

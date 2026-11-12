@@ -149,4 +149,17 @@ setnet "1: lo    inet 127.0.0.1/8 scope host lo"
 out=$(run collect_networks); r=0
 echo "$out" | grep -q '"networks":\[' || r=1; ok "collect empty networks returns empty array" $r
 
+# box_fault: best-effort, anonymous, never fails the caller
+: > "$LOG"; INTERNAL_TOKEN=tok run fault registry report_fail; r=$?
+has "/internal/eval/fault" && has "X-Internal-Token: tok" && has '"component":"registry","kind":"report_fail"'; ok "fault posts enums with token" $?
+printf '#!/bin/sh\nexit 7\n' > "$T/bin/curl"
+INTERNAL_TOKEN=tok run fault edge crash; ok "fault never fails when curl does" $?
+: > "$LOG"; printf '#!/bin/sh\necho "curl $*" >> "%s"\n' "$LOG" > "$T/bin/curl"
+run fault edge crash; r=0; [ ! -s "$LOG" ] || r=1; ok "fault is silent without INTERNAL_TOKEN" $r
+setip 44; printf '#!/bin/sh\ncase "$*" in *internal/eval*) echo "curl $*" >> "%s" ;; *) exit 22 ;; esac\n' "$LOG" > "$T/bin/curl"
+: > "$LOG"; rm -f "$T/last_ip"; INTERNAL_TOKEN=tok run report_ip; has '"component":"registry","kind":"report_fail"'; ok "report_ip failure reports registry/report_fail" $?
+printf '#!/bin/sh\necho "curl $*" >> "%s"\n' "$LOG" > "$T/bin/curl"
+printf '#!/bin/sh\nexit 1\n' > "$T/bin/lego"
+: > "$LOG"; INTERNAL_TOKEN=tok run issue_or_renew; has '"component":"cert","kind":"cert_fail"'; ok "lego failure reports cert/cert_fail" $?
+
 exit $fail

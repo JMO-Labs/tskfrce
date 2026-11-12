@@ -64,6 +64,7 @@ services:
       NEXT_PUBLIC_API_URL: /api/proxy
       BACKEND_INTERNAL_URL: http://backend:8000
       EDGE_TOKEN: ${EDGE_TOKEN:-}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-}  # anonymous box_fault telemetry (optional)
       FRONTEND_UPSTREAM: ${FRONTEND_UPSTREAM:-127.0.0.1:3000}
     depends_on:
       backend:
