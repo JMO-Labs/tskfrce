@@ -1,0 +1,41 @@
+/* Who's this? pane: unknown-device table with bulk bar; stacks into rows on a phone */
+.p-unk { display: grid; gap: 12px; min-width: 0; }
+.p-unk-head { display: flex; align-items: center; gap: 12px; }
+.p-unk-head > div { flex: 1; min-width: 0; }
+.p-unk-head h2 { margin: 0; font-size: 22px; }
+.p-unk-head p { margin: 0; color: var(--p-sub); font-size: 12.5px; }
+.p-unk-big { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--p-warn-bg, var(--p-soft)); color: var(--p-warn, var(--p-ink)); flex: none; }
+.p-unk-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--p-line); border-radius: 999px; background: var(--p-card); color: var(--p-ink); font: 500 12.5px inherit; font-family: inherit; cursor: pointer; white-space: nowrap; }
+.p-unk-ghost { border: 0; background: none; color: var(--p-sub); }
+.p-unk-bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 12px; background: var(--p-soft); border: 1px solid var(--p-line); font-size: 12.5px; }
+.p-unk-sel { font-weight: 600; margin-right: 4px; }
+.p-unk-sp { flex: 1; }
+.p-unk select { font: 500 12.5px inherit; font-family: inherit; color: var(--p-ink); background: var(--p-card); border: 1px solid var(--p-line); border-radius: 999px; padding: 5px 10px; max-width: 100%; }
+.p-unk input[type='checkbox'] { width: 16px; height: 16px; accent-color: var(--p-ink); }
+.p-unk-card { background: var(--p-card); border: 1px solid var(--p-line); border-radius: 16px; overflow: hidden; }
+.p-unk-table { width: 100%; border-collapse: collapse; }
+.p-unk-table th { text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--p-sub); padding: 9px 10px; border-bottom: 1px solid var(--p-line); white-space: nowrap; }
+.p-unk-table td { padding: 8px 10px; border-bottom: 1px solid var(--p-line); vertical-align: middle; font-size: 13px; }
+.p-unk-table tr:last-child td { border-bottom: 0; }
+.p-unk-row[data-on] td { background: var(--p-soft); }
+.p-unk-nm b { display: block; font-weight: 600; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.p-unk-nm small { display: block; color: var(--p-sub); font-size: 11.5px; }
+.p-unk-mob { display: none !important; }
+.p-unk-mono { font-family: ui-monospace, monospace; font-size: 12px; color: var(--p-sub); }
+.p-unk-tag { font-size: 10.5px; padding: 1px 6px; border-radius: 6px; border: 1px solid var(--p-line); color: var(--p-sub); margin-left: 4px; font-weight: 400; }
+.p-unk-net { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; background: var(--p-soft); white-space: nowrap; }
+.p-unk-ign summary { cursor: pointer; color: var(--p-sub); font-size: 12.5px; display: flex; align-items: center; gap: 6px; }
+.p-unk-ign ul { margin: 8px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.p-unk-ign li { font-size: 12px; padding: 4px 6px 4px 10px; border-radius: 999px; border: 1px solid var(--p-line); display: inline-flex; gap: 4px; align-items: center; }
+.p-unk-ign li button { border: 0; background: none; color: var(--p-sub); cursor: pointer; display: grid; place-items: center; padding: 2px; }
+.p-unk-entry[data-selected='true'] { border-color: var(--p-ink); }
+
+@media (max-width: 767px) {
+  .p-unk-opt, .p-unk-table thead, .p-unk-maker { display: none !important; }
+  .p-unk-mob { display: block !important; white-space: normal; }
+  .p-unk-card { background: none; border: 0; border-radius: 0; }
+  .p-unk-table, .p-unk-table tbody { display: grid; gap: 8px; }
+  .p-unk-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px; border: 1px solid var(--p-line); border-radius: 12px; background: var(--p-card); }
+  .p-unk-table td, .p-unk-row[data-on] td { padding: 0; border: 0; background: none; }
+  .p-unk-nm b { max-width: none; }
+}

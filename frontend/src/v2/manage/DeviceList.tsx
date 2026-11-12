@@ -16,6 +16,8 @@ interface Props {
   selectedGroup?: number | 'new' | null
   onSelectDevice: (id: number) => void
   onSelectGroup?: (id: number | 'new') => void
+  onSelectUnknown?: () => void
+  selectedUnknown?: boolean
   tab?: 'devices' | 'groups'
   onTabChange?: (tab: 'devices' | 'groups') => void
 }
@@ -56,12 +58,11 @@ const getGroupDeviceTypes = (devices: Device[], groupDeviceIds: number[]): Devic
   return types
 }
 
-/** Devices by owner: new ones first, then each kid, shared, guests, and nobody's. */
+/** Known devices by owner: each kid, shared, guests, and nobody's. Unknown and ignored live in the Who's this? pane. */
 function byOwner(devices: Device[], kids: Kid[]) {
   const pick = (key: string, title: string, icon: string, list: Device[]) => ({ key, title, icon, list })
   const solo = (d: Device) => d.status === 'assigned' && d.owner_ids.length === 1
   return [
-    pick('new', "Who's this?", 'help', devices.filter((d) => d.status === 'unassigned')),
     ...kids.map((k) => pick(`k${k.id}`, k.full_name || k.username, 'person', devices.filter((d) => solo(d) && d.owner_ids[0] === k.id))),
     pick('shared', 'Shared', 'group', devices.filter((d) => d.status === 'assigned' && d.owner_ids.length > 1)),
     pick('guest', 'Guests', 'badge', devices.filter((d) => d.status === 'guest')),
@@ -77,13 +78,13 @@ export function DeviceList({
   selectedGroup,
   onSelectDevice,
   onSelectGroup,
+  onSelectUnknown,
+  selectedUnknown,
   tab = 'devices',
   onTabChange,
 }: Props) {
-  const unassigned = devices.filter((d) => d.status === 'unassigned')
-  const assigned = devices.filter((d) => d.status !== 'unassigned')
-
-  const sorted = [...unassigned, ...assigned]
+  const unknown = devices.filter((d) => d.status === 'unassigned').length
+  const sorted = devices.filter((d) => d.status === 'assigned' || d.status === 'guest')
   const item = (d: Device) => {
     const state = deviceState(d)
     const owner = ownerName(kids, d.owner_ids)
@@ -140,7 +141,7 @@ export function DeviceList({
           value={tab}
           onChange={(t) => onTabChange?.(t)}
           options={[
-            { value: 'devices', label: `Devices · ${devices.length}` },
+            { value: 'devices', label: `Devices · ${sorted.length}` },
             { value: 'groups', label: `Groups · ${groups.length}` },
           ]}
         />
@@ -149,12 +150,27 @@ export function DeviceList({
       <div className="p-list-items">
         {/* Devices tab */}
         <div role="tabpanel" aria-label="Devices" hidden={tab !== 'devices'}>
-          {sorted.length === 0 ? (
+          {unknown > 0 && (
+            <button
+              type="button"
+              className="p-device-item p-unk-entry"
+              data-selected={!!selectedUnknown}
+              aria-current={selectedUnknown || undefined}
+              onClick={() => onSelectUnknown?.()}
+            >
+              <div className="p-device-icon"><Icon name="help" size={18} /></div>
+              <div className="p-device-info">
+                <div className="p-device-name">Who&apos;s this? · {unknown}</div>
+                <div className="p-device-meta">Devices waiting for an owner</div>
+              </div>
+            </button>
+          )}
+          {sorted.length === 0 ? (unknown === 0 && (
             <p className="p-device-empty">No devices yet. Open a web page on one to add it.</p>
-          ) : (
+          )) : (
             <div className="p-device-list">
               {byOwner(sorted, kids).map((g) => (
-                <Fold key={g.key} title={g.title} icon={g.icon} count={g.list.length} open={g.key === 'new' || g.list.some((d) => d.id === selectedDevice)}>
+                <Fold key={g.key} title={g.title} icon={g.icon} count={g.list.length} open={g.list.some((d) => d.id === selectedDevice)}>
                   {g.list.map(item)}
                 </Fold>
               ))}

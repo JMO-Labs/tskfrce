@@ -5,7 +5,7 @@ import type { ChoreTrustFields, FamilyExtrasFields, KidTrust, KidTrustFields, Ru
 /** Shapes of the v2 backend responses (backend/app/api/{family,kid,devices,kids,hours,chores,setup}.py). */
 
 export type ChoreState = 'done' | 'needs_you' | 'todo' | 'skipped'
-export type DeviceStatus = 'unassigned' | 'assigned' | 'guest'
+export type DeviceStatus = 'unassigned' | 'assigned' | 'guest' | 'ignored'
 export type OverrideAction = 'lock' | 'unlock' | 'homework'
 
 /** GET /setup */

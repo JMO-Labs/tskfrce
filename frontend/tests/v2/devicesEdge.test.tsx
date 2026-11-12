@@ -160,11 +160,20 @@ describe('DeviceList status glyph', () => {
     expect(glyph(/Blocked/)).toBe('Internet off · hours or chores')
   })
 
-  test("unknown devices say Who's this? and sort first", () => {
-    list([dev({ id: 1, name: 'Known' }), dev({ id: 2, name: 'Mystery', status: 'unassigned', owner_ids: [] })])
-    const names = screen.getAllByRole('button').filter((b) => b.hasAttribute('data-device')).map((b) => b.getAttribute('data-device'))
-    expect(names).toEqual(['2', '1'])
-    expect(glyph(/Mystery/)).toMatch(/^Who's this\?/)
+  test("unknown devices leave the nav and collapse into one Who's this? entry", async () => {
+    const onUnknown = jest.fn()
+    render(wrap(<DeviceList devices={[dev({ id: 1, name: 'Known' }), dev({ id: 2, name: 'Mystery', status: 'unassigned', owner_ids: [] }), dev({ id: 3, name: 'Mute', status: 'ignored' as never, owner_ids: [] })]} kids={kids} onSelectDevice={() => {}} onSelectUnknown={onUnknown} selectedUnknown />))
+    expect(screen.queryByText('Mystery')).toBeNull()
+    expect(screen.queryByText('Mute')).toBeNull()
+    const entry = screen.getByRole('button', { name: /Who's this\? · 1/ })
+    expect(entry.getAttribute('aria-current')).toBe('true')
+    await userEvent.click(entry)
+    expect(onUnknown).toHaveBeenCalled()
+  })
+
+  test("no Who's this? entry when nothing is unknown", () => {
+    list([dev({ id: 1, name: 'Known' })])
+    expect(screen.queryByRole('button', { name: /Who's this/ })).toBeNull()
   })
 })
 

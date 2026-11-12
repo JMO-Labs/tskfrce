@@ -13,6 +13,7 @@ import { useOverride, sharedOverride, type OverrideTarget } from '@/v2/hooks/use
 import { DevicesSection } from './DevicesSection'
 import { DeviceDetail } from './DeviceDetail'
 import { GroupDetail } from './GroupDetail'
+import { UnknownDevices } from './UnknownDevices'
 import { useSingleFlight } from '@/v2/hooks/useSingleFlight'
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
@@ -40,14 +41,18 @@ function DevicesBody() {
   }, [movedNet])
   const small = useMediaQuery('(max-width: 767px)')
   // desktop opens the first item rather than an empty detail pane; phone stays on the list
-  const shown = tab === 'devices' ? all : groups.data ?? []
-  const fallback = small ? null : (shown[0]?.id ?? null)
+  const known = all.filter((d) => d.status === 'assigned' || d.status === 'guest')
+  const unknownCount = all.filter((d) => d.status === 'unassigned').length
+  const shown = tab === 'devices' ? known : groups.data ?? []
   const item = first(query.item)
+  // "Who's this?" is the default pane on desktop while anything is unknown (and while it is open, even if it empties)
+  const unknownOpen = tab === 'devices' && (item === 'unknown' || (!item && !small && unknownCount > 0))
+  const fallback = small || unknownOpen ? null : (shown[0]?.id ?? null)
   const creating = item === 'new' && tab === 'groups'
   // a stale ?item (just deleted) falls back instead of leaving the pane blank
   const selectedId = shown.some((x) => x.id === Number(item)) ? Number(item) : fallback
   const loaded = tab === 'devices' ? !!devices.data : !!groups.data
-  const stale = !!item && item !== 'new' && loaded && !shown.some((x) => x.id === Number(item))
+  const stale = !!item && item !== 'new' && item !== 'unknown' && loaded && !shown.some((x) => x.id === Number(item))
   // a deleted item's id (from another tab, or this one) shouldn't linger in the URL where a reused id could reopen it
   useEffect(() => {
     if (!stale) return
@@ -61,7 +66,7 @@ function DevicesBody() {
     router.push({ pathname: router.pathname, query: id === null ? rest : { ...rest, item: id } }, undefined, { shallow: true })
   }
 
-  const selectedDevice = all.find((d) => d.id === selectedId && tab === 'devices')
+  const selectedDevice = known.find((d) => d.id === selectedId && tab === 'devices' && !unknownOpen)
   const selectedGroup = (groups.data ?? []).find((g) => g.id === selectedId && tab === 'groups' && !creating)
 
   const override = useOverride()
@@ -108,6 +113,7 @@ function DevicesBody() {
               focus={selectedId ?? 0}
               tab={tab}
               onTabChange={setTab}
+              unknownOpen={unknownOpen}
             />
             {/* the phone shows only the list, so the "looking for devices" panel lives here too */}
             {small && tab === 'devices' && devices.data?.length === 0 && scan}
@@ -117,6 +123,7 @@ function DevicesBody() {
     >
       {devices.isError && !small && <ErrorPanel kind="unreachable" error={devices.error} onRetry={() => devices.refetch()} />}
       {devices.data?.length === 0 && !small && scan}
+      {!devices.isError && unknownOpen && devices.data && <UnknownDevices devices={all} kids={kids.data ?? []} />}
       {!devices.isError && selectedDevice && (
         <DeviceDetail
           key={selectedDevice.id}
