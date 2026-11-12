@@ -111,10 +111,26 @@ def apply_hint(db: Session, device: Device) -> bool:
     if get_family(db).new_devices_blocked and hint.candidate_id not in paused:
         return False
     cand = next(d for d in kids if d.id == hint.candidate_id)
+    inherit(db, device, cand, hint.reason)
+    names = " and ".join(o.full_name or o.username for o in device.owners)
+    inbox.notify(
+        db,
+        inbox.parents(db),
+        "device_hint",
+        f"{cand.name} came back with a new address",
+        f"We gave it {names}'s rules. Not the same device? Undo.",
+        device_id=device.id,
+    )
+    return True
+
+
+def inherit(db: Session, device: Device, cand: Device, reason: str) -> None:
+    """Copy owners, groups and active locks from `cand` onto `device`."""
+    naive = datetime.now(UTC).replace(tzinfo=None)
     device.owners = list(cand.owners)
     device.groups = list(cand.groups)
     device.status = "assigned"
-    device.hint_of_id, device.hint_reason = cand.id, hint.reason
+    device.hint_of_id, device.hint_reason = cand.id, reason
     lock = (
         db.query(Override)
         .filter(Override.device_id == cand.id, Override.source == "manual")
@@ -148,13 +164,3 @@ def apply_hint(db: Session, device: Device) -> bool:
                 created_by_id=pen.created_by_id,
             )
         )
-    names = " and ".join(o.full_name or o.username for o in device.owners)
-    inbox.notify(
-        db,
-        inbox.parents(db),
-        "device_hint",
-        f"{cand.name} came back with a new address",
-        f"We gave it {names}'s rules. Not the same device? Undo.",
-        device_id=device.id,
-    )
-    return True

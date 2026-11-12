@@ -2,6 +2,7 @@
 
 import json
 import os
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
@@ -163,8 +164,6 @@ async def kid_session_active_check(db: Session = Depends(get_db)) -> dict[str, b
 
     The host updater and the pre-reboot hook skip the night rather than restart mid-timer.
     """
-    from datetime import UTC, datetime
-
     from app.models.lock import Override
 
     now = datetime.now(UTC).replace(tzinfo=None)
@@ -190,6 +189,7 @@ class UpdateResult(BaseModel):
     result: Literal["success", "failed"]
     version: str = Field(default="", max_length=40)
     old_version: str = Field(default="", max_length=40)
+    rollback_healthy: bool = True  # False: the rolled-back stack still failed its health check
 
 
 @internal_router_with_auth.post("/update-result")
@@ -197,6 +197,8 @@ def internal_update_result(body: UpdateResult, db: Session = Depends(get_db)) ->
     """Record the night's result and tell the parents (Today bell + ping)."""
     state = _read_state()
     state["last_result"] = body.result
+    state["last_at"] = datetime.now(UTC).replace(tzinfo=None).isoformat(timespec="seconds")
+    state["rollback_unhealthy"] = body.result == "failed" and not body.rollback_healthy
     if body.result == "success":
         state["last_version"] = body.version
         state["requested_major"] = None

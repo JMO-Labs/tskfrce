@@ -1,4 +1,4 @@
-import { expect, test, jest } from '@jest/globals'
+import { expect, test } from '@jest/globals'
 import { renderHook } from '@testing-library/react'
 import { dest, useOsNotify } from '@/v2/osNotify'
 import type { InboxItem } from '@/v2/hooks/useInbox'

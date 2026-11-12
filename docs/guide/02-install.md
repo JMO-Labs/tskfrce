@@ -77,7 +77,7 @@ The installer does these things. You can do them yourself instead:
 
 1. Install Docker from https://docs.docker.com/engine/install/ and check with `docker --version`.
 2. Download the code: `git clone https://github.com/JMO-Labs/tskfrce.git task4ce && cd task4ce`.
-3. Write a `.env` file with `SECRET_KEY` and `INTERNAL_TOKEN` (each a long random string, for example from `openssl rand -hex 32`), `BOX_URL=http://<box address>:3000`, `NTFY_PUBLIC_URL=http://<box address>:2586` (for kids' phone alerts), `LAN_IFACE=<network name: the word after "dev" in the output of ip route show default, for example eth0>` and `COMPOSE_PROFILES=blocker`. Add `TASK4CE_TAG=latest` (or a release number such as `2.13.0`) to choose the version.
+3. Write a `.env` file with `SECRET_KEY` and `INTERNAL_TOKEN` (each a long random string, for example from `openssl rand -hex 32`), `BOX_URL=http://<box address>:3000`, `NTFY_PUBLIC_URL=http://<box address>:2586` (for kids' phone alerts), `LAN_IFACE=` (leave it empty to protect every network the box is on; set it to a network name such as `eth0`, the word after "dev" in the output of ip route show default, only to restrict the box to that one interface) and `COMPOSE_PROFILES=blocker`. Add `TASK4CE_TAG=latest` (or a release number such as `2.13.0`) to choose the version.
 4. Start it: `docker compose -f docker-compose.prod.yml up -d --build`.
 
 Mac and Windows can run the app to try it out (not the internet pausing): leave out `COMPOSE_PROFILES=blocker`.

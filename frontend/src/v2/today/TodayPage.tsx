@@ -19,7 +19,10 @@ import { KidFocus } from './KidFocus'
 import { KidStrip } from './KidStrip'
 import { isChore } from './needsActions'
 import { NeedsStrip } from './NeedsStrip'
+import { SuggestionsCard } from './SuggestionsCard'
+import { SystemWarnings } from './SystemWarnings'
 import { TipSlot } from './TipSlot'
+import { TodayInsights } from './TodayInsights'
 import { AddonsRow, DevicesRow } from './TodayRows'
 
 export function TodayPage() {
@@ -71,6 +74,7 @@ export function TodayPage() {
     <ParentShell title="Today" actions={<MoreMenu label="More for Today" items={todayMenu} />}>
       {penAll && data && <PenaltySheet everyone kidIds={data.kids.map((k) => k.id)} onClose={() => setPenAll(false)} />}
       <HappyHourSheet opened={hhOpen} onClose={() => setHhOpen(false)} allKids />
+      <SystemWarnings />
       {isError && !data && <ErrorPanel kind="unreachable" error={error} onRetry={() => refetch()} />}
       {!data && !isError && <Skeleton rows={4} />}
       {data && (
@@ -105,7 +109,9 @@ export function TodayPage() {
               </KidCard>
             ))}
           </div>}
+          {calm && data.kids.length > 0 && <TodayInsights />}
           {calm && data.kids.length > 0 && <TipSlot kids={data.kids} />}
+          {calm && data.kids.length > 0 && <SuggestionsCard />}
           {!kidFocus.open && !needsOpen && data.kids.length > 0 && (
             <FocusArea focus={areaFocus} label="More">
               <DevicesRow focus={areaFocus} />

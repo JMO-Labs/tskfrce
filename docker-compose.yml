@@ -79,7 +79,7 @@ services:
     mem_limit: 2g
     memswap_limit: 2g
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -100,7 +100,7 @@ services:
       # Host network: reach the app over loopback
       BACKEND_URL: ${BLOCKER_BACKEND_URL:-http://127.0.0.1:8000}
       INTERNAL_TOKEN: ${INTERNAL_TOKEN:?set INTERNAL_TOKEN in .env}
-      LAN_IFACE: ${LAN_IFACE:-eth0}
+      LAN_IFACE: ${LAN_IFACE:-}
       PORTAL_REDIRECT_URL: ${BOX_URL:-http://task4ce.local:3000}/kid
     restart: unless-stopped
 

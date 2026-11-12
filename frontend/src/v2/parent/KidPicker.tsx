@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Popover } from '@mantine/core'
 import type { Kid } from '@/v2/types'
-import { initial, nameOf } from '@/v2/manage/choreMeta'
+import { nameOf } from '@/v2/manage/choreMeta'
+import { badgesFor } from '@/v2/KidAv'
 import { Icon } from './Icon'
 import { motionProps } from './reduceMotion'
 
@@ -25,15 +26,16 @@ export function KidPicker({ kids, value, onChange, label, single, extras = [], b
     else if (single) onChange([v])
     else onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value.filter((x) => !isExtra(x)), v])
   }
+  const badge = badgesFor(kids.map((k) => ({ id: k.id, name: nameOf(k) })))
   const kidItems = [
-    ...kids.map((k) => ({ value: String(k.id), label: nameOf(k), av: initial(nameOf(k)), icon: undefined as string | undefined, extra: false, short: undefined as string | undefined })),
+    ...kids.map((k) => ({ value: String(k.id), label: nameOf(k), icon: undefined as string | undefined, extra: false, short: undefined as string | undefined })),
   ]
   const extraItems = extras.map((x) => ({ value: x.value, label: x.label, av: undefined as string | undefined, icon: x.icon, extra: true, short: x.short }))
   const items = extrasFirst ? [...extraItems, ...kidItems] : [...kidItems, ...extraItems]
   const btn = (i: (typeof items)[number], cls: string) => (
     <button key={i.value} type="button" className={cls} aria-pressed={value.includes(i.value)} disabled={disabled} aria-disabled={busy || undefined}
       onClick={() => { pick(i.value); if (variant === 'pop' && !busy) setOpen(false) }}>
-      {i.av && <span className="pk-av" aria-hidden="true">{i.av}</span>}
+      {!i.extra && (() => { const b = badge(Number(i.value), i.label); return <span className="pk-av" style={b.style} aria-hidden="true">{b.label}</span> })()}
       {i.icon && <Icon name={i.icon} size={16} />}
       {i.label}
     </button>

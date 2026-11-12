@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, expect, jest, test } from '@jest/globals'
+import { afterEach, beforeEach, expect, test } from '@jest/globals'
 import { seeded } from '@/v2/games/rng'
 import { quickDraw } from '@/v2/games/quick/QuickDraw'
 

@@ -66,4 +66,4 @@
 /* Kids list: the ring sits on the name line so "Level 7 · 240 pts" keeps its own line */
 [data-look='parent'] .pk-items .kl-line { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
 [data-look='parent'] .pk-items .kl-line b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-[data-look='parent'] .pk-items .pk-card-t small { white-space: nowrap; }
+[data-look='parent'] .pk-items .pk-card-t small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

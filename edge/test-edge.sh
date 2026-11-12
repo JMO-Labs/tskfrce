@@ -63,6 +63,15 @@ has " run" && ! has "renew"; ok "pre-8-SAN cert is re-issued once" $?
 : > "$LOG"; run issue_or_renew
 has "renew --days 30"; ok "existing cert renews" $?
 
+# backend (non-root) reads public certs for cert.expiring; keys stay private
+C=$T/data/lego/certificates; chmod 700 "$T/data/lego" "$C"; chmod 600 "$C/abc123.taskfrce.jmolabs.dev.crt"
+echo k > "$C/abc123.taskfrce.jmolabs.dev.key"; chmod 600 "$C/abc123.taskfrce.jmolabs.dev.key"
+run issue_or_renew
+r=0; [ "$(stat -c %a "$C")" = 755 ] && [ "$(stat -c %a "$T/data/lego")" = 711 ] \
+  && [ "$(stat -c %a "$C/abc123.taskfrce.jmolabs.dev.crt")" = 644 ] \
+  && [ "$(stat -c %a "$C/abc123.taskfrce.jmolabs.dev.key")" = 600 ] || r=1
+ok "certs readable by backend, keys private" $r
+
 r=0; [ "$(run next_backoff 30)" = 60 ] && [ "$(run next_backoff 900)" = 900 ] || r=1; ok "next_backoff" $r
 
 out=$(BOX_SECRET='' sh "$HERE/edge.sh" 2>&1); rc=$?

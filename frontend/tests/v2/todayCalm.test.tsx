@@ -143,7 +143,7 @@ describe('calm Today', () => {
     expect(fakeRouter.query.kid).toBe('3')
   })
 
-  test('one tip at most, checklist first', async () => {
+  test('Getting started shows alone: no Try card or plain tip beside it', async () => {
     state.dismissed = []
     wrap()
     expect(await screen.findByText(/Getting started/)).toBeInTheDocument()
@@ -153,24 +153,13 @@ describe('calm Today', () => {
     expect(document.querySelectorAll('[aria-label="Try this"]')).toHaveLength(0)
   })
 
-  test('a Try card shows when the checklist is dismissed', async () => {
+  test('Try cards and plain tips are retired from Today (Suggestions carries nudges)', async () => {
     wrap()
-    expect(await screen.findByText(/comic-book cheer/)).toBeInTheDocument()
-    expect(screen.queryByText(/Getting started/)).toBeNull()
-  })
-
-  test('the tip is one dashed line; More opens its actions in place, dismiss closes it', async () => {
-    wrap()
-    const line = (await screen.findByText(/comic-book cheer/)).closest('.pt-tip') as HTMLElement
-    expect(line).not.toBeNull()
-    expect(screen.queryByRole('button', { name: 'Got it' })).toBeNull()
-    const more = within(line).getByRole('button', { name: 'More' })
-    expect(more).toHaveAttribute('aria-expanded', 'false')
-    await userEvent.click(more)
-    expect(more).toHaveAttribute('aria-expanded', 'true')
-    expect(within(line).getByRole('button', { name: 'Turn off for all kids' })).toBeInTheDocument()
-    await userEvent.click(within(line).getByRole('button', { name: 'Dismiss tip' }))
-    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/me/tips/try.celebrate/dismiss', expect.anything()))
+    await screen.findByRole('button', { name: MAYA })
+    await new Promise((r) => setTimeout(r, 50))
+    expect(screen.queryByText(/comic-book cheer/)).toBeNull()
+    expect(screen.queryByText(/Name devices so you know whose they are/)).toBeNull()
+    expect(document.querySelectorAll('.pt-tip')).toHaveLength(0)
   })
 
   test('Getting started is a one-line tip whose More lists the steps', async () => {
@@ -181,17 +170,6 @@ describe('calm Today', () => {
     expect(within(line).getByText('Add a kid')).toBeInTheDocument()
     await userEvent.click(within(line).getByRole('button', { name: 'Dismiss tip' }))
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/me/tips/onboard.parent/dismiss', expect.anything()))
-  })
-
-  test('Not now on a nudge falls through to the plain tip', async () => {
-    state.dismissed = ['onboard.parent', 'try.celebrate', 'try.happyhour', 'try.autoboost', 'try.streakfreeze', 'try.trust', 'try.bedtime']
-    state.fam = { ...state.fam, hh_auto_boost: false }
-    state.today = base({ kids: [{ ...maya, quiet: true }, leo] })
-    wrap()
-    expect(await screen.findByText(/quiet couple of days/)).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Dismiss tip' }))
-    expect(await screen.findByText(/Name devices so you know whose they are/)).toBeInTheDocument()
-    expect(screen.queryByText(/quiet couple of days/)).toBeNull()
   })
 
   test('Devices row counts devices online now', async () => {

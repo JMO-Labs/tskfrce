@@ -26,6 +26,7 @@ class Seen:
     model: str | None = None
     dhcp_fp: str | None = None
     vid: int | None = None  # tagged VLAN; None = the untagged LAN
+    iface: str | None = None  # base interface name (eno2, wlo1, etc.); None when using LAN_IFACE
     gateway_mac: str | None = None  # blocker's gateway MAC for filtering
     box_mac: str | None = None  # blocker's own MAC for filtering
 
@@ -39,7 +40,7 @@ class Seen:
         return {k: v for k, v in asdict(self).items() if v is not None or k not in _OPTIONAL}
 
 
-_OPTIONAL = ("mdns_name", "model", "dhcp_fp", "vid", "gateway_mac", "box_mac")
+_OPTIONAL = ("mdns_name", "model", "dhcp_fp", "vid", "iface", "gateway_mac", "box_mac")
 
 
 def _request(cfg: Config, path: str, body: dict | None = None):
@@ -74,7 +75,7 @@ def fetch_blocked(cfg: Config) -> list[str] | None:
 
 
 def fetch_state(cfg: Config) -> dict | None:
-    """{"blocked": [...], "homework": {...}, "listen_only": bool, "covered_vlans": [int]}; None if unreachable."""
+    """{"blocked": [...], "homework": {...}, "listen_only": bool, "covered_vlans": [int], "network_enforce": {iface:subnet: bool}}; None if unreachable."""
     try:
         raw = _request(cfg, "/state")
         return {
@@ -82,6 +83,7 @@ def fetch_state(cfg: Config) -> dict | None:
             "homework": raw.get("homework", {}),
             "listen_only": bool(raw.get("listen_only", False)),
             "covered_vlans": [int(v) for v in raw.get("covered_vlans", [])],
+            "network_enforce": raw.get("network_enforce", {}),
         }
     except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
         log.warning("fetch_state failed: %s", e)
@@ -135,4 +137,14 @@ def report_homework_activity(cfg: Config, items: list[dict]) -> bool:
         return True
     except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
         log.warning("report_homework_activity failed: %s", e)
+        return False
+
+
+def report_networks(cfg: Config, networks: list[dict]) -> bool:
+    """Report detected networks (interfaces, subnets, labels)."""
+    try:
+        _request(cfg, "/networks", {"networks": networks})
+        return True
+    except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
+        log.warning("report_networks failed: %s", e)
         return False

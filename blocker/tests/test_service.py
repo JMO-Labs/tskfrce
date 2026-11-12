@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -17,7 +18,14 @@ CFG = Config(
     backend_url="http://b",
     blocker_url_host="b",
     internal_token="t",
-    lan_iface="",
+    lan_iface="eth0",  # Set to use single RedirectionManager for existing tests
+    data_dir=Path("/tmp"),
+)
+CFG_MULTINET = Config(
+    backend_url="http://b",
+    blocker_url_host="b",
+    internal_token="t",
+    lan_iface="",  # Empty for InterfaceManager tests
     data_dir=Path("/tmp"),
 )
 MAC = "de:ad:be:ef:00:01"
@@ -463,3 +471,84 @@ def test_resist_once_reports_workarounds_only_when_found():
     svc.workarounds.add("192.168.1.42", "nordvpn.com.")
     svc._resist_once()
     assert sent == [{MAC: ["vpn"]}]
+
+
+def test_interface_manager_used_when_lan_iface_empty():
+    """Verify Service uses InterfaceManager when LAN_IFACE is unset."""
+    fw = FakeFirewall()
+    svc = Service(CFG_MULTINET, firewall=fw, sleep=lambda *_: None, portal_ip="192.168.1.2")
+    assert svc._using_iface_mgr is True
+    assert svc._iface_manager is not None
+    assert svc._redir is None
+
+
+def test_single_redir_used_when_lan_iface_set():
+    """Verify Service uses single RedirectionManager when LAN_IFACE is set."""
+    cfg_with_iface = CFG.__class__(
+        backend_url="http://b",
+        blocker_url_host="b",
+        internal_token="t",
+        lan_iface="eth0",  # Explicitly set
+        data_dir=Path("/tmp"),
+    )
+    fw = FakeFirewall()
+    redir = FakeRedir()
+    svc = Service(cfg_with_iface, firewall=fw, redirection=redir, sleep=lambda *_: None)
+    assert svc._using_iface_mgr is False
+    assert svc._iface_manager is None
+    assert svc._redir is not None
+    assert svc._redir is redir
+
+
+def test_device_iface_falls_back_to_subnet_else_skipped(monkeypatch):
+    """No discovery iface: use the managed network whose subnet holds the IP; none = skip."""
+    import ipaddress
+
+    from blocker import service as service_mod
+
+    nets = [("wlo1", ipaddress.ip_network("10.0.5.0/24"))]
+    monkeypatch.setattr(service_mod, "lan_networks", lambda: nets)
+    fw = FakeFirewall()
+    svc = Service(CFG_MULTINET, firewall=fw, sleep=lambda *_: None, portal_ip="192.168.1.2")
+    svc.store.set_blocked([MAC])
+    svc._on_seen(Seen(mac=MAC, ip="192.168.1.50", ipv6=[], hostname=None, vendor=None))
+    assert svc._by_interface({MAC: TargetAddrs(mac=MAC, ip="192.168.1.50")}) == {}
+    hit = TargetAddrs(mac=MAC, ip="10.0.5.7")
+    assert svc._by_interface({MAC: hit}) == {"wlo1": {MAC: hit}}
+
+
+def test_interface_manager_stop_synchronously_stops_managers():
+    """Service.stop() synchronously stops InterfaceManager's managers before firewall flush."""
+    fw = FakeFirewall()
+    svc = Service(CFG_MULTINET, firewall=fw, sleep=lambda *_: None, portal_ip="192.168.1.2")
+    # Add a mock manager to verify it gets stopped
+    svc._iface_manager._managers["eth0"] = (
+        SimpleNamespace(is_set=lambda: False),  # stop event
+        FakeRedir(),
+        None,  # no watch
+    )
+    svc.stop()
+    # Verify managers are emptied (stopped)
+    assert len(svc._iface_manager._managers) == 0
+    # Verify firewall was flushed
+    assert fw.flushed
+
+
+def test_interface_discovery_reports_that_networks_gateway(monkeypatch):
+    """Each network's discovery tags reports with its own gateway/box MAC (backend hides them)."""
+    from blocker import multinet
+    from blocker.arp import LanFacts
+
+    got = {}
+
+    def fake_run(cfg, stop, on_seen, iface=None, enrich=lambda s: s):
+        got[iface] = enrich(Seen(mac=MAC, ip="10.0.5.1", ipv6=[], hostname=None, vendor=None))
+
+    monkeypatch.setattr(multinet, "run_discovery", fake_run)
+    mgr = multinet.InterfaceManager(CFG_MULTINET)
+    lan = LanFacts(
+        gateway_ip="10.0.5.1", gateway_mac="aa:aa:aa:aa:aa:01", box_mac="bb:bb:bb:bb:bb:02"
+    )
+    mgr._run_discovery("wlo1", threading.Event(), lan)
+    assert got["wlo1"].gateway_mac == "aa:aa:aa:aa:aa:01"
+    assert got["wlo1"].box_mac == "bb:bb:bb:bb:bb:02"

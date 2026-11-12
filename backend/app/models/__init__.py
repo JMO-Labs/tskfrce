@@ -27,6 +27,7 @@ from .integration import (
 )
 from .kid_device import KidDevice, KidEnrollToken
 from .lock import Device, DeviceGroup, DeviceHintRejection, Override, Vlan
+from .network import Network
 from .notify import NotifyHeld, NotifyPlace
 from .password_reset import PasswordReset
 from .penalty import Penalty
@@ -34,6 +35,7 @@ from .points import Points, PointsType
 from .reward import Redemption, Reward
 from .screen_bank import ScreenBank
 from .screen_time import ScreenTimeLimit
+from .suggestion import SuggestionState
 from .tips import DismissedTip
 from .trust import TrustEvent
 from .user import PendingInvite, UsedInvite, User
@@ -79,6 +81,7 @@ __all__ = [
     "PointsType",
     "Device",
     "Vlan",
+    "Network",
     "DeviceHintRejection",
     "DeviceGroup",
     "HourRule",

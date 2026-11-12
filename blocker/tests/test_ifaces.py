@@ -116,3 +116,25 @@ def test_crash_other_than_oserror_is_retried():
     assert len(tries) == 2
     for ev in pa.running.values():
         ev.set()
+
+
+def test_iface_for_ip_uses_subnets(tmp_path):
+    from blocker.ifaces import iface_for_ip, parse_networks
+
+    for nic in ("eno2", "wlo1"):
+        (tmp_path / nic / "device").mkdir(parents=True)
+    links = [
+        {
+            "ifname": "eno2",
+            "addr_info": [{"family": "inet", "local": "192.168.1.98", "prefixlen": 24}],
+        },
+        {
+            "ifname": "wlo1",
+            "addr_info": [{"family": "inet", "local": "10.0.5.20", "prefixlen": 24}],
+        },
+    ]
+    nets = parse_networks(json.dumps(links), tmp_path)
+    assert iface_for_ip("192.168.1.50", nets) == "eno2"
+    assert iface_for_ip("10.0.5.7", nets) == "wlo1"
+    assert iface_for_ip("172.16.0.9", nets) is None
+    assert iface_for_ip(None, nets) is None

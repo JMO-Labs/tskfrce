@@ -32,6 +32,7 @@ curl -fsS "http://127.0.0.1:$TASK4CE_API_PORT/health" >/dev/null || fail "backen
 grep -Eq '^SECRET_KEY=[0-9a-f]{64}$' "$TASK4CE_DIR/.env" || fail ".env has no SECRET_KEY"
 grep -Eq '^INTERNAL_TOKEN=[0-9a-f]{64}$' "$TASK4CE_DIR/.env" || fail ".env has no INTERNAL_TOKEN"
 grep -Eq '^TASK4CE_TAG=.+' "$TASK4CE_DIR/.env" || fail ".env does not remember the image tag"
+grep -Eq '^LAN_IFACE=$' "$TASK4CE_DIR/.env" || fail ".env must leave LAN_IFACE empty (multi-network on by default)"
 before="$(cksum <"$TASK4CE_DIR/.env")"
 
 sh "$ROOT/install.sh" || fail "second run failed"

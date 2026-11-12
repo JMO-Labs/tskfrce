@@ -47,7 +47,7 @@ jobs:
         filters: |
           py: ['backend/**', 'blocker/**', 'examples/**', 'ruff.toml', '.github/workflows/ci-cd.yml']
           fe: ['frontend/**', 'registry/**', '.github/workflows/ci-cd.yml']
-          pg: ['backend/alembic/**', 'backend/app/models/**', 'backend/app/core/database.py', 'backend/app/services/db_move.py', 'backend/app/utils/backup_db.py', 'backend/requirements.txt', '.github/workflows/ci-cd.yml']
+          pg: ['backend/alembic/**', 'backend/app/models/**', 'backend/app/core/database.py', 'backend/app/services/db_move.py', 'backend/app/utils/backup_db.py', 'backend/requirements.txt', 'backend/tests/conftest.py', 'backend/tests/test_suggestions.py', '.github/workflows/ci-cd.yml']
           installer: ['install.sh', 'scripts/**', 'edge/**', 'registry/scripts/**', 'docker-compose*.yml', '.github/workflows/ci-cd.yml']
           perf: ['perf/**', 'scripts/tier.sh']
 
