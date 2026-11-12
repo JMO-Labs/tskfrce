@@ -131,8 +131,24 @@ def kid_age(kid_id: int | None) -> str:
     return rows[0][0] if rows else "unknown"
 
 
-def enqueue(kind: str, body: dict, now: float | None = None) -> None:
+DAILY_CAP = 500  # umami events per box per local day (heartbeat exempt)
 
+
+def _under_cap(kind: str, capped: bool) -> bool:
+    """Count today's umami enqueues; at the cap refuse the new one and count `dropped`."""
+    if kind != "umami" or not capped:
+        return True
+    day = local_day()
+    if counters(day).get("enq", 0) < DAILY_CAP:
+        bump("enq", day=day)
+        return True
+    bump("dropped", day=day)
+    return False
+
+
+def enqueue(kind: str, body: dict, now: float | None = None, capped: bool = True) -> None:
+    if not _under_cap(kind, capped):
+        return
     t = time.time() if now is None else now
     _run(
         "INSERT INTO outbox(kind, body, created_at, next_at) VALUES(?, ?, ?, ?)",

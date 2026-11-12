@@ -26,6 +26,7 @@ KEYS = (
     "chores_stale_3d",
     "devices_total",
     "kids_total",
+    "dropped",
 )
 
 

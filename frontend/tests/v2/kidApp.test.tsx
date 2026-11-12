@@ -9,6 +9,7 @@ import { useRouter } from 'next/router'
 import { KidApp } from '@/v2/kid/KidApp'
 import { KidPage } from '@/v2/kid/KidPage'
 import { api } from '@/v2/api'
+import { useSectionView } from '@/v2/eval/useSectionView'
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext'
 import { fridgeTheme } from '@/v2/theme'
 import type { AgeGroup, KidToday } from '@/v2/types'
@@ -16,6 +17,7 @@ import type { AgeGroup, KidToday } from '@/v2/types'
 jest.mock('@/v2/api', () => ({ ...(jest.requireActual('@/v2/api') as object), api: jest.fn() }))
 jest.mock('@mantine/notifications', () => ({ notifications: { show: jest.fn() } }))
 jest.mock('@/contexts/UnifiedAuthContext', () => ({ useUnifiedAuth: jest.fn() }))
+jest.mock('@/v2/eval/useSectionView', () => ({ useSectionView: jest.fn() }))
 jest.mock('next/router', () => ({ useRouter: jest.fn() }))
 
 const apiMock = api as unknown as Mock<(p: string, i?: { method?: string; asKid?: number; kid?: boolean }) => Promise<unknown>>
@@ -258,5 +260,14 @@ describe('KidApp celebrations', () => {
     await userEvent.dblClick(btn)
     expect(done.mutate).toHaveBeenCalledTimes(1)
     await waitFor(() => expect(document.querySelector('[data-celebrate]')).not.toBeNull())
+  })
+})
+
+describe('KidApp section tracking', () => {
+  test('reports the chores tab first, then the tab the kid picks', async () => {
+    renderApp(today('teen'))
+    expect(useSectionView).toHaveBeenLastCalledWith('/kid', 'chores', true)
+    await userEvent.click(screen.getAllByRole('button', { name: /^Me/ })[0])
+    expect(useSectionView).toHaveBeenLastCalledWith('/kid', 'me', true)
   })
 })

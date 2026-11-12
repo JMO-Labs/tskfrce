@@ -14,6 +14,7 @@ import { PaneHead } from './PaneParts'
 import { useSettingsLines } from './useSettingsLines'
 import { SettingsList } from './SettingsList'
 import { SETTINGS_SECTIONS, type S } from './settingsSections'
+import { useSectionView } from '@/v2/eval/useSectionView'
 import { AppearancePane } from './AppearancePane'
 import { HomeworkPane } from './HomeworkPane'
 import { NotificationsPane } from './NotificationsPane'
@@ -41,6 +42,7 @@ function SettingsBody() {
   const valid = SETTINGS_SECTIONS.some((s) => s.id === want)
   const section: S = valid ? (want as S) : 'family'
   const current = SETTINGS_SECTIONS.find((x) => x.id === section)!
+  useSectionView('/settings', section)
   return (
     <ParentShell
       title="Settings"

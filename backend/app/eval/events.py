@@ -22,12 +22,30 @@ ROUTES = frozenset(
         "/recap",
         "/settings",
         "/setup",
+        "/wifi-setup",
         "/login",
         "/join",
         "/register",
         "/reset",
         "/404",
     }
+)
+SECTIONS = frozenset(
+    {  # settingsSections.ts ids + kid tab ids (KidNav.tsx)
+        "family", "hours", "notifications", "look", "gifs", "homework", "parents",
+        "integrations", "wifi", "updates", "eval",
+        "chores", "games", "rewards", "chat", "alerts", "me",
+    }
+)  # fmt: skip
+AREAS = frozenset(
+    {
+        "goals", "penalties", "rewards", "badges", "minigames", "homework", "happy_hour",
+        "time_bank", "integrations", "notifications", "devices", "wifi", "updates",
+        "parents", "reset",
+    }
+)  # fmt: skip
+ACTIONS = frozenset(
+    {"open", "start", "done", "fail", "toggle_on", "toggle_off", "create", "delete"}
 )
 FORMS = ("chore", "kid", "window", "feedback")
 WIZARD_STEPS = 7  # frontend/src/v2/setup/WizardFrame.tsx STEPS
@@ -38,7 +56,16 @@ def clean(name: str, props: dict) -> dict | None:
     """Whitelist browser event props; None means drop the event."""
     if name == "screen_view":
         r = props.get("route")
-        return {"route": r if isinstance(r, str) and r in ROUTES else "other"}
+        out = {"route": r if isinstance(r, str) and r in ROUTES else "other"}
+        sec = props.get("section")
+        if isinstance(sec, str) and sec in SECTIONS:
+            out["section"] = sec
+        return out
+    if name == "feature":
+        a, act = props.get("area"), props.get("action")
+        if isinstance(a, str) and isinstance(act, str) and a in AREAS and act in ACTIONS:
+            return {"area": a, "action": act}
+        return None
     if name == "wizard_step":
         s, state = props.get("step"), props.get("state")
         if isinstance(s, bool) or not (
@@ -104,6 +131,6 @@ def emit(
     try:
         ts = time.time()
         body = umami_body(name, data or {}, source=source, age_group=age_group, url=url, ts=ts)
-        store.enqueue("umami", body, now=ts)
+        store.enqueue("umami", body, now=ts, capped=name != "heartbeat")
     except Exception as e:
         logger.warning("eval_emit_failed", event=name, error=type(e).__name__)

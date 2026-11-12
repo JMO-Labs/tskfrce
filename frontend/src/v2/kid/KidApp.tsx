@@ -20,6 +20,7 @@ import { KidAlerts } from './KidAlerts'
 import { Locker } from './Locker'
 import { kidSort, tally } from './kidChips'
 import { KidNav, type KidTab } from './KidNav'
+import { useSectionView } from '@/v2/eval/useSectionView'
 import { HappyHourBanner } from './HappyHourBanner'
 import { PenaltyCards } from './PenaltyCard'
 import { MePage } from './MePage'
@@ -56,6 +57,7 @@ export function KidApp({ d, name, avatar, kidId, preview, onExit, onLocker, lock
   const showLocker = lockerOpen && !!d.progress
   const gamesOn = !!d.games?.on
   const tab = showLocker ? 'me' : chosen === 'games' && !gamesOn ? 'chores' : chosen
+  useSectionView('/kid', tab, true)
   const [auto, setAuto] = useState(false)
   const [toastGone, setToastGone] = useState(false)
   const gamesSeen = useGamesSeen()

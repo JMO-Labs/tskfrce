@@ -62,3 +62,38 @@ def test_prune_age(eval_on):
     store.enqueue("feedback", {}, now=0)
     assert store.prune(15 * 86400) == 1
     assert [r.kind for r in store.due(15 * 86400)] == ["feedback"]
+
+
+def test_daily_cap_drops_incoming_and_counts(eval_on):
+    for i in range(store.DAILY_CAP + 3):
+        store.enqueue("umami", {"i": i}, now=1000.0 + i)
+    rows = store.due(10**9, limit=10_000)
+    assert len(rows) == store.DAILY_CAP
+    assert rows[-1].body == {"i": store.DAILY_CAP - 1}
+    assert store.counters(store.local_day())["dropped"] == 3
+
+
+def test_cap_holds_after_outbox_drained(eval_on):
+    sent = 0
+    for i in range(store.DAILY_CAP + 50):
+        store.enqueue("umami", {"i": i}, now=1000.0 + i)
+        for r in store.due(10**9):
+            store.sent(r.id)
+            sent += 1
+    assert sent == store.DAILY_CAP
+    assert store.counters(store.local_day())["dropped"] == 50
+
+
+def test_uncapped_enqueue_bypasses_cap(eval_on):
+    for i in range(store.DAILY_CAP):
+        store.enqueue("umami", {"i": i})
+    store.enqueue("umami", {"hb": 1}, capped=False)
+    rows = store.due(10**10, limit=10_000)
+    assert len(rows) == store.DAILY_CAP + 1 and rows[-1].body == {"hb": 1}
+    assert store.counters(store.local_day()).get("dropped", 0) == 0
+
+
+def test_cap_ignores_non_umami(eval_on):
+    for i in range(store.DAILY_CAP + 2):
+        store.enqueue("feedback", {"i": i})
+    assert len(store.due(10**10, limit=10_000)) == store.DAILY_CAP + 2
