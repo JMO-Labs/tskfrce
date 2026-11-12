@@ -135,7 +135,7 @@ describe('setup wizard', () => {
     const user = userEvent.setup()
     wrap()
     await toFamily(user)
-    expect(screen.getByLabelText('Time zone')).toHaveValue(tz)
+    expect(screen.getByLabelText('Time zone', { selector: 'input' })).toHaveValue(tz)
   })
 
   test('short password blocks Next', async () => {
