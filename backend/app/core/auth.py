@@ -208,10 +208,47 @@ class AuthService:
         if user is None or not user.is_active:
             return None
 
+        # Revocation check; reuse the loaded user (no second users query)
+        if not self.check_epoch(payload, user):
+            return None
+
         sid = payload.get("sid")
         if sid is not None and (user.role != UserRole.KID or not self._device_alive(sid, user.id)):
             return None  # enrolled phone removed (or idle-expired): revoked at once
         return user
+
+    def check_epoch(self, payload: dict, user: User | None = None) -> bool:
+        """
+        Check if JWT token_epoch matches current family epoch (revocation check).
+
+        For parent/admin tokens: token_epoch in claim must match family.token_epoch.
+        For kid tokens: skip check (no revocation on parent PIN change).
+
+        Args:
+            payload: Decoded JWT payload
+            user: Already-loaded token subject (skips the lookup)
+
+        Returns:
+            True if epoch valid or not applicable, False if revoked (token_epoch mismatch)
+        """
+        if user is None:
+            try:
+                user = self.user_service.get_user(int(payload.get("sub")))
+            except (ValueError, TypeError):
+                return False
+        if user is None or str(user.id) != str(payload.get("sub")):
+            return False
+
+        # Check token_epoch only for parent/admin (kids not affected)
+        if user.role == UserRole.PARENT or user.is_superuser:
+            from app.models.family import get_family
+
+            token_epoch_claim = payload.get("token_epoch", 0)
+            fam = get_family(self.db)
+            if fam and token_epoch_claim != fam.token_epoch:
+                return False  # token revoked (epoch bumped on reset/PIN change)
+
+        return True
 
     def _device_alive(self, sid: int, kid_id: int) -> bool:
         return (
