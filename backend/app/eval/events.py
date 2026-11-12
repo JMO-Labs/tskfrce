@@ -70,7 +70,12 @@ def clean(name: str, props: dict) -> dict | None:
         return None
     if name == "auth":
         st, res = props.get("step"), props.get("result")
-        if isinstance(st, str) and isinstance(res, str) and st in AUTH_STEPS and res in AUTH_RESULTS:
+        if (
+            isinstance(st, str)
+            and isinstance(res, str)
+            and st in AUTH_STEPS
+            and res in AUTH_RESULTS
+        ):
             return {"step": st, "result": res}
         return None
     if name == "wizard_step":

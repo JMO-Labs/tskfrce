@@ -11,8 +11,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user, get_db, require_parent
-from app.core.config import settings
 from app.core.client_ip import client_ip
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.ratelimit import limit
 from app.eval import store
