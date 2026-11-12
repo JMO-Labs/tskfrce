@@ -95,15 +95,16 @@ describe('waiting banner', () => {
 })
 
 describe('kid card', () => {
-  test('facts say Online, never screen time; ring has both arcs; lock pill shows why', async () => {
+  test('facts say Screen, hours render as h/m; ring has both arcs; lock pill shows why', async () => {
     wrap()
     const card = await screen.findByRole('button', { name: CARD })
     expect(within(card).getByText('3/4')).toBeInTheDocument()
-    expect(within(card).getByText('55m of 90m allowed')).toBeInTheDocument()
+    expect(within(card).getByText('55m of 1h 30m allowed')).toBeInTheDocument()
     expect(within(card).getByText('40 pts')).toBeInTheDocument()
     expect(within(card).getByRole('img', { name: '3 of 4 chores done, 55 of 90 minutes online' })).toBeInTheDocument()
     expect(within(card).getByText('Chores', { selector: '.pt-lockpill' })).toBeInTheDocument()
-    expect(card.textContent).not.toMatch(/screen time/i)
+    expect(within(card).getByText('Screen')).toBeInTheDocument()
+    expect(card.textContent).not.toMatch(/screen time|Online/i)
     expect(card.querySelectorAll('circle')).toHaveLength(4)
   })
   test('open kid shows an Open pill and no lock', async () => {
