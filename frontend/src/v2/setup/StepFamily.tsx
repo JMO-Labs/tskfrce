@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { Select, TextInput } from '@mantine/core'
-// @ts-ignore - no types available for qrcode.react
-import QRCode from 'qrcode.react'
+import { QRCodeSVG } from 'qrcode.react'
 import { api } from '../api'
 import { errorText } from '../errorText'
 import { useClientValue } from '../hooks/useClientValue'
@@ -107,7 +106,7 @@ export function StepFamily({ name, tz, showError, onName, onTz }: Props) {
         <div style={{ background: 'var(--p-card)', border: '1px solid var(--p-line)', borderRadius: '18px', padding: '16px 18px' }}>
           <div style={{ margin: '0 0 10px', fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--p-ink)' }}>One-time invite</div>
           <div style={{ width: '120px', height: '120px', background: 'var(--p-soft)', borderRadius: '8px', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px' }}>
-            <QRCode value={inviteUrl} size={104} level="M" includeMargin={false} />
+            <QRCodeSVG value={inviteUrl} size={104} level="M" marginSize={0} />
           </div>
           <p style={{ fontSize: '12px', color: 'var(--p-sub)', marginBottom: '8px' }}>Or share this link:</p>
           <div style={{ padding: '10px', background: 'var(--p-soft)', borderRadius: '8px', fontSize: '11px', fontFamily: 'monospace', wordBreak: 'break-all', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>

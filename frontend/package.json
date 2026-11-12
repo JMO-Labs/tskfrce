@@ -34,7 +34,7 @@
     "pixi.js": "^8.22.0",
     "pixi-filters": "^6.1.5",
     "postcss": "^8.5.32",
-    "qrcode.react": "^1.0.1",
+    "qrcode.react": "^4.2.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "simple-icons": "^16.36.0",
