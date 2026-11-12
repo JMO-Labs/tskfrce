@@ -1,6 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, test } from '@jest/globals'
 import type { Mock } from 'jest-mock'
 import type { ReactNode } from 'react'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MantineProvider } from '@mantine/core'
@@ -86,7 +88,7 @@ describe("Who's this? pane", () => {
   })
 
   test('Ignored list is collapsible and undo sends the device back to unassigned', async () => {
-    show([dev(1), dev(4, { name: 'maas-svr', status: 'ignored' as never })])
+    show([dev(1), dev(4, { name: 'maas-svr', status: 'ignored' })])
     const sum = screen.getByText(/Ignored · 1/)
     expect(sum.closest('details')).toBeTruthy()
     expect(screen.getByText('maas-svr')).toBeTruthy()
@@ -94,10 +96,35 @@ describe("Who's this? pane", () => {
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/devices/4', { method: 'PATCH', body: { status: 'unassigned', owner_ids: [] } }))
   })
 
-  test('phone layout: rows carry the stacked-row class and the mobile details line', () => {
+  test('phone layout: the media rule stacks rows and the row carries the maker · ip · network line', () => {
     show([dev(1)])
-    expect(rows()[0].className).toContain('p-unk-row')
-    expect(within(rows()[0]).getByText(/Dell · 192\.168\.1\.1 · Home/)).toBeTruthy()
+    const mob = rows()[0].querySelector('.p-unk-mob')
+    expect(mob?.textContent).toBe('Dell · 192.168.1.1 · Home')
+    const css = readFileSync(join(__dirname, '../../src/v2/parent/unknown-devices.css'), 'utf8')
+    const phone = css.slice(css.indexOf('@media (max-width: 767px)'))
+    expect(phone).toMatch(/\.p-unk-row \{ display: grid;/)
+    expect(phone).toMatch(/\.p-unk-mob \{ display: block/)
+    expect(phone).toMatch(/\.p-unk-opt[^{]*\{ display: none/)
+  })
+
+  test('Rescan asks the box to rescan and refetches devices', async () => {
+    show([dev(1)])
+    await userEvent.click(screen.getByRole('button', { name: /Rescan/ }))
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/devices/rescan', { method: 'POST' }))
+  })
+
+  test('bulk buttons are disabled while a bulk call is in flight', async () => {
+    let done: (v: unknown) => void = () => {}
+    show([dev(1), dev(2)])
+    apiMock.mockImplementation(() => new Promise((r) => { done = r }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Select all' }))
+    await userEvent.click(screen.getByRole('button', { name: /Ignore/ }))
+    await waitFor(() => expect((screen.getByRole('button', { name: /Mark guest/ }) as HTMLButtonElement).disabled).toBe(true))
+    expect((screen.getByRole('button', { name: /Ignore/ }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('combobox', { name: 'Assign selected to' }) as HTMLSelectElement).disabled).toBe(true)
+    await userEvent.click(screen.getByRole('button', { name: /Ignore/ }))
+    expect(apiMock.mock.calls.filter(([p]) => p === '/devices/bulk')).toHaveLength(1)
+    done({})
   })
 
   test('empty state when nothing is unknown', () => {

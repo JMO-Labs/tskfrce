@@ -6,6 +6,7 @@
 .p-unk-head p { margin: 0; color: var(--p-sub); font-size: 12.5px; }
 .p-unk-big { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--p-warn-bg, var(--p-soft)); color: var(--p-warn, var(--p-ink)); flex: none; }
 .p-unk-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--p-line); border-radius: 999px; background: var(--p-card); color: var(--p-ink); font: 500 12.5px inherit; font-family: inherit; cursor: pointer; white-space: nowrap; }
+.p-unk-btn:disabled { opacity: .55; cursor: default; }
 .p-unk-ghost { border: 0; background: none; color: var(--p-sub); }
 .p-unk-bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 12px; background: var(--p-soft); border: 1px solid var(--p-line); font-size: 12.5px; }
 .p-unk-sel { font-weight: 600; margin-right: 4px; }

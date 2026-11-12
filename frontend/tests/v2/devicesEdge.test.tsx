@@ -162,7 +162,7 @@ describe('DeviceList status glyph', () => {
 
   test("unknown devices leave the nav and collapse into one Who's this? entry", async () => {
     const onUnknown = jest.fn()
-    render(wrap(<DeviceList devices={[dev({ id: 1, name: 'Known' }), dev({ id: 2, name: 'Mystery', status: 'unassigned', owner_ids: [] }), dev({ id: 3, name: 'Mute', status: 'ignored' as never, owner_ids: [] })]} kids={kids} onSelectDevice={() => {}} onSelectUnknown={onUnknown} selectedUnknown />))
+    render(wrap(<DeviceList devices={[dev({ id: 1, name: 'Known' }), dev({ id: 2, name: 'Mystery', status: 'unassigned', owner_ids: [] }), dev({ id: 3, name: 'Mute', status: 'ignored', owner_ids: [] })]} kids={kids} onSelectDevice={() => {}} onSelectUnknown={onUnknown} selectedUnknown />))
     expect(screen.queryByText('Mystery')).toBeNull()
     expect(screen.queryByText('Mute')).toBeNull()
     const entry = screen.getByRole('button', { name: /Who's this\? · 1/ })

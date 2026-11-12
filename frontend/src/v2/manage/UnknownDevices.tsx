@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Icon } from '@/v2/parent/Icon'
-import { useBulkDevices, usePatchDevice } from '@/v2/hooks/useDevices'
+import { useBulkDevices, usePatchDevice, useRescanDevices } from '@/v2/hooks/useDevices'
 import type { Device, Kid } from '@/v2/types'
 import { ago } from './deviceMeta'
 
@@ -13,6 +13,8 @@ export function UnknownDevices({ devices, kids }: { devices: Device[]; kids: Kid
   const [rawPicked, setPicked] = useState<number[]>([])
   const patch = usePatchDevice()
   const bulk = useBulkDevices()
+  const rescan = useRescanDevices()
+  const busy = bulk.isPending
 
   // a device that was just handled drops out of the selection (derived, no effect)
   const picked = rawPicked.filter((id) => unknown.some((d) => d.id === id))
@@ -35,6 +37,9 @@ export function UnknownDevices({ devices, kids }: { devices: Device[]; kids: Kid
           <h2>Who&apos;s this?{unknown.length > 0 && <span className="p-unk-n"> · {unknown.length}</span>}</h2>
           <p>Devices that joined your network and have no owner. Unknown devices follow &quot;New devices allowed&quot;.</p>
         </div>
+        <button type="button" className="p-unk-btn" disabled={rescan.isPending} onClick={() => rescan.mutate(undefined)}>
+          <Icon name="refresh" size={16} />Rescan
+        </button>
       </div>
 
       {unknown.length === 0 ? (
@@ -47,13 +52,14 @@ export function UnknownDevices({ devices, kids }: { devices: Device[]; kids: Kid
               <select
                 aria-label="Assign selected to"
                 value=""
+                disabled={busy}
                 onChange={(e) => e.target.value && run('assigned', [Number(e.target.value)])}
               >
                 <option value="">Assign to…</option>
                 {kids.map((k) => <option key={k.id} value={k.id}>{kidName(k)}</option>)}
               </select>
-              <button type="button" className="p-unk-btn" onClick={() => run('guest')}><Icon name="shield" size={16} />Mark guest</button>
-              <button type="button" className="p-unk-btn" onClick={() => run('ignored')}><Icon name="visibility_off" size={16} />Ignore</button>
+              <button type="button" className="p-unk-btn" disabled={busy} onClick={() => run('guest')}><Icon name="shield" size={16} />Mark guest</button>
+              <button type="button" className="p-unk-btn" disabled={busy} onClick={() => run('ignored')}><Icon name="visibility_off" size={16} />Ignore</button>
               <span className="p-unk-sp" />
               <button type="button" className="p-unk-btn p-unk-ghost" onClick={() => setPicked([])}>Clear</button>
             </div>
