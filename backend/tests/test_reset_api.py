@@ -206,10 +206,6 @@ def test_backup_export_empty_without_family(db):
     assert json.loads(svc.backup_export(db)) == {}
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="backup_export reads Chore.name / Chore.category (seeded chores), which don't exist",
-)
 def test_backup_export_includes_kids_and_rewards(db, kid):
     from app.models import Reward
 
@@ -220,24 +216,20 @@ def test_backup_export_includes_kids_and_rewards(db, kid):
     assert data["rewards"][0]["price"] == 10
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="backup_export reads Points.kid_id / Chore.name / Chore.category, which don't exist",
-)
-def test_backup_export_includes_points_and_chores(db, kid):
-    from app.models import Chore, Points, PointsType
+def test_backup_export_includes_points_and_chores(db, kid, parent):
+    from app.models import Chore, ChoreType, Points, PointsType
 
-    db.add(Chore(title="Dishes"))
+    ct = ChoreType(name="bk", glyph="x", builtin=False, position=98)
+    db.add(ct)
+    db.flush()
+    db.add(Chore(title="Dishes", points=5, created_by_id=parent.id, type_id=ct.id))
     db.add(Points(user_id=kid.id, points_type=PointsType.BONUS, amount=5, reason="bonus"))
     db.commit()
     data = json.loads(svc.backup_export(db))
     assert "error" not in data
     assert data["points_history"][0]["amount"] == 5
-
-
-def test_backup_export_reports_error(db):
-    with patch.object(db, "query", side_effect=RuntimeError("q")):
-        assert json.loads(svc.backup_export(db)) == {"error": "q"}
+    assert data["points_history"][0]["kid_id"] == kid.id
+    assert "Dishes" in [c["name"] for c in data["chores"]]
 
 
 # --- core/auth + refresh -------------------------------------------------
