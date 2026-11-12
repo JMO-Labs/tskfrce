@@ -39,7 +39,8 @@ export function LockPill({ kid }: { kid: TodayKid }) {
 
 /**
  * Today's day for one kid: two-arc ring (chores outer, online/allowed inner), facts, and a 7am-9pm timeline
- * (hatched = locked, grey = allowed, accent dot = chore done, line = now). Every mark has a tooltip (hover, tap).
+ * (hatched = locked, grey = allowed, accent dot = chore done, line = now). Every mark has a mouse/pen hover tooltip.
+ * On touch a tap opens KidFocus (the card's button), per the AC; the tooltip is not a phone affordance.
  */
 export function KidDay({ kid }: { kid: TodayKid }) {
   const clock = useClock()
@@ -58,7 +59,7 @@ export function KidDay({ kid }: { kid: TodayKid }) {
   const nowMin = minuteOfDay(new Date(now), tz)
   const label = hasOnline ? `${done} of ${total} chores done, ${online} of ${allowed} minutes online` : `${done} of ${total} done`
   return (
-    <span className="pt-day" onPointerMove={show} onPointerDown={show} onPointerLeave={() => setTip(null)}>
+    <span className="pt-day" onPointerMove={show} onPointerLeave={() => setTip(null)}>
       <span className="pt-ringrow">
         <svg className="pt-ring2" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label={label} data-tip={hasOnline ? `Outer: ${done}/${total} chores · Inner: ${online}m of ${allowed}m online` : `${done}/${total} chores`}>
           <Arc r={R_OUT} f={frac(done, total)} cls="pt-arc-chores" w={6} />
