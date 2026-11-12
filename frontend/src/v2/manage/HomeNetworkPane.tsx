@@ -4,6 +4,7 @@ import { useBlocker } from '@/v2/hooks/useDevices'
 import { useFamily, usePatchFamily } from '@/v2/hooks/useFamily'
 import { useSaveQueue } from '@/v2/hooks/useSaveQueue'
 import { Info, Setr, Sw } from './FamilyRows'
+import { NetworksCard } from './NetworksCard'
 import { PaneCard, PaneHead } from './PaneParts'
 import { ago } from './settingsMeta'
 
@@ -35,6 +36,7 @@ export function HomeNetworkPane() {
           </div>
         </PaneCard>
       )}
+      <NetworksCard />
     </>
   )
 }
