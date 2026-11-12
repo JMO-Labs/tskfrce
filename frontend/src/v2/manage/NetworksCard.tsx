@@ -24,7 +24,7 @@ function NetworkLine({ n }: { n: NetworkRow }) {
       <Setr label={editing ? 'Name' : n.label}>
         {editing ? (
           <input
-            className="p-input"
+            className="pk-input"
             aria-label="Network name"
             autoFocus
             maxLength={40}

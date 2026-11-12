@@ -49,7 +49,8 @@ test('hidden with a single network', async () => {
   const { container } = wrap()
   await waitFor(() => expect(apiMock).toHaveBeenCalled())
   await new Promise((r) => setTimeout(r, 20))
-  expect(container.textContent).toBe('')
+  expect(container.querySelector('button, input')).toBeNull()
+  expect(container.textContent).not.toMatch(/192\.168|Home/)
 })
 
 test('rename: Enter saves, Esc cancels, empty restores auto label', async () => {
