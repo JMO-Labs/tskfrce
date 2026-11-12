@@ -552,3 +552,58 @@ def test_interface_discovery_reports_that_networks_gateway(monkeypatch):
     mgr._run_discovery("wlo1", threading.Event(), lan)
     assert got["wlo1"].gateway_mac == "aa:aa:aa:aa:aa:01"
     assert got["wlo1"].box_mac == "bb:bb:bb:bb:bb:02"
+
+
+def _enforce_svc(monkeypatch, cfg, state_enforce):
+    import ipaddress
+
+    from blocker import service as service_mod
+
+    nets = [("eth0", ipaddress.ip_network("192.168.1.0/24"))]
+    monkeypatch.setattr(service_mod, "lan_networks", lambda: nets)
+    fw = FakeFirewall()
+    redir = FakeRedir()
+    states = {"v": state_enforce}
+    svc = Service(
+        cfg,
+        firewall=fw,
+        redirection=redir,
+        sleep=lambda *_: None,
+        portal_ip="192.168.1.2",
+        fetch_state=lambda _c: {"blocked": [MAC], "network_enforce": states["v"]},
+    )
+    if cfg.lan_iface == "":
+        svc._iface_manager = Mock()
+        svc._iface_manager.infra.return_value = (set(), set())
+    svc._on_seen(Seen(mac=MAC, ip="192.168.1.50", ipv6=[], hostname=None, vendor=None, iface="eth0"))
+    return svc, fw, redir, states
+
+
+@pytest.mark.parametrize("cfg", [CFG, CFG_MULTINET], ids=["legacy", "multinet"])
+@pytest.mark.parametrize(
+    "enforce,expected",
+    [({}, True), ({"eth0:192.168.1.0/24": True}, True), ({"eth0:192.168.1.0/24": False}, False),
+     ({"eth0": False}, False), ({"wlan0:10.0.0.0/24": False}, True)],
+)
+def test_network_enforce_switch(monkeypatch, cfg, enforce, expected):
+    svc, fw, redir, _ = _enforce_svc(monkeypatch, cfg, enforce)
+    svc._reconcile_once()
+    assert ("192.168.1.50" in fw.applied[-1]) is expected
+    assert (MAC in fw.applied[-1]) is expected
+    if cfg is CFG:
+        assert (MAC in redir.targets) is expected
+    else:
+        by_iface = svc._iface_manager.set_targets.call_args.args[0]
+        assert (MAC in by_iface.get("eth0", {})) is expected
+
+
+def test_network_enforce_toggle_mid_run(monkeypatch):
+    svc, fw, redir, states = _enforce_svc(monkeypatch, CFG, {})
+    svc._reconcile_once()
+    assert MAC in redir.targets
+    states["v"] = {"eth0:192.168.1.0/24": False}
+    svc._reconcile_once()
+    assert MAC not in redir.targets and "192.168.1.50" not in fw.applied[-1]
+    states["v"] = {"eth0:192.168.1.0/24": True}
+    svc._reconcile_once()
+    assert MAC in redir.targets and "192.168.1.50" in fw.applied[-1]

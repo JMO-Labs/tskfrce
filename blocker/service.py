@@ -6,6 +6,7 @@ result. The app owns all policy; this executes it and fails open on shutdown.
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import signal
 import threading
@@ -55,6 +56,13 @@ DEFAULT_LAN_CIDRS = [
 PORTAL_PORT = 80
 PROBE_WAIT = 10.0
 ADDR_TTL = 600.0  # seconds a device's addresses stay redirect-worthy
+
+
+def _in_net(ip: str | None, net) -> bool:
+    try:
+        return ipaddress.ip_address(ip or "") in net
+    except ValueError:
+        return False
 
 
 def _detect_box_ip(cfg: Config) -> str:
@@ -124,6 +132,7 @@ class Service:
         self._sleep = sleep
         self._clock = clock
         self._lan_cidrs = lan_cidrs or DEFAULT_LAN_CIDRS
+        self._network_enforce: dict[str, bool] = {}
         self._sites = sites or SiteManager(cfg, on_seen=self._on_seen, lan_cidrs=self._lan_cidrs)
         self._portal_ip = portal_ip
         # When using InterfaceManager, _watch will be set to None; each interface manages its own
@@ -181,6 +190,7 @@ class Service:
                 unsafe = self._unsafe_ips(lan) | site_ips
             # listen-only: nothing is paused anywhere (discovery continues)
             blocked = set() if self._listen_only else set(self.store.current()) | self._probing
+            blocked = {m for m in blocked if self._enforced_here(m)}
             skipped = {m for m in blocked if m.lower() in infra}
             if skipped:
                 log.warning("refusing to enforce on router/box MACs: %s", sorted(skipped))
@@ -216,6 +226,23 @@ class Service:
                 if self._watch is not None:
                     self._watch.set_watched(base)
                 self._sites.set_targets(by_vid)
+
+    def _enforced_here(self, mac: str) -> bool:
+        """Per-network "Enforce here" switch (state key "iface:subnet", or bare iface). A missing
+        entry means enforce. Devices off the managed networks are left to the existing routing."""
+        if not self._network_enforce:
+            return True
+        ip = self._live_addrs(mac).ip
+        nets = lan_networks()
+        iface = (
+            (self._iface_of.get(mac) or iface_for_ip(ip, nets))
+            if self._using_iface_mgr
+            else self.cfg.lan_iface
+        )
+        if iface is None:
+            return True
+        keys = [f"{n}:{net}" for n, net in nets if n == iface and _in_net(ip, net)] + [iface]
+        return next((bool(self._network_enforce[k]) for k in keys if k in self._network_enforce), True)
 
     def _by_segment(self, devs: dict[str, TargetAddrs], unsafe: set[str]):
         """Split targets per segment. A MAC is redirected on every segment it was seen on within
@@ -358,6 +385,7 @@ class Service:
         if state is None:  # app unreachable -> keep last state
             return
         self._listen_only = bool(state.get("listen_only", False))
+        self._network_enforce = dict(state.get("network_enforce") or {})
         self._sites.sync({int(v) for v in state.get("covered_vlans", [])})
         # always re-applies (listen_only too); keep homework when the source has none
         self.store.set_state(state["blocked"], state.get("homework", self.store.homework()))
