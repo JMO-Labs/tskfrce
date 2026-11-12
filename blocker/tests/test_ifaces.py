@@ -138,3 +138,9 @@ def test_iface_for_ip_uses_subnets(tmp_path):
     assert iface_for_ip("10.0.5.7", nets) == "wlo1"
     assert iface_for_ip("172.16.0.9", nets) is None
     assert iface_for_ip(None, nets) is None
+
+
+def test_configured_lan_iface_counts_even_as_veth(tmp_path, monkeypatch):
+    monkeypatch.setenv("LAN_IFACE", "eth0")
+    links = [link("eth0", "10.99.0.4", kind="veth"), link("veth1", "10.99.1.4", kind="veth")]
+    assert parse(json.dumps(links), tmp_path) == [("eth0", "10.99.0.4")]

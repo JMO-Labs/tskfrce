@@ -150,7 +150,7 @@ test.describe('every screen', () => {
       if (await skip.isVisible()) await skip.click()
       await page.waitForTimeout(600)
       await page.screenshot({ path: `${dir}/kid-home.png`, fullPage: true })
-      await page.getByRole('navigation', { name: 'Kid menu' }).getByRole('button', { name: 'Me' }).click()
+      await page.getByRole('navigation', { name: 'Kid menu' }).getByRole('button', { name: 'Me', exact: true }).click()
       await page.getByRole('button', { name: /customize/i }).first().click({ timeout: 15_000 })
       await page.waitForTimeout(800)
       await page.screenshot({ path: `${dir}/kid-locker.png`, fullPage: true })

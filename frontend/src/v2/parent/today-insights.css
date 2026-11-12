@@ -36,3 +36,11 @@
 .pi-heatrow > span { text-align: center; }
 .pi-heat i { aspect-ratio: 1.6; border-radius: 3px; background: var(--p-acc-mark); }
 .pi-tip { position: fixed; pointer-events: none; z-index: 50; max-width: 230px; background: var(--p-ink); color: var(--p-bg); font-size: 12px; padding: 6px 9px; border-radius: 8px; }
+
+/* Lower band (mockup .lower): Suggestions | Goals | This week; the insights band joins this grid */
+.pt-lower { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: start; }
+.pt-lower > .pi-band { display: contents; }
+@media (max-width: 799px) { .pt-lower { grid-template-columns: minmax(0, 1fr); } }
+.p-head-title { flex: 1; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; min-width: 0; }
+.p-head-title h1 { flex: none; }
+.p-head-meta { font-size: 14px; color: var(--p-sub); }
