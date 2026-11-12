@@ -70,7 +70,9 @@ def reset_app_data(db: Session, unblock: bool = True) -> str | None:
             db.commit()
 
         # Disable FK constraints temporarily (SQLite only; Postgres auto-handles with CASCADE)
-        db.execute(text("PRAGMA foreign_keys=OFF"))
+        sqlite = db.get_bind().dialect.name == "sqlite"
+        if sqlite:
+            db.execute(text("PRAGMA foreign_keys=OFF"))
 
         # Delete all family data except KEEP_TABLES
         # Iterate sorted_tables in reverse to respect dependency order
@@ -79,7 +81,8 @@ def reset_app_data(db: Session, unblock: bool = True) -> str | None:
                 db.execute(delete(table))
 
         # Re-enable FK constraints
-        db.execute(text("PRAGMA foreign_keys=ON"))
+        if sqlite:
+            db.execute(text("PRAGMA foreign_keys=ON"))
 
         db.commit()
         logger.info("Reset app data complete")
