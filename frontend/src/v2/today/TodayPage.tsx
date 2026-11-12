@@ -10,6 +10,9 @@ import { useToday } from '../hooks/useToday'
 import { useRunDetail } from '../hooks/useChores'
 import { useFamily } from '../hooks/useFamily'
 import { useKids } from '../hooks/useKids'
+import { useMediaQuery } from '@mantine/hooks'
+import { headerStamp } from './dayTime'
+import { useNow } from './useClock'
 import { openingLabel } from './openingLabel'
 import { HappyHourSheet } from './HappyHourButton'
 import { HappyHourChip } from './HappyHourChip'
@@ -55,7 +58,10 @@ export function TodayPage() {
   const run = useRunDetail(runId)
   const kidList = useKids(!!runId)
   const [penAll, setPenAll] = useState(false)
-  const penalties = !!useFamily().data?.penalties_enabled
+  const family = useFamily().data
+  const penalties = !!family?.penalties_enabled
+  const now = useNow()
+  const phone = useMediaQuery('(max-width: 767px)')
   if (runId && !data && !isError)
     return (
       <main className="p-guard-state">
@@ -71,7 +77,7 @@ export function TodayPage() {
   const calm = !kidFocus.open && !areaFocus.open
   const needsOpen = areaFocus.isOpen('needs')
   return (
-    <ParentShell title="Today" actions={<MoreMenu label="More for Today" items={todayMenu} />}>
+    <ParentShell title="Today" meta={headerStamp(now, family?.timezone, !!phone)} actions={<MoreMenu label="More for Today" items={todayMenu} />}>
       {penAll && data && <PenaltySheet everyone kidIds={data.kids.map((k) => k.id)} onClose={() => setPenAll(false)} />}
       <HappyHourSheet opened={hhOpen} onClose={() => setHhOpen(false)} allKids />
       <SystemWarnings />
@@ -109,9 +115,13 @@ export function TodayPage() {
               </KidCard>
             ))}
           </div>}
-          {calm && data.kids.length > 0 && <TodayInsights />}
           {calm && data.kids.length > 0 && <TipSlot kids={data.kids} />}
-          {calm && data.kids.length > 0 && <SuggestionsCard />}
+          {calm && data.kids.length > 0 && (
+            <div className="pt-lower">
+              <SuggestionsCard />
+              <TodayInsights />
+            </div>
+          )}
           {!kidFocus.open && !needsOpen && data.kids.length > 0 && (
             <FocusArea focus={areaFocus} label="More">
               <DevicesRow focus={areaFocus} />

@@ -7,6 +7,7 @@ Docker bridges, veths, loopback, VPNs, the setup hotspot, link-local and CGNAT n
 import ipaddress
 import json
 import logging
+import os
 import subprocess
 import threading
 from collections.abc import Callable
@@ -27,6 +28,9 @@ def is_lan_ip(ip: str) -> bool:
 
 
 def is_lan_link(name: str, kind: str | None, sys: Path = SYS) -> bool:
+    # An interface the operator named in LAN_IFACE always counts, even a container's veth.
+    if name and name == os.environ.get("LAN_IFACE", ""):
+        return True
     if name.startswith(SKIP_PREFIXES):
         return False
     # Physical NICs and Wi-Fi have a device/ link; VLANs, bridges (br0 on Unraid/Proxmox),

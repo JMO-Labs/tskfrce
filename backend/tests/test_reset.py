@@ -5,8 +5,9 @@ from unittest.mock import patch
 
 import pytest
 from app.core.auth import AuthService
-from app.models import FamilySettings, User
+from app.models import Chore, ChoreType, FamilySettings, Points, User
 from app.models.family import get_family
+from app.models.points import PointsType
 from app.models.user import UserRole
 from app.services.reset import backup_export, reset_app_data
 from sqlalchemy.orm import Session
@@ -128,6 +129,13 @@ class TestResetAppData:
 class TestBackupExport:
     """Test backup_export: JSON with family data, no secrets."""
 
+    def test_backup_export_without_family_returns_empty_object(self, db: Session):
+        """No FamilySettings row: export is an empty JSON object."""
+        db.query(FamilySettings).delete()
+        db.flush()
+
+        assert json.loads(backup_export(db)) == {}
+
     def test_backup_includes_family(self, db: Session, setup_family):
         """Backup JSON includes family name and config."""
         fam, parent, kids = setup_family
@@ -157,6 +165,38 @@ class TestBackupExport:
 
         # Backup should have kids, not parent data
         assert "hashed_password" not in json.dumps(data)
+
+
+class TestBackupExportChoresPoints:
+    def test_backup_export_includes_points_and_chores(self, db: Session, setup_family):
+        """Chores and points rows are exported without an error payload."""
+        fam, parent, kids = setup_family
+        ct = ChoreType(name="bk", glyph="x", builtin=False, position=98)
+        db.add(ct)
+        db.flush()
+        db.add(Chore(title="Dishes", points=5, created_by_id=parent.id, type_id=ct.id))
+        db.add(
+            Points(
+                user_id=kids[0].id,
+                points_type=PointsType.BONUS,
+                amount=7,
+                reason="bonus",
+            )
+        )
+        db.commit()
+
+        data = json.loads(backup_export(db))
+
+        assert "error" not in data
+        assert [c["name"] for c in data["chores"]] == ["Dishes"]
+        assert data["points_history"][0]["kid_id"] == kids[0].id
+        assert data["points_history"][0]["amount"] == 7
+
+    def test_backup_export_failure_raises(self, db: Session, setup_family):
+        """Failures propagate instead of returning an error payload."""
+        with patch.object(db, "query", side_effect=RuntimeError("boom")):
+            with pytest.raises(RuntimeError):
+                backup_export(db)
 
 
 class TestTokenEpochRevocation:
@@ -269,7 +309,3 @@ class TestTokenEpochRevocation:
         payload = auth.verify_token(refresh_token)
         assert payload is not None
         assert auth.check_epoch(payload) is False
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])

@@ -14,6 +14,7 @@ import { DevicesSection } from './DevicesSection'
 import { DeviceDetail } from './DeviceDetail'
 import { GroupDetail } from './GroupDetail'
 import { UnknownDevices } from './UnknownDevices'
+import { filterByNetwork } from '@/v2/hooks/useNetworks'
 import { useSingleFlight } from '@/v2/hooks/useSingleFlight'
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
@@ -27,6 +28,12 @@ function DevicesBody() {
   const hours = useHours()
   const family = useFamily().data
   const all = devices.data ?? []
+  // network filter lives in ?network= (?net= is the old Home-network link); '' = All
+  const netFilter = first(query.network) ?? ''
+  const setNet = (n: string) => {
+    const { network: _n, item: _i, open: _o, ...rest } = query
+    router.push({ pathname: router.pathname, query: n ? { ...rest, network: n } : rest }, undefined, { shallow: true })
+  }
   // the tab lives in the URL: device and group ids overlap, so ?item alone can't say which one it is
   const tab = first(query.tab) === 'groups' ? 'groups' : 'devices'
   const setTab = (t: 'devices' | 'groups') => {
@@ -41,7 +48,7 @@ function DevicesBody() {
   }, [movedNet])
   const small = useMediaQuery('(max-width: 767px)')
   // desktop opens the first item rather than an empty detail pane; phone stays on the list
-  const known = all.filter((d) => d.status === 'assigned' || d.status === 'guest')
+  const known = filterByNetwork(all.filter((d) => d.status === 'assigned' || d.status === 'guest'), netFilter)
   const unknownCount = all.filter((d) => d.status === 'unassigned').length
   const shown = tab === 'devices' ? known : groups.data ?? []
   const item = first(query.item)
@@ -114,6 +121,8 @@ function DevicesBody() {
               tab={tab}
               onTabChange={setTab}
               unknownOpen={unknownOpen}
+              netFilter={netFilter}
+              onNetFilter={setNet}
             />
             {/* the phone shows only the list, so the "looking for devices" panel lives here too */}
             {small && tab === 'devices' && devices.data?.length === 0 && scan}

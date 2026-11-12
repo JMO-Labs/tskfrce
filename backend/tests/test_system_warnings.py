@@ -58,6 +58,19 @@ def test_blocker_protecting_no_network_warns(client, parent_headers, db):
     assert "blocker.down" in _keys(client, parent_headers)
 
 
+def test_blocker_no_networks_reported_is_not_a_warning(client, parent_headers, db):
+    get_family(db).blocker_last_seen = datetime.utcnow() - timedelta(minutes=1)
+    db.commit()
+    assert "blocker.down" not in _keys(client, parent_headers)
+
+
+def test_blocker_mixed_networks_ok(client, parent_headers, db):
+    _blocker(db, 1, enforce=False)
+    db.add(Network(iface="eno2", subnet="10.0.1.0/24", auto_label="Wi-Fi", enforce=True))
+    db.commit()
+    assert "blocker.down" not in _keys(client, parent_headers)
+
+
 def test_blocker_down_action_targets_devices(client, parent_headers, db):
     _blocker(db, 30)
     items = client.get(URL, headers=parent_headers).json()["items"]

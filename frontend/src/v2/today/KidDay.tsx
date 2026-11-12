@@ -1,7 +1,7 @@
 import { useState, type PointerEvent } from 'react'
 import { Icon } from '../parent/Icon'
 import type { TodayKid } from '../types'
-import { DAY_END, DAY_START, frac, hm, minuteOfDay, pct } from './dayTime'
+import { ageText, DAY_END, DAY_START, frac, hm, minuteOfDay, pct } from './dayTime'
 import { useClock, useNow } from './useClock'
 import { useFamily } from '../hooks/useFamily'
 
@@ -57,17 +57,17 @@ export function KidDay({ kid }: { kid: TodayKid }) {
     setTip(t ? { text: t.getAttribute('data-tip') ?? '', x: e.clientX, y: e.clientY } : null)
   }
   const nowMin = minuteOfDay(new Date(now), tz)
-  const label = hasOnline ? `${done} of ${total} chores done, ${online} of ${allowed} minutes online` : `${done} of ${total} done`
+  const label = hasOnline ? `${done} of ${total} chores done, ${ageText(online)} of ${ageText(allowed)} screen` : `${done} of ${total} done`
   return (
     <span className="pt-day" onPointerMove={show} onPointerLeave={() => setTip(null)}>
       <span className="pt-ringrow">
-        <svg className="pt-ring2" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label={label} data-tip={hasOnline ? `Outer: ${done}/${total} chores · Inner: ${online}m of ${allowed}m online` : `${done}/${total} chores`}>
+        <svg className="pt-ring2" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label={label} data-tip={hasOnline ? `Outer: ${done}/${total} chores · Inner: ${ageText(online)} of ${ageText(allowed)} screen` : `${done}/${total} chores`}>
           <Arc r={R_OUT} f={frac(done, total)} cls="pt-arc-chores" w={6} />
           {hasOnline && <Arc r={R_IN} f={frac(online, allowed)} cls="pt-arc-online" w={5} />}
         </svg>
         <span className="pt-facts">
           <span className="pt-fact"><span className="pt-dt">Chores</span>{' '}<span className="pt-dd">{done}/{total}</span></span>
-          {hasOnline && <span className="pt-fact"><span className="pt-dt">Online</span>{' '}<span className="pt-dd">{online}m of {allowed}m allowed</span></span>}
+          {hasOnline && <span className="pt-fact"><span className="pt-dt">Screen</span>{' '}<span className="pt-dd">{ageText(online)} of {ageText(allowed)} allowed</span></span>}
           <span className="pt-fact"><span className="pt-dt">Points</span>{' '}<span className="pt-dd">{kid.points ?? 0} pts</span></span>
         </span>
       </span>
@@ -87,7 +87,7 @@ export function KidDay({ kid }: { kid: TodayKid }) {
           <span className="pt-tlx" aria-hidden="true"><span>7am</span><span>2pm</span><span>9pm</span></span>
         </>
       )}
-      {tip && <span className="pt-tip" role="tooltip" style={{ left: Math.min(tip.x + 12, window.innerWidth - 240), top: tip.y + 14 }}>{tip.text}</span>}
+      {tip && <span className="pt-tooltip" role="tooltip" style={{ left: Math.min(tip.x + 12, window.innerWidth - 240), top: tip.y + 14 }}>{tip.text}</span>}
     </span>
   )
 }

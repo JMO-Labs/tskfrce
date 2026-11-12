@@ -58,7 +58,7 @@
 [data-look='parent'] .pt-tl-dot { top: 4px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: var(--pt-mark); box-shadow: 0 0 0 2px var(--p-card); }
 [data-look='parent'] .pt-tl-now { top: 0; bottom: 0; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--p-ink); }
 [data-look='parent'] .pt-tlx { display: flex; justify-content: space-between; font-size: 10px; color: var(--p-mute, #8a8a86); }
-[data-look='parent'] .pt-tip {
+[data-look='parent'] .pt-tooltip {
   position: fixed; z-index: 30; pointer-events: none; max-width: 230px; padding: 6px 9px; border-radius: 8px;
   background: var(--p-ink); color: var(--p-bg, #fff); font-size: 12px; font-weight: 500;
 }

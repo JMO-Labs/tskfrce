@@ -160,6 +160,16 @@
   padding: 8px 12px;
 }
 
+[data-look='parent'] .p-net-filter {
+  align-self: flex-start;
+  padding: 6px 10px;
+  border: 1px solid var(--p-line);
+  border-radius: 8px;
+  background: var(--p-bg);
+  color: var(--p-ink);
+  font: inherit;
+}
+
 [data-look='parent'] .p-detail-column {
   display: flex;
   flex-direction: column;

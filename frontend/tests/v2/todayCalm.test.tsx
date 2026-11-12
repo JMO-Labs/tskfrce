@@ -172,6 +172,32 @@ describe('calm Today', () => {
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/me/tips/onboard.parent/dismiss', expect.anything()))
   })
 
+  test('Getting started strip sits in normal flow, never fixed over the banner', async () => {
+    state.dismissed = []
+    wrap()
+    const line = (await screen.findByText(/Getting started/)).closest('section') as HTMLElement
+    expect(line).toHaveClass('pt-tip')
+    expect(document.querySelector('.pt-tooltip')).toBeNull() // the hover tooltip owns position:fixed, not the strip
+    const css = require('fs').readFileSync(require('path').join(__dirname, '../../src/v2/parent/today-dashboard.css'), 'utf8') as string
+    expect(css).not.toMatch(/\.pt-tip\s*\{[^}]*position:\s*fixed/)
+    expect(css).toMatch(/\.pt-tooltip\s*\{[^}]*position:\s*fixed/)
+  })
+
+  test('header shows weekday and time next to Today', async () => {
+    wrap()
+    await screen.findByRole('button', { name: MAYA })
+    expect(screen.getByText(/^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday) · \d{1,2}:\d{2} [AP]M$/)).toBeInTheDocument()
+  })
+
+  test('Suggestions, Goals and This week share one 3-column row', async () => {
+    wrap()
+    await screen.findByRole('button', { name: MAYA })
+    const lower = document.querySelector('.pt-lower')
+    expect(lower).not.toBeNull()
+    expect(lower!.closest('.p-today-detail')).not.toBeNull()
+    expect(lower!.compareDocumentPosition(document.querySelector('.pt-kids')!) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
+  })
+
   test('Devices row counts devices online now', async () => {
     state.devices = [...Array(8)].map((_, i) => dev(i + 1, true)).concat([dev(9, false), dev(10, false)])
     wrap()

@@ -39,3 +39,14 @@ export function usePatchNetwork() {
     onSettled: () => qc.invalidateQueries({ queryKey: KEY }),
   })
 }
+
+/** Chip labels for devices: null for every device unless the box sees 2+ networks. */
+export function useNetworkLabels() {
+  const nets = useNetworks().data
+  const rows = Array.isArray(nets) ? nets : []
+  const multi = rows.length >= 2
+  return { networks: multi ? rows : [], labelFor: (d: { network_id?: number | null }) => (multi && d.network_id != null ? rows.find((n) => n.id === d.network_id)?.label ?? null : null) }
+}
+
+/** Devices on the chosen network; '' (All) keeps everything, incl. devices with no network. */
+export const filterByNetwork = <T extends { network_id?: number | null }>(list: T[], net: string) => (net ? list.filter((d) => String(d.network_id ?? '') === net) : list)
