@@ -11,5 +11,6 @@ One page for each t@sk4ce feature, with the steps in more detail than the [every
 - [Minigames](minigames.md): quick games kids earn by doing chores.
 - [Goals](goals.md): kids save points toward something bigger.
 - [Small devices and Postgres](small-devices.md): run on a Raspberry Pi, and optionally move to Postgres.
+- [Networks and Wi-Fi](networks-and-wifi.md): block devices on every network, and change the box's Wi-Fi.
 
 More pages are added here as they are written.
