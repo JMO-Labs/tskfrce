@@ -3,7 +3,7 @@
 Android only treats Wi-Fi as online when https://www.google.com/generate_204 succeeds; without
 it a blocked phone silently moves to mobile data. The firewall redirects a blocked device's
 non-local :443 traffic here; DNS hands it real addresses only for PASS_NAMES.
-Passed connections are cut after DOWN_CAP bytes: enough for the probe, not for search pages.
+Passed connections may carry a probe-sized answer (see TICKET_MAX/REPLY_MAX), nothing readable.
 """
 
 from __future__ import annotations
@@ -16,45 +16,32 @@ import time
 log = logging.getLogger(__name__)
 
 PASS_NAMES = frozenset({"www.google.com"})
-# Android's probe (TLS 1.3 handshake + "204 No Content") is ~4.7 KB down; a search page or an AMP
-# article via www.google.com is far more. Per connection: DOWN_CAP. Per device: BUDGET bytes per
-# BUDGET_WINDOW seconds across all its connections, so refreshing can't add pages up piece by piece.
+# Once the client sends its first application-data record (its TLS Finished + request), the server
+# may answer with only a few small application-data records, judged by length alone (measured
+# 2026-11-12 on the beta box): Android's probe gets a 559 B session ticket, then a 220 B
+# "204 No Content" (curl/OpenSSL tickets: 583-595 B). The smallest readable www.google.com reply
+# seen is ~790 B (a 1-byte Range of robots.txt); suggest/search replies are 1.2 KB and up.
+# A ticket allowance is given only if the ClientHello offers TLS 1.3 (EC)DHE resumption (else the
+# server sends none, and a reply could pose as the ticket). Anything more cuts the connection
+# before the record reaches the client, so it gets no plaintext from it. DOWN_CAP bounds the rest
+# (the handshake itself is ~4 KB).
+TICKET_MAX = 768
+REPLY_MAX = 400
 DOWN_CAP = 8 * 1024
-BUDGET = 24 * 1024
-BUDGET_WINDOW = 60.0
-_spent: dict[str, tuple[float, int]] = {}  # client ip -> (window start, bytes passed)
-_spent_lock = threading.Lock()
-
-
-def _allowance(client: str, now: float) -> int:
-    """Reserve this connection's share of the client's window budget (0 = refuse). Reserving up
-    front stops parallel connections from each taking a full share."""
-    with _spent_lock:
-        start, used = _spent.get(client, (now, 0))
-        if now - start >= BUDGET_WINDOW:
-            start, used = now, 0
-        share = max(0, min(DOWN_CAP, BUDGET - used))
-        _spent[client] = (start, used + share)
-        return share
-
-
-def _refund(client: str, n: int) -> None:
-    """Give back the unused part of a reservation."""
-    with _spent_lock:
-        if client in _spent and n > 0:
-            start, used = _spent[client]
-            _spent[client] = (start, max(0, used - n))
-
+_APP_DATA = 23
+_PSK_MODES = 45  # psk_key_exchange_modes extension; servers send tickets only for psk_dhe_ke
+_PSK_DHE_KE = 1
 
 GATE_PORT = 8443
 _HELLO_MAX = 16384
 
 
-def sni_of(hello: bytes) -> str | None:
-    """Server name from a TLS ClientHello record, or None if absent/unparsable."""
+def _extensions(hello: bytes) -> dict[int, bytes]:
+    """Extensions of a TLS ClientHello record ({} if it isn't one or is unparsable)."""
+    exts: dict[int, bytes] = {}
     try:
         if hello[0] != 0x16 or hello[5] != 0x01:  # handshake record, ClientHello
-            return None
+            return exts
         p = 9 + 2 + 32  # record(5) + handshake hdr(4), version, random
         p += 1 + hello[p]  # session id
         p += 2 + int.from_bytes(hello[p : p + 2], "big")  # cipher suites
@@ -62,18 +49,30 @@ def sni_of(hello: bytes) -> str | None:
         end = p + 2 + int.from_bytes(hello[p : p + 2], "big")
         p += 2
         while p + 4 <= end:
-            kind, size = (
-                int.from_bytes(hello[p : p + 2], "big"),
-                int.from_bytes(hello[p + 2 : p + 4], "big"),
-            )
-            p += 4
-            if kind == 0:  # server_name: list len(2), type(1), name len(2), name
-                n = int.from_bytes(hello[p + 3 : p + 5], "big")
-                return hello[p + 5 : p + 5 + n].decode("ascii").lower().rstrip(".")
-            p += size
-    except (IndexError, UnicodeDecodeError):
-        pass
-    return None
+            kind = int.from_bytes(hello[p : p + 2], "big")
+            size = int.from_bytes(hello[p + 2 : p + 4], "big")
+            exts[kind] = hello[p + 4 : p + 4 + size]
+            p += 4 + size
+    except IndexError:
+        pass  # truncated: keep what was read
+    return exts
+
+
+def sni_of(hello: bytes) -> str | None:
+    """Server name from a TLS ClientHello record, or None if absent/unparsable."""
+    sni = _extensions(hello).get(0)  # server_name: list len(2), type(1), name len(2), name
+    if not sni:
+        return None
+    try:
+        return sni[5 : 5 + int.from_bytes(sni[3:5], "big")].decode("ascii").lower().rstrip(".")
+    except UnicodeDecodeError:
+        return None
+
+
+def reply_limits(hello: bytes) -> list[int]:
+    """Max length of each application-data record the server may send after the client's first."""
+    modes = _extensions(hello).get(_PSK_MODES, b"")
+    return [TICKET_MAX, REPLY_MAX] if _PSK_DHE_KE in modes[1:] else [REPLY_MAX]
 
 
 _CACHE: dict[str, tuple[float, str]] = {}
@@ -93,26 +92,55 @@ def real_ip(name: str, ttl: float = 60) -> str | None:
     return ip
 
 
-def _pipe(src: socket.socket, dst: socket.socket, cap: int | None = None) -> int:
-    """Copy src -> dst until EOF, or until cap bytes (then cut both ways). Returns bytes sent."""
-    sent = 0
+def _records(src: socket.socket, buf: bytes = b""):
+    """Yield whole TLS records (header included) read from src, starting with buf, until EOF."""
+    while True:
+        while len(buf) >= 5 and len(buf) >= 5 + (n := int.from_bytes(buf[3:5], "big")):
+            yield buf[: 5 + n]
+            buf = buf[5 + n :]
+        if not (chunk := src.recv(65536)):
+            return
+        buf += chunk
+
+
+def _close(*socks: socket.socket) -> None:
+    for s in socks:
+        try:
+            s.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+
+
+def _pipe_up(conn: socket.socket, up: socket.socket, hello: bytes, asked: threading.Event) -> None:
+    """Client -> server. Flags the client's first application-data record before it leaves."""
     try:
-        while chunk := src.recv(65536):
-            if cap is not None and sent + len(chunk) > cap:
-                dst.sendall(chunk[: cap - sent])
-                sent = cap
-                break
-            dst.sendall(chunk)
-            sent += len(chunk)
+        for rec in _records(conn, hello):
+            if rec[0] == _APP_DATA:
+                asked.set()
+            up.sendall(rec)
     except OSError:
         pass
     finally:
-        for s in (src, dst):
-            try:
-                s.shutdown(socket.SHUT_RDWR)
-            except OSError:
-                pass
-    return sent
+        _close(conn, up)
+
+
+def _pipe_down(
+    up: socket.socket, conn: socket.socket, asked: threading.Event, limits: list[int]
+) -> None:
+    """Server -> client, whole records only; cut at the first record the limits don't allow."""
+    left, sent = list(limits), 0
+    try:
+        for rec in _records(up):
+            if rec[0] == _APP_DATA and asked.is_set() and (not left or len(rec) - 5 > left.pop(0)):
+                break
+            sent += len(rec)
+            if sent > DOWN_CAP:
+                break
+            conn.sendall(rec)
+    except OSError:
+        pass
+    finally:
+        _close(up, conn)
 
 
 def _serve(conn: socket.socket, connect=socket.create_connection) -> None:
@@ -120,31 +148,30 @@ def _serve(conn: socket.socket, connect=socket.create_connection) -> None:
         conn.settimeout(5)
         try:
             hello = conn.recv(_HELLO_MAX)
+            # a big ClientHello (post-quantum key share) can span TCP segments: read all of it
+            while 5 <= len(hello) < min(_HELLO_MAX, 5 + int.from_bytes(hello[3:5], "big")):
+                if not (more := conn.recv(_HELLO_MAX)):
+                    break
+                hello += more
         except OSError:
             return
         name = sni_of(hello)
         if name not in PASS_NAMES:
             return  # closing is the block
         try:
-            client = conn.getpeername()[0]
-        except (OSError, IndexError):
-            client = "?"
-        cap = _allowance(client, time.monotonic())
-        if not cap:
-            return  # this device used its budget for this window
-        try:
             up = connect((name, 443), timeout=5)  # dial by name: a spoofed dest IP can't steer us
         except OSError:
             return
         with up:
             conn.settimeout(None)
-            up.sendall(hello)
-            got: list[int] = []
-            t = threading.Thread(target=lambda: got.append(_pipe(up, conn, cap)), daemon=True)
+            up.settimeout(None)
+            asked = threading.Event()
+            t = threading.Thread(
+                target=_pipe_down, args=(up, conn, asked, reply_limits(hello)), daemon=True
+            )
             t.start()
-            _pipe(conn, up)
+            _pipe_up(conn, up, hello, asked)
             t.join(60)
-            _refund(client, cap - (got[0] if got else cap))
 
 
 def run_gate(stop: threading.Event, host: str = "0.0.0.0", port: int = GATE_PORT) -> None:
