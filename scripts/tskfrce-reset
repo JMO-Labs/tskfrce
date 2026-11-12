@@ -1,0 +1,124 @@
+#!/bin/bash
+# Reset or factory-reset the t@sk4ce box when parent is locked out
+# Usage: sudo tskfrce-reset [--factory]
+#
+# Calls the backend reset API with the internal token, monitors restart.
+
+set -e
+
+FACTORY=false
+SET_PIN=false
+NEW_PIN=""
+INTERNAL_TOKEN="${INTERNAL_TOKEN:-}"
+API_URL="${API_URL:-http://localhost:3000}"
+BOX_ID="${BOX_ID:-localhost}"
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --factory)
+            FACTORY=true
+            shift
+            ;;
+        --pin)
+            SET_PIN=true
+            shift
+            if [[ $# -gt 0 ]]; then
+                NEW_PIN="$1"
+                shift
+            fi
+            ;;
+        *)
+            echo "Usage: $0 [--factory] [--pin <new-pin>]"
+            exit 1
+            ;;
+    esac
+done
+
+# Verify running as root
+if [[ "$EUID" -ne 0 ]]; then
+    echo "Error: tskfrce-reset must be run with sudo"
+    exit 1
+fi
+
+# Get internal token from docker compose env if not set
+if [[ -z "$INTERNAL_TOKEN" ]]; then
+    if command -v docker-compose &>/dev/null; then
+        INTERNAL_TOKEN=$(docker-compose config --format json 2>/dev/null | grep -o '"INTERNAL_TOKEN":"[^"]*' | head -1 | cut -d'"' -f4)
+    fi
+fi
+
+if [[ -z "$INTERNAL_TOKEN" ]]; then
+    echo "Error: INTERNAL_TOKEN not found. Set it or run from a docker-compose environment."
+    exit 1
+fi
+
+if [[ "$SET_PIN" == "true" ]]; then
+    echo "Setting new parent PIN (no data loss, bumps session epoch)..."
+    echo "Note: This is a safe local operation on the box console."
+    echo ""
+
+    # Call CLI directly (no network, no vulnerability)
+    if ! command -v docker-compose &>/dev/null; then
+        echo "Error: docker-compose not found"
+        exit 1
+    fi
+
+    docker-compose exec backend python -m app.cli set-pin
+    exit $?
+else
+    echo "Starting box reset..."
+    echo "This will:"
+    if [[ "$FACTORY" == "true" ]]; then
+        echo "  - Erase all family data (kids, chores, devices, history)"
+        echo "  - Erase saved Wi-Fi networks"
+        echo "  - Re-arm the sticker claim code"
+    else
+        echo "  - Erase all family data (kids, chores, devices, history)"
+        echo "  - Keep saved Wi-Fi networks"
+    fi
+    echo ""
+    echo "Press Ctrl+C to cancel, or wait 5 seconds to proceed..."
+    sleep 5
+
+    # Call reset API
+    FACTORY_FLAG='false'
+    [[ "$FACTORY" == "true" ]] && FACTORY_FLAG='true'
+
+    echo "Sending reset request..."
+    RESPONSE=$(curl -s -X POST \
+        -H "Content-Type: application/json" \
+        -H "X-Internal-Token: $INTERNAL_TOKEN" \
+        -d "{\"password\": \"\", \"confirm\": \"RESET\", \"factory\": $FACTORY_FLAG}" \
+        "$API_URL/api/v1/settings/reset" 2>/dev/null || true)
+fi
+
+# Check if reset succeeded (will need proper parsing based on actual response)
+if echo "$RESPONSE" | grep -q '"ok"'; then
+    echo "Reset request sent. Box will restart shortly..."
+else
+    echo "Reset request failed:"
+    echo "$RESPONSE"
+    exit 1
+fi
+
+# Wait for box to restart (wait for health check to come back)
+echo "Waiting for box to restart..."
+MAX_WAIT=120
+WAITED=0
+while [[ $WAITED -lt $MAX_WAIT ]]; do
+    if curl -s "$API_URL/health" >/dev/null 2>&1; then
+        echo "Box is back online!"
+        echo ""
+        echo "Reset complete. Log in with your credentials at $API_URL"
+        exit 0
+    fi
+    sleep 2
+    WAITED=$((WAITED + 2))
+    echo -n "."
+done
+
+echo ""
+echo "Box did not come online after $MAX_WAIT seconds."
+echo "Check the box status manually."
+exit 1

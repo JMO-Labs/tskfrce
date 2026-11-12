@@ -36,10 +36,16 @@ class OverrideIn(BaseModel):
 
 class DevicePatch(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=100)
-    status: Literal["unassigned", "assigned", "guest"] | None = None
+    status: Literal["unassigned", "assigned", "guest", "ignored"] | None = None
     owner_ids: list[int] | None = None
     group_ids: list[int] | None = None
     exempt: bool | None = None
+
+
+class DeviceBulk(BaseModel):
+    ids: list[int] = Field(min_length=1)
+    status: Literal["unassigned", "assigned", "guest", "ignored"]
+    owner_ids: list[int] = []
 
 
 class GroupIn(BaseModel):

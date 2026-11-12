@@ -83,8 +83,8 @@ If a paused device keeps reaching the internet, you get a notification, "<device
 What kids try, and what happens (details in [the home box notes](../blocker.md)):
 
 - Changing network settings or using a VPN app: does not work.
-- Forgetting the Wi-Fi to get a new address: the new address looks like a new device and starts paused.
-- Using a phone hotspot or mobile data: **not covered**. It is only home Wi-Fi.
+- Forgetting the Wi-Fi to get a new address: the box usually matches the phone back to its owner, so rules still apply. You can undo a wrong match.
+- Using a phone hotspot or mobile data: **not covered**. The box can't block mobile data. See [If a blocked phone still gets online](#if-a-blocked-phone-still-gets-online).
 - Using another device that isn't set up: **not covered**. Put every device on the Devices page.
 - Unplugging the box: the internet comes back on, and you get an alert.
 
@@ -203,6 +203,10 @@ The box can only block traffic that goes through home Wi-Fi. Two things on the p
 2. On the phone, open the home Wi-Fi and turn **Private Wi-Fi Address** off. Then lock Wi-Fi changes with Screen Time.
 
 **Still getting online on Wi-Fi?** Your Wi-Fi access point may stop the box from seeing the phone's traffic. On UniFi, turn off **Proxy ARP** and **client isolation** (also called guest or L2 isolation) for the home network.
+
+## The block page doesn't show on https sites
+
+This is expected. A blocked phone stays on Wi-Fi and shows "Connected". Plain `http://` sites show the block page. `https://` sites just close, because the box has no certificate for them and won't fake one. The internet is still blocked. To see the reason, the kid can open the t@sk4ce app, which says why the device is blocked.
 
 ## A lost phone
 

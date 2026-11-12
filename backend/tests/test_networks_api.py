@@ -91,3 +91,41 @@ def test_network_not_found_404(client, parent_headers):
         headers=parent_headers,
     )
     assert response.status_code == 404
+
+
+def _patch(client, headers, net, body):
+    return client.patch(f"/api/v1/networks/{net.id}", json=body, headers=headers)
+
+
+def test_update_network_response_shape(client, parent_headers, network):
+    """PATCH returns the same shape as the list endpoint."""
+    r = _patch(client, parent_headers, network, {"custom_label": "  Den  "})
+    assert r.status_code == 200
+    body = r.json()
+    listed = client.get("/api/v1/networks", headers=parent_headers).json()[0]
+    assert body == listed
+    assert body["custom_label"] == "Den"
+    assert body["subnet"] == "192.168.1.0/24"
+
+
+@pytest.mark.parametrize("value", [None, "", "   "])
+def test_update_network_clear_label(client, parent_headers, network, value):
+    """null/empty custom_label clears back to the auto label."""
+    _patch(client, parent_headers, network, {"custom_label": "Den"})
+    r = _patch(client, parent_headers, network, {"custom_label": value})
+    assert r.status_code == 200
+    assert r.json()["custom_label"] is None
+    assert r.json()["label"] == "Wired"
+
+
+def test_update_network_label_too_long_422(client, parent_headers, network):
+    assert _patch(client, parent_headers, network, {"custom_label": "x" * 41}).status_code == 422
+    assert _patch(client, parent_headers, network, {"custom_label": "x" * 40}).status_code == 200
+
+
+@pytest.mark.parametrize(
+    "body",
+    [{"enforce": "false"}, {"enforce": 0}, {"custom_label": 5}, {"bogus": 1}],
+)
+def test_update_network_invalid_body_422(client, parent_headers, network, body):
+    assert _patch(client, parent_headers, network, body).status_code == 422

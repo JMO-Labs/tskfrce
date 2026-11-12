@@ -8,7 +8,12 @@ The home box pauses a device by stepping in between it and your router. Some rou
 | Eero (mesh) | Often resists | Try disabling 'Client steering' / use a wired box. |
 | Google Wifi / Nest Wifi | Often resists | — |
 | UniFi with "Client device isolation" | Resists until isolation is off | Turn off "Client device isolation" for the network the box is on. |
+| UniFi with "Proxy ARP" | Resists until it is off | Turn off Proxy ARP for the network. |
 | Asus AiMesh | Usually works | — |
+
+## Access points: Proxy ARP and client isolation
+
+On UniFi, **Proxy ARP** and **client isolation** (also called guest or L2 isolation) can stop the box seeing and intercepting Wi-Fi devices. Symptom: Test block says it never saw the device use the internet, or a blocked phone still gets online. Turn both off for the home network.
 
 ## Report your router
 

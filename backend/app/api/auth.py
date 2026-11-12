@@ -66,6 +66,12 @@ async def login(login_data: LoginRequest, request: Request, db: Session = Depend
 
     touch_active(db, user)
 
+    # Get token_epoch from family settings (for parent/admin only)
+    token_epoch = 0
+    if user.role == UserRole.PARENT or user.is_superuser:
+        fam = get_family(db)
+        token_epoch = fam.token_epoch if fam else 0
+
     # Create access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth_service.create_access_token(
@@ -73,6 +79,7 @@ async def login(login_data: LoginRequest, request: Request, db: Session = Depend
             "sub": str(user.id),
             "username": user.username,
             "email": user.email,
+            "token_epoch": token_epoch,
         },
         expires_delta=access_token_expires,
     )
@@ -89,6 +96,7 @@ async def login(login_data: LoginRequest, request: Request, db: Session = Depend
             "sub": str(user.id),
             "username": user.username,
             "email": user.email,
+            "token_epoch": token_epoch,
         },
         expires_delta=refresh_token_expires,
     )
@@ -156,6 +164,17 @@ async def refresh_token(refresh_data: RefreshTokenRequest, db: Session = Depends
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Check epoch in refresh token (revocation: reject pre-reset refresh tokens)
+    if not auth_service.check_epoch(payload, user):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session invalidated. Log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Copy token_epoch from refresh token (NOT fresh from family, to catch revoked tokens)
+    token_epoch = payload.get("token_epoch", 0)
+
     # Create new access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth_service.create_access_token(
@@ -163,6 +182,7 @@ async def refresh_token(refresh_data: RefreshTokenRequest, db: Session = Depends
             "sub": str(user.id),
             "username": user.username,
             "email": user.email,
+            "token_epoch": token_epoch,
         },
         expires_delta=access_token_expires,
     )

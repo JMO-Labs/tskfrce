@@ -14,7 +14,7 @@ class OwnerChores:
 
 @dataclass(frozen=True)
 class DeviceFacts:
-    status: str  # unassigned | assigned | guest
+    status: str  # unassigned | assigned | guest | ignored
     owners: tuple[OwnerChores, ...]
     allowed_sets: tuple[tuple[Window, ...], ...]  # one per owner/group with windows
     free: tuple[Window, ...]  # free windows that apply to this device
@@ -56,7 +56,7 @@ def block_reason(f: DeviceFacts, now_local: datetime) -> str | None:
         return "penalty"
     if f.status == "guest":
         return None
-    if f.status == "unassigned":
+    if f.status in ("unassigned", "ignored"):  # ignored follows the new-devices policy
         ok = f.override == "unlock" or not f.new_devices_blocked
         return None if ok else "new_device"
     if f.exempt:
