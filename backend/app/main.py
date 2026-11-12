@@ -75,6 +75,7 @@ from app.core.monitoring import (
     get_metrics,
 )
 from app.eval import hooks as eval_hooks
+from app.eval.api import internal_router as eval_internal_router
 from app.eval.api import router as eval_router
 
 # Configure logging
@@ -210,6 +211,7 @@ fastapi_app.include_router(integration_widgets_router)
 fastapi_app.include_router(integration_local_router)
 fastapi_app.include_router(homework_router)
 fastapi_app.include_router(eval_router)
+fastapi_app.include_router(eval_internal_router)
 
 # Create the final app with ASGI middleware
 app = MetricsMiddleware(fastapi_app)

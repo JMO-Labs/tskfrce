@@ -7,15 +7,16 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user, get_db, require_parent
+from app.api.internal import require_token
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.eval import store
 from app.eval.config import APP_VERSION, any_on, feedback_on, stats_on
-from app.eval.events import _ERR, ROUTES, clean, emit
+from app.eval.events import _ERR, FAULT_COMPONENTS, FAULT_KINDS, ROUTES, box_fault, clean, emit
 from app.eval.sender import SHOTS_DIR
 from app.models.user import User, UserRole
 
@@ -31,8 +32,39 @@ class EventIn(BaseModel):
     props: dict[str, str | int] = {}
 
 
+class FaultIn(BaseModel):
+    component: str
+    kind: str
+
+    @field_validator("component")
+    @classmethod
+    def _component(cls, v: str) -> str:
+        if v not in FAULT_COMPONENTS:
+            raise ValueError("unknown component")
+        return v
+
+    @field_validator("kind")
+    @classmethod
+    def _kind(cls, v: str) -> str:
+        if v not in FAULT_KINDS:
+            raise ValueError("unknown kind")
+        return v
+
+
 class AgeIn(BaseModel):
     age_group: Literal["≤7", "8–10", "11–13", "14+"]
+
+
+internal_router = APIRouter(
+    prefix="/internal/eval", tags=["eval-internal"], dependencies=[Depends(require_token)]
+)
+
+
+@internal_router.post("/fault", status_code=204)
+def fault(body: FaultIn):
+    """Blocker/edge report a box-side failure. Best-effort; no-op when stats are off."""
+    box_fault(body.component, body.kind)
+    return Response(status_code=204)
 
 
 def _bad(msg: str) -> HTTPException:

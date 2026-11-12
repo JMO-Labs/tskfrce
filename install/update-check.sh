@@ -92,7 +92,7 @@ update_app() {
     if ! docker run --rm "$COSIGN" verify --certificate-identity-regexp "$IDENTITY" \
       --certificate-oidc-issuer "$ISSUER" "$digest" >>"$LOG" 2>&1; then
       say "SIGNATURE CHECK FAILED for $digest; not updating"
-      internal POST /internal/update-result "{\"result\":\"failed\",\"version\":\"$tag\",\"old_version\":\"$old\"}" >/dev/null || true
+      internal POST /internal/update-result "{\"result\":\"failed\",\"version\":\"$tag\",\"old_version\":\"$old\",\"reason\":\"sig_fail\"}" >/dev/null || true
       return 1
     fi
     running=$(docker inspect --format '{{.Image}}' "$(dc ps -q "$svc")")
@@ -116,7 +116,7 @@ update_app() {
   write_override "${prev[@]}"
   deploy || true
   healthy || say "ROLLBACK UNHEALTHY; the box needs attention"
-  internal POST /internal/update-result "{\"result\":\"failed\",\"version\":\"$tag\",\"old_version\":\"$old\"}" >/dev/null || true
+  internal POST /internal/update-result "{\"result\":\"failed\",\"version\":\"$tag\",\"old_version\":\"$old\",\"reason\":\"rollback\"}" >/dev/null || true
   return 1
 }
 

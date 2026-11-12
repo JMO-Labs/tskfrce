@@ -197,3 +197,16 @@ def test_report_workarounds_false_on_unreachable():
         backend.report_workarounds(_cfg("http://127.0.0.1:1"), {"aa:aa:aa:aa:aa:01": ["vpn"]})
         is False
     )
+
+
+def test_report_fault_posts_enums_with_token(make_stub):
+    s = make_stub(status=204, body=b"")
+    assert backend.report_fault(_cfg(s.url), "bind_fail") is True
+    _, path, headers, raw = s.requests[0]
+    assert path == "/internal/eval/fault"
+    assert headers["X-Internal-Token"] == "tok"
+    assert json.loads(raw) == {"component": "blocker", "kind": "bind_fail"}
+
+
+def test_report_fault_never_raises():
+    assert backend.report_fault(_cfg("http://127.0.0.1:1"), "bind_fail") is False

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_parent, security, user_from_token
 from app.core.client_ip import client_ip
+from app.eval.events import box_fault
 from app.models.user import User, UserRole
 from app.services import network_wifi
 
@@ -59,7 +60,10 @@ def scan_wifi() -> dict:
 @router.post("/join")
 def join_wifi(body: JoinRequest) -> dict:
     """Join from Settings. On failure the box returns to the previous network."""
-    return _daemon(network_wifi.join, body.ssid, body.password, body.security, body.hidden)
+    res = _daemon(network_wifi.join, body.ssid, body.password, body.security, body.hidden)
+    if res.get("success") is False:
+        box_fault("netd", "join_fail")
+    return res
 
 
 @router.post("/forget")
@@ -91,10 +95,23 @@ def _hotspot_only(request: Request, allow_connecting: bool = False) -> dict:
     return status
 
 
+_last_phase: list[str | None] = [None]
+
+
+def _note_phase(phase: str | None) -> None:
+    """A failed captive join means netd raised the hotspot again: report it once per failure."""
+    if phase == "failed" and _last_phase[0] != "failed":
+        box_fault("netd", "join_fail")
+        box_fault("netd", "hotspot_up")
+    _last_phase[0] = phase
+
+
 @setup_router.get("/status")
 def setup_status(request: Request) -> dict:
     """Captive page polls this: phase idle|connecting|connected|failed, error wrong_password|failed."""
-    return _hotspot_only(request, allow_connecting=True).get("setup", {})
+    setup = _hotspot_only(request, allow_connecting=True).get("setup", {})
+    _note_phase(setup.get("phase"))
+    return setup
 
 
 @setup_router.get("/scan")
@@ -121,4 +138,7 @@ def setup_join(
             raise HTTPException(401, "Sign in as a parent to change the box's Wi-Fi.")
         if not user.is_active or user.role != UserRole.PARENT:
             raise HTTPException(403, "Only parents can change the box's Wi-Fi.")
-    return _daemon(network_wifi.setup_join, body.ssid, body.password, body.security, body.hidden)
+    res = _daemon(network_wifi.setup_join, body.ssid, body.password, body.security, body.hidden)
+    if res.get("success") is False:
+        box_fault("netd", "join_fail")
+    return res
