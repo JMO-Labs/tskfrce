@@ -57,7 +57,7 @@ export function KidDay({ kid }: { kid: TodayKid }) {
     setTip(t ? { text: t.getAttribute('data-tip') ?? '', x: e.clientX, y: e.clientY } : null)
   }
   const nowMin = minuteOfDay(new Date(now), tz)
-  const label = hasOnline ? `${done} of ${total} chores done, ${online} of ${allowed} minutes online` : `${done} of ${total} done`
+  const label = hasOnline ? `${done} of ${total} chores done, ${ageText(online)} of ${ageText(allowed)} screen` : `${done} of ${total} done`
   return (
     <span className="pt-day" onPointerMove={show} onPointerLeave={() => setTip(null)}>
       <span className="pt-ringrow">
