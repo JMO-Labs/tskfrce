@@ -84,6 +84,8 @@ export function DeviceList({
   onTabChange,
 }: Props) {
   const unknown = devices.filter((d) => d.status === 'unassigned').length
+  // ignored devices live in the pane too, so keep the entry reachable for their undo
+  const ignored = devices.filter((d) => d.status === 'ignored').length
   const sorted = devices.filter((d) => d.status === 'assigned' || d.status === 'guest')
   const item = (d: Device) => {
     const state = deviceState(d)
@@ -150,7 +152,7 @@ export function DeviceList({
       <div className="p-list-items">
         {/* Devices tab */}
         <div role="tabpanel" aria-label="Devices" hidden={tab !== 'devices'}>
-          {unknown > 0 && (
+          {unknown + ignored > 0 && (
             <button
               type="button"
               className="p-device-item p-unk-entry"
@@ -165,7 +167,7 @@ export function DeviceList({
               </div>
             </button>
           )}
-          {sorted.length === 0 ? (unknown === 0 && (
+          {sorted.length === 0 ? (unknown + ignored === 0 && (
             <p className="p-device-empty">No devices yet. Open a web page on one to add it.</p>
           )) : (
             <div className="p-device-list">
