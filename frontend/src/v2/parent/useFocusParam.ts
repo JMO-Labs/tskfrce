@@ -45,7 +45,7 @@ function blurOpenBody() {
 }
 
 /** Every focus param: a record switch must not inherit the previous record's open row. */
-export const FOCUS_PARAMS = ['open', 'edit', 'pin', 'pick', 'net']
+export const FOCUS_PARAMS = ['open', 'edit', 'pin', 'pick']
 export const withoutFocus = (q: Query): Query => without(q, FOCUS_PARAMS)
 
 function without(q: Query, keys: string[]): Query {

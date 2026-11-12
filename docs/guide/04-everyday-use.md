@@ -296,7 +296,7 @@ Two more cards on **Today**: one offers trust mode for a kid after 10 approved c
 
 ![The Devices page with one device open](img/devices.jpg)
 
-**Devices** lists every device the box has seen, grouped by owner: **Who's this?** (new devices), one group for each kid, **Shared**, **Guests** and **No owner**. New devices stay online until you give them an owner. To pause them until you do, open the **Home network** row at the top of the Devices list and turn on **Block new devices until I assign them**. That row also shows the **Home box** status (Healthy or Offline). It used to be under Settings → Family.
+**Devices** lists every device the box has seen, grouped by owner: **Who's this?** (new devices), one group for each kid, **Shared**, **Guests** and **No owner**. New devices stay online until you give them an owner. To pause them until you do, open **Settings → Home network** and turn on **Block new devices until I assign them**. That page also shows the **Home box** status (Healthy or Offline).
 
 Tap a device to open it:
 
