@@ -12,7 +12,6 @@ type Call = [string, { method?: string; body?: Record<string, unknown> }?]
 const apiMock = api as unknown as jest.Mock<Promise<unknown>, Call>
 const net = (o: object) => ({ id: 1, iface: 'eth0', subnet: '192.168.1.0/24', label: 'Home', auto_label: 'Home', custom_label: null, enforce: true, last_seen: new Date().toISOString(), ...o })
 let rows: object[]
-let failPatch: boolean
 const patches = () => apiMock.mock.calls.filter((c) => c[1]?.method === 'PATCH')
 
 const wrap = () =>
@@ -27,10 +26,8 @@ beforeAll(() => {
 })
 beforeEach(() => {
   rows = [net({}), net({ id: 2, iface: 'eth1', subnet: '10.0.0.0/24', label: 'Guest', auto_label: 'Guest' })]
-  failPatch = false
   apiMock.mockReset().mockImplementation(async (_p, i) => {
     if (i?.method === 'PATCH') {
-      if (failPatch) throw new Error('nope')
       return { ...(rows[0] as object), ...i.body }
     }
     return rows
@@ -42,6 +39,7 @@ test('lists each network with subnet', async () => {
   expect(await screen.findByText('Guest')).toBeTruthy()
   expect(screen.getByText(/10\.0\.0\.0\/24/)).toBeTruthy()
   expect(screen.getByText(/192\.168\.1\.0\/24/)).toBeTruthy()
+  expect(screen.getAllByText(/last seen/i)).toHaveLength(2)
 })
 
 test('hidden with a single network', async () => {
@@ -85,12 +83,18 @@ test('turning Enforce off asks first; on does not', async () => {
 
 test('failed save rolls back the switch', async () => {
   rows = [net({ enforce: false }), net({ id: 2, label: 'Guest' })]
-  failPatch = true
+  let rejectPatch: (e: Error) => void = () => {}
+  let gets = 0
+  apiMock.mockReset().mockImplementation((_p, i) => {
+    if (i?.method === 'PATCH') return new Promise((_res, rej) => { rejectPatch = rej })
+    return ++gets === 1 ? Promise.resolve(rows) : new Promise(() => {})
+  })
   wrap()
   await screen.findByText('Guest')
-  const sw = screen.getAllByRole('switch', { name: /enforce here/i })[0] as HTMLInputElement
-  expect(sw.checked).toBe(false)
-  await userEvent.setup().click(sw)
-  await waitFor(() => expect(patches()).toHaveLength(1))
-  await waitFor(() => expect((screen.getAllByRole('switch', { name: /enforce here/i })[0] as HTMLInputElement).checked).toBe(false))
+  const sw = () => screen.getAllByRole('switch', { name: /enforce here/i })[0] as HTMLInputElement
+  expect(sw().checked).toBe(false)
+  await userEvent.setup().click(sw())
+  await waitFor(() => expect(sw().checked).toBe(true))
+  rejectPatch(new Error('nope'))
+  await waitFor(() => expect(sw().checked).toBe(false))
 })
