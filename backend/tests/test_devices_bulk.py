@@ -99,5 +99,8 @@ def test_list_carries_network_id(client, db, parent_headers):
     db.commit()
     _dev(db, 1, network_id=n.id)
     _dev(db, 2)
-    got = {d["mac"]: d["network_id"] for d in client.get("/api/v1/devices", headers=parent_headers).json()}
+    got = {
+        d["mac"]: d["network_id"]
+        for d in client.get("/api/v1/devices", headers=parent_headers).json()
+    }
     assert got == {"aa:bb:cc:dd:ee:01": n.id, "aa:bb:cc:dd:ee:02": None}
