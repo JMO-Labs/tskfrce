@@ -51,6 +51,18 @@ AUTH_STEPS = frozenset({"login", "register", "join", "reset_pin", "forgot_pin"})
 AUTH_RESULTS = frozenset({"ok", "fail_pin", "fail_code", "locked", "error"})
 FORMS = ("chore", "kid", "window", "feedback")
 WIZARD_STEPS = 7  # frontend/src/v2/setup/WizardFrame.tsx STEPS
+GAME_IDS = frozenset({"quickfire", "hungry-cat", "math-dash", "pack-the-box", "shelf-memory"})
+GAME_RESULTS = frozenset({"start", "finish", "quit"})
+DURATION_BUCKETS = frozenset({"<30s", "30-60s", "1-2m", "2-5m", "5m+"})
+SCORE_BUCKETS = frozenset({"0", "1-9", "10-49", "50-199", "200-999", "1000+"})
+SETUP_WHAT = frozenset(
+    {
+        "devices_found_0", "devices_found_1_3", "devices_found_4_9", "devices_found_10p",
+        "rescan", "name_edited", "wifi_changed",
+        "preset_relaxed", "preset_balanced", "preset_strict", "preset_mixed",
+        "chores_kept_0", "chores_kept_lt50", "chores_kept_50_99", "chores_kept_100",
+    }
+)  # fmt: skip
 _ERR = re.compile(r"^(http_[1-5]\d\d|network|other)$")
 
 
@@ -88,14 +100,13 @@ def clean(name: str, props: dict) -> dict | None:
             return {"step": st, "result": res}
         return None
     if name == "wizard_step":
-        s, state = props.get("step"), props.get("state")
-        if isinstance(s, bool) or not (
-            isinstance(s, int) or (isinstance(s, str) and s.isascii() and s.isdigit())
-        ):
-            return None
-        if not 1 <= int(s) <= WIZARD_STEPS or state not in ("started", "done"):
-            return None
-        return {"step": int(s), "state": state}
+        s, state = _step(props.get("step")), props.get("state")
+        return {"step": s, "state": state} if s and state in ("started", "done") else None
+    if name == "game":
+        return _game(props)
+    if name == "setup_detail":
+        st, what = _step(props.get("step")), props.get("what")
+        return {"step": st, "what": what} if st and _in(what, SETUP_WHAT) else None
     if name == "wizard_done":
         return {}
     if name == "form_abandoned":
@@ -105,6 +116,34 @@ def clean(name: str, props: dict) -> dict | None:
         k = props.get("kind")
         return {"kind": k if isinstance(k, str) and _ERR.fullmatch(k) else "other"}
     return None
+
+
+def _in(v, allowed: frozenset) -> bool:
+    return isinstance(v, str) and v in allowed
+
+
+def _step(s) -> int | None:
+    """Wizard step 1..WIZARD_STEPS as int, else None."""
+    if isinstance(s, bool) or not (
+        isinstance(s, int) or (isinstance(s, str) and s.isascii() and s.isdigit())
+    ):
+        return None
+    return int(s) if 1 <= int(s) <= WIZARD_STEPS else None
+
+
+def _game(props: dict) -> dict | None:
+    gid, res = props.get("id"), props.get("result")
+    if not (_in(gid, GAME_IDS) and _in(res, GAME_RESULTS)):
+        return None
+    out = {"id": gid, "result": res}
+    for key, allowed in (("duration_bucket", DURATION_BUCKETS), ("score_bucket", SCORE_BUCKETS)):
+        v = props.get(key)
+        if v is None:
+            continue
+        if not _in(v, allowed):
+            return None
+        out[key] = v
+    return out
 
 
 def duration_bucket(minutes: int | None) -> str:

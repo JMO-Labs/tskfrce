@@ -110,3 +110,35 @@ def test_clean_auth():
     assert events.clean("auth", {"step": "x", "result": "ok"}) is None
     assert events.clean("auth", {"step": "login", "result": "mia@x.com"}) is None
     assert events.clean("auth", {"step": "login"}) is None
+
+
+def test_clean_game():
+    props = {"id": "hungry-cat", "result": "finish", "duration_bucket": "1-2m"}
+    props["score_bucket"] = "10-49"
+    assert events.clean("game", {**props, "kid_id": 3, "name": "Mia"}) == props
+    assert events.clean("game", {"id": "hungry-cat", "result": "start"}) == {
+        "id": "hungry-cat",
+        "result": "start",
+    }
+    assert events.clean("game", {**props, "id": "Mia's game"}) is None
+    assert events.clean("game", {**props, "result": "won"}) is None
+    assert events.clean("game", {**props, "score_bucket": 37}) is None
+    assert events.clean("game", {**props, "duration_bucket": "93s"}) is None
+
+
+def test_game_ids_match_catalog():
+    from app.services.games_catalog import GAMES
+
+    assert set(GAMES) == events.GAME_IDS
+
+
+def test_clean_setup_detail():
+    for what in (
+        "devices_found_0", "devices_found_4_9", "rescan", "name_edited", "preset_strict",
+        "preset_mixed", "chores_kept_100", "chores_kept_lt50", "wifi_changed",
+    ):  # fmt: skip
+        assert events.clean("setup_detail", {"step": 3, "what": what}) == {"step": 3, "what": what}
+    assert events.clean("setup_detail", {"step": 3, "what": "devices_found_12"}) is None
+    assert events.clean("setup_detail", {"step": 3, "what": "MyHomeWifi"}) is None
+    assert events.clean("setup_detail", {"step": 9, "what": "rescan"}) is None
+    assert events.clean("setup_detail", {"step": True, "what": "rescan"}) is None

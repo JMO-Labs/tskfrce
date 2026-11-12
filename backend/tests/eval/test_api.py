@@ -184,3 +184,13 @@ def test_feature_event_counts_area(client, eval_on, parent_headers):
     body = {"name": "feature", "props": {"area": "goals", "action": "open"}}
     assert client.post(f"{P}/event", json=body, headers=parent_headers).status_code == 204
     assert store.counters(store.local_day()).get("feat:goals") == 1
+
+
+def test_kid_game_event_has_age_group_not_kid_id(client, eval_on, parent_headers, kid_headers, kid):
+    client.put(f"{P}/kids/{kid.id}/age", json={"age_group": "11–13"}, headers=parent_headers)
+    props = {"id": "math-dash", "result": "start", "kid_id": kid.id, "user_id": kid.id}
+    r = client.post(f"{P}/event", json={"name": "game", "props": props}, headers=kid_headers)
+    assert r.status_code == 204
+    data = _rows("umami")[0].body["payload"]["data"]
+    assert data["age_group"] == "11–13" and data["source"] == "kid"
+    assert not {"kid_id", "user_id", "id_kid"} & set(data)
