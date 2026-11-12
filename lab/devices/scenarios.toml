@@ -1,0 +1,286 @@
+# Escape matrix rows for platform A that need no server. Shell runs as root via adb shell.
+# Probe rc: 0 = real internet reached, 1 = blocked, 3 = partial. See escape.py.
+
+[[scenario]]
+id = "tx.https"
+title = "Plain HTTPS to a CDN (TLS validated, body checked)"
+category = "transport"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl='''
+
+[[scenario]]
+id = "tx.http"
+title = "Plain HTTP (portal/gate answers must not match)"
+category = "transport"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/real.sh http://example.com 'Example Domain''''
+
+[[scenario]]
+id = "tx.quic"
+title = "HTTP/3 over UDP 443"
+category = "transport"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/real.sh https://cloudflare-quic.com cloudflare --http3-only'''
+
+[[scenario]]
+id = "tx.iplit"
+title = "HTTPS to a bare IP"
+category = "transport"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/real.sh https://1.1.1.1/cdn-cgi/trace fl='''
+
+[[scenario]]
+id = "tx.ech"
+title = "Encrypted Client Hello via DoH-fetched config"
+category = "transport"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/real.sh https://crypto.cloudflare.com/cdn-cgi/trace sni=encrypted --ech true --doh-url https://1.1.1.1/dns-query'''
+
+[[scenario]]
+id = "tx.longlived"
+title = "Stream opened before the lock keeps flowing"
+category = "transport"
+platforms = ["A"]
+setup = '''/data/local/tmp/kit/longlived.sh start'''
+teardown = '''/data/local/tmp/kit/longlived.sh stop'''
+restore_probe = '''/data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl='''
+probe = '''/data/local/tmp/kit/longlived.sh check'''
+timeout = 30
+
+[[scenario]]
+id = "dns.static.8888"
+title = "Plain DNS to 8.8.8.8:53"
+category = "dns"
+platforms = ["A"]
+probe = '''! /data/local/tmp/kit/q example.com A @192.0.2.53 --timeout 3s | grep -q ' A [0-9]' && SSL_CERT_FILE=/data/local/tmp/kit/ca-bundle.crt /data/local/tmp/kit/q example.com A @8.8.8.8 --timeout 5s | grep -q ' A [0-9]''''
+
+[[scenario]]
+id = "dns.static.1111"
+title = "Plain DNS to 1.1.1.1:53"
+category = "dns"
+platforms = ["A"]
+probe = '''! /data/local/tmp/kit/q example.com A @192.0.2.53 --timeout 3s | grep -q ' A [0-9]' && SSL_CERT_FILE=/data/local/tmp/kit/ca-bundle.crt /data/local/tmp/kit/q example.com A @1.1.1.1 --timeout 5s | grep -q ' A [0-9]''''
+
+[[scenario]]
+id = "dns.static.9999"
+title = "Plain DNS to 9.9.9.9:53"
+category = "dns"
+platforms = ["A"]
+probe = '''! /data/local/tmp/kit/q example.com A @192.0.2.53 --timeout 3s | grep -q ' A [0-9]' && SSL_CERT_FILE=/data/local/tmp/kit/ca-bundle.crt /data/local/tmp/kit/q example.com A @9.9.9.9 --timeout 5s | grep -q ' A [0-9]''''
+
+[[scenario]]
+id = "dns.dot.direct"
+title = "DoT to 8.8.8.8:853"
+category = "dns"
+platforms = ["A"]
+probe = '''SSL_CERT_FILE=/data/local/tmp/kit/ca-bundle.crt /data/local/tmp/kit/q example.com A @tls://8.8.8.8 --timeout 5s | grep -q ' A [0-9]''''
+
+[[scenario]]
+id = "dns.dot.private"
+title = "Android Private DNS hostname=dns.google"
+category = "dns"
+platforms = ["A"]
+setup = '''settings put global private_dns_mode hostname; settings put global private_dns_specifier dns.google; sleep 6'''
+locked_setup = '''settings put global private_dns_mode opportunistic; sleep 2; settings put global private_dns_mode hostname; sleep 10'''
+expect_alert = true
+teardown = '''settings put global private_dns_mode opportunistic'''
+probe = '''ping -c1 -W3 r$(date +%s%N).1-1-1-1.sslip.io 2>&1 | grep -q '(1.1.1.1)''''
+
+[[scenario]]
+id = "dns.doh.iplit"
+title = "DoH to an IP literal (1.1.1.1)"
+category = "dns"
+platforms = ["A"]
+probe = '''SSL_CERT_FILE=/data/local/tmp/kit/ca-bundle.crt /data/local/tmp/kit/q example.com A @https://1.1.1.1/dns-query --timeout 5s | grep -q ' A [0-9]''''
+
+[[scenario]]
+id = "dns.doh.google"
+title = "DoH to 8.8.8.8"
+category = "dns"
+platforms = ["A"]
+probe = '''SSL_CERT_FILE=/data/local/tmp/kit/ca-bundle.crt /data/local/tmp/kit/q example.com A @https://8.8.8.8/dns-query --timeout 5s | grep -q ' A [0-9]''''
+
+[[scenario]]
+id = "dns.doq"
+title = "DNS over QUIC (UDP 853) to AdGuard IP"
+category = "dns"
+platforms = ["A"]
+probe = '''SSL_CERT_FILE=/data/local/tmp/kit/ca-bundle.crt /data/local/tmp/kit/q example.com A @quic://94.140.14.14 --timeout 5s | grep -q ' A [0-9]''''
+
+[[scenario]]
+id = "dns.hosts"
+title = "Hosts-style pinning: connect straight to a CDN IP"
+category = "dns"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= --connect-to ::104.16.124.96:'''
+
+[[scenario]]
+id = "gate.budget"
+title = "20 parallel connections to Google search; real results count"
+category = "gate"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/gate.sh budget'''
+timeout = 40
+
+[[scenario]]
+id = "gate.front.youtube"
+title = "SNI www.google.com, Host www.youtube.com"
+category = "gate"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/gate.sh yt'''
+timeout = 40
+
+[[scenario]]
+id = "proxy.translate"
+title = "Google Translate (translate.goog) as a proxy"
+category = "proxy"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/real.sh 'https://example-com.translate.goog/?_x_tr_sl=en&_x_tr_tl=fr' Example'''
+
+[[scenario]]
+id = "id.forget"
+title = "Wi-Fi off/on while locked, then try to reach the internet"
+category = "identity"
+platforms = ["A"]
+probe = '''svc wifi disable; sleep 2; svc wifi enable; i=0; while [ $i -lt 15 ]; do /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= && exit 0; sleep 3; i=$((i+1)); done; exit 1'''
+timeout = 90
+
+[[scenario]]
+id = "dns.router"
+title = "emulator NAT hides the real router; needs laptop platform"
+platforms = ["A"]
+probe = '''true'''
+skip = "emulator NAT hides the real router; needs laptop platform"
+
+[[scenario]]
+id = "dns.doh.browser"
+title = "no Chrome/Firefox on the emulator image"
+platforms = ["A"]
+probe = '''true'''
+skip = "no Chrome/Firefox on the emulator image"
+
+[[scenario]]
+id = "tx.chrome"
+title = "no Chrome on the emulator image"
+platforms = ["A"]
+probe = '''true'''
+skip = "no Chrome on the emulator image"
+
+[[scenario]]
+id = "tx.v6.global"
+title = "emulator NAT has no IPv6"
+platforms = ["A"]
+probe = '''true'''
+skip = "emulator NAT has no IPv6"
+
+[[scenario]]
+id = "tx.v6.ula"
+title = "emulator NAT has no IPv6"
+platforms = ["A"]
+probe = '''true'''
+skip = "emulator NAT has no IPv6"
+
+[[scenario]]
+id = "tx.v6.privacy"
+title = "emulator NAT has no IPv6"
+platforms = ["A"]
+probe = '''true'''
+skip = "emulator NAT has no IPv6"
+
+[[scenario]]
+id = "tx.push"
+title = "no Google Play services/chat app on emulator image"
+platforms = ["A"]
+probe = '''true'''
+skip = "no Google Play services/chat app on emulator image"
+
+[[scenario]]
+id = "vpn.warp"
+title = "needs the WARP app (not installed)"
+platforms = ["A"]
+probe = '''true'''
+skip = "needs the WARP app (not installed)"
+
+[[scenario]]
+id = "vpn.tor"
+title = "needs Tor/Orbot (not installed)"
+platforms = ["A"]
+probe = '''true'''
+skip = "needs Tor/Orbot (not installed)"
+
+[[scenario]]
+id = "vpn.psiphon"
+title = "needs the Psiphon app (not installed)"
+platforms = ["A"]
+probe = '''true'''
+skip = "needs the Psiphon app (not installed)"
+
+[[scenario]]
+id = "vpn.browser"
+title = "needs Opera/Edge (not installed)"
+platforms = ["A"]
+probe = '''true'''
+skip = "needs Opera/Edge (not installed)"
+
+[[scenario]]
+id = "id.randmac"
+title = "MAC is the host Wi-Fi adapter behind emulator NAT; phase 3 laptop"
+platforms = ["A"]
+probe = '''true'''
+skip = "MAC is the host Wi-Fi adapter behind emulator NAT; phase 3 laptop"
+
+[[scenario]]
+id = "id.newmac"
+title = "emulator NAT hides MAC changes from the box; phase 3 laptop"
+platforms = ["A"]
+probe = '''true'''
+skip = "emulator NAT hides MAC changes from the box; phase 3 laptop"
+
+[[scenario]]
+id = "id.hostname"
+title = "hostname change invisible behind NAT; phase 3"
+platforms = ["A"]
+probe = '''true'''
+skip = "hostname change invisible behind NAT; phase 3"
+
+[[scenario]]
+id = "id.staticip"
+title = "static IP behind emulator NAT is meaningless; phase 3"
+platforms = ["A"]
+probe = '''true'''
+skip = "static IP behind emulator NAT is meaningless; phase 3"
+
+[[scenario]]
+id = "id.other_ssid"
+title = "needs a second SSID on the emulator Wi-Fi netns; phase 3"
+platforms = ["A"]
+probe = '''true'''
+skip = "needs a second SSID on the emulator Wi-Fi netns; phase 3"
+
+[[scenario]]
+id = "box.race"
+title = "needs box-side timing control; later phase"
+platforms = ["A"]
+probe = '''true'''
+skip = "needs box-side timing control; later phase"
+
+[[scenario]]
+id = "box.reboot_dev"
+title = "emulator reboot changes the NAT; later phase"
+platforms = ["A"]
+probe = '''true'''
+skip = "emulator reboot changes the NAT; later phase"
+
+[[scenario]]
+id = "col.parent"
+title = "needs a second unlocked device"
+platforms = ["A"]
+probe = '''true'''
+skip = "needs a second unlocked device"
+
+[[scenario]]
+id = "col.testblock"
+title = "needs UI verdict comparison; later phase"
+platforms = ["A"]
+probe = '''true'''
+skip = "needs UI verdict comparison; later phase"
