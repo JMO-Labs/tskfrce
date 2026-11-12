@@ -356,4 +356,20 @@ RULES = {
     "feature.homework": feature_homework,
     "kid.age_up": kid_age_up,
 }
-SYSTEM_RULES = frozenset({"devices.unknown"})
+
+from app.services.suggestions.system_rules import (  # noqa: E402  (needs _s above)
+    box_power_rule,
+    cert_expiring,
+    update_failed,
+    update_ready,
+)
+
+RULES |= {
+    "update.ready": update_ready,
+    "update.failed": update_failed,
+    "cert.expiring": cert_expiring,
+    "box.power": box_power_rule,
+}
+SYSTEM_RULES = frozenset(
+    {"devices.unknown", "update.ready", "update.failed", "cert.expiring", "box.power"}
+)

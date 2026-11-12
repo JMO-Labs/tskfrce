@@ -106,7 +106,18 @@ issue_or_renew() {
   else
     echo "lego failed" >&2
   fi
+  share_certs
   [ "$before" != "$(cksum "$CRT" 2>/dev/null)" ]
+}
+
+# share_certs: let the backend (non-root, edge_data mounted ro) read public certs for
+# its cert.expiring suggestion. Private keys stay 0600.
+share_certs() {
+  d=$DATA_DIR/lego/certificates
+  [ -d "$d" ] || return 0
+  chmod 711 "$DATA_DIR/lego" && chmod 755 "$d"
+  for f in "$d"/*.crt; do [ -f "$f" ] && chmod 644 "$f"; done
+  return 0
 }
 
 next_backoff() {

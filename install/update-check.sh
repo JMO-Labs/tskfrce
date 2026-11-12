@@ -115,8 +115,9 @@ update_app() {
   say "health check failed; rolling back to $old"
   write_override "${prev[@]}"
   deploy || true
-  healthy || say "ROLLBACK UNHEALTHY; the box needs attention"
-  internal POST /internal/update-result "{\"result\":\"failed\",\"version\":\"$tag\",\"old_version\":\"$old\"}" >/dev/null || true
+  local rb=true
+  healthy || { rb=false; say "ROLLBACK UNHEALTHY; the box needs attention"; }
+  internal POST /internal/update-result "{\"result\":\"failed\",\"version\":\"$tag\",\"old_version\":\"$old\",\"rollback_healthy\":$rb}" >/dev/null || true
   return 1
 }
 

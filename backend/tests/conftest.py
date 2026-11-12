@@ -8,6 +8,7 @@ os.environ.setdefault("DATA_DIR", tempfile.mkdtemp(prefix="task4ce-test-"))
 
 os.environ.setdefault("LOCK_LOOP_ENABLED", "false")
 os.environ.setdefault("INTEGRATIONS_LOOP_ENABLED", "false")
+os.environ.setdefault("POWER_HEARTBEAT_ENABLED", "false")
 
 import pytest  # noqa: E402
 from app.api.deps import get_db  # noqa: E402
