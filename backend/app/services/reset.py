@@ -159,68 +159,64 @@ def backup_export(db: Session) -> str:
 
     Returns: JSON string with {family, kids, chores, rewards, points_history}.
     """
-    try:
-        fam = db.query(FamilySettings).first()
-        if not fam:
-            return json.dumps({})
+    fam = db.query(FamilySettings).first()
+    if not fam:
+        return json.dumps({})
 
-        # Gather data
-        kids = db.query(User).filter(User.role == UserRole.KID).all()
-        from app.models import Chore, Points, Reward
+    # Gather data
+    kids = db.query(User).filter(User.role == UserRole.KID).all()
+    from app.models import Chore, Points, Reward
 
-        chores = db.query(Chore).all()
-        rewards = db.query(Reward).all()
-        points = db.query(Points).all()
+    chores = db.query(Chore).all()
+    rewards = db.query(Reward).all()
+    points = db.query(Points).all()
 
-        export: dict[str, Any] = {
-            "exported_at": datetime.now(UTC).isoformat(),
-            "family": {
-                "name": fam.name,
-                "timezone": fam.timezone,
-                "reset_time": fam.reset_time,
-            },
-            "kids": [
-                {
-                    "id": k.id,
-                    "name": k.full_name,
-                    "email": k.email,
-                    "role": k.role,
-                }
-                for k in kids
-            ],
-            "chores": [
-                {
-                    "id": c.id,
-                    "name": c.name,
-                    "category": c.category,
-                }
-                for c in chores
-            ],
-            "rewards": [
-                {
-                    "id": r.id,
-                    "name": r.name,
-                    "price": r.price,
-                }
-                for r in rewards
-            ],
-            "points_history": [
-                {
-                    "id": p.id,
-                    "kid_id": p.kid_id,
-                    "amount": p.amount,
-                    "reason": p.reason,
-                    "created_at": p.created_at.isoformat() if p.created_at else None,
-                }
-                for p in points
-            ],
-        }
+    export: dict[str, Any] = {
+        "exported_at": datetime.now(UTC).isoformat(),
+        "family": {
+            "name": fam.name,
+            "timezone": fam.timezone,
+            "reset_time": fam.reset_time,
+        },
+        "kids": [
+            {
+                "id": k.id,
+                "name": k.full_name,
+                "email": k.email,
+                "role": k.role,
+            }
+            for k in kids
+        ],
+        "chores": [
+            {
+                "id": c.id,
+                "name": c.title,
+                "points": c.points,
+            }
+            for c in chores
+        ],
+        "rewards": [
+            {
+                "id": r.id,
+                "name": r.name,
+                "price": r.price,
+            }
+            for r in rewards
+        ],
+        "points_history": [
+            {
+                "id": p.id,
+                "kid_id": p.user_id,
+                "amount": p.amount,
+                "reason": p.reason,
+                "description": p.description,
+                "created_at": p.created_at.isoformat() if p.created_at else None,
+            }
+            for p in points
+        ],
+    }
 
-        return json.dumps(export, indent=2)
-
-    except Exception as e:
-        logger.error("Backup export failed", error=str(e))
-        return json.dumps({"error": str(e)})
+    return json.dumps(export, indent=2)
 
 
 def _log_telemetry_intent(event_name: str, data: dict[str, Any] | None = None) -> None:
