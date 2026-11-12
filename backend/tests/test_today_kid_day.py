@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from app.models.chores import ChoreRun
 from app.models.device_activity import DevicePresence
 from app.models.family import get_family
-from app.models.lock import Device
+from app.models.lock import Device, Override
 from app.models.user import UserRole
 from app.services import today_kid
 
@@ -70,6 +70,23 @@ def test_lock_reason_hours_and_open(db):
     assert today_kid.day_facts(db, kid, [d], NOW)["lock_reason"] == "hours"
     inside = datetime(2026, 10, 20, 17, 30, tzinfo=UTC)
     assert today_kid.day_facts(db, kid, [d], inside)["lock_reason"] is None
+
+
+def test_lock_reason_mixed_blocks_pick_by_priority_not_device_order(db):
+    kid = _kid(db)
+    make_rule(db, kid_ids=[kid.id], times=(("17:00", "18:00"),))  # hours block both devices now
+    a, b = _dev(db, kid), _dev(db, kid, "aa:bb:cc:dd:ee:02")
+    db.add(Override(device_id=b.id, action="lock", source="manual"))
+    db.commit()
+    assert today_kid.day_facts(db, kid, [a, b], NOW)["lock_reason"] == "manual"
+    assert today_kid.day_facts(db, kid, [b, a], NOW)["lock_reason"] == "manual"
+
+
+def test_lock_reason_priority_order():
+    pick = today_kid._pick_reason
+    assert pick(["schedule", "chores"]) == pick(["chores", "schedule"]) == "chores"
+    assert pick(["schedule", "penalty", "chores"]) == "manual"
+    assert pick(["schedule", "schedule"]) == "hours"
 
 
 def test_lock_reason_none_without_devices(db):

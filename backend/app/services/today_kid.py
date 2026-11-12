@@ -17,6 +17,7 @@ from app.services import chores as svc
 DAY_START, DAY_END = 7 * 60, 21 * 60  # the card timeline: 7am to 9pm, in minutes
 SLOT = 10  # presence slot length, minutes
 _REASON = {"schedule": "hours", "chores": "chores"}  # anything else a parent/penalty set: manual
+_PRIORITY = ("manual", "chores", "hours")  # mixed blocks: parent lock first, then the fixable one
 
 
 def _allowed_windows(db: Session, kid, fam, d: date, pre) -> list[list[int]]:
@@ -28,7 +29,7 @@ def _allowed_windows(db: Session, kid, fam, d: date, pre) -> list[list[int]]:
     out: list[list[int]] = []
     for m in range(DAY_START, DAY_END):
         t = datetime.combine(d, time(m // 60, m % 60), tzinfo=tz)
-        if hours._allowing(r.allowed_sets, r.off, t):
+        if hours.allowing(r.allowed_sets, r.off, t):
             if out and out[-1][1] == m:
                 out[-1][1] = m + 1
             else:
@@ -70,7 +71,13 @@ def _lock_reason(db: Session, devices, fam, now: datetime, pre) -> str | None:
     reasons = [block_reason(device_facts(db, d, fam, now, pre), nl) for d in devices]
     if any(r is None for r in reasons):
         return None
-    return _REASON.get(reasons[0], "manual")
+    return _pick_reason(reasons)
+
+
+def _pick_reason(reasons: list[str]) -> str:
+    """One kid-level reason from per-device block reasons, by fixed priority (not device order)."""
+    mapped = {_REASON.get(r, "manual") for r in reasons}
+    return next(p for p in _PRIORITY if p in mapped)
 
 
 def day_facts(db: Session, kid, devices, now: datetime, runs=(), pre=None, slots=None) -> dict:
