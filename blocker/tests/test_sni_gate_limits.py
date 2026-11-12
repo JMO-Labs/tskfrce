@@ -16,10 +16,8 @@ def _fresh_budgets(monkeypatch):
 
 
 def test_window_budget_caps_connections_per_device_and_resets():
-    n = sni_gate.WINDOW_CONNS
-    for _ in range(n):
+    for _ in range(sni_gate.WINDOW_CONNS):
         assert sni_gate._admit("10.0.0.9", 100.0)
-        sni_gate._release("10.0.0.9")
     assert not sni_gate._admit("10.0.0.9", 101.0)
     assert sni_gate._admit("10.0.0.8", 101.0)  # per device
     assert sni_gate._admit("10.0.0.9", 100.0 + sni_gate.WINDOW)
@@ -29,17 +27,30 @@ def test_window_budget_caps_bytes_per_device():
     assert sni_gate._admit("10.0.0.9", 100.0)
     assert sni_gate._charge("10.0.0.9", sni_gate.WINDOW_BYTES, 100.0)
     assert not sni_gate._charge("10.0.0.9", 1, 100.0)
-    sni_gate._release("10.0.0.9")
     assert not sni_gate._admit("10.0.0.9", 101.0)  # spent: no new connections this window
     assert sni_gate._admit("10.0.0.9", 100.0 + sni_gate.WINDOW)
 
 
-def test_concurrent_connections_per_device_are_capped():
-    for _ in range(sni_gate.PER_CLIENT):
-        assert sni_gate._admit("10.0.0.9", 100.0)
-    assert not sni_gate._admit("10.0.0.9", 100.0)
-    sni_gate._release("10.0.0.9")
-    assert sni_gate._admit("10.0.0.9", 100.0)
+def test_silent_client_is_closed_at_the_hello_deadline(monkeypatch):
+    monkeypatch.setattr(sni_gate, "HELLO_DEADLINE", 0.3)
+    a, b = socket.socketpair()
+    t = threading.Thread(target=sni_gate._serve, args=(b,), daemon=True)
+    t0 = time.monotonic()
+    t.start()
+    a.settimeout(5)
+    hello = _hello("www.google.com")
+    for i in range(20):  # trickle: each byte resets an idle timer, not the deadline
+        try:
+            a.send(hello[i : i + 1])
+        except OSError:
+            break
+        time.sleep(0.1)
+    try:
+        assert a.recv(1) == b""
+    except ConnectionResetError:
+        pass
+    assert time.monotonic() - t0 < 1.5
+    t.join(2)
 
 
 def _stalled(monkeypatch, talker: str | None, **limits) -> float:
@@ -111,3 +122,32 @@ def test_gate_refuses_connections_beyond_the_thread_bound(monkeypatch):
     stop.set()
     first.close()
     second.close()
+
+
+def test_gate_caps_open_connections_per_source_at_accept(monkeypatch):
+    monkeypatch.setattr(sni_gate, "PER_SOURCE", 1)
+    hold = threading.Event()
+    served = []
+    monkeypatch.setattr(
+        sni_gate, "_serve", lambda conn: served.append(1) or hold.wait(5) or conn.close()
+    )
+    probe = socket.socket()
+    probe.bind(("127.0.0.1", 0))
+    port = probe.getsockname()[1]
+    probe.close()
+    stop = threading.Event()
+    threading.Thread(target=sni_gate.run_gate, args=(stop, "127.0.0.1", port), daemon=True).start()
+    time.sleep(0.3)
+    first = socket.create_connection(("127.0.0.1", port), timeout=3)
+    time.sleep(0.2)
+    second = socket.create_connection(("127.0.0.1", port), timeout=3)
+    assert second.recv(1) == b""  # same source over its cap: closed before any handler runs
+    assert served == [1]
+    hold.set()
+    time.sleep(0.3)
+    third = socket.create_connection(("127.0.0.1", port), timeout=3)  # slot freed
+    time.sleep(0.3)
+    assert served == [1, 1]
+    stop.set()
+    for s in (first, second, third):
+        s.close()
