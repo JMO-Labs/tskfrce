@@ -56,7 +56,7 @@ test('chore model: type, chained steps, kid note, skip, deduction', async ({ pag
     await page.getByRole('button', { name: 'Save chore' }).click() // one Save sends the chore and Who & when
     await expect(page.getByRole('button', { name: new RegExp(`^${choreName}`) }).first()).toContainText('2 steps')
     // the assignment is saved after the chore: wait for the kid's avatar on the card before reading today's runs
-    await expect(page.getByRole('button', { name: new RegExp(`^${choreName}`) }).first().getByRole('img', { name: kidName })).toBeVisible()
+    await expect(page.getByRole('button', { name: new RegExp(`^${choreName}`) }).first().getByRole('img', { name: kidName, exact: true })).toBeAttached() // the avatar wrapper is display:contents: it has no box, so never "visible"
 
     const types: { id: number; name: string }[] = await (await api.get('/api/proxy/chore-types')).json()
     typeId = types.find((t) => t.name === typeName)?.id
