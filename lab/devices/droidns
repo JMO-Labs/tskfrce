@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Lab-only: give the Android emulator its own MAC on the home LAN without touching enp1s0.
+# Moves the spare Wi-Fi card (phy0/wlp3s0) into netns "droid", joins Wi-Fi there, and
+# runs commands inside it as the unprivileged lab user. The box then sees the emulator
+# as a normal Wi-Fi phone (MAC of wlp3s0).
+# Installed root-owned to /usr/local/sbin/droidns; sudoers allows only this script.
+set -euo pipefail
+NS=droid IF=wlp3s0 PHY=phy0 RUN_AS=user
+# root-owned 0600: wpa_supplicant config can load shared libs (pkcs11/opensc), so never user-writable
+CONF=/etc/tskfrce-lab/wpa.conf
+in_ns() { ip netns exec "$NS" "$@"; }
+
+case "${1:-}" in
+up)
+  ip netns list | grep -qw "$NS" || ip netns add "$NS"
+  rfkill unblock wlan
+  # phy is only visible in the root ns until moved; skip if already moved
+  iw phy "$PHY" info >/dev/null 2>&1 && iw phy "$PHY" set netns name "$NS"
+  in_ns ip link set lo up
+  in_ns ip link set "$IF" up
+  in_ns pgrep -f "wpa_supplicant.*-i $IF" >/dev/null ||
+    in_ns wpa_supplicant -B -i "$IF" -c "$CONF" -P /run/droid-wpa.pid
+  for _ in $(seq 30); do in_ns iw dev "$IF" link | grep -q Connected && break; sleep 1; done
+  # -c /bin/true: no hooks, so dhcpcd can't rewrite the host's resolv.conf or hostname
+  in_ns ip -4 addr show "$IF" | grep -q inet || in_ns dhcpcd -4 -w -t 30 -c /bin/true "$IF"
+  dns=$(in_ns dhcpcd -4 -U "$IF" 2>/dev/null | sed -n "s/^domain_name_servers='\{0,1\}\([^' ]*\).*/\1/p")
+  gw=$(in_ns ip -4 route show default | awk '{print $3; exit}')
+  mkdir -p /etc/netns/$NS
+  echo "nameserver ${dns:-$gw}" >/etc/netns/$NS/resolv.conf
+  "$0" status
+  ;;
+down)
+  in_ns dhcpcd -x "$IF" 2>/dev/null || true
+  [ -f /run/droid-wpa.pid ] && kill "$(cat /run/droid-wpa.pid)" 2>/dev/null || true
+  ip netns pids "$NS" 2>/dev/null | xargs -r kill
+  sleep 1
+  ip netns del "$NS" 2>/dev/null || true   # phy returns to root ns
+  rfkill block wlan
+  ;;
+status)
+  in_ns iw dev "$IF" link | sed -n '1,3p'
+  in_ns ip -br addr show "$IF"
+  in_ns ip route show default
+  cat /etc/netns/$NS/resolv.conf
+  ;;
+run)
+  shift
+  # drop to the lab user inside the namespace; never runs anything as root
+  exec ip netns exec "$NS" setpriv --reuid="$RUN_AS" --regid="$RUN_AS" --init-groups --reset-env -- "$@"
+  ;;
+*) echo "usage: droidns up|down|status|run CMD..." >&2; exit 2 ;;
+esac
