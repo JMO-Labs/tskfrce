@@ -1,0 +1,179 @@
+# Real kid apps (installed by apps-kit.sh). Oracle: app-probe.sh = per-UID rx bytes after launch + scroll.
+# rc 0 = >300 KB real content, 3 = 20-300 KB, 1 = less. Screenshot of the final screen: /sdcard/escape-<pkg>.png.
+
+[[scenario]]
+skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
+id = "app.youtube"
+title = "YouTube app: launch, scroll, count bytes received"
+category = "apps"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/app-probe.sh com.google.android.youtube 40'''
+timeout = 100
+
+[[scenario]]
+skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
+id = "app.ytkids"
+title = "YouTube Kids app: launch, scroll, count bytes received"
+category = "apps"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/app-probe.sh com.google.android.apps.youtube.kids 40'''
+timeout = 100
+
+[[scenario]]
+skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
+id = "app.roblox"
+title = "Roblox app: launch, scroll, count bytes received"
+category = "apps"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/app-probe.sh com.roblox.client 40'''
+timeout = 100
+
+[[scenario]]
+skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
+id = "app.tiktok"
+title = "TikTok app: launch, scroll, count bytes received"
+category = "apps"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/app-probe.sh com.zhiliaoapp.musically 40'''
+timeout = 100
+
+[[scenario]]
+skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
+id = "app.discord"
+title = "Discord app: launch, scroll, count bytes received"
+category = "apps"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/app-probe.sh com.discord 40'''
+timeout = 100
+
+[[scenario]]
+skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
+id = "app.snapchat"
+title = "Snapchat app: launch, scroll, count bytes received"
+category = "apps"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/app-probe.sh com.snapchat.android 40'''
+timeout = 100
+
+[[scenario]]
+skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
+id = "app.instagram"
+title = "Instagram app: launch, scroll, count bytes received"
+category = "apps"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/app-probe.sh com.instagram.android 40'''
+timeout = 100
+
+[[scenario]]
+skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
+id = "app.whatsapp"
+title = "WhatsApp app: launch, scroll, count bytes received"
+category = "apps"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/app-probe.sh com.whatsapp 40'''
+timeout = 100
+
+[[scenario]]
+skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
+id = "app.spotify"
+title = "Spotify app: launch, scroll, count bytes received"
+category = "apps"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/app-probe.sh com.spotify.music 40'''
+timeout = 100
+
+[[scenario]]
+skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
+id = "app.twitch"
+title = "Twitch app: launch, scroll, count bytes received"
+category = "apps"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/app-probe.sh tv.twitch.android.app 40'''
+timeout = 100
+
+[[scenario]]
+skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
+id = "app.reddit"
+title = "Reddit app: launch, scroll, count bytes received"
+category = "apps"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/app-probe.sh com.reddit.frontpage 40'''
+timeout = 100
+
+[[scenario]]
+skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
+id = "app.pinterest"
+title = "Pinterest app: launch, scroll, count bytes received"
+category = "apps"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/app-probe.sh com.pinterest 40'''
+timeout = 100
+
+[[scenario]]
+skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
+id = "app.netflix"
+title = "Netflix app: launch, scroll, count bytes received"
+category = "apps"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/app-probe.sh com.netflix.mediaclient 40'''
+timeout = 100
+
+[[scenario]]
+skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
+id = "app.telegram"
+title = "Telegram app: launch, scroll, count bytes received"
+category = "apps"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/app-probe.sh org.telegram.messenger 40'''
+timeout = 100
+
+[[scenario]]
+skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
+id = "app.characterai"
+title = "Character.AI app: launch, scroll, count bytes received"
+category = "apps"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/app-probe.sh ai.character.app 40'''
+timeout = 100
+
+[[scenario]]
+skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
+id = "app.chatgpt"
+title = "ChatGPT app: launch, scroll, count bytes received"
+category = "apps"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/app-probe.sh com.openai.chatgpt 40'''
+timeout = 100
+
+[[scenario]]
+skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
+id = "app.gemini"
+title = "Google Gemini app: launch, scroll, count bytes received"
+category = "apps"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/app-probe.sh com.google.android.apps.bard 40'''
+timeout = 100
+
+[[scenario]]
+id = "app.brawlstars"
+title = "Brawl Stars"
+category = "apps"
+platforms = ["A"]
+probe = "true"
+skip = "not installed: emulator disk too small (Play: 'Not enough storage space')"
+
+[[scenario]]
+id = "app.amongus"
+title = "Among Us"
+category = "apps"
+platforms = ["A"]
+probe = "true"
+skip = "not installed: emulator disk too small (Play: 'Not enough storage space')"
+
+[[scenario]]
+id = "app.wireguard"
+title = "WireGuard app (needs a tunnel config pointing at a VPS)"
+category = "apps"
+platforms = ["A"]
+probe = "true"
+skip = "needs a VPS peer + imported config; apps-kit.sh installs the app only (VPS phase)"
