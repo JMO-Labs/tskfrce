@@ -146,6 +146,7 @@ services:
       BOX_ID: ${BOX_ID:-}
       BOX_SECRET: ${BOX_SECRET:-}
       EDGE_TOKEN: ${EDGE_TOKEN:-}
+      INTERNAL_TOKEN: ${INTERNAL_TOKEN:-}  # anonymous box_fault telemetry (optional)
       FRONTEND_UPSTREAM: ${FRONTEND_UPSTREAM:-127.0.0.1:3000}
     volumes:
       - edge_data:/data

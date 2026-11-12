@@ -54,6 +54,15 @@ WIZARD_STEPS = 7  # frontend/src/v2/setup/WizardFrame.tsx STEPS
 _ERR = re.compile(r"^(http_[1-5]\d\d|network|other)$")
 
 
+FAULT_COMPONENTS = frozenset({"blocker", "netd", "edge", "updater", "cert", "registry"})
+FAULT_KINDS = frozenset(
+    {
+        "bind_fail", "hotspot_up", "join_fail", "rollback", "sig_fail", "update_fail",
+        "cert_fail", "dns_fail", "report_fail", "crash",
+    }
+)  # fmt: skip
+
+
 def clean(name: str, props: dict) -> dict | None:
     """Whitelist browser event props; None means drop the event."""
     if name == "screen_view":
@@ -146,3 +155,11 @@ def emit(
         store.enqueue("umami", body, now=ts, capped=name != "heartbeat")
     except Exception as e:
         logger.warning("eval_emit_failed", event=name, error=type(e).__name__)
+
+
+def box_fault(component: str, kind: str) -> bool:
+    """Emit box_fault{component, kind}; enums only, anything else is dropped. True if queued."""
+    if component not in FAULT_COMPONENTS or kind not in FAULT_KINDS or not stats_on():
+        return False
+    emit("box_fault", {"component": component, "kind": kind}, url="/box")
+    return True

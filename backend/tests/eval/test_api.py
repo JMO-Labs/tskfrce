@@ -178,3 +178,9 @@ def test_anon_event_off_is_noop(client, monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "DATA_DIR", tmp_path)
     assert _anon(client, "auth", {"step": "login", "result": "ok"}).status_code == 204
     assert not (tmp_path / "eval.db").exists()
+
+
+def test_feature_event_counts_area(client, eval_on, parent_headers):
+    body = {"name": "feature", "props": {"area": "goals", "action": "open"}}
+    assert client.post(f"{P}/event", json=body, headers=parent_headers).status_code == 204
+    assert store.counters(store.local_day()).get("feat:goals") == 1

@@ -7,6 +7,7 @@ if [ -z "$BOX_ID" ] || [ -z "$BOX_SECRET" ]; then
 fi
 BASE_DOMAIN=${BASE_DOMAIN:-taskfrce.jmolabs.dev}
 REGISTRY_URL=${REGISTRY_URL:-https://taskfrce.jmolabs.dev}
+BACKEND_URL=${BACKEND_URL:-http://127.0.0.1:8000}
 ACME_EMAIL=${ACME_EMAIL:-boxes@jmolabs.dev}
 LEGO_SERVER=${LEGO_SERVER:-https://acme-v02.api.letsencrypt.org/directory}
 CHECK_SECS=${CHECK_SECS:-300}
@@ -20,6 +21,13 @@ NET_TMP=${NET_TMP:-/tmp/lan_addrs}
 export BOX_ID BASE_DOMAIN
 FQDN=$BOX_ID.$BASE_DOMAIN
 CRT=$DATA_DIR/lego/certificates/$FQDN.crt
+
+# fault <component> <kind>: anonymous box_fault telemetry (enums only). Best effort, never blocks.
+fault() {
+  [ -n "${INTERNAL_TOKEN:-}" ] || return 0
+  curl -fsS --max-time 5 -X POST -H "X-Internal-Token: $INTERNAL_TOKEN" -H 'Content-Type: application/json' \
+    -d "{\"component\":\"$1\",\"kind\":\"$2\"}" "$BACKEND_URL/internal/eval/fault" >/dev/null 2>&1 || :
+}
 
 lan_ip() {
   ip -4 route get 1.1.1.1 | sed -n 's/.* src \([0-9.]*\).*/\1/p' | head -n 1
@@ -81,6 +89,7 @@ report_ip() {
     [ -n "$cc" ] && [ -d /tskfrce-host ] && echo "$cc" >/tskfrce-host/country || :
   else
     echo "report_ip failed" >&2
+    fault registry report_fail
     return 1
   fi
 }
@@ -105,6 +114,7 @@ issue_or_renew() {
     mkdir -p "${SANS_MARK%/*}" && touch "$SANS_MARK"
   else
     echo "lego failed" >&2
+    fault cert cert_fail
   fi
   [ "$before" != "$(cksum "$CRT" 2>/dev/null)" ]
 }
