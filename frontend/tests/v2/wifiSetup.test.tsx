@@ -74,6 +74,7 @@ describe('WifiSetup page', () => {
     m.useSetupWifiStatus.mockReturnValueOnce({ data: { phase: 'connected' }, isPending: false })
     wrap(<WifiSetupPage />)
     expect(track).toHaveBeenCalledWith('feature', { area: 'wifi', action: 'done' })
+    expect(track).toHaveBeenCalledWith('setup_detail', { step: 1, what: 'wifi_changed' })
     m.useSetupWifiStatus.mockReturnValueOnce({ data: { phase: 'failed' }, isPending: false })
     wrap(<WifiSetupPage />)
     expect(track).toHaveBeenCalledWith('feature', { area: 'wifi', action: 'fail' })

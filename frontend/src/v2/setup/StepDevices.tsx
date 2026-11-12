@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/router"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { api } from "../api"
@@ -10,6 +10,7 @@ import { DEVICE_TYPE_ICON, getDeviceType } from "../manage/deviceMeta"
 import { isPrivateMac } from "../manage/privateMac"
 import type { Device, Kid } from "../types"
 import styles from "./devices.module.css"
+import { devicesFound, setupDetail } from "../eval/setupDetail"
 
 export function StepDevices({ kids }: { kids: Kid[] }) {
   const router = useRouter()
@@ -30,6 +31,12 @@ export function StepDevices({ kids }: { kids: Kid[] }) {
     return () => clearInterval(timer)
   }, [secondsAgo])
   const devices = list.data ?? []
+  const counted = useRef(false)
+  useEffect(() => {
+    if (counted.current || !list.data) return
+    counted.current = true
+    setupDetail(7, devicesFound(list.data.length))
+  }, [list.data])
   const needOwner = devices.filter((d) => d.status === "unassigned")
   const done = devices.filter((d) => d.status !== "unassigned")
   const selectedTab = (router.query.open as string) || (needOwner.length > 0 ? "need" : "done")
@@ -48,6 +55,7 @@ export function StepDevices({ kids }: { kids: Kid[] }) {
     }))
   const handleRescan = async () => {
     setRescanning(true)
+    setupDetail(7, "rescan")
     try {
       await api("/devices/rescan", { method: "POST" })
       setSecondsAgo(0)

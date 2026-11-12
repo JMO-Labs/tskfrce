@@ -9,6 +9,7 @@ import { api, ApiError } from '@/v2/api'
 import { fridgeTheme } from '@/v2/theme'
 import { DEFAULT_DRAFTS } from '@/v2/setup/setupJobs'
 import { catalog } from './helpers/presetCatalog'
+import { track } from '@/v2/eval/track'
 
 const replace = jest.fn()
 const push = jest.fn()
@@ -25,6 +26,7 @@ jest.mock('@/v2/api', () => {
   }
   return { api: jest.fn(), ApiError }
 })
+jest.mock('@/v2/eval/track', () => ({ track: jest.fn() }))
 const loginWithToken = jest.fn()
 let authed = false
 jest.mock('@/contexts/UnifiedAuthContext', () => ({
@@ -179,5 +181,48 @@ describe('resuming an unfinished setup', () => {
     apiMock.mockImplementation(async (path) => (path === '/setup' ? { needed: false } : { step: null }))
     wrap()
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/login'))
+  })
+})
+
+describe('setup_detail telemetry', () => {
+  const kid = { id: 7, full_name: 'Ava', username: 'kid-ava', avatar: '🦊', has_pin: false, age_group: 'kid' }
+  const at = (step: number) => {
+    authed = true
+    ;(track as jest.Mock).mockClear()
+    apiMock.mockImplementation(async (path, init) => {
+      if (path === '/setup') return { needed: false }
+      if (path === '/setup/step') return init?.method === 'PUT' ? {} : { step }
+      if (path === '/kids') return init?.method === 'POST' ? { ...kid, id: 8, full_name: 'Leo' } : [kid]
+      if (path === '/presets') return catalog
+      return []
+    })
+  }
+  const detail = () => (track as jest.Mock).mock.calls.filter((c) => c[0] === 'setup_detail').map((c) => c[1])
+
+  test('How strict Next reports the preset', async () => {
+    at(4)
+    wrap()
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Next' }))
+    expect(detail()).toContainEqual({ step: 4, what: 'preset_balanced' })
+  })
+
+  test('adding a kid reports name_edited, never the name', async () => {
+    const user = userEvent.setup()
+    at(3)
+    wrap()
+    await user.type(await screen.findByLabelText('Name'), 'Leo')
+    await user.click(screen.getByRole('button', { name: 'Add kid' }))
+    await waitFor(() => expect(detail()).toContainEqual({ step: 3, what: 'name_edited' }))
+    expect(JSON.stringify((track as jest.Mock).mock.calls)).not.toContain('Leo')
+  })
+
+  test('leaving Tweak chores reports the kept bucket', async () => {
+    const user = userEvent.setup()
+    at(5)
+    wrap()
+    await user.click(await screen.findByRole('button', { name: 'Tweak' }))
+    await user.click(await screen.findByRole('button', { name: /^Homework/ }))
+    await user.click(await screen.findByRole('button', { name: 'Next' }))
+    expect(detail()).toContainEqual({ step: 5, what: expect.stringMatching(/^chores_kept_(0|lt50|50_99)$/) })
   })
 })
