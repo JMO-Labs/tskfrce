@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, jest, test } from '@jest/globals'
+import { beforeEach, describe, expect, test } from '@jest/globals'
 import { renderHook } from '@testing-library/react'
 import { detect, submitEvent, useCelebrationTriggers, type Track } from '@/v2/kid/celebrate/triggers'
 import type { KidChore, KidToday } from '@/v2/types'

@@ -94,7 +94,7 @@ export function useKidToday(onExpired: () => void) {
     queryKey: ['kid', 'today', as],
     queryFn: () => api<KidToday>('/kid/today', kidInit(as)),
     refetchInterval: 10_000,
-    refetchIntervalInBackground: false,
+    refetchIntervalInBackground: true, // keep polling the box so a lock is noticed (and notified) while the app is in the background
   })
   const expired = q.error instanceof AuthError
   useEffect(() => {

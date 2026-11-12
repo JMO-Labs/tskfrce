@@ -4,7 +4,7 @@ User model for t@sk4ce.
 This module contains the User model for authentication and user management.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 
 from sqlalchemy import (
@@ -59,6 +59,11 @@ class User(Base):
     __table_args__ = (
         CheckConstraint("age_group IN ('little','kid','teen')", name="ck_user_age_group"),
         CheckConstraint("celebrate IN ('full','small','off')", name="ck_user_celebrate"),
+        CheckConstraint("birth_month BETWEEN 1 AND 12", name="ck_user_birth_month"),
+        CheckConstraint("birth_year BETWEEN 1990 AND 2100", name="ck_user_birth_year"),
+        CheckConstraint(
+            "(birth_month IS NULL) = (birth_year IS NULL)", name="ck_user_birth_both_or_neither"
+        ),
         UniqueConstraint("alert_topic", name="uq_users_alert_topic"),
     )
 
@@ -79,6 +84,9 @@ class User(Base):
     avatar = Column(String(255), nullable=True)
     celebrated_level = Column(Integer, nullable=False, default=1, server_default="1")
     age_group = Column(String(6), nullable=False, default="kid", server_default="kid")
+    birth_month = Column(Integer, nullable=True)  # 1-12; set together with birth_year
+    birth_year = Column(Integer, nullable=True)
+    age_group_set_at = Column(DateTime, nullable=True)  # NULL = since created_at
     celebrate = Column(String(5), nullable=True)  # full|small|off; NULL = mode default
     trust_mode = Column(Boolean, nullable=False, default=False, server_default="0")
     trust_level = Column(Integer, nullable=False, default=0, server_default="0")  # 0 New 1 2 Proven
@@ -99,6 +107,10 @@ class User(Base):
     def celebrate_level(self) -> str:
         """Effective celebration level: the kid's pick, else full (teens: small)."""
         return self.celebrate or ("small" if self.age_group == "teen" else "full")
+
+    def is_birthday(self, today: date) -> bool:
+        """Birthday (month) only when the birth month is known; never inferred."""
+        return self.birth_month is not None and today.month == self.birth_month
 
     def __repr__(self) -> str:
         """String representation of User."""

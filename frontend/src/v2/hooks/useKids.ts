@@ -9,6 +9,8 @@ export interface KidBody {
   pin?: string
   clear_pin?: boolean
   age_group?: AgeGroup
+  birth_month?: number | null
+  birth_year?: number | null
   /** null = back to the mode default */
   celebrate?: CelebrateLevel | null
   trust_mode?: boolean

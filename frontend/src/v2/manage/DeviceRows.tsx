@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import { useResetState } from '@/v2/hooks/useResetState'
 import { usePatchDevice, useSaveGroup, type DevicePatch } from '@/v2/hooks/useDevices'
@@ -10,6 +10,8 @@ import type { Device, Group, Kid } from '@/v2/types'
 import { nameOf } from './choreMeta'
 import { OnlineWeek, useDailyHours, WeekBars } from './OnlineWeek'
 import { toasted } from '../notify'
+import { PhoneGuide } from './PhoneGuide'
+import { guideSeen } from './phoneGuideStore'
 
 interface Props { device: Device; kids: Kid[]; groups: Group[]; /** bumps when Rename is picked: focus the Name field */ nameFocus?: number }
 
@@ -23,6 +25,7 @@ export function DetailsBody({ device, kids, groups, nameFocus = 0 }: Props) {
   const [name, setName] = useResetState(device.name)
   const nameRef = useRef<HTMLInputElement>(null)
   useEffect(() => { if (nameFocus) nameRef.current?.focus() }, [nameFocus])
+  const [guide, setGuide] = useState(false)
   const guest = device.status === 'guest'
   const owners = kids.filter((k) => device.owner_ids.includes(k.id))
   const save = (p: DevicePatch) => once(() => toasted(patch.mutateAsync({ id: device.id, patch: p }), 'Saved'))
@@ -53,7 +56,12 @@ export function DetailsBody({ device, kids, groups, nameFocus = 0 }: Props) {
       </label>
       <div className="pk-field">
         <span className="pk-label">Owners</span>
-        <KidPicker kids={kids} label="Owners" value={device.owner_ids.map(String)} disabled={guest} busy={patch.isPending} onChange={(v) => save({ owner_ids: v.map(Number) })} />
+        <KidPicker kids={kids} label="Owners" value={device.owner_ids.map(String)} disabled={guest} busy={patch.isPending} onChange={(v) => {
+          const first = !device.owner_ids.length && v.length > 0 && !guideSeen(device.id)
+          // open the guide only once the owner is saved: a modal during the save would block the page, and a failed save needs no guide
+          once(() => toasted(patch.mutateAsync({ id: device.id, patch: { owner_ids: v.map(Number) } }).then(() => { if (first) setGuide(true) }), 'Saved'))
+        }} />
+        <PhoneGuide deviceId={device.id} opened={guide} onClose={() => setGuide(false)} />
       </div>
       {groups.length > 0 && (
         <div className="pk-field">

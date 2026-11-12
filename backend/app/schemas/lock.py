@@ -4,7 +4,7 @@ import re
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, StringConstraints, field_validator
+from pydantic import BaseModel, Field, StringConstraints, field_validator, model_validator
 
 HHMM = r"([01]\d|2[0-3]):[0-5]\d"
 
@@ -50,13 +50,22 @@ class GroupIn(BaseModel):
     screen_price: int | None = Field(None, ge=1, le=1000)
 
 
+def _birth_pair(m):
+    if (m.birth_month is None) != (m.birth_year is None):
+        raise ValueError("Give both birth month and year, or neither.")
+    return m
+
+
 class KidCreate(BaseModel):
     full_name: str = Field(min_length=1, max_length=100)
     avatar: str | None = Field(default=None, max_length=255)
     pin: str | None = None
     age_group: Literal["little", "kid", "teen"] | None = None
+    birth_month: int | None = Field(default=None, ge=1, le=12)
+    birth_year: int | None = Field(default=None, ge=1990, le=2100)
 
     _pin = field_validator("pin")(_pin)
+    _birth = model_validator(mode="after")(_birth_pair)
 
 
 class KidPatch(BaseModel):
@@ -65,6 +74,8 @@ class KidPatch(BaseModel):
     pin: str | None = None
     clear_pin: bool = False
     age_group: Literal["little", "kid", "teen"] | None = None
+    birth_month: int | None = Field(default=None, ge=1, le=12)
+    birth_year: int | None = Field(default=None, ge=1990, le=2100)
     celebrate: Literal["full", "small", "off"] | None = None
     trust_mode: bool | None = None
     trust_level: int | None = Field(default=None, ge=0, le=2)
@@ -72,6 +83,7 @@ class KidPatch(BaseModel):
     games_on: bool | None = None
 
     _pin = field_validator("pin")(_pin)
+    _birth = model_validator(mode="after")(_birth_pair)
 
 
 class FamilyPatch(BaseModel):

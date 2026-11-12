@@ -112,6 +112,8 @@ export interface Kid extends KidTrustFields {
   avatar: string | null
   has_pin: boolean
   age_group: AgeGroup
+  birth_month?: number | null
+  birth_year?: number | null
   chores_lock?: boolean
   preset_style?: 'relaxed' | 'balanced' | 'strict' | null
   /** the kid's own pick; null = mode default */
@@ -375,6 +377,10 @@ export interface KidChore extends TodayChore {
 
 export interface KidToday extends KidTodayPenaltyFields {
   locked: boolean
+  /** why it is blocked (schedule, chores, manual, penalty, new_device); null when open */
+  lock_reason?: string | null
+  /** UTC ISO when a timed lock (manual, penalty) ends; null = unknown */
+  lock_until?: string | null
   /** minigames: on for this kid, unplayed plays, plays not yet announced */
   games?: { on: boolean; saved: number; fresh: number }
   chores: KidChore[]

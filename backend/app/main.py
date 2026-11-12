@@ -62,7 +62,10 @@ from app.api.rewards import redemptions_router
 from app.api.rewards import router as rewards_router
 from app.api.screen_time import router as screen_time_router
 from app.api.setup import router as setup_router
+from app.api.suggestions import router as suggestions_router
+from app.api.system_warnings import router as system_warnings_router
 from app.api.tips import router as tips_router
+from app.api.today_insights import router as today_insights_router
 from app.api.trust import router as trust_router
 from app.api.updates import internal_router_with_auth as updates_internal_router
 from app.api.updates import router as updates_router
@@ -186,6 +189,7 @@ fastapi_app.include_router(kid_router)
 fastapi_app.include_router(kid_rewards_router)
 fastapi_app.include_router(kid_goals_router)
 fastapi_app.include_router(family_router)
+fastapi_app.include_router(today_insights_router)
 fastapi_app.include_router(updates_router)
 fastapi_app.include_router(network_router)
 fastapi_app.include_router(networks_router)
@@ -203,6 +207,8 @@ fastapi_app.include_router(community_router)
 fastapi_app.include_router(flair_router)
 fastapi_app.include_router(redemptions_router)
 fastapi_app.include_router(tips_router)
+fastapi_app.include_router(suggestions_router)
+fastapi_app.include_router(system_warnings_router)
 fastapi_app.include_router(integrations_router)
 fastapi_app.include_router(integration_widgets_router)
 fastapi_app.include_router(integration_local_router)
@@ -345,6 +351,14 @@ async def startup_event():
 
         fastapi_app.state.integrations_task = asyncio.create_task(integrations_loop.run_forever())
 
+    if settings.POWER_HEARTBEAT_ENABLED:
+        import asyncio
+
+        from app.services import box_power
+
+        box_power.check_boot()
+        fastapi_app.state.power_task = asyncio.create_task(box_power.run_forever())
+
     logger.info("t@sk4ce API startup complete")
 
 
@@ -354,10 +368,14 @@ async def shutdown_event():
     """Application shutdown event."""
     logger.info("t@sk4ce API shutting down")
 
-    for name in ("lock_task", "integrations_task"):
+    for name in ("lock_task", "integrations_task", "power_task"):
         task = getattr(fastapi_app.state, name, None)
         if task:
             task.cancel()
+    if getattr(fastapi_app.state, "power_task", None):
+        from app.services import box_power
+
+        box_power.mark_clean_shutdown()  # after the cancel: a late heartbeat would clear it
     # await cleanup_database()
 
     logger.info("t@sk4ce API shutdown complete")
