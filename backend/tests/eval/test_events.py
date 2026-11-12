@@ -96,3 +96,17 @@ def test_clean_screen_view_section():
         "route": "/settings"
     }
     assert events.clean("screen_view", {"route": "/wifi-setup"}) == {"route": "/wifi-setup"}
+
+
+def test_clean_auth():
+    assert events.clean("auth", {"step": "login", "result": "fail_pin", "name": "Mia"}) == {
+        "step": "login",
+        "result": "fail_pin",
+    }
+    for s in ("login", "register", "join", "reset_pin", "forgot_pin"):
+        assert events.clean("auth", {"step": s, "result": "ok"}) is not None
+    for r in ("ok", "fail_pin", "fail_code", "locked", "error"):
+        assert events.clean("auth", {"step": "join", "result": r}) is not None
+    assert events.clean("auth", {"step": "x", "result": "ok"}) is None
+    assert events.clean("auth", {"step": "login", "result": "mia@x.com"}) is None
+    assert events.clean("auth", {"step": "login"}) is None

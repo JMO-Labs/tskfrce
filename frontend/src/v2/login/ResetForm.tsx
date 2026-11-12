@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { api } from '@/v2/api'
+import { authResult, trackAuth } from '@/v2/eval/authResult'
 import { useLook } from '@/v2/parent/useLook'
 import { Icon } from '@/v2/parent/Icon'
 import { ErrorPanel, Skeleton } from '@/v2/parent/states'
@@ -30,8 +31,10 @@ export function ResetForm({ token }: { token: string | undefined }) {
     setError('')
     try {
       await api('/auth/reset', { method: 'POST', body: { token, password } })
+      trackAuth('reset_pin', 'ok')
       router.replace('/login?reset=1')
     } catch (err) {
+      trackAuth('reset_pin', authResult(err, 'fail_code'))
       setError(err instanceof Error ? err.message : 'That did not work. Try again.')
       setBusy(false)
     }

@@ -6,14 +6,16 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user, get_db, require_parent
 from app.api.internal import require_token
+from app.core.client_ip import client_ip
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.core.ratelimit import limit
 from app.eval import store
 from app.eval.config import APP_VERSION, any_on, feedback_on, stats_on
 from app.eval.events import _ERR, FAULT_COMPONENTS, FAULT_KINDS, ROUTES, box_fault, clean, emit
@@ -100,6 +102,23 @@ def event(body: EventIn, user: User = Depends(get_current_active_user)):
                     store.kv_set("wizard_done_at", str(time.time()))
             except Exception as e:
                 logger.warning("Eval event failed", error=type(e).__name__)
+    return Response(status_code=204)
+
+
+ANON_EVENTS = ("auth", "screen_view", "feature")
+ANON_PER_MIN = 30
+
+
+@router.post("/anon-event", status_code=204)
+def anon_event(body: EventIn, request: Request):
+    """Pre-login intake: auth results, screen views and the wifi-setup feature event."""
+    limit(f"eval-anon:{client_ip(request)}", ANON_PER_MIN, 60)
+    if stats_on() and body.name in ANON_EVENTS:
+        cleaned = clean(body.name, body.props)
+        if body.name == "feature" and cleaned and cleaned["area"] != "wifi":
+            cleaned = None
+        if cleaned is not None:
+            emit(body.name, cleaned, source="anon", url=cleaned.get("route", "/app"))
     return Response(status_code=204)
 
 

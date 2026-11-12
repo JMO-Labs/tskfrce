@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useRouter } from 'next/router'
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext'
 import { api } from '@/v2/api'
+import { authResult, trackAuth } from '@/v2/eval/authResult'
 import { useLook } from '@/v2/parent/useLook'
 import { Icon } from '@/v2/parent/Icon'
 import { ErrorPanel, Skeleton } from '@/v2/parent/states'
@@ -49,6 +50,8 @@ export function RegisterForm({ token }: { token: string | undefined }) {
 
   const strength = getStrength(password)
 
+  const step = typeof window !== 'undefined' && window.location.pathname === '/join' ? 'join' : 'register'
+
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (password.length < 8) return setError('Use at least 8 characters for the password.')
@@ -60,9 +63,11 @@ export function RegisterForm({ token }: { token: string | undefined }) {
         method: 'POST',
         body: { token, password, full_name: fullName.trim() || null },
       })
+      trackAuth(step, 'ok')
       await login({ username: made.username, password })
       router.replace('/')
     } catch (err) {
+      trackAuth(step, authResult(err, 'fail_code'))
       setError(err instanceof Error ? err.message : 'That did not work. Try again.')
       setBusy(false)
     }

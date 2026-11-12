@@ -1,7 +1,7 @@
 import { api, KID_TOKEN_KEY } from '@/v2/api'
 import { tokenManager } from '@/services/tokenManager'
 
-export type EvalEvent = 'screen_view' | 'feature' | 'wizard_step' | 'wizard_done' | 'form_abandoned' | 'error_shown'
+export type EvalEvent = 'screen_view' | 'auth' | 'feature' | 'wizard_step' | 'wizard_done' | 'form_abandoned' | 'error_shown'
 type Props = Record<string, string | number>
 interface Pending { name: EvalEvent; props: Props }
 
@@ -24,7 +24,11 @@ function send(e: Pending, kid?: boolean): void {
   api('/eval/event', { method: 'POST', body: e, kid }).catch(() => {})
 }
 
-/** Fire and forget usage event. Never throws, never toasts. Pre-login events wait in memory. */
+/** Pre-login events the box accepts without a token (mirrors the backend anon-event gate). */
+const anonOk = (e: Pending): boolean =>
+  e.name === 'auth' || e.name === 'screen_view' || (e.name === 'feature' && e.props.area === 'wifi')
+
+/** Fire and forget usage event. Never throws, never toasts. Pre-login events go to anon-event when allowed, else wait in memory. */
 export function track(name: EvalEvent, props: Props = {}, opts: { kid?: boolean } = {}): void {
   try {
     const e = { name, props }
@@ -33,6 +37,10 @@ export function track(name: EvalEvent, props: Props = {}, opts: { kid?: boolean 
       return
     }
     if (!tokenManager.getAccessToken()) {
+      if (anonOk(e)) {
+        api('/eval/anon-event', { method: 'POST', body: e }).catch(() => {})
+        return
+      }
       buffer.push(e)
       if (buffer.length > MAX_BUFFER) buffer.shift()
       return
