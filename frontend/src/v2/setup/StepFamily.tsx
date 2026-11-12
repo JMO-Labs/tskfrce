@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { Select, TextInput } from '@mantine/core'
+import { Select } from '@mantine/core'
 import { QRCodeSVG } from 'qrcode.react'
 import { api } from '../api'
 import { errorText } from '../errorText'
@@ -67,9 +67,10 @@ export function StepFamily({ name, tz, showError, onName, onTz }: Props) {
               fontFamily: 'inherit',
             }}
           />
-          <p style={{ fontSize: '12px', color: 'var(--p-sub)', marginTop: '4px', marginBottom: '0' }}>Time zone auto-detected.</p>
           {showError && !name.trim() && <p style={{ fontSize: '12px', color: '#ff9b8f', marginTop: '4px', marginBottom: '0' }}>Enter a family name.</p>}
         </div>
+        <Select label="Time zone" description="We found this from your device. Change it if it's wrong."
+          searchable data={zones} value={tz} onChange={(v) => v && onTz(v)} allowDeselect={false} />
       </div>
 
       {!inviteToken && (

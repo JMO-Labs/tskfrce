@@ -1,7 +1,8 @@
-import { useState, type ChangeEvent, useEffect } from 'react'
+import { useState, type ChangeEvent, type CSSProperties } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { IconCheck, IconX } from '@tabler/icons-react'
 import { api } from '../api'
+import { PasswordEye } from '@/v2/components/PasswordEye'
 
 export interface ParentForm { username: string; password: string; again: string; fullName: string }
 
@@ -18,6 +19,16 @@ interface Props {
   value: ParentForm
   showError: boolean
   onChange: (v: ParentForm) => void
+}
+
+function Eye({ reveal, label, onToggle }: { reveal: boolean; label: string; onToggle: () => void }) {
+  return (
+    <button type="button" onClick={onToggle} aria-label={`${reveal ? 'Hide' : 'Show'} ${label}`}
+      style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none',
+        border: 0, padding: '4px', cursor: 'pointer', color: 'var(--p-sub)', display: 'flex', '--psi-icon-size': '16px' } as CSSProperties}>
+      <PasswordEye reveal={reveal} />
+    </button>
+  )
 }
 
 function ValidationRule({ met, text }: { met: boolean; text: string }) {
@@ -96,7 +107,7 @@ export function StepParent({ value, showError, onChange }: Props) {
             style={{
               width: '100%',
               padding: '10px 12px',
-              border: (showError || usernameSeen) && (err.username || !usernameAvailable) ? '1px solid #ff9b8f' : '1px solid var(--p-line)',
+              border: (showError || usernameSeen) && (err.username || (usernameQuery.isSuccess && !usernameAvailable)) ? '1px solid #ff9b8f' : '1px solid var(--p-line)',
               borderRadius: '8px',
               fontSize: '14px',
               backgroundColor: 'var(--p-card)',
@@ -119,6 +130,7 @@ export function StepParent({ value, showError, onChange }: Props) {
 
         <div style={{ marginBottom: '12px' }}>
           <label htmlFor="password" style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--p-ink)' }}>Password</label>
+          <div style={{ position: 'relative' }}>
           <input
             id="password"
             type={showPassword ? 'text' : 'password'}
@@ -138,6 +150,8 @@ export function StepParent({ value, showError, onChange }: Props) {
               fontFamily: 'inherit',
             }}
           />
+          <Eye reveal={showPassword} label="password" onToggle={() => setShowPassword((v) => !v)} />
+          </div>
           {value.password && <ValidationRule met={!err.password} text="8+ characters" />}
           {(showError || passwordSeen) && err.password && (
             <div role="alert" style={{ fontSize: '12px', color: '#c0392b', marginTop: '4px' }}>{err.password}</div>
@@ -146,6 +160,7 @@ export function StepParent({ value, showError, onChange }: Props) {
 
         <div style={{ marginBottom: '0' }}>
           <label htmlFor="passwordConfirm" style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '6px', color: 'var(--p-ink)' }}>Type it again</label>
+          <div style={{ position: 'relative' }}>
           <input
             id="passwordConfirm"
             type={showAgain ? 'text' : 'password'}
@@ -165,6 +180,8 @@ export function StepParent({ value, showError, onChange }: Props) {
               fontFamily: 'inherit',
             }}
           />
+          <Eye reveal={showAgain} label="confirm password" onToggle={() => setShowAgain((v) => !v)} />
+          </div>
           {value.again && <ValidationRule met={!err.again} text="Passwords match" />}
           {(showError || againSeen) && err.again && (
             <div role="alert" style={{ fontSize: '12px', color: '#c0392b', marginTop: '4px' }}>{err.again}</div>
