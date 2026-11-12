@@ -64,10 +64,9 @@ describe('WifiSetup page', () => {
     wrap(<WifiSetupPage />)
     expect(track).toHaveBeenCalledWith('screen_view', { route: '/wifi-setup' })
     fireEvent.click(screen.getByText('TestWifi'))
-    const btn = screen.queryByRole('button', { name: /connect|join/i })
-    if (btn) fireEvent.click(btn)
-    const calls = (track as jest.Mock).mock.calls.filter((c) => c[0] === 'feature')
-    expect(calls.every((c) => (c[1] as { area: string }).area === 'wifi')).toBe(true)
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'hunter22' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Connect' }))
+    expect(track).toHaveBeenCalledWith('feature', { area: 'wifi', action: 'start' })
   })
 
   test('emits feature done / fail from the join phase', () => {

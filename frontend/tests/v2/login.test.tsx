@@ -146,8 +146,9 @@ test('the session-expired note survives React strict mode running effects twice'
     </React.StrictMode>,
   )
   expect(await screen.findByText('Please log in again.')).toBeInTheDocument()
+})
 
-
+describe('login eval events', () => {
   test('emits auth ok / fail_pin / locked', async () => {
     login.mockRejectedValueOnce({ status: 401 } as never)
     wrap()

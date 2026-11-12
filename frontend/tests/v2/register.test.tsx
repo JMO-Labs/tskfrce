@@ -132,4 +132,17 @@ describe('RegisterForm', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Join' }))
     await waitFor(() => expect(track).toHaveBeenCalledWith('auth', { step: 'register', result: 'ok' }))
   })
+
+  test('emits step join on the /join path', async () => {
+    window.history.pushState({}, '', '/join')
+    try {
+      await wrap(invite())
+      await userEvent.type(screen.getByLabelText(/Choose a password/), 'longenough')
+      await userEvent.type(screen.getByLabelText('Type it again'), 'longenough')
+      await userEvent.click(screen.getByRole('button', { name: 'Join' }))
+      await waitFor(() => expect(track).toHaveBeenCalledWith('auth', { step: 'join', result: 'ok' }))
+    } finally {
+      window.history.pushState({}, '', '/')
+    }
+  })
 })
