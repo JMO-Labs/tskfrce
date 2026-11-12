@@ -7,7 +7,6 @@ import pytest
 import sqlalchemy as sa
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-
 from app.models.inbox import KINDS
 
 PATH = (
