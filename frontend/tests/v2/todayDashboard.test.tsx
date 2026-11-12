@@ -101,7 +101,7 @@ describe('kid card', () => {
     expect(within(card).getByText('3/4')).toBeInTheDocument()
     expect(within(card).getByText('55m of 1h 30m allowed')).toBeInTheDocument()
     expect(within(card).getByText('40 pts')).toBeInTheDocument()
-    expect(within(card).getByRole('img', { name: '3 of 4 chores done, 55 of 90 minutes online' })).toBeInTheDocument()
+    expect(within(card).getByRole('img', { name: '3 of 4 chores done, 55m of 1h 30m screen' })).toBeInTheDocument()
     expect(within(card).getByText('Chores', { selector: '.pt-lockpill' })).toBeInTheDocument()
     expect(within(card).getByText('Screen')).toBeInTheDocument()
     expect(card.textContent).not.toMatch(/screen time|Online/i)
