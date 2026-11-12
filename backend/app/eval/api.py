@@ -55,6 +55,8 @@ def event(body: EventIn, user: User = Depends(get_current_active_user)):
         if cleaned is not None:
             is_kid = user.role != UserRole.PARENT
             try:
+                if body.name == "feature":
+                    store.bump(f"feat:{cleaned['area']}")
                 emit(
                     body.name,
                     cleaned,

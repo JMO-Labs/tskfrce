@@ -6,8 +6,8 @@ from datetime import date, datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.eval import store
-from app.eval.events import emit
+from app.eval import facts, store
+from app.eval.events import AREAS, emit
 from app.models.chores import ChoreRun
 from app.models.lock import Device
 from app.models.user import User, UserRole
@@ -27,7 +27,13 @@ KEYS = (
     "devices_total",
     "kids_total",
     "dropped",
+    "events_dropped",
+    "days_since_install",
+    "active_days_7",
+    "features_used_7d",
+    *facts.KEYS,
 )
+FEATURE_ORDER = tuple(sorted(AREAS))  # bit i of features_used_7d = FEATURE_ORDER[i]
 
 
 def stale_3d(db: Session, day: date) -> int:
@@ -50,11 +56,20 @@ def stale_3d(db: Session, day: date) -> int:
     )
 
 
-def build(db: Session, day: date) -> dict[str, int]:
+def build(db: Session, day: date) -> dict[str, int | str]:
     iso = day.isoformat()
-    out = dict.fromkeys(KEYS, 0)
+    out: dict = dict.fromkeys(KEYS, 0)
     out.update({k: v for k, v in store.counters(iso).items() if k in out})
     out["parent_opened"], out["kids_opened"] = store.seen_counts(iso)
+    out["events_dropped"] = out["dropped"]
+    first = store.kv_get("first_day")
+    if first:
+        out["days_since_install"] = max(0, (day - date.fromisoformat(first)).days)
+    since = (day - timedelta(days=6)).isoformat()
+    out["active_days_7"] = store.active_days(since, iso)
+    used = store.feature_areas(since, iso)
+    out["features_used_7d"] = sum(1 << i for i, a in enumerate(FEATURE_ORDER) if a in used)
+    out.update(facts.collect())
     out["chores_stale_3d"] = stale_3d(db, day)
     out["devices_total"] = (
         db.scalar(select(func.count()).select_from(Device).where(Device.status == "assigned")) or 0

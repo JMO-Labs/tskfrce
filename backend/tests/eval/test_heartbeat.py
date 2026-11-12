@@ -30,8 +30,8 @@ def _runs(db, parent, kid, statuses, submitted=()):
 
 def test_build_has_every_key(eval_on, db):
     out = heartbeat.build(db, date(2026, 10, 24))
-    assert set(out) == set(heartbeat.KEYS) and len(out) == 14
-    assert all(v == 0 for v in out.values())
+    assert set(out) == set(heartbeat.KEYS) and len(out) == len(heartbeat.KEYS)
+    assert out["days_since_install"] == 0 and out["events_dropped"] == 0
 
 
 def test_heartbeat_uses_family_day(eval_on, db):
@@ -105,3 +105,39 @@ def test_box_boot_on_start(eval_on, monkeypatch):
 
     asyncio.run(go())
     assert [b["payload"]["name"] for b in _rows()] == ["box_boot"]
+
+
+def test_days_since_install(eval_on, db):
+    store.kv_set("first_day", "2026-10-20")
+    assert heartbeat.build(db, date(2026, 10, 24))["days_since_install"] == 4
+    assert heartbeat.build(db, date(2026, 10, 10))["days_since_install"] == 0
+
+
+def test_active_days_7_window_edges(eval_on, db):
+    for d in ("2026-10-17", "2026-10-18", "2026-10-24", "2026-10-25"):
+        store.mark_seen("parent", d)
+    store.mark_seen("kid:1", "2026-10-24")
+    # window is 10-18..10-24 inclusive: 10-17 and 10-25 excluded, a day counts once
+    assert heartbeat.build(db, date(2026, 10, 24))["active_days_7"] == 2
+
+
+def test_features_used_bitmask(eval_on, db):
+    from app.eval.events import AREAS
+
+    order = sorted(AREAS)
+    assert heartbeat.FEATURE_ORDER == tuple(order)
+    for d, a in (("2026-10-18", "goals"), ("2026-10-24", "reset"), ("2026-10-17", "wifi")):
+        store.bump(f"feat:{a}", day=d)
+    store.bump("feat:goals", day="2026-10-24")
+    want = 1 << order.index("goals") | 1 << order.index("reset")
+    assert heartbeat.build(db, date(2026, 10, 24))["features_used_7d"] == want
+
+
+def test_events_dropped(eval_on, db):
+    store.bump("dropped", 3, day="2026-10-24")
+    assert heartbeat.build(db, date(2026, 10, 24))["events_dropped"] == 3
+
+
+def test_build_includes_box_facts(eval_on, db, monkeypatch):
+    monkeypatch.setattr(heartbeat.facts, "collect", lambda: {"ram_class": "4G"})
+    assert heartbeat.build(db, date(2026, 10, 24))["ram_class"] == "4G"
