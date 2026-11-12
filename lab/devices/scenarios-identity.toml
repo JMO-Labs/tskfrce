@@ -1,0 +1,711 @@
+# Identity-evasion rows: does a paused device stay paused when it changes its network identity?
+# Rows run on the runner's normal flow (unlock -> baseline -> lock device 46 -> settle -> kid move -> probe).
+# The kid move is a HOST hook (host_locked_setup) that calls droidns (mac/rejoin/static). Because the box sees a
+# NEW device row after a MAC change, the runner's alert oracle (device 46 only) cannot see those events: every row's
+# host_teardown dumps what the box did (new device rows, hint_of_id, events, parent notifications) to
+# lab/devices/runs/identity-obs/<id>.json, restores the hw MAC, verifies internet is back and deletes lab-created
+# private-MAC device rows (macs listed in .macs only). restore_probe is `true` because the device still wears the
+# rotated MAC when the runner's restore check fires; the real restore check is in host_teardown (obs file, restore=).
+# Probe semantics: unlocked baseline = one real.sh shot. Locked = loop for the window, print
+# `leaks=<ok>/<tries> first_ok=<s> last_ok=<s>` (seconds since the kid move finished; last_ok = time-to-block),
+# rc 0 (LEAK) if any shot reached the internet. Markers on the emulator: id.locked, id.invalid (move failed -> rc 2
+# so the row cannot pass vacuously), id.leaked (an earlier storm rotation leaked).
+# INVERTED rows (id.randmac.unpaused): the runner locks 46, the kid move unlocks it first; the probe exits 1 when
+# internet works. BLOCKED there means "stayed online (pass)", LEAK means "lost connectivity (fail)".
+
+[[scenario]]
+optin = true
+id = "id.randmac.paused"
+title = "Paused phone rotates to a random private MAC with Android-like DHCP identity"
+category = "identity"
+platforms = ["A"]
+timeout = 105
+restore_probe = "true"
+setup = '''rm -f /data/local/tmp/id.locked /data/local/tmp/id.invalid /data/local/tmp/id.leaked'''
+locked_setup = '''touch /data/local/tmp/id.locked'''
+probe = '''K=/data/local/tmp/kit; U=https://www.cloudflare.com/cdn-cgi/trace; M=/data/local/tmp
+[ -f $M/id.locked ] || { $K/real.sh $U fl=; exit $?; }
+[ -f $M/id.invalid ] && { echo INVALID_MOVE; exit 2; }
+S=$(date +%s); N=0; L=0; F=none; LA=none
+while [ $(( $(date +%s)-S )) -lt 75 ]; do N=$((N+1))
+  if $K/real.sh $U fl=; then L=$((L+1)); T=$(( $(date +%s)-S )); [ $F = none ] && F=${T}s; LA=${T}s;  fi; sleep 1; done
+[ -f $M/id.leaked ] && { echo "EARLIER_ROTATION_LEAKED $L/$N"; exit 0; }
+echo "leaks=$L/$N first_ok=$F last_ok=$LA"
+[ $L -gt 0 ] && exit 0; exit 1'''
+host_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.randmac.paused
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+mkdir -p $O; rm -f $O/$ID.log $O/$ID.done; date -u -d '-10 sec' +%Y-%m-%dT%H:%M:%S > $O/$ID.since; : > $O/$ID.macs
+log "start id=$ID box_dev46=$(BX mine c4:8b:66:54:72:0d)" '''
+host_locked_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.randmac.paused
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+$D mac random Pixel-7 android-dhcp-15 > $O/$ID.rot 2>&1; m=$(curmac); echo $m >> $O/$ID.macs; waitip
+log "rotated to $m random Pixel-7 android-dhcp-15 ip=$ip"; case $m in c4:8b:66:54:72:0d|"") fail "mac did not change";; esac; [ -n "$ip" ] || fail "no ip after rotate"
+'''
+host_teardown = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.randmac.paused
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+for i in $(seq 30); do [ -f $O/$ID.done ] || [ $ID != id.rotate.storm ] && break; sleep 2; done
+since=$(cat $O/$ID.since); log "teardown cur_mac=$(curmac)"
+BX since $since > $O/$ID.json 2>>$O/$ID.log; log "wrote $ID.json"
+for m in $(cat $O/$ID.macs); do log "delete $m: $(BX delete $m 2>&1 | tail -1)"; done
+$D mac hw >/dev/null 2>&1; log "hw restored mac=$(curmac)"
+r=FAIL; for i in 1 2 3 4 5 6; do $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= && { r=ok; break; }; sleep 3; done
+log "restore=$r"; echo "restore=$r" >> $O/$ID.log'''
+
+[[scenario]]
+optin = true
+id = "id.randmac.nohost"
+title = "Paused phone rotates to a random private MAC, bare DHCP (no hostname/vendor)"
+category = "identity"
+platforms = ["A"]
+timeout = 105
+restore_probe = "true"
+setup = '''rm -f /data/local/tmp/id.locked /data/local/tmp/id.invalid /data/local/tmp/id.leaked'''
+locked_setup = '''touch /data/local/tmp/id.locked'''
+probe = '''K=/data/local/tmp/kit; U=https://www.cloudflare.com/cdn-cgi/trace; M=/data/local/tmp
+[ -f $M/id.locked ] || { $K/real.sh $U fl=; exit $?; }
+[ -f $M/id.invalid ] && { echo INVALID_MOVE; exit 2; }
+S=$(date +%s); N=0; L=0; F=none; LA=none
+while [ $(( $(date +%s)-S )) -lt 75 ]; do N=$((N+1))
+  if $K/real.sh $U fl=; then L=$((L+1)); T=$(( $(date +%s)-S )); [ $F = none ] && F=${T}s; LA=${T}s;  fi; sleep 1; done
+[ -f $M/id.leaked ] && { echo "EARLIER_ROTATION_LEAKED $L/$N"; exit 0; }
+echo "leaks=$L/$N first_ok=$F last_ok=$LA"
+[ $L -gt 0 ] && exit 0; exit 1'''
+host_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.randmac.nohost
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+mkdir -p $O; rm -f $O/$ID.log $O/$ID.done; date -u -d '-10 sec' +%Y-%m-%dT%H:%M:%S > $O/$ID.since; : > $O/$ID.macs
+log "start id=$ID box_dev46=$(BX mine c4:8b:66:54:72:0d)" '''
+host_locked_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.randmac.nohost
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+$D mac random > $O/$ID.rot 2>&1; m=$(curmac); echo $m >> $O/$ID.macs; waitip
+log "rotated to $m random ip=$ip"; case $m in c4:8b:66:54:72:0d|"") fail "mac did not change";; esac; [ -n "$ip" ] || fail "no ip after rotate"
+'''
+host_teardown = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.randmac.nohost
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+for i in $(seq 30); do [ -f $O/$ID.done ] || [ $ID != id.rotate.storm ] && break; sleep 2; done
+since=$(cat $O/$ID.since); log "teardown cur_mac=$(curmac)"
+BX since $since > $O/$ID.json 2>>$O/$ID.log; log "wrote $ID.json"
+for m in $(cat $O/$ID.macs); do log "delete $m: $(BX delete $m 2>&1 | tail -1)"; done
+$D mac hw >/dev/null 2>&1; log "hw restored mac=$(curmac)"
+r=FAIL; for i in 1 2 3 4 5 6; do $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= && { r=ok; break; }; sleep 3; done
+log "restore=$r"; echo "restore=$r" >> $O/$ID.log'''
+
+[[scenario]]
+optin = true
+id = "id.randmac.unpaused"
+title = "INVERTED: unpaused phone rotates to a random MAC: must stay online (pass=BLOCKED); records new-device alert"
+category = "identity"
+platforms = ["A"]
+timeout = 90
+restore_probe = "true"
+setup = '''rm -f /data/local/tmp/id.locked /data/local/tmp/id.invalid /data/local/tmp/id.leaked'''
+locked_setup = '''touch /data/local/tmp/id.locked'''
+probe = '''K=/data/local/tmp/kit; U=https://www.cloudflare.com/cdn-cgi/trace; M=/data/local/tmp
+[ -f $M/id.locked ] || { $K/real.sh $U fl=; exit $?; }
+[ -f $M/id.invalid ] && { echo INVALID_MOVE; exit 2; }
+S=$(date +%s); N=0; L=0; F=none; LA=none
+while [ $(( $(date +%s)-S )) -lt 60 ]; do N=$((N+1))
+  if $K/real.sh $U fl=; then L=$((L+1)); T=$(( $(date +%s)-S )); [ $F = none ] && F=${T}s; LA=${T}s;  fi; sleep 1; done
+[ -f $M/id.leaked ] && { echo "EARLIER_ROTATION_LEAKED $L/$N"; exit 1; }
+echo "leaks=$L/$N first_ok=$F last_ok=$LA"
+[ $L -gt 0 ] && exit 1; exit 0'''
+host_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.randmac.unpaused
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+mkdir -p $O; rm -f $O/$ID.log $O/$ID.done; date -u -d '-10 sec' +%Y-%m-%dT%H:%M:%S > $O/$ID.since; : > $O/$ID.macs
+log "start id=$ID box_dev46=$(BX mine c4:8b:66:54:72:0d)" '''
+host_locked_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.randmac.unpaused
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+BX unlock c4:8b:66:54:72:0d >/dev/null; log "unpaused 46 (expected state for this row)"
+$D mac random Pixel-7 android-dhcp-15 > $O/$ID.rot 2>&1; m=$(curmac); echo $m >> $O/$ID.macs; waitip
+log "rotated to $m random Pixel-7 android-dhcp-15 ip=$ip"; case $m in c4:8b:66:54:72:0d|"") fail "mac did not change";; esac; [ -n "$ip" ] || fail "no ip after rotate"
+'''
+host_teardown = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.randmac.unpaused
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+for i in $(seq 30); do [ -f $O/$ID.done ] || [ $ID != id.rotate.storm ] && break; sleep 2; done
+since=$(cat $O/$ID.since); log "teardown cur_mac=$(curmac)"
+BX since $since > $O/$ID.json 2>>$O/$ID.log; log "wrote $ID.json"
+for m in $(cat $O/$ID.macs); do log "delete $m: $(BX delete $m 2>&1 | tail -1)"; done
+$D mac hw >/dev/null 2>&1; log "hw restored mac=$(curmac)"
+r=FAIL; for i in 1 2 3 4 5 6; do $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= && { r=ok; break; }; sleep 3; done
+log "restore=$r"; echo "restore=$r" >> $O/$ID.log'''
+
+[[scenario]]
+optin = true
+id = "id.rejoin.hostname"
+title = "Paused phone keeps its MAC, rejoins with a changed DHCP hostname"
+category = "identity"
+platforms = ["A"]
+timeout = 105
+restore_probe = "true"
+setup = '''rm -f /data/local/tmp/id.locked /data/local/tmp/id.invalid /data/local/tmp/id.leaked'''
+locked_setup = '''touch /data/local/tmp/id.locked'''
+probe = '''K=/data/local/tmp/kit; U=https://www.cloudflare.com/cdn-cgi/trace; M=/data/local/tmp
+[ -f $M/id.locked ] || { $K/real.sh $U fl=; exit $?; }
+[ -f $M/id.invalid ] && { echo INVALID_MOVE; exit 2; }
+S=$(date +%s); N=0; L=0; F=none; LA=none
+while [ $(( $(date +%s)-S )) -lt 75 ]; do N=$((N+1))
+  if $K/real.sh $U fl=; then L=$((L+1)); T=$(( $(date +%s)-S )); [ $F = none ] && F=${T}s; LA=${T}s;  fi; sleep 1; done
+[ -f $M/id.leaked ] && { echo "EARLIER_ROTATION_LEAKED $L/$N"; exit 0; }
+echo "leaks=$L/$N first_ok=$F last_ok=$LA"
+[ $L -gt 0 ] && exit 0; exit 1'''
+host_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.rejoin.hostname
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+mkdir -p $O; rm -f $O/$ID.log $O/$ID.done; date -u -d '-10 sec' +%Y-%m-%dT%H:%M:%S > $O/$ID.since; : > $O/$ID.macs
+log "start id=$ID box_dev46=$(BX mine c4:8b:66:54:72:0d)" '''
+host_locked_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.rejoin.hostname
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+$D rejoin Galaxy-S24 > $O/$ID.rot 2>&1; log "rejoined mac=$(curmac) host=Galaxy-S24"; waitip; [ -n "$ip" ] || fail "no ip"
+'''
+host_teardown = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.rejoin.hostname
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+for i in $(seq 30); do [ -f $O/$ID.done ] || [ $ID != id.rotate.storm ] && break; sleep 2; done
+since=$(cat $O/$ID.since); log "teardown cur_mac=$(curmac)"
+BX since $since > $O/$ID.json 2>>$O/$ID.log; log "wrote $ID.json"
+for m in $(cat $O/$ID.macs); do log "delete $m: $(BX delete $m 2>&1 | tail -1)"; done
+$D mac hw >/dev/null 2>&1; log "hw restored mac=$(curmac)"
+r=FAIL; for i in 1 2 3 4 5 6; do $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= && { r=ok; break; }; sleep 3; done
+log "restore=$r"; echo "restore=$r" >> $O/$ID.log'''
+
+[[scenario]]
+optin = true
+id = "id.rejoin.vendor"
+title = "Paused phone keeps its MAC, rejoins with a changed DHCP vendor class"
+category = "identity"
+platforms = ["A"]
+timeout = 105
+restore_probe = "true"
+setup = '''rm -f /data/local/tmp/id.locked /data/local/tmp/id.invalid /data/local/tmp/id.leaked'''
+locked_setup = '''touch /data/local/tmp/id.locked'''
+probe = '''K=/data/local/tmp/kit; U=https://www.cloudflare.com/cdn-cgi/trace; M=/data/local/tmp
+[ -f $M/id.locked ] || { $K/real.sh $U fl=; exit $?; }
+[ -f $M/id.invalid ] && { echo INVALID_MOVE; exit 2; }
+S=$(date +%s); N=0; L=0; F=none; LA=none
+while [ $(( $(date +%s)-S )) -lt 75 ]; do N=$((N+1))
+  if $K/real.sh $U fl=; then L=$((L+1)); T=$(( $(date +%s)-S )); [ $F = none ] && F=${T}s; LA=${T}s;  fi; sleep 1; done
+[ -f $M/id.leaked ] && { echo "EARLIER_ROTATION_LEAKED $L/$N"; exit 0; }
+echo "leaks=$L/$N first_ok=$F last_ok=$LA"
+[ $L -gt 0 ] && exit 0; exit 1'''
+host_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.rejoin.vendor
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+mkdir -p $O; rm -f $O/$ID.log $O/$ID.done; date -u -d '-10 sec' +%Y-%m-%dT%H:%M:%S > $O/$ID.since; : > $O/$ID.macs
+log "start id=$ID box_dev46=$(BX mine c4:8b:66:54:72:0d)" '''
+host_locked_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.rejoin.vendor
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+$D rejoin Pixel-7 MSFT-5.0 > $O/$ID.rot 2>&1; log "rejoined mac=$(curmac) vendor=MSFT-5.0"; waitip; [ -n "$ip" ] || fail "no ip"
+'''
+host_teardown = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.rejoin.vendor
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+for i in $(seq 30); do [ -f $O/$ID.done ] || [ $ID != id.rotate.storm ] && break; sleep 2; done
+since=$(cat $O/$ID.since); log "teardown cur_mac=$(curmac)"
+BX since $since > $O/$ID.json 2>>$O/$ID.log; log "wrote $ID.json"
+for m in $(cat $O/$ID.macs); do log "delete $m: $(BX delete $m 2>&1 | tail -1)"; done
+$D mac hw >/dev/null 2>&1; log "hw restored mac=$(curmac)"
+r=FAIL; for i in 1 2 3 4 5 6; do $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= && { r=ok; break; }; sleep 3; done
+log "restore=$r"; echo "restore=$r" >> $O/$ID.log'''
+
+[[scenario]]
+optin = true
+id = "id.staticip.free"
+title = "Paused phone sets a static IP outside the DHCP pool (same MAC)"
+category = "identity"
+platforms = ["A"]
+timeout = 105
+restore_probe = "true"
+setup = '''rm -f /data/local/tmp/id.locked /data/local/tmp/id.invalid /data/local/tmp/id.leaked'''
+locked_setup = '''touch /data/local/tmp/id.locked'''
+probe = '''K=/data/local/tmp/kit; U=https://www.cloudflare.com/cdn-cgi/trace; M=/data/local/tmp
+[ -f $M/id.locked ] || { $K/real.sh $U fl=; exit $?; }
+[ -f $M/id.invalid ] && { echo INVALID_MOVE; exit 2; }
+S=$(date +%s); N=0; L=0; F=none; LA=none
+while [ $(( $(date +%s)-S )) -lt 75 ]; do N=$((N+1))
+  if $K/real.sh $U fl=; then L=$((L+1)); T=$(( $(date +%s)-S )); [ $F = none ] && F=${T}s; LA=${T}s;  fi; sleep 1; done
+[ -f $M/id.leaked ] && { echo "EARLIER_ROTATION_LEAKED $L/$N"; exit 0; }
+echo "leaks=$L/$N first_ok=$F last_ok=$LA"
+[ $L -gt 0 ] && exit 0; exit 1'''
+host_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.staticip.free
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+mkdir -p $O; rm -f $O/$ID.log $O/$ID.done; date -u -d '-10 sec' +%Y-%m-%dT%H:%M:%S > $O/$ID.since; : > $O/$ID.macs
+log "start id=$ID box_dev46=$(BX mine c4:8b:66:54:72:0d)" '''
+host_locked_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.staticip.free
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+free_ip 10.10.40.250 || { fail "static ip 10.10.40.250 not free"; exit 0; }
+$D static 10.10.40.250 10.10.40.1 > $O/$ID.rot 2>&1; log "static 10.10.40.250 mac=$(curmac)"; grep -q '10.10.40.250/24' $O/$ID.rot || fail "static not applied"
+'''
+host_teardown = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.staticip.free
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+for i in $(seq 30); do [ -f $O/$ID.done ] || [ $ID != id.rotate.storm ] && break; sleep 2; done
+since=$(cat $O/$ID.since); log "teardown cur_mac=$(curmac)"
+BX since $since > $O/$ID.json 2>>$O/$ID.log; log "wrote $ID.json"
+for m in $(cat $O/$ID.macs); do log "delete $m: $(BX delete $m 2>&1 | tail -1)"; done
+$D mac hw >/dev/null 2>&1; log "hw restored mac=$(curmac)"
+r=FAIL; for i in 1 2 3 4 5 6; do $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= && { r=ok; break; }; sleep 3; done
+log "restore=$r"; echo "restore=$r" >> $O/$ID.log'''
+
+[[scenario]]
+optin = true
+id = "id.staticip.parent"
+title = "Paused phone takes the static IP of an OFFLINE household device (box id 39)"
+category = "identity"
+platforms = ["A"]
+timeout = 105
+restore_probe = "true"
+setup = '''rm -f /data/local/tmp/id.locked /data/local/tmp/id.invalid /data/local/tmp/id.leaked'''
+locked_setup = '''touch /data/local/tmp/id.locked'''
+probe = '''K=/data/local/tmp/kit; U=https://www.cloudflare.com/cdn-cgi/trace; M=/data/local/tmp
+[ -f $M/id.locked ] || { $K/real.sh $U fl=; exit $?; }
+[ -f $M/id.invalid ] && { echo INVALID_MOVE; exit 2; }
+S=$(date +%s); N=0; L=0; F=none; LA=none
+while [ $(( $(date +%s)-S )) -lt 75 ]; do N=$((N+1))
+  if $K/real.sh $U fl=; then L=$((L+1)); T=$(( $(date +%s)-S )); [ $F = none ] && F=${T}s; LA=${T}s;  fi; sleep 1; done
+[ -f $M/id.leaked ] && { echo "EARLIER_ROTATION_LEAKED $L/$N"; exit 0; }
+echo "leaks=$L/$N first_ok=$F last_ok=$LA"
+[ $L -gt 0 ] && exit 0; exit 1'''
+host_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.staticip.parent
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+mkdir -p $O; rm -f $O/$ID.log $O/$ID.done; date -u -d '-10 sec' +%Y-%m-%dT%H:%M:%S > $O/$ID.since; : > $O/$ID.macs
+log "start id=$ID box_dev46=$(BX mine c4:8b:66:54:72:0d)" '''
+host_locked_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.staticip.parent
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+free_ip 10.10.40.143 || { fail "ip 10.10.40.143 in use/online"; exit 0; }
+$D static 10.10.40.143 10.10.40.1 > $O/$ID.rot 2>&1; log "static 10.10.40.143 (device 39's last ip) mac=$(curmac)"; grep -q '10.10.40.143/24' $O/$ID.rot || fail "static not applied"
+'''
+host_teardown = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.staticip.parent
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+for i in $(seq 30); do [ -f $O/$ID.done ] || [ $ID != id.rotate.storm ] && break; sleep 2; done
+since=$(cat $O/$ID.since); log "teardown cur_mac=$(curmac)"
+BX since $since > $O/$ID.json 2>>$O/$ID.log; log "wrote $ID.json"
+for m in $(cat $O/$ID.macs); do log "delete $m: $(BX delete $m 2>&1 | tail -1)"; done
+$D mac hw >/dev/null 2>&1; log "hw restored mac=$(curmac)"
+r=FAIL; for i in 1 2 3 4 5 6; do $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= && { r=ok; break; }; sleep 3; done
+log "restore=$r"; echo "restore=$r" >> $O/$ID.log'''
+
+[[scenario]]
+optin = true
+id = "id.clone.offline"
+title = "Paused phone clones the MAC of an OFFLINE unpaused household device (box id 45)"
+category = "identity"
+platforms = ["A"]
+timeout = 105
+restore_probe = "true"
+setup = '''rm -f /data/local/tmp/id.locked /data/local/tmp/id.invalid /data/local/tmp/id.leaked'''
+locked_setup = '''touch /data/local/tmp/id.locked'''
+probe = '''K=/data/local/tmp/kit; U=https://www.cloudflare.com/cdn-cgi/trace; M=/data/local/tmp
+[ -f $M/id.locked ] || { $K/real.sh $U fl=; exit $?; }
+[ -f $M/id.invalid ] && { echo INVALID_MOVE; exit 2; }
+S=$(date +%s); N=0; L=0; F=none; LA=none
+while [ $(( $(date +%s)-S )) -lt 75 ]; do N=$((N+1))
+  if $K/real.sh $U fl=; then L=$((L+1)); T=$(( $(date +%s)-S )); [ $F = none ] && F=${T}s; LA=${T}s;  fi; sleep 1; done
+[ -f $M/id.leaked ] && { echo "EARLIER_ROTATION_LEAKED $L/$N"; exit 0; }
+echo "leaks=$L/$N first_ok=$F last_ok=$LA"
+[ $L -gt 0 ] && exit 0; exit 1'''
+host_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.clone.offline
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+mkdir -p $O; rm -f $O/$ID.log $O/$ID.done; date -u -d '-10 sec' +%Y-%m-%dT%H:%M:%S > $O/$ID.since; : > $O/$ID.macs
+log "start id=$ID box_dev46=$(BX mine c4:8b:66:54:72:0d)" '''
+host_locked_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.clone.offline
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+BX list | python3 -c "import sys,json; d=[x for x in json.load(sys.stdin) if x['id']==45][0]; sys.exit(d['online'] or d['override'] or d['mac']!='16:e2:a7:7b:cc:06')" || { fail "device 45 online/overridden"; exit 0; }
+$D mac 16:e2:a7:7b:cc:06 > $O/$ID.rot 2>&1; log "cloned 16:e2:a7:7b:cc:06 mac_now=$(curmac) box_row=$(BX mine 16:e2:a7:7b:cc:06)"; waitip; [ -n "$ip" ] || fail "no ip"
+'''
+host_teardown = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.clone.offline
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+for i in $(seq 30); do [ -f $O/$ID.done ] || [ $ID != id.rotate.storm ] && break; sleep 2; done
+since=$(cat $O/$ID.since); log "teardown cur_mac=$(curmac)"
+BX since $since > $O/$ID.json 2>>$O/$ID.log; log "wrote $ID.json"
+for m in $(cat $O/$ID.macs); do log "delete $m: $(BX delete $m 2>&1 | tail -1)"; done
+$D mac hw >/dev/null 2>&1; log "hw restored mac=$(curmac)"
+r=FAIL; for i in 1 2 3 4 5 6; do $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= && { r=ok; break; }; sleep 3; done
+log "restore=$r"; echo "restore=$r" >> $O/$ID.log'''
+
+[[scenario]]
+optin = true
+id = "id.rotate.storm"
+title = "Paused phone rotates through 5 random private MACs in a row"
+category = "identity"
+platforms = ["A"]
+timeout = 340
+restore_probe = "true"
+setup = '''rm -f /data/local/tmp/id.locked /data/local/tmp/id.invalid /data/local/tmp/id.leaked'''
+locked_setup = '''touch /data/local/tmp/id.locked'''
+probe = '''K=/data/local/tmp/kit; U=https://www.cloudflare.com/cdn-cgi/trace; M=/data/local/tmp
+[ -f $M/id.locked ] || { $K/real.sh $U fl=; exit $?; }
+[ -f $M/id.invalid ] && { echo INVALID_MOVE; exit 2; }
+S=$(date +%s); N=0; L=0; F=none; LA=none
+while [ $(( $(date +%s)-S )) -lt 300 ]; do N=$((N+1))
+  if $K/real.sh $U fl=; then L=$((L+1)); T=$(( $(date +%s)-S )); [ $F = none ] && F=${T}s; LA=${T}s;  fi; sleep 1; done
+[ -f $M/id.leaked ] && { echo "EARLIER_ROTATION_LEAKED $L/$N"; exit 0; }
+echo "leaks=$L/$N first_ok=$F last_ok=$LA"
+[ $L -gt 0 ] && exit 0; exit 1'''
+host_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.rotate.storm
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+mkdir -p $O; rm -f $O/$ID.log $O/$ID.done; date -u -d '-10 sec' +%Y-%m-%dT%H:%M:%S > $O/$ID.since; : > $O/$ID.macs
+log "start id=$ID box_dev46=$(BX mine c4:8b:66:54:72:0d)" '''
+host_locked_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.rotate.storm
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+(
+for i in 1 2 3 4 5; do
+$D mac random Pixel-7 android-dhcp-15 > $O/$ID.rot 2>&1; m=$(curmac); echo $m >> $O/$ID.macs; waitip
+log "rotated to $m random Pixel-7 android-dhcp-15 ip=$ip"; case $m in c4:8b:66:54:72:0d|"") fail "mac did not change";; esac; [ -n "$ip" ] || fail "no ip after rotate"
+  r=$(adbloop 8); log "storm rot$i $m $r"; case $r in leaks=0/*) ;; *) $A shell touch /data/local/tmp/id.leaked;; esac
+done; touch $O/$ID.done ) </dev/null >/dev/null 2>&1 &
+log "storm started in background (5 rotations); runner probe runs concurrently"
+'''
+host_teardown = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.rotate.storm
+A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+D='sudo -n /usr/local/sbin/droidns'
+BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
+log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
+curmac() { $D status | awk '/^wlp3s0/{print $3; exit}'; }
+# adbloop SECS: shots of real.sh for SECS; prints leaks=ok/tries first_ok last_ok (seconds from start)
+adbloop() { s=$(date +%s); n=0; l=0; f=none; la=none; while [ $(( $(date +%s)-s )) -lt $1 ]; do n=$((n+1));
+  if $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= >/dev/null 2>&1; then l=$((l+1)); t=$(( $(date +%s)-s )); [ $f = none ] && f=${t}s; la=${t}s; fi; sleep 1; done; echo "leaks=$l/$n first_ok=$f last_ok=$la"; }
+# waitip: a fresh MAC's DHCPv4 lease can land well after droidns returns (observed ~40 s): poll up to 70 s
+waitip() { ip=; for w in $(seq 35); do ip=$($D status | grep -o '10\.10\.40\.[0-9]*/24' | head -1); [ -n "$ip" ] && break; sleep 2; done; }
+fail() { log "MOVE_FAILED: $*"; $A shell touch /data/local/tmp/id.invalid; }
+# offline_ip IP: refuse unless the box lists no ONLINE device with that ip and it does not answer ping
+free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(d['ip']==ip and d['online'] for d in json.load(sys.stdin)))" $1 &&
+  ! $D run ping -c2 -W1 $1 >/dev/null 2>&1; }
+for i in $(seq 30); do [ -f $O/$ID.done ] || [ $ID != id.rotate.storm ] && break; sleep 2; done
+since=$(cat $O/$ID.since); log "teardown cur_mac=$(curmac)"
+BX since $since > $O/$ID.json 2>>$O/$ID.log; log "wrote $ID.json"
+for m in $(cat $O/$ID.macs); do log "delete $m: $(BX delete $m 2>&1 | tail -1)"; done
+$D mac hw >/dev/null 2>&1; log "hw restored mac=$(curmac)"
+r=FAIL; for i in 1 2 3 4 5 6; do $A shell /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= && { r=ok; break; }; sleep 3; done
+log "restore=$r"; echo "restore=$r" >> $O/$ID.log'''

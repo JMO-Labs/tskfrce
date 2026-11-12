@@ -278,6 +278,10 @@ def main():
         for s in scs:
             if s.get("skip"):
                 row = Row(s["id"], opt.platform, "SKIP", [], s["skip"])
+            elif (
+                s.get("optin") and opt.only == "*"
+            ):  # disruptive rows (MAC rotation) need an explicit --only
+                row = Row(s["id"], opt.platform, "SKIP", [], "opt-in: run with --only")
             else:
                 row = run_one(s, opt.platform, opt)
             rows.append(asdict(row))
