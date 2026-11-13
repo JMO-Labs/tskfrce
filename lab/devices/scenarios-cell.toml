@@ -1,0 +1,28 @@
+# Cell/DNS-carrier rows (platform A). Probe rc: 0 = leak (real path reached), 1 = blocked.
+
+[[scenario]]
+id = "cell.stay"
+title = "Paused device's default network stays Wi-Fi (no cellular fallback)"
+category = "cell"
+platforms = ["A"]
+base_probe = '''true'''
+restore_probe = '''true'''
+timeout = 90
+# rc 0 = default network moved off Wi-Fi (LEAK-style); 1 = still Wi-Fi (BLOCKED-style pass)
+probe = '''i=0; while [ $i -lt 4 ]; do N=$(dumpsys connectivity | sed -n 's/^Active default network: //p'); dumpsys connectivity | grep "NetworkAgentInfo{network{$N}" | grep -q 'ni{WIFI' || { echo left_wifi default=$N; exit 0; }; sleep 15; i=$((i+1)); done; echo default_wifi; exit 1'''
+
+[[scenario]]
+id = "dns.tunnel.recurse"
+title = "Box resolves 20 random names under sslip.io (DNS tunnel carrier)"
+category = "dns"
+platforms = ["A"]
+timeout = 100
+# answers echo the IP encoded in the name only if someone resolved it upstream: LEAK = box recurses arbitrary names
+probe = '''i=0; ok=0; while [ $i -lt 20 ]; do ping -c1 -W3 r$(date +%s%N)$i.1-2-3-4.sslip.io 2>&1 | grep -q '(1.2.3.4)' && ok=$((ok+1)); i=$((i+1)); done; echo resolved=$ok/20; [ $ok -gt 0 ]'''
+
+[[scenario]]
+id = "dns.txt"
+title = "TXT query to 8.8.8.8 is answered (non-A must never be)"
+category = "dns"
+platforms = ["A"]
+probe = '''/data/local/tmp/kit/q o-o.myaddr.l.google.com TXT @8.8.8.8 --timeout 5s | grep -q ' TXT ' '''

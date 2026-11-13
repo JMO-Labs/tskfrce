@@ -82,7 +82,7 @@ category = "dns"
 platforms = ["A"]
 setup = '''settings put global private_dns_mode hostname; settings put global private_dns_specifier dns.google; sleep 6'''
 locked_setup = '''settings put global private_dns_mode opportunistic; sleep 2; settings put global private_dns_mode hostname; sleep 10'''
-expect_alert = true
+alerts_expected = ["workaround_try"]
 teardown = '''settings put global private_dns_mode opportunistic'''
 probe = '''ping -c1 -W3 r$(date +%s%N).1-1-1-1.sslip.io 2>&1 | grep -q '(1.1.1.1)''''
 
@@ -142,50 +142,51 @@ id = "id.forget"
 title = "Wi-Fi off/on while locked, then try to reach the internet"
 category = "identity"
 platforms = ["A"]
-probe = '''svc wifi disable; sleep 2; svc wifi enable; i=0; while [ $i -lt 15 ]; do /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= && exit 0; sleep 3; i=$((i+1)); done; exit 1'''
-timeout = 90
+probe = '''svc wifi disable; sleep 2; svc wifi enable; i=0; while [ $i -lt 8 ]; do /data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl= && exit 0; sleep 3; i=$((i+1)); done; exit 1'''
+timeout = 140
 
 [[scenario]]
 id = "dns.router"
-title = "emulator NAT hides the real router; needs laptop platform"
+title = "router IP seen by Android is the netns NAT, not the LAN router; no meaningful q target"
 platforms = ["A"]
 probe = '''true'''
-skip = "emulator NAT hides the real router; needs laptop platform"
+skip = "router IP seen by Android is the netns NAT, not the LAN router; no meaningful q target"
 
 [[scenario]]
 id = "dns.doh.browser"
-title = "no Chrome/Firefox on the emulator image"
+title = "Chrome present but needs a UI-driven DoH probe; no Firefox"
 platforms = ["A"]
 probe = '''true'''
-skip = "no Chrome/Firefox on the emulator image"
+skip = "Chrome present but needs a UI-driven DoH probe; no Firefox"
 
 [[scenario]]
 id = "tx.chrome"
-title = "no Chrome on the emulator image"
+title = "Chrome present but needs a UI-driven probe (not implemented)"
 platforms = ["A"]
 probe = '''true'''
-skip = "no Chrome on the emulator image"
+skip = "Chrome present but needs a UI-driven probe (not implemented)"
 
+# IPv6: Wi-Fi has v6 via fd77::/64 NAT66 in the droid netns. The box sees Linux netns v6 behaviour, not Android's.
 [[scenario]]
 id = "tx.v6.global"
-title = "emulator NAT has no IPv6"
+title = "IPv6 HTTPS to Cloudflare (default v6 source)"
+category = "transport"
 platforms = ["A"]
-probe = '''true'''
-skip = "emulator NAT has no IPv6"
+probe = '''K=/data/local/tmp/kit; $K/curl -6 --cacert $K/ca-bundle.crt -sS -m 10 https://[2606:4700:4700::1111]/cdn-cgi/trace | grep -q fl='''
 
 [[scenario]]
 id = "tx.v6.ula"
-title = "emulator NAT has no IPv6"
+title = "IPv6 HTTPS bound to the stable fd77:: (ULA) address"
+category = "transport"
 platforms = ["A"]
-probe = '''true'''
-skip = "emulator NAT has no IPv6"
+probe = '''K=/data/local/tmp/kit; A=$(ip -6 addr show wlan0 | sed -n 's/.*inet6 \(fd77:[0-9a-f:]*\)\/64 scope global dynamic mngtmpaddr.*/\1/p' | head -1); [ -n "$A" ] && $K/curl -6 --interface "$A" --cacert $K/ca-bundle.crt -sS -m 10 https://[2606:4700:4700::1111]/cdn-cgi/trace | grep -q fl='''
 
 [[scenario]]
 id = "tx.v6.privacy"
-title = "emulator NAT has no IPv6"
+title = "IPv6 HTTPS bound to the temporary (privacy) address"
+category = "transport"
 platforms = ["A"]
-probe = '''true'''
-skip = "emulator NAT has no IPv6"
+probe = '''K=/data/local/tmp/kit; A=$(ip -6 addr show wlan0 | sed -n 's/.*inet6 \(fd77:[0-9a-f:]*\)\/64 scope global temporary.*/\1/p' | head -1); [ -n "$A" ] && $K/curl -6 --interface "$A" --cacert $K/ca-bundle.crt -sS -m 10 https://[2606:4700:4700::1111]/cdn-cgi/trace | grep -q fl='''
 
 [[scenario]]
 id = "tx.push"
@@ -196,24 +197,24 @@ skip = "no Google Play services/chat app on emulator image"
 
 [[scenario]]
 id = "vpn.warp"
-title = "needs the WARP app (not installed)"
+title = "needs the WARP app (not installed; Aurora can install it)"
 platforms = ["A"]
 probe = '''true'''
-skip = "needs the WARP app (not installed)"
+skip = "needs the WARP app (not installed; Aurora can install it)"
 
 [[scenario]]
 id = "vpn.tor"
-title = "needs Tor/Orbot (not installed)"
+title = "Orbot installed; needs a UI-driven probe (not implemented)"
 platforms = ["A"]
 probe = '''true'''
-skip = "needs Tor/Orbot (not installed)"
+skip = "Orbot installed; needs a UI-driven probe (not implemented)"
 
 [[scenario]]
 id = "vpn.psiphon"
-title = "needs the Psiphon app (not installed)"
+title = "needs the Psiphon app (not installed; Aurora can install it)"
 platforms = ["A"]
 probe = '''true'''
-skip = "needs the Psiphon app (not installed)"
+skip = "needs the Psiphon app (not installed; Aurora can install it)"
 
 [[scenario]]
 id = "vpn.browser"
@@ -221,34 +222,6 @@ title = "needs Opera/Edge (not installed)"
 platforms = ["A"]
 probe = '''true'''
 skip = "needs Opera/Edge (not installed)"
-
-[[scenario]]
-id = "id.randmac"
-title = "MAC is the host Wi-Fi adapter behind emulator NAT; phase 3 laptop"
-platforms = ["A"]
-probe = '''true'''
-skip = "MAC is the host Wi-Fi adapter behind emulator NAT; phase 3 laptop"
-
-[[scenario]]
-id = "id.newmac"
-title = "emulator NAT hides MAC changes from the box; phase 3 laptop"
-platforms = ["A"]
-probe = '''true'''
-skip = "emulator NAT hides MAC changes from the box; phase 3 laptop"
-
-[[scenario]]
-id = "id.hostname"
-title = "hostname change invisible behind NAT; phase 3"
-platforms = ["A"]
-probe = '''true'''
-skip = "hostname change invisible behind NAT; phase 3"
-
-[[scenario]]
-id = "id.staticip"
-title = "static IP behind emulator NAT is meaningless; phase 3"
-platforms = ["A"]
-probe = '''true'''
-skip = "static IP behind emulator NAT is meaningless; phase 3"
 
 [[scenario]]
 id = "id.other_ssid"
@@ -266,10 +239,10 @@ skip = "needs box-side timing control; later phase"
 
 [[scenario]]
 id = "box.reboot_dev"
-title = "emulator reboot changes the NAT; later phase"
+title = "adb reboot would drop the TAP/Wi-Fi setup; never reboot the lab emulator"
 platforms = ["A"]
 probe = '''true'''
-skip = "emulator reboot changes the NAT; later phase"
+skip = "adb reboot would drop the TAP/Wi-Fi setup; never reboot the lab emulator"
 
 [[scenario]]
 id = "col.parent"

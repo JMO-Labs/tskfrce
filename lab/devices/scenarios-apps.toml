@@ -20,7 +20,6 @@ probe = '''/data/local/tmp/kit/app-probe.sh com.google.android.apps.youtube.kids
 timeout = 100
 
 [[scenario]]
-skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
 id = "app.roblox"
 title = "Roblox app: launch, scroll, count bytes received"
 category = "apps"
@@ -29,7 +28,6 @@ probe = '''/data/local/tmp/kit/app-probe.sh com.roblox.client 40'''
 timeout = 100
 
 [[scenario]]
-skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
 id = "app.tiktok"
 title = "TikTok app: launch, scroll, count bytes received"
 category = "apps"

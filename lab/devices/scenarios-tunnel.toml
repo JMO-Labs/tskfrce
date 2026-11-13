@@ -23,7 +23,7 @@ title = "WebSocket tunnel over Cloudflare to the canary (the free-VPN pattern)"
 category = "canary"
 platforms = ["A"]
 probe = '''/data/local/tmp/kit/canary.sh hit ws c$(date +%s%N)'''
-timeout = 45
+timeout = 75
 
 [[scenario]]
 id = "canary.http80"

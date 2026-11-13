@@ -186,7 +186,7 @@ def run_one(sc, platform, opt):
                 if rc != 0:
                     row.flags, row.detail = ["SETUP_FAILED"], f"{key} rc={rc} {last_line(out)}"
                     return row
-        base_rc, out = sh(platform, probe, to)
+        base_rc, out = sh(platform, sc.get("base_probe", probe), to)  # base_probe: inverted rows
         row.detail = f"base rc={base_rc} {last_line(out)}"
         if base_rc != 0:
             row.flags = ["BASELINE_FAILED"]
