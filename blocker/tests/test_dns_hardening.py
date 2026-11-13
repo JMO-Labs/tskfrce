@@ -5,11 +5,10 @@ import threading
 import time
 
 import pytest
-
 from blocker import portal, sni_gate
 
 pytest.importorskip("scapy")
-from scapy.layers.dns import DNS, DNSQR  # noqa: E402
+from scapy.layers.dns import DNS, DNSQR
 
 
 def _q(name="example.com.", qtype="A"):
