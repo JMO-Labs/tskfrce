@@ -4,6 +4,13 @@ Android only treats Wi-Fi as online when https://www.google.com/generate_204 suc
 it a blocked phone silently moves to mobile data. The firewall redirects a blocked device's
 non-local :443 traffic here; DNS hands it real addresses only for PASS_NAMES.
 Passed connections may carry a probe-sized answer (see TICKET_MAX/REPLY_MAX), nothing readable.
+
+What passes, and why: only Android's captive-portal probe to www.google.com. That is a TLS 1.3
+handshake, one session-ticket record (<= TICKET_MAX), and a tiny 204 reply (<= REPLY_MAX bytes
+after the client's first app-data record). Per source: WINDOW_CONNS / WINDOW_BYTES per 60 s,
+PER_SOURCE concurrent, HELLO_DEADLINE, idle and lifetime limits, and a global slot cap. A strict
+ClientHello parse rejects anything malformed. Larger replies (pages, search) are cut, so a
+paused device cannot read Google content through the gate.
 """
 
 from __future__ import annotations
