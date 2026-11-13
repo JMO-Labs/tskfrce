@@ -19,18 +19,27 @@ RETRY_S = 5.0
 
 def serve(
     cfg,
-    box_ip: str,
+    box: Callable[[], str],
     stop: threading.Event,
     kw: dict,
     run: Callable | None = None,
     retry: float = RETRY_S,
+    bind: tuple[str, int] = ("::", 53),
 ) -> None:
-    """Run the v6 listener until stop, retrying the bind on OSError (no v6, port busy)."""
+    """Run the v6 listener until stop, retrying the bind on OSError (no v6, port busy).
+
+    box() gives the fallback A answer; never start with an empty one (an empty A record
+    fails to encode and the client times out instead of reaching the portal), so wait.
+    """
     run = run or run_dns
     warned = False
     while not stop.is_set():
+        box_ip = box()
+        if not box_ip:
+            stop.wait(retry)
+            continue
         try:
-            run(cfg, box_ip, stop, bind=("::", 53), **kw)
+            run(cfg, box_ip, stop, bind=bind, **kw)
             return
         except OSError as e:
             if not warned:

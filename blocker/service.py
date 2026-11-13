@@ -33,7 +33,7 @@ from blocker.discovery import run_discovery
 from blocker.hits import HitCounter
 from blocker.homework import HomeworkGate
 from blocker.hw_wiring import HomeworkWiring
-from blocker.ifaces import PerAddress, iface_for_ip, lan_networks
+from blocker.ifaces import PerAddress, iface_for_ip, lan_addrs, lan_networks
 from blocker.multinet import InterfaceManager
 from blocker.portal import run_dns, run_http
 from blocker.resist import ResistanceCounter, ResistanceWatch, Tally
@@ -543,9 +543,15 @@ class Service:
             "on_query": self.workarounds.add,
         }
 
-    def _start_dns_v6(self) -> None:
-        box = self._portal_ip or ""
-        self._spawn(lambda: dns_v6.serve(self.cfg, box, self._stop, self._dns_kw()))
+    def _start_dns_v6(self, bind: tuple[str, int] = ("::", 53)) -> None:
+        kw = self._dns_kw()
+        self._spawn(lambda: dns_v6.serve(self.cfg, self._dns_v6_box, self._stop, kw, bind=bind))
+
+    def _dns_v6_box(self) -> str:
+        """portal_ip, else (multi-network) the first LAN v4 that PerAddress also serves."""
+        if self._portal_ip:
+            return self._portal_ip
+        return next((ip for _, ip in lan_addrs()), "")
 
     def _spawn(self, target: Callable[[], None]) -> None:
         threading.Thread(target=target, daemon=True).start()
