@@ -318,8 +318,10 @@ def _frame(flags, dport=50000, seq=0, payload=b"", pad=b""):
     from scapy.layers.l2 import Ether
     from scapy.packet import Raw
 
-    f = Ether(src=GW, dst=BOX) / IP(src=INET, dst=KID_IP) / TCP(
-        sport=443, dport=dport, flags=flags, seq=seq
+    f = (
+        Ether(src=GW, dst=BOX)
+        / IP(src=INET, dst=KID_IP)
+        / TCP(sport=443, dport=dport, flags=flags, seq=seq)
     )
     if payload:
         f = f / Raw(payload)
