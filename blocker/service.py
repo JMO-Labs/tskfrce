@@ -531,16 +531,22 @@ class Service:
             kwargs={"on_hit": self.hits.add, "host": ip},
             daemon=True,
         ).start()
-        run_dns(
-            self.cfg,
-            self._portal_ip or ip,
-            stop,
-            handle=self._wiring.dns_handle,
-            claims=self._wiring.claims,
-            bind=(ip, 53),
-            client_key=self._mac_for_ip,
-            on_query=self.workarounds.add,
-        )
+        kw = {
+            "handle": self._wiring.dns_handle,
+            "claims": self._wiring.claims,
+            "client_key": self._mac_for_ip,
+            "on_query": self.workarounds.add,
+        }
+        # v6 listener: the firewall redirects blocked devices' v6 DNS to :53 on the arrival
+        # interface. Best effort; a box without v6 simply has nothing to catch.
+        threading.Thread(target=self._serve_dns_v6, args=(ip, stop, kw), daemon=True).start()
+        run_dns(self.cfg, self._portal_ip or ip, stop, bind=(ip, 53), **kw)
+
+    def _serve_dns_v6(self, ip: str, stop: threading.Event, kw: dict) -> None:
+        try:
+            run_dns(self.cfg, self._portal_ip or ip, stop, bind=("::", 53), **kw)
+        except OSError as e:
+            log.info("IPv6 DNS listener unavailable: %s", e)
 
     def _spawn(self, target: Callable[[], None]) -> None:
         threading.Thread(target=target, daemon=True).start()

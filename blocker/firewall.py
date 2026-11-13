@@ -101,6 +101,12 @@ def render_ruleset(
     web_to = f"dnat ip to {portal_ip}:{portal_port}" if portal_ip else f"redirect to :{portal_port}"
     lines.append(f"    ip saddr @blocked_v4 udp dport 53 {dns_to}")
     lines.append(f"    ip saddr @blocked_v4 tcp dport 53 {dns_to}")
+    # IPv6 DNS: keyed on MAC so rotated temporary v6 addresses are caught. `redirect` lands on the
+    # arrival interface's v6 address, where the box's v6 DNS listener answers (portal.run_dns).
+    for proto in ("udp", "tcp"):
+        lines.append(
+            f"    ether saddr @blocked_mac meta nfproto ipv6 {proto} dport 53 redirect to :{DNS_PORT}"
+        )
     # Homework: HTTP to an allowed IP goes through (DNS stays on the portal resolver)
     lines.append("    ether saddr . ip daddr @hw_out tcp dport 80 return")
     lines.append(f"    ip saddr @blocked_v4 tcp dport 80 {web_to}")

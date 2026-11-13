@@ -104,7 +104,10 @@ def run_dns(
     device can't multiply its budget by changing source IPs.
     on_query(client_ip, qname) sees every name that gets the portal answer (bypass alerts).
     """
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    v6 = ":" in bind[0]
+    sock = socket.socket(socket.AF_INET6 if v6 else socket.AF_INET, socket.SOCK_DGRAM)
+    if v6:
+        sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
     sock.bind(bind)
     sock.settimeout(0.5)
     pool = ThreadPoolExecutor(max_workers=HW_WORKERS, thread_name_prefix="hw-dns")

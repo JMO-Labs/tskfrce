@@ -168,3 +168,26 @@ def test_on_query_not_called_for_forwarded_homework_answers():
     stop.set()
     t.join(2)
     assert seen == []
+
+
+def test_run_dns_serves_over_ipv6():
+    import pytest
+
+    try:
+        with socket.socket(socket.AF_INET6, socket.SOCK_DGRAM) as s:
+            s.bind(("::1", 0))
+            port = s.getsockname()[1]
+    except OSError:
+        pytest.skip("no IPv6 loopback")
+    stop = threading.Event()
+    t = threading.Thread(
+        target=run_dns, args=(None, "10.0.0.2", stop), kwargs={"bind": ("::1", port)}, daemon=True
+    )
+    t.start()
+    time.sleep(0.2)
+    with socket.socket(socket.AF_INET6, socket.SOCK_DGRAM) as c:
+        c.settimeout(2)
+        c.sendto(_q(7), ("::1", port))
+        assert DNS(c.recv(512)).id == 7
+    stop.set()
+    t.join(2)
