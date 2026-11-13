@@ -2,6 +2,7 @@ import socket
 import ssl
 import threading
 
+import pytest
 from blocker import portal, sni_gate
 from blocker.firewall import render_ruleset
 
@@ -79,26 +80,128 @@ def test_ruleset_sends_blocked_https_through_gate_but_not_box_pages():
     assert any("@hw_out tcp dport 443 return" in ln for ln in lines[:gate])
 
 
-def test_pipe_cuts_a_passed_connection_after_the_cap():
-    src_a, src_b = socket.socketpair()
-    dst_a, dst_b = socket.socketpair()
-    src_a.sendall(b"x" * 5000)
-    src_a.close()
-    sni_gate._pipe(src_b, dst_a, cap=1200)
+def _hello12(name: str) -> bytes:
+    ctx = ssl.create_default_context()
+    ctx.maximum_version = ssl.TLSVersion.TLSv1_2
+    out = ssl.MemoryBIO()
+    try:
+        ctx.wrap_bio(ssl.MemoryBIO(), out, server_hostname=name).do_handshake()
+    except ssl.SSLWantReadError:
+        pass
+    return out.read()
+
+
+def _rec(kind: int, n: int) -> bytes:
+    """A TLS record of n payload bytes (n + 5 on the wire)."""
+    return bytes([kind, 3, 3]) + n.to_bytes(2, "big") + b"r" * n
+
+
+def _server_hello(tls13: bool) -> bytes:
+    exts = b"\x00\x2b\x00\x02\x03\x04" if tls13 else b""
+    body = b"\x03\x03" + b"R" * 32 + b"\x00" + b"\x13\x01" + b"\x00"
+    body += len(exts).to_bytes(2, "big") + exts
+    hs = b"\x02" + len(body).to_bytes(3, "big") + body
+    return b"\x16\x03\x03" + len(hs).to_bytes(2, "big") + hs
+
+
+def test_ticket_offer_needs_tls13_and_psk_dhe_ke_in_the_client_hello():
+    assert sni_gate.offers_ticket(_hello("www.google.com"))
+    assert not sni_gate.offers_ticket(_hello12("www.google.com"))
+    psk_ke_only = _hello("www.google.com").replace(
+        b"\x00\x2d\x00\x02\x01\x01", b"\x00\x2d\x00\x02\x01\x00"
+    )
+    assert not sni_gate.offers_ticket(psk_ke_only)
+
+
+def test_server_hello_tls13_check():
+    assert sni_gate.picked_tls13(_server_hello(True))
+    assert not sni_gate.picked_tls13(_server_hello(False))
+    assert not sni_gate.picked_tls13(_rec(0x17, 40))
+
+
+def _session(hello: bytes, before: list[bytes], after: list[bytes]) -> bytes:
+    """Client sends hello, gets `before`, sends its first app-data record, then upstream sends
+    `after` and closes. Returns everything the client received after its app-data record."""
+    a, b = socket.socketpair()
+    up_a, up_b = socket.socketpair()
+    t = threading.Thread(
+        target=sni_gate._serve, args=(b,), kwargs={"connect": lambda *_, **__: up_a}, daemon=True
+    )
+    t.start()
+    a.settimeout(5)
+    up_b.settimeout(5)
+    a.sendall(hello)
+    assert up_b.recv(len(hello)) == hello
+    pre = b"".join(before)
+    up_b.sendall(pre)
     got = b""
-    while chunk := dst_b.recv(65536):
+    while len(got) < len(pre):
+        got += a.recv(65536)
+    req = _rec(0x14, 1) + _rec(0x17, 53) + _rec(0x17, 229)
+    a.sendall(req)
+    seen = b""
+    while len(seen) < len(req):
+        seen += up_b.recv(65536)
+    for r in after:
+        try:
+            up_b.sendall(r)
+        except OSError:
+            break
+    try:
+        up_b.shutdown(socket.SHUT_WR)  # server done (Android's probe asks for Connection: close)
+    except OSError:
+        pass
+    got = b""
+    while chunk := a.recv(65536):
         got += chunk
-    assert got == b"x" * 1200
+    a.close()
+    up_b.close()
+    t.join(5)
+    return got
 
 
-def test_budget_reserves_per_connection_and_resets_each_window(monkeypatch):
-    monkeypatch.setattr(sni_gate, "_spent", {})
-    shares = [sni_gate._allowance("10.0.0.9", 100.0) for _ in range(4)]
-    assert shares == [8192, 8192, 8192, 0]  # 24 KB per window, reserved up front
-    sni_gate._refund("10.0.0.9", 8192 - 4700)  # a probe-sized connection gives back the rest
-    assert sni_gate._allowance("10.0.0.9", 101.0) == 8192 - 4700
-    assert sni_gate._allowance("10.0.0.9", 100.0 + sni_gate.BUDGET_WINDOW) == 8192
-    assert sni_gate._allowance("10.0.0.8", 101.0) == 8192  # per device
+# Measured on the beta box 2026-11-12: Android's probe gets a 559 B ticket then a 220 B
+# "204 No Content"; the smallest readable www.google.com reply seen is ~790 B (Range on robots.txt).
+HS13 = [_server_hello(True), _rec(0x14, 1), _rec(0x17, 2648)]
+HS12 = [_server_hello(False), _rec(0x16, 3000)]
+PROBE = [_rec(0x17, 559), _rec(0x17, 220)]
+
+
+def test_gate_passes_androids_probe_profile():
+    assert _session(_hello("www.google.com"), HS13, PROBE) == b"".join(PROBE)
+
+
+def test_gate_cuts_a_reply_too_big_for_a_probe():
+    after = [_rec(0x17, 559), _rec(0x17, 1395)]
+    assert _session(_hello("www.google.com"), HS13, after) == after[0]
+
+
+def test_gate_counts_reply_bytes_not_records():
+    # h2 (ticket, SETTINGS, ack, headers) or tiny records (record_size_limit) share one byte budget
+    tiny = [_rec(0x17, 30)] * 20
+    got = _session(_hello("www.google.com"), HS13, [_rec(0x17, 559)] + tiny)
+    assert len(got) == 564 + 35 * (sni_gate.REPLY_MAX // 35)
+
+
+def test_no_ticket_room_unless_the_server_confirms_tls13():
+    # client offered a TLS 1.3 ticket, but the server picked TLS 1.2: no ticket record will come
+    assert _session(_hello("www.google.com"), HS12, PROBE) == b""
+    assert _session(_hello("www.google.com"), HS12, [_rec(0x17, 220)]) == _rec(0x17, 220)
+
+
+def test_no_ticket_room_unless_the_client_offers_one():
+    assert _session(_hello12("www.google.com"), HS12, [_rec(0x17, 700)]) == b""
+    after = [_rec(0x16, 200), _rec(0x17, 220)]  # TLS 1.2 handshake records are not app data
+    assert _session(_hello12("www.google.com"), HS12, after) == b"".join(after)
+
+
+def test_gate_caps_total_bytes_down():
+    assert _session(_hello("www.google.com"), [_rec(0x16, 4000)], [_rec(0x16, 4500)]) == b""
+
+
+@pytest.fixture(autouse=True)
+def _fresh_budgets(monkeypatch):
+    monkeypatch.setattr(sni_gate, "_use", {})
 
 
 def test_module_docstring_describes_dns_behaviour():
