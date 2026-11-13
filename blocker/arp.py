@@ -239,6 +239,10 @@ class RedirectionManager:
     def set_targets(self, targets: dict[str, TargetAddrs]) -> None:
         with self._lock:
             new = dict(targets)
+            for mac, t in new.items():  # address changed under a live loop: spoof it now
+                old = self._targets.get(mac)
+                if mac in self._threads and _active(t) and old is not None and t != old:
+                    self._burst(t)
             for mac in list(self._threads):
                 if not _active(new.get(mac)):
                     self._stop_one(mac)  # loop thread heals from its last-seen target
@@ -246,6 +250,12 @@ class RedirectionManager:
             for mac, t in new.items():
                 if _active(t) and mac not in self._threads:
                     self._start_one(mac)
+
+    def _burst(self, target: TargetAddrs) -> None:
+        try:
+            self._send(redirect_packets(target, self._lanfacts()), self.cfg.lan_iface or None)
+        except Exception:
+            log.exception("redirect burst failed for %s", target.mac)
 
     def stop_all(self) -> None:
         with self._lock:

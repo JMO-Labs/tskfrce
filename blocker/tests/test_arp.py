@@ -250,3 +250,17 @@ def test_unresolved_gateway_mac_is_redetected_before_heal(monkeypatch):
     assert fs.event.wait(1.0)
     m.stop_all()
     assert any(p.haslayer(ARP) and p[ARP].hwsrc == LAN.gateway_mac for p in fs.calls[-1])
+
+
+def test_changed_ip_spoofs_new_ip_immediately_not_next_cadence():
+    from scapy.all import ARP
+
+    fs = FakeSend()
+    m = RedirectionManager(CFG, lan=LAN, send=fs, cadence=30)  # next tick far away
+    m.set_targets({DEV: TargetAddrs(mac=DEV, ip="192.168.1.50")})
+    assert fs.event.wait(1.0)
+    n = len(fs.calls)
+    m.set_targets({DEV: TargetAddrs(mac=DEV, ip="192.168.1.99")})
+    assert len(fs.calls) == n + 1
+    assert any(p.haslayer(ARP) and p[ARP].pdst == "192.168.1.99" for p in fs.calls[-1])
+    m.stop_all()

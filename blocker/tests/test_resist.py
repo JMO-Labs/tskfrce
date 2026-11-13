@@ -144,8 +144,8 @@ def test_watch_restarts_sniffer_with_box_and_src_filter():
     )
     w.set_watched(WATCHED)
     assert calls[-1]["iface"] == "eth0"
-    assert calls[-1]["filter"] == (
-        f"ether dst {BOX} and (ether src {GW.lower()} or ether src {KID})"
+    assert calls[-1]["filter"].startswith(
+        f"(ether dst {BOX} and (ether src {GW.lower()} or ether src {KID}))"
     )
     w.set_watched({})
     assert w._sniffer is None
@@ -222,3 +222,82 @@ def test_reset_drops_tally():
     c.reset(KID.upper())
     assert c.tally(KID).from_gateway == 0
     assert c.resisting() == set()
+
+
+def _watch_cb(cb):
+    captured = {}
+    w = ResistanceWatch(
+        SimpleNamespace(lan_iface=""),
+        ResistanceCounter(LAN),
+        sniffer_factory=lambda **kw: captured.update(kw) or SimpleNamespace(stop=lambda: None),
+        on_new_ip=cb,
+    )
+    w.set_watched(WATCHED)
+    return w, captured
+
+
+def test_filter_also_captures_arp_and_dhcp():
+    _, cap = _watch_cb(lambda *a: None)
+    assert cap["filter"] == (
+        f"(ether dst {BOX} and (ether src {GW.lower()} or ether src {KID}))"
+        " or arp or (udp and (port 67 or port 68))"
+    )
+
+
+def test_arp_from_blocked_mac_with_new_ip_fires_callback():
+    pytest.importorskip("scapy")
+    from scapy.layers.l2 import ARP, Ether
+
+    got = []
+    _, cap = _watch_cb(lambda m, ip: got.append((m, ip)))
+    cap["prn"](Ether(src=KID, dst="ff:ff:ff:ff:ff:ff") / ARP(op=1, hwsrc=KID, psrc="10.0.0.77"))
+    cap["prn"](Ether(src=KID, dst=BOX) / ARP(op=2, hwsrc=KID, psrc="10.0.0.78", hwdst=BOX))
+    assert got == [(KID, "10.0.0.77"), (KID, "10.0.0.78")]
+
+
+def test_arp_known_ip_probe_or_other_mac_ignored():
+    pytest.importorskip("scapy")
+    from scapy.layers.l2 import ARP, Ether
+
+    got = []
+    _, cap = _watch_cb(lambda m, ip: got.append((m, ip)))
+    cap["prn"](Ether(src=KID, dst=BOX) / ARP(op=1, hwsrc=KID, psrc=KID_IP))  # same IP
+    cap["prn"](Ether(src=KID, dst=BOX) / ARP(op=1, hwsrc=KID, psrc="0.0.0.0"))  # probe
+    cap["prn"](Ether(src="dd:dd:dd:dd:dd:04", dst=BOX) / ARP(op=1, psrc="10.0.0.9"))  # unwatched
+    assert got == []
+
+
+def _dhcp(msg, *, src, chaddr, **bootp):
+    from scapy.layers.dhcp import BOOTP, DHCP
+    from scapy.layers.inet import IP, UDP
+    from scapy.layers.l2 import Ether
+
+    opts = [("message-type", msg)] + bootp.pop("opts", []) + ["end"]
+    return (
+        Ether(src=src, dst="ff:ff:ff:ff:ff:ff")
+        / IP(src="0.0.0.0", dst="255.255.255.255")
+        / UDP(sport=68, dport=67)
+        / BOOTP(chaddr=bytes.fromhex(chaddr.replace(":", "")), **bootp)
+        / DHCP(options=opts)
+    )
+
+
+def test_dhcp_request_and_ack_fire_callback():
+    pytest.importorskip("scapy")
+    got = []
+    _, cap = _watch_cb(lambda m, ip: got.append((m, ip)))
+    cap["prn"](_dhcp("request", src=KID, chaddr=KID, opts=[("requested_addr", "10.0.0.60")]))
+    cap["prn"](_dhcp("ack", src=GW, chaddr=KID, yiaddr="10.0.0.61"))
+    cap["prn"](_dhcp("discover", src=KID, chaddr=KID))  # no address: ignored
+    assert got == [(KID, "10.0.0.60"), (KID, "10.0.0.61")]
+
+
+def test_callback_error_does_not_break_sniffer():
+    pytest.importorskip("scapy")
+    from scapy.layers.l2 import ARP, Ether
+
+    def boom(*a):
+        raise RuntimeError
+
+    _, cap = _watch_cb(boom)
+    cap["prn"](Ether(src=KID, dst=BOX) / ARP(op=1, hwsrc=KID, psrc="10.0.0.77"))

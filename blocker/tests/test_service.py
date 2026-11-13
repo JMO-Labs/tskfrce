@@ -614,3 +614,23 @@ def test_network_enforce_toggle_mid_run(monkeypatch):
     states["v"] = {"eth0:192.168.1.0/24": True}
     svc._reconcile_once()
     assert MAC in redir.targets and "192.168.1.50" in fw.applied[-1]
+
+
+def test_new_ip_from_sniffer_retargets_blocked_mac_and_firewall_at_once():
+    svc, fw, redir = _svc()
+    svc._on_seen(_seen(MAC, "192.168.1.50", ["fe80::1"]))
+    svc.store.set_blocked([MAC])
+    svc._on_new_ip(MAC, "192.168.1.77")
+    assert redir.targets[MAC].ip == "192.168.1.77"
+    assert redir.targets[MAC].ip6 == ("fe80::1",)
+    assert "192.168.1.77" in fw.applied[-1]
+    assert "192.168.1.50" not in fw.applied[-1]
+
+
+def test_new_ip_for_unblocked_mac_is_ignored():
+    svc, fw, redir = _svc()
+    svc._on_seen(_seen(MAC, "192.168.1.50"))
+    n = len(fw.applied)
+    svc._on_new_ip(MAC, "192.168.1.77")
+    assert len(fw.applied) == n
+    assert svc._devices[MAC].ip == "192.168.1.50"

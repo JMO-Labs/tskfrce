@@ -166,6 +166,7 @@ class Service:
         # Set on_seen callback for InterfaceManager now that _on_seen is defined
         if self._using_iface_mgr and self._iface_manager:
             self._iface_manager._on_seen = self._on_seen
+            self._iface_manager.on_new_ip = self._on_new_ip
 
     # --- policy application -------------------------------------------------
 
@@ -376,6 +377,25 @@ class Service:
         if seen.mac in self.store.current():
             self._apply(self.store.current())
 
+    def _on_new_ip(self, mac: str, ip: str) -> None:
+        """Sniffer saw a blocked MAC claim a new IPv4: retarget now instead of at the next scan."""
+        if mac not in self.store.current():
+            return
+        with self._lock:
+            old = self._devices.get(mac)
+            ip6 = list(old.ip6) if old else []
+        self._on_seen(
+            Seen(
+                mac=mac,
+                ip=ip,
+                ipv6=ip6,
+                hostname=None,
+                vendor=None,
+                vid=self._vid_of.get(mac),
+                iface=self._iface_of.get(mac),
+            )
+        )
+
     # --- reconcile (poll heals missed pushes) -------------------------------
 
     def _reconcile_once(self) -> None:
@@ -492,7 +512,7 @@ class Service:
             log.exception("enable_forwarding failed")
         if not self._using_iface_mgr and self._watch is None:
             counter = ResistanceCounter(self._redir._lanfacts(), lan_cidrs=self._lan_cidrs)
-            self._watch = ResistanceWatch(self.cfg, counter)
+            self._watch = ResistanceWatch(self.cfg, counter, on_new_ip=self._on_new_ip)
         self._spawn(self._reconcile_loop)
         self._spawn(self._resist_loop)
         if self._using_iface_mgr:

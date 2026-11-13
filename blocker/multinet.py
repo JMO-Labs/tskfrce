@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import threading
 from dataclasses import replace
+from collections.abc import Callable
 from typing import Any
 
 from blocker.arp import LanFacts, RedirectionManager, TargetAddrs
@@ -122,6 +123,7 @@ class InterfaceManager:
     ) -> None:
         self.cfg = cfg
         self._on_seen = on_seen or (lambda s: None)
+        self.on_new_ip: Callable[[str, str], None] = lambda mac, ip: None  # set by Service
         self._lan_cidrs = lan_cidrs or []
         self._lock = threading.Lock()
         # iface -> (stop_event, RedirectionManager, ResistanceWatch)
@@ -159,7 +161,9 @@ class InterfaceManager:
                     lan = detect_iface_gateway(iface)
                     redir = RedirectionManager(cfg_iface, lan=lan)
                     counter = ResistanceCounter(lan, lan_cidrs=self._lan_cidrs)
-                    watch = ResistanceWatch(cfg_iface, counter)
+                    watch = ResistanceWatch(
+                        cfg_iface, counter, on_new_ip=lambda m, ip: self.on_new_ip(m, ip)
+                    )
                     self._managers[iface] = (stop_ev, redir, watch)
 
                     # Spawn discovery for this interface in its own thread
