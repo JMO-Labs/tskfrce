@@ -2,7 +2,9 @@
 
 Android only treats Wi-Fi as online when https://www.google.com/generate_204 succeeds; without
 it a blocked phone silently moves to mobile data. The firewall redirects a blocked device's
-non-local :443 traffic here; DNS hands it real addresses only for PASS_NAMES.
+non-local :443 traffic here. DNS answers A queries with real addresses via bounded,
+per-client-capped, timed-out upstream lookups; other qtypes get NODATA. This gate enforces
+PASS_NAMES by SNI.
 Passed connections are cut after DOWN_CAP bytes: enough for the probe, not for search pages.
 """
 

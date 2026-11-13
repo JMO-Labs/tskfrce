@@ -99,3 +99,11 @@ def test_budget_reserves_per_connection_and_resets_each_window(monkeypatch):
     assert sni_gate._allowance("10.0.0.9", 101.0) == 8192 - 4700
     assert sni_gate._allowance("10.0.0.9", 100.0 + sni_gate.BUDGET_WINDOW) == 8192
     assert sni_gate._allowance("10.0.0.8", 101.0) == 8192  # per device
+
+
+def test_module_docstring_describes_dns_behaviour():
+    from blocker import sni_gate
+
+    doc = sni_gate.__doc__
+    assert "real addresses only for PASS_NAMES" not in doc
+    assert "NODATA" in doc
