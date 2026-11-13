@@ -614,3 +614,65 @@ def test_network_enforce_toggle_mid_run(monkeypatch):
     states["v"] = {"eth0:192.168.1.0/24": True}
     svc._reconcile_once()
     assert MAC in redir.targets and "192.168.1.50" in fw.applied[-1]
+
+
+def _new_ip_svc(monkeypatch):
+    import ipaddress
+
+    import blocker.service as service_mod
+
+    nets = [("eth0", ipaddress.ip_network("192.168.1.0/24"))]
+    monkeypatch.setattr(service_mod, "lan_networks", lambda: nets)
+    svc, fw, redir = _svc()
+    redir._lanfacts = lambda: SimpleNamespace(
+        gateway_ip="192.168.1.1",
+        gateway_ip6=None,
+        gateway_mac=None,
+        gateway_mac6=None,
+        box_mac="bb:bb:bb:bb:bb:bb",
+    )
+    svc._on_seen(_seen(MAC, "192.168.1.50", ["fe80::1"]))
+    svc.store.set_blocked([MAC])
+    return svc, fw, redir
+
+
+def test_new_ip_from_sniffer_adds_target_and_firewall_keeping_old(monkeypatch):
+    svc, fw, redir = _new_ip_svc(monkeypatch)
+    svc._on_new_ip(MAC, "192.168.1.77")
+    t = redir.targets[MAC]
+    assert t.ip == "192.168.1.50" and t.alt_ip == ("192.168.1.77",)
+    assert t.ip6 == ("fe80::1",)
+    assert "192.168.1.77" in fw.applied[-1]
+    assert "192.168.1.50" in fw.applied[-1]  # a forged claim never unblocks the real IP
+
+
+def test_scan_confirms_claimed_ip_and_drops_claims(monkeypatch):
+    svc, fw, redir = _new_ip_svc(monkeypatch)
+    svc._on_new_ip(MAC, "192.168.1.77")
+    svc._on_seen(_seen(MAC, "192.168.1.77", ["fe80::1"]))
+    t = redir.targets[MAC]
+    assert t.ip == "192.168.1.77" and t.alt_ip == ()
+    assert "192.168.1.50" not in fw.applied[-1]
+
+
+@pytest.mark.parametrize(
+    "ip",
+    ["10.0.0.250", "192.168.1.1", "192.168.1.2", "192.168.1.60", "bogus"],
+    ids=["off-subnet", "gateway", "portal", "other-device", "invalid"],
+)
+def test_forged_new_ip_is_ignored(monkeypatch, ip):
+    svc, fw, redir = _new_ip_svc(monkeypatch)
+    svc._on_seen(_seen("de:ad:be:ef:00:02", "192.168.1.60"))
+    n = len(fw.applied)
+    svc._on_new_ip(MAC, ip)
+    assert len(fw.applied) == n
+    assert redir.targets[MAC].alt_ip == ()
+
+
+def test_new_ip_for_unblocked_mac_is_ignored():
+    svc, fw, _redir = _svc()
+    svc._on_seen(_seen(MAC, "192.168.1.50"))
+    n = len(fw.applied)
+    svc._on_new_ip(MAC, "192.168.1.77")
+    assert len(fw.applied) == n
+    assert svc._devices[MAC].ip == "192.168.1.50"
