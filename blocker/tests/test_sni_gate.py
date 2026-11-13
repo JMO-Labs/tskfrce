@@ -61,7 +61,7 @@ def test_gate_closes_other_names_without_dialing():
 def test_dns_gives_blocked_devices_real_addresses(monkeypatch):
     from blocker.scapy_lite import DNS, DNSQR
 
-    monkeypatch.setattr(portal, "real_ip", lambda n: {"www.google.com": "142.250.1.1"}.get(n))
+    monkeypatch.setattr(portal, "real_ip", lambda n, **kw: {"www.google.com": "142.250.1.1"}.get(n))
 
     def ask(name):
         q = bytes(DNS(id=1, rd=1, qd=DNSQR(qname=name)))

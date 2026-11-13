@@ -12,6 +12,9 @@ import logging
 import socket
 import threading
 import time
+from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeout
 
 log = logging.getLogger(__name__)
 
@@ -76,20 +79,62 @@ def sni_of(hello: bytes) -> str | None:
     return None
 
 
-_CACHE: dict[str, tuple[float, str]] = {}
+CACHE_MAX = 512
+NAMES_PER_MIN = 60  # unique upstream names per client per minute
+LOOKUP_TIMEOUT = 2.0
+_CACHE: OrderedDict[str, tuple[float, str]] = OrderedDict()  # name -> (stored at, ip), LRU order
+_names: dict[str, tuple[float, set[str]]] = {}  # client -> (window start, names looked up)
+_cache_lock = threading.Lock()
+_pool = ThreadPoolExecutor(max_workers=8, thread_name_prefix="dns-up")
 
 
-def real_ip(name: str, ttl: float = 60) -> str | None:
-    """Upstream IPv4 for a PASS_NAMES host via the box's own resolver (cached ttl seconds)."""
-    hit = _CACHE.get(name)
-    if hit and time.monotonic() - hit[0] < ttl:
-        return hit[1]
+def _over_cap(client: str, name: str, now: float) -> bool:
+    """True if client has used up its unique-name budget for this window (records name if not)."""
+    with _cache_lock:
+        start, seen = _names.get(client, (now, set()))
+        if now - start >= 60:
+            start, seen = now, set()
+            for c in [c for c, (t, _) in _names.items() if now - t >= 60]:
+                del _names[c]
+        if name not in seen and len(seen) >= NAMES_PER_MIN:
+            _names[client] = (start, seen)
+            return True
+        seen.add(name)
+        _names[client] = (start, seen)
+        return False
+
+
+def _resolve(name: str) -> str:
+    return str(socket.getaddrinfo(name, 443, socket.AF_INET, socket.SOCK_STREAM)[0][4][0])
+
+
+def real_ip(name: str, ttl: float = 60, client: str = "") -> str | None:
+    """Upstream IPv4 for name via the box's own resolver (cached ttl seconds, LRU-bounded).
+
+    None on failure, timeout (LOOKUP_TIMEOUT) or when client is over its unique-name cap.
+    """
+    now = time.monotonic()
+    with _cache_lock:
+        hit = _CACHE.get(name)
+        if hit and now - hit[0] < ttl:
+            _CACHE.move_to_end(name)
+            return hit[1]
+    if _over_cap(client, name, now):
+        return None
     try:
-        ip = str(socket.getaddrinfo(name, 443, socket.AF_INET, socket.SOCK_STREAM)[0][4][0])
-    except OSError:
+        ip = _pool.submit(_resolve, name).result(timeout=LOOKUP_TIMEOUT)
+    except (OSError, FuturesTimeout):
         log.warning("resolving %s failed", name)
         return None
-    _CACHE[name] = (time.monotonic(), ip)
+    with _cache_lock:
+        _CACHE[name] = (time.monotonic(), ip)
+        _CACHE.move_to_end(name)
+        if len(_CACHE) > CACHE_MAX:
+            now = time.monotonic()
+            for k in [k for k, (t, _) in _CACHE.items() if now - t >= ttl]:
+                del _CACHE[k]
+        while len(_CACHE) > CACHE_MAX:
+            _CACHE.popitem(last=False)
     return ip
 
 
