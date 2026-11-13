@@ -22,10 +22,11 @@ def serve(
     box_ip: str,
     stop: threading.Event,
     kw: dict,
-    run: Callable = run_dns,
+    run: Callable | None = None,
     retry: float = RETRY_S,
 ) -> None:
     """Run the v6 listener until stop, retrying the bind on OSError (no v6, port busy)."""
+    run = run or run_dns
     warned = False
     while not stop.is_set():
         try:
