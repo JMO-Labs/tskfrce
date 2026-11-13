@@ -169,6 +169,7 @@ skip = "Chrome present but needs a UI-driven probe (not implemented)"
 # IPv6: Wi-Fi has v6 via fd77::/64 NAT66 in the droid netns. The box sees Linux netns v6 behaviour, not Android's.
 [[scenario]]
 id = "tx.v6.global"
+skip = "home LAN has no IPv6 internet (ULA fd76::/64 only, no v6 default route, box included); enable IPv6 on UniFi WAN to run"
 title = "IPv6 HTTPS to Cloudflare (default v6 source)"
 category = "transport"
 platforms = ["A"]
@@ -176,6 +177,7 @@ probe = '''K=/data/local/tmp/kit; $K/curl -6 --cacert $K/ca-bundle.crt -sS -m 10
 
 [[scenario]]
 id = "tx.v6.ula"
+skip = "home LAN has no IPv6 internet (ULA fd76::/64 only, no v6 default route, box included); enable IPv6 on UniFi WAN to run"
 title = "IPv6 HTTPS bound to the stable fd77:: (ULA) address"
 category = "transport"
 platforms = ["A"]
@@ -183,6 +185,7 @@ probe = '''K=/data/local/tmp/kit; A=$(ip -6 addr show wlan0 | sed -n 's/.*inet6 
 
 [[scenario]]
 id = "tx.v6.privacy"
+skip = "home LAN has no IPv6 internet (ULA fd76::/64 only, no v6 default route, box included); enable IPv6 on UniFi WAN to run"
 title = "IPv6 HTTPS bound to the temporary (privacy) address"
 category = "transport"
 platforms = ["A"]
