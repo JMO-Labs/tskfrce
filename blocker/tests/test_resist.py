@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 from blocker.arp import LanFacts, TargetAddrs
-from blocker.resist import ResistanceCounter, ResistanceWatch
+from blocker.resist import ResistanceCounter, ResistanceWatch, _norm
 
 LAN = LanFacts(gateway_ip="10.0.0.1", gateway_mac="aa:aa:aa:aa:aa:01", box_mac="bb:bb:bb:bb:bb:02")
 KID = "cc:cc:cc:cc:cc:03"
@@ -301,3 +301,28 @@ def test_callback_error_does_not_break_sniffer():
 
     _, cap = _watch_cb(boom)
     cap["prn"](Ether(src=KID, dst=BOX) / ARP(op=1, hwsrc=KID, psrc="10.0.0.77"))
+
+
+def test_arp_for_already_claimed_alt_ip_ignored():
+    pytest.importorskip("scapy")
+    from scapy.layers.l2 import ARP, Ether
+
+    got = []
+    w, cap = _watch_cb(lambda m, ip: got.append((m, ip)))
+    w.set_watched({KID: TargetAddrs(mac=KID, ip=KID_IP, alt_ip=("10.0.0.77",))})
+    cap["prn"](Ether(src=KID, dst=BOX) / ARP(op=1, hwsrc=KID, psrc="10.0.0.77"))
+    assert got == []
+
+
+def test_address_only_change_keeps_sniffer_running():
+    # the new-ip callback re-enters set_watched from the sniffer thread: never restart there
+    calls = []
+    w = ResistanceWatch(
+        SimpleNamespace(lan_iface=""),
+        ResistanceCounter(LAN),
+        sniffer_factory=lambda **kw: calls.append(kw) or SimpleNamespace(stop=lambda: None),
+    )
+    w.set_watched(WATCHED)
+    w.set_watched({KID: TargetAddrs(mac=KID, ip=KID_IP, alt_ip=("10.0.0.77",))})
+    assert len(calls) == 1
+    assert w.counter._ip2mac[_norm("10.0.0.77")] == KID

@@ -145,6 +145,9 @@ class Service:
         self.workarounds = WorkaroundCounter(self._mac_for_ip)
         self.store = StateStore()
         self._devices: dict[str, TargetAddrs] = {}
+        # sniffed IPv4 claims per MAC: spoofed/firewalled on top of the known IP until a scan
+        # confirms, so a forged ARP/DHCP frame can add targets but never unblock one
+        self._claims: dict[str, set[str]] = {}
         self._seen_at: dict[str, float] = {}
         self._lock = threading.Lock()
         self._probing: set[str] = set()  # MACs overlaid by test_block; guarded by _lock
@@ -196,14 +199,14 @@ class Service:
             if skipped:
                 log.warning("refusing to enforce on router/box MACs: %s", sorted(skipped))
                 blocked -= skipped
-            devs = {m: self._live_addrs(m) for m in blocked}
+            devs = {m: self._with_claims(m) for m in blocked}
             # Never spoof an address that isn't safely one device's: the gateway's
             # own IP or the box/portal IP. Stripping it here keeps it out of the firewall sets, the
             # redirect targets and the watch — and off the restore path.
             devs, stripped = self._strip_unsafe(devs, unsafe)
             if stripped:
                 log.warning("refusing unsafe gateway-side addresses: %s", sorted(stripped))
-            v4 = {t.ip for t in devs.values() if t.ip}
+            v4 = {ip for t in devs.values() for ip in t.v4}
             v6 = {ip for t in devs.values() for ip in t.ip6}
             macs = set(blocked)  # authoritative block key
             # device IPs from the state we already hold the lock for (no re-entry)
@@ -217,7 +220,7 @@ class Service:
                 self._fw.apply(ruleset)
             except Exception:
                 log.exception("firewall apply failed")
-            self._ip_mac = {ip: mac for mac, t in devs.items() for ip in (t.ip, *t.ip6) if ip}
+            self._ip_mac = {ip: mac for mac, t in devs.items() for ip in (*t.v4, *t.ip6)}
             if self._using_iface_mgr:
                 by_iface = self._by_interface(devs)
                 self._iface_manager.set_targets(by_iface)
@@ -356,8 +359,10 @@ class Service:
                 stripped.add(ip)
                 ip = None
             ip6 = tuple(a for a in t.ip6 if a not in unsafe)
-            stripped.update(set(t.ip6) - set(ip6))
-            out[mac] = t if (ip == t.ip and ip6 == t.ip6) else replace(t, ip=ip, ip6=ip6)
+            alt = tuple(a for a in t.alt_ip if a not in unsafe)
+            stripped.update(set(t.ip6) - set(ip6), set(t.alt_ip) - set(alt))
+            same = ip == t.ip and ip6 == t.ip6 and alt == t.alt_ip
+            out[mac] = t if same else replace(t, ip=ip, ip6=ip6, alt_ip=alt)
         return out, stripped
 
     def _enrich(self, seen: Seen) -> Seen:
@@ -370,6 +375,7 @@ class Service:
         with self._lock:
             self._devices[seen.mac] = TargetAddrs(mac=seen.mac, ip=seen.ip, ip6=tuple(seen.ipv6))
             self._seen_at[seen.mac] = self._clock()
+            self._claims.pop(seen.mac, None)  # a scan is the truth: drop unconfirmed claims
             self._vid_of[seen.mac] = seen.vid
             if seen.iface:  # never forget a known interface because a report lacked one
                 self._iface_of[seen.mac] = seen.iface
@@ -378,23 +384,34 @@ class Service:
             self._apply(self.store.current())
 
     def _on_new_ip(self, mac: str, ip: str) -> None:
-        """Sniffer saw a blocked MAC claim a new IPv4: retarget now instead of at the next scan."""
-        if mac not in self.store.current():
+        """Sniffer saw a blocked MAC claim a new IPv4: spoof + firewall it now, on top of the known
+        IP (the frame may be forged; the next scan settles which one is real)."""
+        if mac not in self.store.current() or not self._plausible_claim(mac, ip):
             return
         with self._lock:
-            old = self._devices.get(mac)
-            ip6 = list(old.ip6) if old else []
-        self._on_seen(
-            Seen(
-                mac=mac,
-                ip=ip,
-                ipv6=ip6,
-                hostname=None,
-                vendor=None,
-                vid=self._vid_of.get(mac),
-                iface=self._iface_of.get(mac),
-            )
-        )
+            self._claims.setdefault(mac, set()).add(ip)
+        self._apply(self.store.current())
+
+    def _plausible_claim(self, mac: str, ip: str) -> bool:
+        """Only an IP on the device's own subnet that no gateway, box or other device holds."""
+        try:
+            addr = ipaddress.ip_address(ip)
+        except ValueError:
+            return False
+        with self._lock:
+            known = self._devices.get(mac)
+            others = {d.ip for m, d in self._devices.items() if m != mac and d.ip}
+        nets = [n for _, n in lan_networks()]
+        cur = known.ip if known else None
+        home = [n for n in nets if _in_net(cur, n)] if cur else nets
+        if addr.version != 4 or not any(addr in n for n in home):
+            return False
+        return ip not in others | {self._gateway_ip(), self._portal_ip}
+
+    def _with_claims(self, mac: str) -> TargetAddrs:
+        t = self._live_addrs(mac)
+        alt = tuple(sorted(self._claims.get(mac, set()) - {t.ip}))
+        return replace(t, alt_ip=alt) if alt else t
 
     # --- reconcile (poll heals missed pushes) -------------------------------
 

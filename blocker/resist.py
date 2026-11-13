@@ -46,8 +46,8 @@ def _ip_map(targets: dict[str, TargetAddrs]) -> dict[str, str]:
     ip2mac: dict[str, str] = {}
     for mac, t in targets.items():
         ml = mac.lower()
-        if t.ip:
-            ip2mac[_norm(t.ip)] = ml
+        for ip in t.v4:
+            ip2mac[_norm(ip)] = ml
         for ip6 in t.ip6:
             ip2mac[_norm(ip6)] = ml
     return ip2mac
@@ -186,21 +186,26 @@ class ResistanceWatch:
         self.counter = counter
         self._factory = sniffer_factory
         self._sniffer: Any = None
+        self._flt = ""
         self._lock = threading.Lock()
         self._watched: dict[str, TargetAddrs] | None = None
         self._closed = False
 
     def set_watched(self, targets: dict[str, TargetAddrs]) -> None:
-        """Watch exactly these devices: restart the sniffer, stop it if empty."""
+        """Watch exactly these devices: restart the sniffer on a filter change; stop it if empty."""
         targets = dict(targets)
         with self._lock:
             if self._closed or targets == self._watched:
                 return
+            same_filter = self._sniffer is not None and self._filter(targets) == self._flt
             self._watched = targets
             self.counter.set_watched(targets)
+            if same_filter:  # address-only change: keep capturing (may run on the sniffer thread)
+                return
             self._stop_sniffer()
             if targets:
                 flt = self._filter(targets)
+                self._flt = flt
                 try:
                     self._sniffer = self._factory(
                         iface=self._cfg.lan_iface or None, filter=flt, prn=self._on_packet
@@ -258,7 +263,7 @@ class ResistanceWatch:
                 return
             mac, ip = found
             known = next((t for m, t in (self._watched or {}).items() if m.lower() == mac), None)
-            if known is None or _norm(ip) == _norm(known.ip or ""):
+            if known is None or _norm(ip) in {_norm(i) for i in known.v4}:
                 return
             self._on_new_ip(mac, ip)
         except Exception:
@@ -266,7 +271,8 @@ class ResistanceWatch:
 
 
 def _announcement(pkt: Any) -> tuple[str, str] | None:
-    """(mac, ipv4) claimed by an ARP or DHCP REQUEST/ACK frame; None for anything else."""
+    """(mac, ipv4) claimed by an ARP or DHCP REQUEST/ACK frame; None for anything else. Only a
+    claim: the consumer adds it next to the known IP, never replaces it."""
     from blocker.scapy_lite import ARP, BOOTP, DHCP
 
     ip = None

@@ -264,3 +264,33 @@ def test_changed_ip_spoofs_new_ip_immediately_not_next_cadence():
     assert len(fs.calls) == n + 1
     assert any(p.haslayer(ARP) and p[ARP].pdst == "192.168.1.99" for p in fs.calls[-1])
     m.stop_all()
+
+
+def test_alt_ips_are_spoofed_and_restored():
+    from scapy.all import ARP
+
+    t = TargetAddrs(mac=DEV, ip="192.168.1.50", alt_ip=("192.168.1.99",))
+    spoofed = {p[ARP].pdst for p in redirect_packets(t, LAN) if p.haslayer(ARP)}
+    healed = {p[ARP].pdst for p in restore(t, LAN) if p.haslayer(ARP)}
+    assert {"192.168.1.50", "192.168.1.99"} <= spoofed
+    assert {"192.168.1.50", "192.168.1.99"} <= healed
+
+
+def test_burst_is_sent_outside_the_lock():
+    held = []
+    fs = FakeSend()
+    m = RedirectionManager(CFG, lan=LAN, send=fs, cadence=30)
+
+    def send(pkts, iface):
+        free = m._lock.acquire(blocking=False)
+        if free:
+            m._lock.release()
+        held.append(not free)
+        fs(pkts, iface)
+
+    m._send = send
+    m.set_targets({DEV: TargetAddrs(mac=DEV, ip="192.168.1.50")})
+    assert fs.event.wait(1.0)
+    m.set_targets({DEV: TargetAddrs(mac=DEV, ip="192.168.1.50", alt_ip=("192.168.1.99",))})
+    m.stop_all()
+    assert held[1] is False
