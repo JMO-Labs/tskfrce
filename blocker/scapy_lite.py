@@ -8,7 +8,7 @@ from scapy.arch import get_if_addr, get_if_hwaddr
 from scapy.config import conf
 from scapy.layers.dhcp import BOOTP, DHCP
 from scapy.layers.dns import DNS, DNSQR, DNSRR
-from scapy.layers.inet import IP, UDP
+from scapy.layers.inet import IP, TCP, UDP
 from scapy.layers.inet6 import (
     ICMPv6EchoRequest,
     ICMPv6ND_NA,
@@ -28,6 +28,7 @@ __all__ = [
     "DNSQR",
     "DNSRR",
     "IP",
+    "TCP",
     "UDP",
     "AsyncSniffer",
     "Dot1Q",

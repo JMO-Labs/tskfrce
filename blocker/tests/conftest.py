@@ -14,4 +14,4 @@ def _no_real_dns(monkeypatch):
     """Portal DNS resolves names upstream; tests stay offline (answers fall back to the box IP)."""
     from blocker import portal
 
-    monkeypatch.setattr(portal, "real_ip", lambda name: None)
+    monkeypatch.setattr(portal, "real_ip", lambda name, **kw: None)
