@@ -120,6 +120,9 @@ table inet droidnat {
 }
 EOF
     dns=$(awk '/^nameserver/{print $2; exit}' /etc/netns/$NS/resolv.conf)
+    # dhcpcd runs hookless, so resolv.conf may be empty: use the Wi-Fi gateway (home router)
+    [ -n "$dns" ] || dns=$(in_ns ip route show default dev "$IF" | awk '{print $3; exit}')
+    valid_ip "$dns" || dns=10.10.40.1
     in_ns pkill -f "dnsmasq.*$TAP" || true
     # DHCP + IPv6 RA only (port=0: no DNS server); DNS = what the home router hands out
     in_ns dnsmasq --port=0 --interface="$TAP" --bind-interfaces --except-interface=lo \

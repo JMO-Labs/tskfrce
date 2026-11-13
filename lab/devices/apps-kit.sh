@@ -7,7 +7,7 @@
 # Usage: apps-kit.sh [fdroid|aurora PKG...|probe]   (no arg = fdroid + probe; aurora needs the box UNLOCKED, hold runs/.lock)
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
-ADB=(sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb)
+ADB=(/home/user/Android/Sdk/platform-tools/adb)
 W=${APPS_CACHE:-$(mktemp -d)}
 WG_URL=https://download.wireguard.com/android-client/com.wireguard.android-1.0.20260315.apk
 WG_SHA=f92971bc804f4c448e8845ae97e426095eab06ec09a2473a3fa2cfe7288e3298
@@ -68,7 +68,7 @@ aurora() { # PKG...: one-time Aurora login (Anonymous) then Play install through
 #!/usr/bin/env python3
 """aurora_install.py PKG [max_seconds]: drive Aurora Store (anonymous login already done) to install PKG from Play."""
 import re, subprocess, sys, time
-ADB = ["sudo", "-n", "/usr/local/sbin/droidns", "run", "/home/user/Android/Sdk/platform-tools/adb"]
+ADB = ["/home/user/Android/Sdk/platform-tools/adb"]
 pkg = sys.argv[1]; maxs = 360
 def adb(*a):
     return subprocess.run([*ADB, *a], capture_output=True, text=True).stdout

@@ -2,7 +2,7 @@
 # Idempotent: push static x86_64 probe binaries to the Android emulator (/data/local/tmp/kit).
 # Needs the droidns sudo helper. Binaries are cached in $KIT_CACHE (default: a fresh mktemp dir).
 set -euo pipefail
-ADB=(sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb)
+ADB=(/home/user/Android/Sdk/platform-tools/adb)
 CURL_REL=8.23.0-1 # stunnel/static-curl: HTTP/3, ECH, c-ares
 Q_REL=0.19.12     # natesales/q: DoT/DoH/DoQ client
 WS_REL=11.1.0     # erebe/wstunnel: WebSocket tunnel client (canary.ws)

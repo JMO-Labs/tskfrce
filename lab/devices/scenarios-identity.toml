@@ -33,7 +33,7 @@ while [ $(( $(date +%s)-S )) -lt 75 ]; do N=$((N+1))
 echo "leaks=$L/$N first_ok=$F last_ok=$LA"
 [ $L -gt 0 ] && exit 0; exit 1'''
 host_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.randmac.paused
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -50,7 +50,7 @@ free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(
 mkdir -p $O; rm -f $O/$ID.log $O/$ID.done; date -u -d '-10 sec' +%Y-%m-%dT%H:%M:%S > $O/$ID.since; : > $O/$ID.macs
 log "start id=$ID box_dev46=$(BX mine c4:8b:66:54:72:0d)" '''
 host_locked_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.randmac.paused
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -68,7 +68,7 @@ $D mac random Pixel-7 android-dhcp-15 > $O/$ID.rot 2>&1; m=$(curmac); echo $m >>
 log "rotated to $m random Pixel-7 android-dhcp-15 ip=$ip"; case $m in c4:8b:66:54:72:0d|"") fail "mac did not change";; esac; [ -n "$ip" ] || fail "no ip after rotate"
 '''
 host_teardown = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.randmac.paused
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -110,7 +110,7 @@ while [ $(( $(date +%s)-S )) -lt 75 ]; do N=$((N+1))
 echo "leaks=$L/$N first_ok=$F last_ok=$LA"
 [ $L -gt 0 ] && exit 0; exit 1'''
 host_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.randmac.nohost
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -127,7 +127,7 @@ free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(
 mkdir -p $O; rm -f $O/$ID.log $O/$ID.done; date -u -d '-10 sec' +%Y-%m-%dT%H:%M:%S > $O/$ID.since; : > $O/$ID.macs
 log "start id=$ID box_dev46=$(BX mine c4:8b:66:54:72:0d)" '''
 host_locked_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.randmac.nohost
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -145,7 +145,7 @@ $D mac random > $O/$ID.rot 2>&1; m=$(curmac); echo $m >> $O/$ID.macs; waitip
 log "rotated to $m random ip=$ip"; case $m in c4:8b:66:54:72:0d|"") fail "mac did not change";; esac; [ -n "$ip" ] || fail "no ip after rotate"
 '''
 host_teardown = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.randmac.nohost
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -187,7 +187,7 @@ while [ $(( $(date +%s)-S )) -lt 60 ]; do N=$((N+1))
 echo "leaks=$L/$N first_ok=$F last_ok=$LA"
 [ $L -gt 0 ] && exit 1; exit 0'''
 host_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.randmac.unpaused
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -204,7 +204,7 @@ free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(
 mkdir -p $O; rm -f $O/$ID.log $O/$ID.done; date -u -d '-10 sec' +%Y-%m-%dT%H:%M:%S > $O/$ID.since; : > $O/$ID.macs
 log "start id=$ID box_dev46=$(BX mine c4:8b:66:54:72:0d)" '''
 host_locked_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.randmac.unpaused
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -223,7 +223,7 @@ $D mac random Pixel-7 android-dhcp-15 > $O/$ID.rot 2>&1; m=$(curmac); echo $m >>
 log "rotated to $m random Pixel-7 android-dhcp-15 ip=$ip"; case $m in c4:8b:66:54:72:0d|"") fail "mac did not change";; esac; [ -n "$ip" ] || fail "no ip after rotate"
 '''
 host_teardown = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.randmac.unpaused
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -265,7 +265,7 @@ while [ $(( $(date +%s)-S )) -lt 75 ]; do N=$((N+1))
 echo "leaks=$L/$N first_ok=$F last_ok=$LA"
 [ $L -gt 0 ] && exit 0; exit 1'''
 host_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.rejoin.hostname
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -282,7 +282,7 @@ free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(
 mkdir -p $O; rm -f $O/$ID.log $O/$ID.done; date -u -d '-10 sec' +%Y-%m-%dT%H:%M:%S > $O/$ID.since; : > $O/$ID.macs
 log "start id=$ID box_dev46=$(BX mine c4:8b:66:54:72:0d)" '''
 host_locked_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.rejoin.hostname
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -299,7 +299,7 @@ free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(
 $D rejoin Galaxy-S24 > $O/$ID.rot 2>&1; log "rejoined mac=$(curmac) host=Galaxy-S24"; waitip; [ -n "$ip" ] || fail "no ip"
 '''
 host_teardown = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.rejoin.hostname
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -341,7 +341,7 @@ while [ $(( $(date +%s)-S )) -lt 75 ]; do N=$((N+1))
 echo "leaks=$L/$N first_ok=$F last_ok=$LA"
 [ $L -gt 0 ] && exit 0; exit 1'''
 host_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.rejoin.vendor
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -358,7 +358,7 @@ free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(
 mkdir -p $O; rm -f $O/$ID.log $O/$ID.done; date -u -d '-10 sec' +%Y-%m-%dT%H:%M:%S > $O/$ID.since; : > $O/$ID.macs
 log "start id=$ID box_dev46=$(BX mine c4:8b:66:54:72:0d)" '''
 host_locked_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.rejoin.vendor
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -375,7 +375,7 @@ free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(
 $D rejoin Pixel-7 MSFT-5.0 > $O/$ID.rot 2>&1; log "rejoined mac=$(curmac) vendor=MSFT-5.0"; waitip; [ -n "$ip" ] || fail "no ip"
 '''
 host_teardown = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.rejoin.vendor
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -417,7 +417,7 @@ while [ $(( $(date +%s)-S )) -lt 75 ]; do N=$((N+1))
 echo "leaks=$L/$N first_ok=$F last_ok=$LA"
 [ $L -gt 0 ] && exit 0; exit 1'''
 host_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.staticip.free
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -434,7 +434,7 @@ free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(
 mkdir -p $O; rm -f $O/$ID.log $O/$ID.done; date -u -d '-10 sec' +%Y-%m-%dT%H:%M:%S > $O/$ID.since; : > $O/$ID.macs
 log "start id=$ID box_dev46=$(BX mine c4:8b:66:54:72:0d)" '''
 host_locked_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.staticip.free
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -452,7 +452,7 @@ free_ip 10.10.40.250 || { fail "static ip 10.10.40.250 not free"; exit 0; }
 $D static 10.10.40.250 10.10.40.1 > $O/$ID.rot 2>&1; log "static 10.10.40.250 mac=$(curmac)"; grep -q '10.10.40.250/24' $O/$ID.rot || fail "static not applied"
 '''
 host_teardown = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.staticip.free
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -494,7 +494,7 @@ while [ $(( $(date +%s)-S )) -lt 75 ]; do N=$((N+1))
 echo "leaks=$L/$N first_ok=$F last_ok=$LA"
 [ $L -gt 0 ] && exit 0; exit 1'''
 host_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.staticip.parent
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -511,7 +511,7 @@ free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(
 mkdir -p $O; rm -f $O/$ID.log $O/$ID.done; date -u -d '-10 sec' +%Y-%m-%dT%H:%M:%S > $O/$ID.since; : > $O/$ID.macs
 log "start id=$ID box_dev46=$(BX mine c4:8b:66:54:72:0d)" '''
 host_locked_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.staticip.parent
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -529,7 +529,7 @@ free_ip 10.10.40.143 || { fail "ip 10.10.40.143 in use/online"; exit 0; }
 $D static 10.10.40.143 10.10.40.1 > $O/$ID.rot 2>&1; log "static 10.10.40.143 (device 39's last ip) mac=$(curmac)"; grep -q '10.10.40.143/24' $O/$ID.rot || fail "static not applied"
 '''
 host_teardown = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.staticip.parent
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -571,7 +571,7 @@ while [ $(( $(date +%s)-S )) -lt 75 ]; do N=$((N+1))
 echo "leaks=$L/$N first_ok=$F last_ok=$LA"
 [ $L -gt 0 ] && exit 0; exit 1'''
 host_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.clone.offline
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -588,7 +588,7 @@ free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(
 mkdir -p $O; rm -f $O/$ID.log $O/$ID.done; date -u -d '-10 sec' +%Y-%m-%dT%H:%M:%S > $O/$ID.since; : > $O/$ID.macs
 log "start id=$ID box_dev46=$(BX mine c4:8b:66:54:72:0d)" '''
 host_locked_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.clone.offline
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -606,7 +606,7 @@ BX list | python3 -c "import sys,json; d=[x for x in json.load(sys.stdin) if x['
 $D mac 16:e2:a7:7b:cc:06 > $O/$ID.rot 2>&1; log "cloned 16:e2:a7:7b:cc:06 mac_now=$(curmac) box_row=$(BX mine 16:e2:a7:7b:cc:06)"; waitip; [ -n "$ip" ] || fail "no ip"
 '''
 host_teardown = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.clone.offline
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -648,7 +648,7 @@ while [ $(( $(date +%s)-S )) -lt 300 ]; do N=$((N+1))
 echo "leaks=$L/$N first_ok=$F last_ok=$LA"
 [ $L -gt 0 ] && exit 0; exit 1'''
 host_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.rotate.storm
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -665,7 +665,7 @@ free_ip() { BX list | python3 -c "import sys,json; ip=sys.argv[1]; sys.exit(any(
 mkdir -p $O; rm -f $O/$ID.log $O/$ID.done; date -u -d '-10 sec' +%Y-%m-%dT%H:%M:%S > $O/$ID.since; : > $O/$ID.macs
 log "start id=$ID box_dev46=$(BX mine c4:8b:66:54:72:0d)" '''
 host_locked_setup = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.rotate.storm
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }
@@ -688,7 +688,7 @@ done; touch $O/$ID.done ) </dev/null >/dev/null 2>&1 &
 log "storm started in background (5 rotations); runner probe runs concurrently"
 '''
 host_teardown = '''O=/home/user/code/tskfrce/lab/devices/runs/identity-obs; ID=id.rotate.storm
-A='sudo -n /usr/local/sbin/droidns run /home/user/Android/Sdk/platform-tools/adb'
+A='/home/user/Android/Sdk/platform-tools/adb'
 D='sudo -n /usr/local/sbin/droidns'
 BX() { ssh -o BatchMode=yes -i $HOME/.ssh/id_gen_key ubuntu@192.168.1.98 "docker exec -i task4ce-backend-1 python - $*" < /home/user/code/tskfrce/lab/devices/boxctl.py; }
 log() { echo "$(date -u +%T) $*" >> $O/$ID.log; }

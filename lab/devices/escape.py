@@ -18,10 +18,8 @@ from datetime import datetime
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-ADB = [
-    *("sudo", "-n", "/usr/local/sbin/droidns", "run"),
-    "/home/user/Android/Sdk/platform-tools/adb",
-]
+# emulator runs in the root ns (emu-split.sh); only its Wi-Fi TAP lives in the droid netns
+ADB = ["/home/user/Android/Sdk/platform-tools/adb"]
 SSH = [
     "ssh",
     "-o",
@@ -44,7 +42,7 @@ class Row:
 
 
 def adb(*args, timeout=30):
-    """Run adb on the droid netns; returns (rc, stdout). Timeout gives rc 124."""
+    """Run adb against the emulator; returns (rc, stdout). Timeout gives rc 124."""
     try:
         p = subprocess.run([*ADB, *args], capture_output=True, text=True, timeout=timeout)
         return p.returncode, p.stdout
