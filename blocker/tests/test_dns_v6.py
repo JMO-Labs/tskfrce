@@ -7,7 +7,6 @@ import threading
 from unittest.mock import patch
 
 import pytest
-
 from blocker import dns_v6
 
 
@@ -118,7 +117,7 @@ def test_v6_listener_without_portal_ip_answers_portal_a_query():
     with (
         patch("blocker.service.lan_addrs", lambda: [("br-lan", "192.168.9.2")]),
         patch("blocker.portal.real_ip", lambda *a, **k: None),
-        patch.object(svc, "_dns_kw", lambda: {}),
+        patch.object(svc, "_dns_kw", dict),
     ):
         svc._start_dns_v6(bind=("::1", port))
         c = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)
