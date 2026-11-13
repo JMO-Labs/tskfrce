@@ -628,7 +628,7 @@ def test_new_ip_from_sniffer_retargets_blocked_mac_and_firewall_at_once():
 
 
 def test_new_ip_for_unblocked_mac_is_ignored():
-    svc, fw, redir = _svc()
+    svc, fw, _redir = _svc()
     svc._on_seen(_seen(MAC, "192.168.1.50"))
     n = len(fw.applied)
     svc._on_new_ip(MAC, "192.168.1.77")
