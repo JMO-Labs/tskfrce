@@ -62,7 +62,7 @@ def test_gate_closes_other_names_without_dialing():
 def test_dns_gives_blocked_devices_real_addresses(monkeypatch):
     from blocker.scapy_lite import DNS, DNSQR
 
-    monkeypatch.setattr(portal, "real_ip", lambda n: {"www.google.com": "142.250.1.1"}.get(n))
+    monkeypatch.setattr(portal, "real_ip", lambda n, **kw: {"www.google.com": "142.250.1.1"}.get(n))
 
     def ask(name):
         q = bytes(DNS(id=1, rd=1, qd=DNSQR(qname=name)))
@@ -202,3 +202,11 @@ def test_gate_caps_total_bytes_down():
 @pytest.fixture(autouse=True)
 def _fresh_budgets(monkeypatch):
     monkeypatch.setattr(sni_gate, "_use", {})
+
+
+def test_module_docstring_describes_dns_behaviour():
+    from blocker import sni_gate
+
+    doc = sni_gate.__doc__
+    assert "real addresses only for PASS_NAMES" not in doc
+    assert "NODATA" in doc
