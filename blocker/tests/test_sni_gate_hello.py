@@ -1,11 +1,11 @@
 """Strict ClientHello parsing: the gate must read the hello the way a TLS server does."""
 
+import itertools
 import socket
 import threading
 import time
 
 import pytest
-
 from blocker import sni_gate
 from blocker.tests.test_sni_gate import _hello
 
@@ -34,7 +34,7 @@ def _msg(exts: bytes, trailer: bytes = b"", ext_len: int | None = None) -> bytes
 def _records(msg: bytes, *cuts: int, kind: int = 0x16) -> bytes:
     """msg as TLS records, split at the given offsets."""
     out, edges = b"", [0, *cuts, len(msg)]
-    for a, b in zip(edges, edges[1:]):
+    for a, b in itertools.pairwise(edges):
         out += bytes([kind, 3, 1]) + (b - a).to_bytes(2, "big") + msg[a:b]
     return out
 

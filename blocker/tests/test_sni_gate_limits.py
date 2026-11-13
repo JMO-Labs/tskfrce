@@ -5,7 +5,6 @@ import threading
 import time
 
 import pytest
-
 from blocker import sni_gate
 from blocker.tests.test_sni_gate import _hello
 

@@ -3,7 +3,6 @@ import ssl
 import threading
 
 import pytest
-
 from blocker import portal, sni_gate
 from blocker.firewall import render_ruleset
 
