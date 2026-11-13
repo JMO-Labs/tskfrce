@@ -24,6 +24,7 @@ id = "app.roblox"
 title = "Roblox app: launch, scroll, count bytes received"
 category = "apps"
 platforms = ["A"]
+restore_probe = '''/data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl='''
 probe = '''/data/local/tmp/kit/app-probe.sh com.roblox.client 40'''
 timeout = 100
 
@@ -32,6 +33,7 @@ id = "app.tiktok"
 title = "TikTok app: launch, scroll, count bytes received"
 category = "apps"
 platforms = ["A"]
+restore_probe = '''/data/local/tmp/kit/real.sh https://www.cloudflare.com/cdn-cgi/trace fl='''
 probe = '''/data/local/tmp/kit/app-probe.sh com.zhiliaoapp.musically 40'''
 timeout = 100
 
