@@ -5,6 +5,7 @@
 set -eu
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+sh "$(dirname "$0")/test-install-fetch.sh"
 export TASK4CE_SRC="$ROOT"
 TASK4CE_DIR="$(mktemp -d)"
 export TASK4CE_DIR
