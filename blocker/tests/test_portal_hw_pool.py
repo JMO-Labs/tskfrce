@@ -6,6 +6,7 @@ import socket
 import threading
 import time
 
+import pytest
 from blocker.portal import HW_PER_CLIENT, run_dns
 from scapy.layers.dns import DNS, DNSQR
 
@@ -171,8 +172,6 @@ def test_on_query_not_called_for_forwarded_homework_answers():
 
 
 def test_run_dns_serves_over_ipv6():
-    import pytest
-
     try:
         with socket.socket(socket.AF_INET6, socket.SOCK_DGRAM) as s:
             s.bind(("::1", 0))

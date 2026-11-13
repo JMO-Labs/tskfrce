@@ -14,6 +14,7 @@ import time
 from collections.abc import Callable
 from dataclasses import replace
 
+from blocker import dns_v6
 from blocker import firewall as fw
 from blocker.api import make_api
 from blocker.arp import RedirectionManager, TargetAddrs
@@ -508,6 +509,7 @@ class Service:
         # One DNS + portal server per LAN address, never 0.0.0.0: the setup hotspot (10.42.0.1)
         # needs :53/:80 for itself, and networks come and go (spec A2/A3).
         self._spawn(lambda: PerAddress(self._serve_portal).run(self._stop))
+        self._start_dns_v6()
         # Create API servers for each bind host. If bind_hosts is set, use multi-bind with retry.
         if self.cfg.bind_hosts:
             self._spawn(
@@ -531,22 +533,19 @@ class Service:
             kwargs={"on_hit": self.hits.add, "host": ip},
             daemon=True,
         ).start()
-        kw = {
+        run_dns(self.cfg, self._portal_ip or ip, stop, bind=(ip, 53), **self._dns_kw())
+
+    def _dns_kw(self) -> dict:
+        return {
             "handle": self._wiring.dns_handle,
             "claims": self._wiring.claims,
             "client_key": self._mac_for_ip,
             "on_query": self.workarounds.add,
         }
-        # v6 listener: the firewall redirects blocked devices' v6 DNS to :53 on the arrival
-        # interface. Best effort; a box without v6 simply has nothing to catch.
-        threading.Thread(target=self._serve_dns_v6, args=(ip, stop, kw), daemon=True).start()
-        run_dns(self.cfg, self._portal_ip or ip, stop, bind=(ip, 53), **kw)
 
-    def _serve_dns_v6(self, ip: str, stop: threading.Event, kw: dict) -> None:
-        try:
-            run_dns(self.cfg, self._portal_ip or ip, stop, bind=("::", 53), **kw)
-        except OSError as e:
-            log.info("IPv6 DNS listener unavailable: %s", e)
+    def _start_dns_v6(self) -> None:
+        box = self._portal_ip or ""
+        self._spawn(lambda: dns_v6.serve(self.cfg, box, self._stop, self._dns_kw()))
 
     def _spawn(self, target: Callable[[], None]) -> None:
         threading.Thread(target=target, daemon=True).start()
