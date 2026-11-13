@@ -31,6 +31,11 @@ class TargetAddrs:
     mac: str
     ip: str | None = None
     ip6: tuple[str, ...] = ()
+    alt_ip: tuple[str, ...] = ()  # sniffed, unconfirmed IPv4 claims, spoofed alongside ``ip``
+
+    @property
+    def v4(self) -> tuple[str, ...]:
+        return tuple(dict.fromkeys(i for i in (self.ip, *self.alt_ip) if i))
 
 
 @dataclass(frozen=True)
@@ -51,7 +56,7 @@ class LanFacts:
 
 
 def _active(t: TargetAddrs | None) -> bool:
-    return bool(t and (t.ip or t.ip6))
+    return bool(t and (t.v4 or t.ip6))
 
 
 def arp_reply(target_ip: str, target_mac: str, gateway_ip: str, box_mac: str):
@@ -88,10 +93,10 @@ def redirect_packets(target: TargetAddrs, lan: LanFacts) -> list:
     gateway when its real MAC is known (never with a guess).
     """
     pkts = []
-    if target.ip:
-        pkts.append(arp_reply(target.ip, target.mac, lan.gateway_ip, lan.box_mac))
+    for ip in target.v4:
+        pkts.append(arp_reply(ip, target.mac, lan.gateway_ip, lan.box_mac))
         if lan.gateway_mac:
-            pkts.append(arp_reply(lan.gateway_ip, lan.gateway_mac, target.ip, lan.box_mac))
+            pkts.append(arp_reply(lan.gateway_ip, lan.gateway_mac, ip, lan.box_mac))
     if lan.gateway_ip6:
         for ip6 in target.ip6:
             pkts.append(ndp_advert(ip6, target.mac, lan.gateway_ip6, lan.box_mac))
@@ -113,19 +118,19 @@ def restore(target: TargetAddrs, lan: LanFacts) -> list:
     from blocker.scapy_lite import ARP, Ether
 
     pkts = []
-    if target.ip and lan.gateway_mac:
+    for ip in target.v4 if lan.gateway_mac else ():
         pkts.append(
             Ether(dst=target.mac)
             / ARP(
                 op=2,
                 psrc=lan.gateway_ip,
                 hwsrc=lan.gateway_mac,
-                pdst=target.ip,
+                pdst=ip,
                 hwdst=target.mac,
             )
         )
         # also heal the gateway: the device's IP is really at the device's MAC
-        pkts.append(arp_reply(lan.gateway_ip, lan.gateway_mac, target.ip, target.mac))
+        pkts.append(arp_reply(lan.gateway_ip, lan.gateway_mac, ip, target.mac))
     if lan.gateway_ip6 and lan.gateway_mac6:
         for ip6 in target.ip6:
             # truth: advertise the v6 gateway's real MAC, resolved separately from v4
@@ -239,6 +244,11 @@ class RedirectionManager:
     def set_targets(self, targets: dict[str, TargetAddrs]) -> None:
         with self._lock:
             new = dict(targets)
+            bursts = [  # address changed under a live loop: spoof it now (sent after unlock)
+                t
+                for mac, t in new.items()
+                if mac in self._threads and _active(t) and self._targets.get(mac) not in (None, t)
+            ]
             for mac in list(self._threads):
                 if not _active(new.get(mac)):
                     self._stop_one(mac)  # loop thread heals from its last-seen target
@@ -246,6 +256,14 @@ class RedirectionManager:
             for mac, t in new.items():
                 if _active(t) and mac not in self._threads:
                     self._start_one(mac)
+        for t in bursts:
+            self._burst(t)
+
+    def _burst(self, target: TargetAddrs) -> None:
+        try:
+            self._send(redirect_packets(target, self._lanfacts()), self.cfg.lan_iface or None)
+        except Exception:
+            log.exception("redirect burst failed for %s", target.mac)
 
     def stop_all(self) -> None:
         with self._lock:

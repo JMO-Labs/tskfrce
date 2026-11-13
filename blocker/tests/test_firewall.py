@@ -230,3 +230,18 @@ def test_kill_conntrack_tolerates_status_1():
         mock_run.side_effect = subprocess.CalledProcessError(1, "conntrack")
         # Should not raise
         kill_conntrack({"8.8.8.8"}, "192.168.1.10")
+
+
+def test_render_redirects_v6_dns_by_mac_to_box_resolver():
+    # Paused device's v6 DNS (incl. rotated temporary addresses) must hit the box resolver,
+    # not be accepted by the LAN v6 forward rule.
+    for portal_ip in ("192.168.1.2", ""):
+        r = render_ruleset(set(), set(), MAC, LAN, portal_ip, 8080)
+        pre = r.split("chain forward")[0]
+        for proto in ("udp", "tcp"):
+            assert (
+                f"ether saddr @blocked_mac meta nfproto ipv6 {proto} dport 53 redirect to :53"
+                in pre
+            )
+    # non-53 LAN v6 accept unchanged
+    assert "ether saddr @blocked_mac ip6 daddr { fe80::/10 } accept" in r

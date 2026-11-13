@@ -14,6 +14,7 @@ import time
 from collections.abc import Callable
 from dataclasses import replace
 
+from blocker import dns_v6
 from blocker import firewall as fw
 from blocker.api import make_api
 from blocker.arp import RedirectionManager, TargetAddrs
@@ -32,7 +33,7 @@ from blocker.discovery import run_discovery
 from blocker.hits import HitCounter
 from blocker.homework import HomeworkGate
 from blocker.hw_wiring import HomeworkWiring
-from blocker.ifaces import PerAddress, iface_for_ip, lan_networks
+from blocker.ifaces import PerAddress, iface_for_ip, lan_addrs, lan_networks
 from blocker.multinet import InterfaceManager
 from blocker.portal import run_dns, run_http
 from blocker.resist import ResistanceCounter, ResistanceWatch, Tally
@@ -145,6 +146,9 @@ class Service:
         self.workarounds = WorkaroundCounter(self._mac_for_ip)
         self.store = StateStore()
         self._devices: dict[str, TargetAddrs] = {}
+        # sniffed IPv4 claims per MAC: spoofed/firewalled on top of the known IP until a scan
+        # confirms, so a forged ARP/DHCP frame can add targets but never unblock one
+        self._claims: dict[str, set[str]] = {}
         self._seen_at: dict[str, float] = {}
         self._lock = threading.Lock()
         self._probing: set[str] = set()  # MACs overlaid by test_block; guarded by _lock
@@ -166,6 +170,7 @@ class Service:
         # Set on_seen callback for InterfaceManager now that _on_seen is defined
         if self._using_iface_mgr and self._iface_manager:
             self._iface_manager._on_seen = self._on_seen
+            self._iface_manager.on_new_ip = self._on_new_ip
 
     # --- policy application -------------------------------------------------
 
@@ -195,14 +200,14 @@ class Service:
             if skipped:
                 log.warning("refusing to enforce on router/box MACs: %s", sorted(skipped))
                 blocked -= skipped
-            devs = {m: self._live_addrs(m) for m in blocked}
+            devs = {m: self._with_claims(m) for m in blocked}
             # Never spoof an address that isn't safely one device's: the gateway's
             # own IP or the box/portal IP. Stripping it here keeps it out of the firewall sets, the
             # redirect targets and the watch — and off the restore path.
             devs, stripped = self._strip_unsafe(devs, unsafe)
             if stripped:
                 log.warning("refusing unsafe gateway-side addresses: %s", sorted(stripped))
-            v4 = {t.ip for t in devs.values() if t.ip}
+            v4 = {ip for t in devs.values() for ip in t.v4}
             v6 = {ip for t in devs.values() for ip in t.ip6}
             macs = set(blocked)  # authoritative block key
             # device IPs from the state we already hold the lock for (no re-entry)
@@ -216,7 +221,7 @@ class Service:
                 self._fw.apply(ruleset)
             except Exception:
                 log.exception("firewall apply failed")
-            self._ip_mac = {ip: mac for mac, t in devs.items() for ip in (t.ip, *t.ip6) if ip}
+            self._ip_mac = {ip: mac for mac, t in devs.items() for ip in (*t.v4, *t.ip6)}
             if self._using_iface_mgr:
                 by_iface = self._by_interface(devs)
                 self._iface_manager.set_targets(by_iface)
@@ -355,8 +360,10 @@ class Service:
                 stripped.add(ip)
                 ip = None
             ip6 = tuple(a for a in t.ip6 if a not in unsafe)
-            stripped.update(set(t.ip6) - set(ip6))
-            out[mac] = t if (ip == t.ip and ip6 == t.ip6) else replace(t, ip=ip, ip6=ip6)
+            alt = tuple(a for a in t.alt_ip if a not in unsafe)
+            stripped.update(set(t.ip6) - set(ip6), set(t.alt_ip) - set(alt))
+            same = ip == t.ip and ip6 == t.ip6 and alt == t.alt_ip
+            out[mac] = t if same else replace(t, ip=ip, ip6=ip6, alt_ip=alt)
         return out, stripped
 
     def _enrich(self, seen: Seen) -> Seen:
@@ -369,12 +376,43 @@ class Service:
         with self._lock:
             self._devices[seen.mac] = TargetAddrs(mac=seen.mac, ip=seen.ip, ip6=tuple(seen.ipv6))
             self._seen_at[seen.mac] = self._clock()
+            self._claims.pop(seen.mac, None)  # a scan is the truth: drop unconfirmed claims
             self._vid_of[seen.mac] = seen.vid
             if seen.iface:  # never forget a known interface because a report lacked one
                 self._iface_of[seen.mac] = seen.iface
             self._seg_seen[(seen.mac, seen.vid)] = (self._devices[seen.mac], self._clock())
         if seen.mac in self.store.current():
             self._apply(self.store.current())
+
+    def _on_new_ip(self, mac: str, ip: str) -> None:
+        """Sniffer saw a blocked MAC claim a new IPv4: spoof + firewall it now, on top of the known
+        IP (the frame may be forged; the next scan settles which one is real)."""
+        if mac not in self.store.current() or not self._plausible_claim(mac, ip):
+            return
+        with self._lock:
+            self._claims.setdefault(mac, set()).add(ip)
+        self._apply(self.store.current())
+
+    def _plausible_claim(self, mac: str, ip: str) -> bool:
+        """Only an IP on the device's own subnet that no gateway, box or other device holds."""
+        try:
+            addr = ipaddress.ip_address(ip)
+        except ValueError:
+            return False
+        with self._lock:
+            known = self._devices.get(mac)
+            others = {d.ip for m, d in self._devices.items() if m != mac and d.ip}
+        nets = [n for _, n in lan_networks()]
+        cur = known.ip if known else None
+        home = [n for n in nets if _in_net(cur, n)] if cur else nets
+        if addr.version != 4 or not any(addr in n for n in home):
+            return False
+        return ip not in others | {self._gateway_ip(), self._portal_ip}
+
+    def _with_claims(self, mac: str) -> TargetAddrs:
+        t = self._live_addrs(mac)
+        alt = tuple(sorted(self._claims.get(mac, set()) - {t.ip}))
+        return replace(t, alt_ip=alt) if alt else t
 
     # --- reconcile (poll heals missed pushes) -------------------------------
 
@@ -492,7 +530,7 @@ class Service:
             log.exception("enable_forwarding failed")
         if not self._using_iface_mgr and self._watch is None:
             counter = ResistanceCounter(self._redir._lanfacts(), lan_cidrs=self._lan_cidrs)
-            self._watch = ResistanceWatch(self.cfg, counter)
+            self._watch = ResistanceWatch(self.cfg, counter, on_new_ip=self._on_new_ip)
         self._spawn(self._reconcile_loop)
         self._spawn(self._resist_loop)
         if self._using_iface_mgr:
@@ -508,6 +546,7 @@ class Service:
         # One DNS + portal server per LAN address, never 0.0.0.0: the setup hotspot (10.42.0.1)
         # needs :53/:80 for itself, and networks come and go (spec A2/A3).
         self._spawn(lambda: PerAddress(self._serve_portal).run(self._stop))
+        self._start_dns_v6()
         # Create API servers for each bind host. If bind_hosts is set, use multi-bind with retry.
         if self.cfg.bind_hosts:
             self._spawn(
@@ -531,16 +570,25 @@ class Service:
             kwargs={"on_hit": self.hits.add, "host": ip},
             daemon=True,
         ).start()
-        run_dns(
-            self.cfg,
-            self._portal_ip or ip,
-            stop,
-            handle=self._wiring.dns_handle,
-            claims=self._wiring.claims,
-            bind=(ip, 53),
-            client_key=self._mac_for_ip,
-            on_query=self.workarounds.add,
-        )
+        run_dns(self.cfg, self._portal_ip or ip, stop, bind=(ip, 53), **self._dns_kw())
+
+    def _dns_kw(self) -> dict:
+        return {
+            "handle": self._wiring.dns_handle,
+            "claims": self._wiring.claims,
+            "client_key": self._mac_for_ip,
+            "on_query": self.workarounds.add,
+        }
+
+    def _start_dns_v6(self, bind: tuple[str, int] = ("::", 53)) -> None:
+        kw = self._dns_kw()
+        self._spawn(lambda: dns_v6.serve(self.cfg, self._dns_v6_box, self._stop, kw, bind=bind))
+
+    def _dns_v6_box(self) -> str:
+        """portal_ip, else (multi-network) the first LAN v4 that PerAddress also serves."""
+        if self._portal_ip:
+            return self._portal_ip
+        return next((ip for _, ip in lan_addrs()), "")
 
     def _spawn(self, target: Callable[[], None]) -> None:
         threading.Thread(target=target, daemon=True).start()
