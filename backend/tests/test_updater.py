@@ -7,6 +7,7 @@ import json
 import os
 import stat
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
@@ -53,7 +54,7 @@ def box(tmp_path):
         f.chmod(f.stat().st_mode | stat.S_IEXEC)
     (tmp_path / "active").write_text('{"active": false}')
 
-    def run(install="stable", state=None):
+    def run(install="stable", state=None, hour="03", hold_lock=False):
         (tmp_path / ".env").write_text(f"UPDATE_CHANNEL={install}\nINTERNAL_TOKEN=tok\n")
         (tmp_path / "state").write_text(
             json.dumps(state or {"channel": install, "requested_major": None})
@@ -63,9 +64,19 @@ def box(tmp_path):
             "T": str(tmp_path),
             "TASK4CE_DIR": str(tmp_path),
             "REBOOT_FLAG": str(tmp_path / "reboot-required"),
+            "NOW_HOUR": hour,
+            "TASK4CE_LOCK": str(tmp_path / "install.lock"),
             "PATH": f"{bin_}:{os.environ['PATH']}",
         }
-        subprocess.run(["bash", str(SCRIPT)], env=env, capture_output=True, text=True, timeout=60)
+        holder = None
+        if hold_lock:  # simulate a running installer
+            holder = subprocess.Popen(["flock", str(tmp_path / "install.lock"), "sleep", "30"])
+            time.sleep(0.5)
+        try:
+            subprocess.run(["bash", str(SCRIPT)], env=env, capture_output=True, text=True, timeout=60)
+        finally:
+            if holder:
+                holder.kill()
         calls = (tmp_path / "calls").read_text() if (tmp_path / "calls").exists() else ""
         (tmp_path / "calls").unlink(missing_ok=True)
         return calls
@@ -126,3 +137,29 @@ def test_os_reboot_only_when_pending_and_no_kid_timer(box):
     assert "systemctl reboot" not in box()  # pending, but a kid timer is running
     (box.dir / "active").write_text('{"active": false}')
     assert "systemctl reboot" in box()
+
+
+def test_no_reboot_outside_nightly_window(box):
+    (box.dir / "reboot-required").write_text("")
+    for hour in ("00", "01", "05", "14", "23"):
+        assert "systemctl reboot" not in box(hour=hour)
+    for hour in ("02", "03", "04"):
+        assert "systemctl reboot" in box(hour=hour)
+
+
+def test_nothing_runs_while_installer_holds_the_lock(box):
+    (box.dir / "reboot-required").write_text("")
+    calls = box(hold_lock=True)
+    assert "systemctl reboot" not in calls
+    assert "docker pull" not in calls
+
+
+def test_timer_does_not_pull_in_the_service():
+    unit = (SCRIPT.parent / "update-check.timer").read_text()
+    assert "Requires=" not in unit and "Wants=" not in unit
+    assert "Persistent=true" in unit
+
+
+def test_installer_takes_the_shared_lock():
+    sh = (SCRIPT.parents[1] / "install.sh").read_text()
+    assert "tskfrce-install.lock" in sh and "flock" in sh

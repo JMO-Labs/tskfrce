@@ -17,6 +17,7 @@ COSIGN="gcr.io/projectsigstore/cosign:v2.4.1@sha256:b03690aa52bfe94054187142fba2
 IDENTITY='^https://github\.com/JMO-Labs/tskfrce/\.github/workflows/ci-cd\.yml@refs/(heads/main|tags/(v|eval-).*)$'
 ISSUER="https://token.actions.githubusercontent.com"
 REBOOT_FLAG="${REBOOT_FLAG:-/var/run/reboot-required}"
+LOCK="${TASK4CE_LOCK:-/run/lock/tskfrce-install.lock}" # shared with install.sh
 
 say() { printf '[%s] %s\n' "$(date '+%F %T')" "$*" | tee -a "$LOG"; }
 env_value() { sed -n "s/^$1=//p" "$ENV_FILE" | head -n 1; }
@@ -62,6 +63,8 @@ deploy() { (cd "$DIR" && docker compose -f "$COMPOSE" -f "$OVERRIDE" up -d --no-
 
 reboot_if_pending() {
   [ -f "$REBOOT_FLAG" ] || return 0
+  local hour; hour=$((10#${NOW_HOUR:-$(date +%H)}))
+  if [ "$hour" -lt 2 ] || [ "$hour" -ge 5 ]; then say "OS reboot pending, but outside the 02:00-05:00 window; next night"; return 0; fi
   if kid_timer_running; then say "OS reboot pending, but a kid timer is running; next night"; return 0; fi
   say "OS security updates need a reboot; rebooting now"
   systemctl reboot
@@ -122,6 +125,9 @@ update_app() {
 }
 
 main() {
+  mkdir -p "$(dirname "$LOCK")"
+  exec 9>>"$LOCK"
+  if ! flock -n 9; then say "installer is running; skipping tonight"; return 0; fi
   say "=== nightly update check ==="
   local rc=0
   update_app || rc=$?

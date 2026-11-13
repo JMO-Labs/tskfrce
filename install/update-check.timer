@@ -1,7 +1,6 @@
 [Unit]
 Description=t@sk4ce Unattended Update Timer
 Documentation=https://jmo-labs.github.io/tskfrce/
-Requires=update-check.service
 
 [Timer]
 OnCalendar=*-*-* 03:00:00
