@@ -14,6 +14,7 @@ import time
 from collections.abc import Callable
 from dataclasses import replace
 
+from blocker import dns_v6
 from blocker import firewall as fw
 from blocker.api import make_api
 from blocker.arp import RedirectionManager, TargetAddrs
@@ -32,7 +33,7 @@ from blocker.discovery import run_discovery
 from blocker.hits import HitCounter
 from blocker.homework import HomeworkGate
 from blocker.hw_wiring import HomeworkWiring
-from blocker.ifaces import PerAddress, iface_for_ip, lan_networks
+from blocker.ifaces import PerAddress, iface_for_ip, lan_addrs, lan_networks
 from blocker.multinet import InterfaceManager
 from blocker.portal import run_dns, run_http
 from blocker.resist import ResistanceCounter, ResistanceWatch, Tally
@@ -545,6 +546,7 @@ class Service:
         # One DNS + portal server per LAN address, never 0.0.0.0: the setup hotspot (10.42.0.1)
         # needs :53/:80 for itself, and networks come and go (spec A2/A3).
         self._spawn(lambda: PerAddress(self._serve_portal).run(self._stop))
+        self._start_dns_v6()
         # Create API servers for each bind host. If bind_hosts is set, use multi-bind with retry.
         if self.cfg.bind_hosts:
             self._spawn(
@@ -568,16 +570,25 @@ class Service:
             kwargs={"on_hit": self.hits.add, "host": ip},
             daemon=True,
         ).start()
-        run_dns(
-            self.cfg,
-            self._portal_ip or ip,
-            stop,
-            handle=self._wiring.dns_handle,
-            claims=self._wiring.claims,
-            bind=(ip, 53),
-            client_key=self._mac_for_ip,
-            on_query=self.workarounds.add,
-        )
+        run_dns(self.cfg, self._portal_ip or ip, stop, bind=(ip, 53), **self._dns_kw())
+
+    def _dns_kw(self) -> dict:
+        return {
+            "handle": self._wiring.dns_handle,
+            "claims": self._wiring.claims,
+            "client_key": self._mac_for_ip,
+            "on_query": self.workarounds.add,
+        }
+
+    def _start_dns_v6(self, bind: tuple[str, int] = ("::", 53)) -> None:
+        kw = self._dns_kw()
+        self._spawn(lambda: dns_v6.serve(self.cfg, self._dns_v6_box, self._stop, kw, bind=bind))
+
+    def _dns_v6_box(self) -> str:
+        """portal_ip, else (multi-network) the first LAN v4 that PerAddress also serves."""
+        if self._portal_ip:
+            return self._portal_ip
+        return next((ip for _, ip in lan_addrs()), "")
 
     def _spawn(self, target: Callable[[], None]) -> None:
         threading.Thread(target=target, daemon=True).start()
