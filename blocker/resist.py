@@ -60,8 +60,8 @@ def _ip_map(targets: dict[str, TargetAddrs]) -> dict[str, str]:
     ip2mac: dict[str, str] = {}
     for mac, t in targets.items():
         ml = mac.lower()
-        if t.ip:
-            ip2mac[_norm(t.ip)] = ml
+        for ip in t.v4:
+            ip2mac[_norm(ip)] = ml
         for ip6 in t.ip6:
             ip2mac[_norm(ip6)] = ml
     return ip2mac
@@ -230,26 +230,33 @@ class ResistanceWatch:
         counter: ResistanceCounter,
         *,
         sniffer_factory: Callable[..., Any] = _real_sniffer,
+        on_new_ip: Callable[[str, str], None] | None = None,
     ) -> None:
         self._cfg = cfg
+        self._on_new_ip = on_new_ip
         self.counter = counter
         self._factory = sniffer_factory
         self._sniffer: Any = None
+        self._flt = ""
         self._lock = threading.Lock()
         self._watched: dict[str, TargetAddrs] | None = None
         self._closed = False
 
     def set_watched(self, targets: dict[str, TargetAddrs]) -> None:
-        """Watch exactly these devices: restart the sniffer, stop it if empty."""
+        """Watch exactly these devices: restart the sniffer on a filter change; stop it if empty."""
         targets = dict(targets)
         with self._lock:
             if self._closed or targets == self._watched:
                 return
+            same_filter = self._sniffer is not None and self._filter(targets) == self._flt
             self._watched = targets
             self.counter.set_watched(targets)
+            if same_filter:  # address-only change: keep capturing (may run on the sniffer thread)
+                return
             self._stop_sniffer()
             if targets:
                 flt = self._filter(targets)
+                self._flt = flt
                 try:
                     self._sniffer = self._factory(
                         iface=self._cfg.lan_iface or None, filter=flt, prn=self._on_packet
@@ -260,11 +267,15 @@ class ResistanceWatch:
                     self._watched = None  # let an identical call retry
 
     def _filter(self, targets: dict[str, TargetAddrs]) -> str:
-        """Box-bound frames from the gateway(s) or any watched device."""
+        """Box-bound frames from the gateway(s) or any watched device, plus ARP/DHCP (a watched
+        device announcing a new IP is often broadcast, never box-bound)."""
         kids = sorted(m.lower() for m in targets)
         srcs = list(dict.fromkeys([*sorted(self.counter._gateways), *kids]))
         src_match = " or ".join(f"ether src {m}" for m in srcs)
-        return f"ether dst {self.counter._box} and ({src_match})"
+        return (
+            f"(ether dst {self.counter._box} and ({src_match}))"
+            " or arp or (udp and (port 67 or port 68))"
+        )
 
     def stop(self) -> None:
         with self._lock:
@@ -284,6 +295,7 @@ class ResistanceWatch:
 
         if not pkt.haslayer(Ether):
             return
+        self._announced_ip(pkt)
         if pkt.haslayer(IP):
             ip_dst, ip_src = pkt[IP].dst, pkt[IP].src
         elif pkt.haslayer(IPv6):
@@ -301,3 +313,40 @@ class ResistanceWatch:
                 syn_ack=(int(t.flags) & 0x12) == 0x12,
             )
         self.counter.observe(pkt[Ether].src, pkt[Ether].dst, ip_dst, ip_src, tcp=tcp)
+
+    def _announced_ip(self, pkt: Any) -> None:
+        """A watched MAC announcing an IP it isn't known by (ARP, DHCP REQUEST/ACK) -> callback."""
+        if self._on_new_ip is None:
+            return
+        try:
+            found = _announcement(pkt)
+            if found is None:
+                return
+            mac, ip = found
+            known = next((t for m, t in (self._watched or {}).items() if m.lower() == mac), None)
+            if known is None or _norm(ip) in {_norm(i) for i in known.v4}:
+                return
+            self._on_new_ip(mac, ip)
+        except Exception:
+            log.exception("new-ip handling failed")
+
+
+def _announcement(pkt: Any) -> tuple[str, str] | None:
+    """(mac, ipv4) claimed by an ARP or DHCP REQUEST/ACK frame; None for anything else. Only a
+    claim: the consumer adds it next to the known IP, never replaces it."""
+    from blocker.scapy_lite import ARP, BOOTP, DHCP
+
+    ip = None
+    if pkt.haslayer(ARP):
+        mac, ip = pkt[ARP].hwsrc, pkt[ARP].psrc
+    elif pkt.haslayer(DHCP) and pkt.haslayer(BOOTP):
+        opts = {o[0]: o[1] for o in pkt[DHCP].options if isinstance(o, tuple) and len(o) > 1}
+        mac = ":".join(f"{b:02x}" for b in bytes(pkt[BOOTP].chaddr)[:6])
+        kind = opts.get("message-type")
+        if kind in (3, "request"):
+            ip = opts.get("requested_addr") or pkt[BOOTP].ciaddr
+        elif kind in (5, "ack"):
+            ip = pkt[BOOTP].yiaddr
+    if not ip or ip == "0.0.0.0":
+        return None
+    return mac.lower(), ip
