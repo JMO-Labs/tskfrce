@@ -138,11 +138,13 @@ EOF
   *) die "usage: tap prep|attach|down" ;;
   esac
   ;;
-cap)  # cap SECONDS: headers-only pcap of the netns Wi-Fi card -> /var/tmp/droidcap.pcap (user-owned)
+cap)  # cap SECONDS: headers-only pcap of the netns Wi-Fi card -> /run/droidcap/cap.pcap (root-owned, world-readable)
   [[ ${2:-} =~ ^[0-9]{1,3}$ ]] && (( $2 >= 1 && $2 <= 600 )) || die "usage: cap SECONDS (1-600)"
-  rm -f /var/tmp/droidcap.pcap
-  in_ns timeout "$2" tcpdump -nn -i "$IF" -s 128 -w /var/tmp/droidcap.pcap 2>/dev/null || true
-  chown "$RUN_AS:$RUN_AS" /var/tmp/droidcap.pcap
+  # root-owned dir, never a shared sticky dir: no symlink games, no chown
+  install -d -o root -g root -m 755 /run/droidcap
+  rm -f /run/droidcap/cap.pcap
+  in_ns timeout "$2" tcpdump -Z root -nn -i "$IF" -s 128 -w /run/droidcap/cap.pcap 2>/dev/null || true
+  chmod 644 /run/droidcap/cap.pcap 2>/dev/null || true
   ;;
 status)
   in_ns ip -br link show "$IF"
