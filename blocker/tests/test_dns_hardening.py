@@ -17,6 +17,7 @@ def _q(name="example.com.", qtype="A"):
 
 @pytest.fixture(autouse=True)
 def _fresh(monkeypatch):
+    monkeypatch.setattr(portal, "real_ip", sni_gate.real_ip)  # undo conftest's offline stub
     sni_gate._CACHE.clear()
     sni_gate._names.clear()
     yield
@@ -28,7 +29,7 @@ def _fake_resolver(monkeypatch, fn):
     monkeypatch.setattr(socket, "getaddrinfo", lambda n, *a, **k: [(0, 0, 0, "", (fn(n), 443))])
 
 
-@pytest.mark.parametrize("qtype", ["TXT", "NULL", "MX", "SRV", "CNAME", "ANY", "AAAA", 65])
+@pytest.mark.parametrize("qtype", ["TXT", "NULL", "MX", "SRV", "CNAME", 255, "AAAA", 65])
 def test_non_a_types_get_nodata_without_lookup(monkeypatch, qtype):
     calls = []
     _fake_resolver(monkeypatch, lambda n: calls.append(n) or "1.2.3.4")

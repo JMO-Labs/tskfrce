@@ -129,10 +129,9 @@ def real_ip(name: str, ttl: float = 60, client: str = "") -> str | None:
     with _cache_lock:
         _CACHE[name] = (time.monotonic(), ip)
         _CACHE.move_to_end(name)
-        if len(_CACHE) > CACHE_MAX:
-            now = time.monotonic()
-            for k in [k for k, (t, _) in _CACHE.items() if now - t >= ttl]:
-                del _CACHE[k]
+        now = time.monotonic()
+        for k in [k for k, (t, _) in _CACHE.items() if now - t >= ttl]:
+            del _CACHE[k]
         while len(_CACHE) > CACHE_MAX:
             _CACHE.popitem(last=False)
     return ip
