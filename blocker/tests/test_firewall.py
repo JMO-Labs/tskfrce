@@ -239,6 +239,9 @@ def test_render_redirects_v6_dns_by_mac_to_box_resolver():
         r = render_ruleset(set(), set(), MAC, LAN, portal_ip, 8080)
         pre = r.split("chain forward")[0]
         for proto in ("udp", "tcp"):
-            assert f"ether saddr @blocked_mac meta nfproto ipv6 {proto} dport 53 redirect to :53" in pre
+            assert (
+                f"ether saddr @blocked_mac meta nfproto ipv6 {proto} dport 53 redirect to :53"
+                in pre
+            )
     # non-53 LAN v6 accept unchanged
     assert "ether saddr @blocked_mac ip6 daddr { fe80::/10 } accept" in r
