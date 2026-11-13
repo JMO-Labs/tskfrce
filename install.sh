@@ -96,12 +96,28 @@ is_kept() {
   case "$1" in
     .env | .env.* | data | update-check.log | .staging | .previous-code) return 0 ;;
   esac
-  for k in ${TASK4CE_KEEP:-}; do [ "$1" = "$k" ] && return 0; done
+  set -f
+  for k in ${TASK4CE_KEEP:-}; do
+    if [ "$1" = "$k" ]; then set +f; return 0; fi
+  done
+  set +f
   return 1
+}
+
+# True when $DIR has nothing but kept names, or looks like a t@sk4ce install (safe to swap).
+dir_swappable() {
+  [ -f "$DIR/.task4ce-install" ] && return 0
+  [ -f "$DIR/docker-compose.prod.yml" ] && [ -d "$DIR/install" ] && return 0
+  for f in "$DIR"/* "$DIR"/.[!.]* "$DIR"/..?*; do
+    [ -e "$f" ] || [ -L "$f" ] || continue
+    is_kept "${f##*/}" || return 1
+  done
+  return 0
 }
 
 fetch_code() {
   mkdir -p "$DIR" || die "Could not create $DIR." "Pick another folder: TASK4CE_DIR=/some/folder"
+  dir_swappable || die "$DIR is not empty and is not a t@sk4ce install." "Pick an empty folder: TASK4CE_DIR=/some/folder"
   stage="$DIR/.staging"
   rm -rf "$stage"
   mkdir "$stage" || die "Could not create $stage."
@@ -126,8 +142,11 @@ fetch_code() {
   done
   for f in "$stage"/* "$stage"/.[!.]* "$stage"/..?*; do
     [ -e "$f" ] || [ -L "$f" ] || continue
-    is_kept "${f##*/}" || mv "$f" "$DIR/"
+    n="${f##*/}"
+    if is_kept "$n" && { [ -e "$DIR/$n" ] || [ -L "$DIR/$n" ]; }; then continue; fi
+    mv "$f" "$DIR/"
   done
+  : >"$DIR/.task4ce-install"
   rm -rf "$stage"
 }
 
