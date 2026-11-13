@@ -35,8 +35,23 @@ case "$H" in
   [ -n "$IP" ] || exit 1
   set -- --resolve "$H:443:$IP" --resolve "$H:80:$IP" "$@" ;;
 esac
-BODY=$($K/curl --cacert $K/ca-bundle.crt -sS -m 10 "$@" "$URL" 2>/dev/null) || exit 1
-case "$BODY" in *"$EXPECT"*) exit 0 ;; *) exit 1 ;; esac
+# local_ip tags the egress: 10.0.77.x = Wi-Fi (box), 10.0.2.x = emulator cellular (escape.py: LEAK_CELL)
+BODY=$($K/curl --cacert $K/ca-bundle.crt -sS -m 10 -w '\n__VIA=%{local_ip}' "$@" "$URL" 2>/dev/null) || exit 1
+case "$BODY" in *"$EXPECT"*) echo "via=${BODY##*__VIA=}"; exit 0 ;; *) exit 1 ;; esac
+EOS
+
+# live.sh: positive control while locked. rc 0 only if Google's generate_204 answers 204 (still on the box Wi-Fi).
+# Resolves like real.sh; falls back to the IP cached by the last success (strict Private DNS breaks ping).
+cat >live.sh <<'EOS'
+#!/system/bin/sh
+K=/data/local/tmp/kit
+IP=$(ping -c1 -W3 www.google.com 2>/dev/null | sed -n 's/^PING [^(]*(\([0-9.]*\)).*/\1/p')
+if [ -n "$IP" ]; then echo "$IP" >$K/live.ip; else IP=$(cat $K/live.ip 2>/dev/null); fi
+[ -n "$IP" ] || exit 1
+C=$($K/curl --cacert $K/ca-bundle.crt --resolve "www.google.com:443:$IP" -sS -m 8 -o /dev/null \
+  -w '%{http_code}' https://www.google.com/generate_204 2>/dev/null)
+echo "http=$C"
+[ "$C" = 204 ]
 EOS
 
 # gate.sh budget|yt. budget: for ~100 s fetch a Google suggest answer (Accept-Encoding: identity) and
@@ -161,8 +176,8 @@ EOS
 "${ADB[@]}" root >/dev/null 2>&1 || true
 "${ADB[@]}" wait-for-device
 "${ADB[@]}" shell "mkdir -p $DST"
-for f in curl q wstunnel ca-bundle.crt real.sh gate.sh longlived.sh canary.sh; do "${ADB[@]}" push "$f" "$DST/$f" >/dev/null; done
-"${ADB[@]}" shell "chmod 755 $DST/curl $DST/q $DST/real.sh $DST/gate.sh $DST/longlived.sh $DST/wstunnel $DST/canary.sh"
+for f in curl q wstunnel ca-bundle.crt real.sh live.sh gate.sh longlived.sh canary.sh; do "${ADB[@]}" push "$f" "$DST/$f" >/dev/null; done
+"${ADB[@]}" shell "chmod 755 $DST/curl $DST/q $DST/real.sh $DST/live.sh $DST/gate.sh $DST/longlived.sh $DST/wstunnel $DST/canary.sh"
 
 # canary secret: device-local file only, never printed (stdin push, no secret on any command line)
 if [ -s "$SECRET_FILE" ]; then
