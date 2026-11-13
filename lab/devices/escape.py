@@ -37,6 +37,13 @@ CELL_PREFIX = "10.0.2."  # emulator cellular (eth0); Wi-Fi/box side is 10.0.77.x
 LIVE = "/data/local/tmp/kit/live.sh"
 
 
+def default_is_cell():
+    """True when Android's default network is mobile (e.g. strict Private DNS failed on Wi-Fi)."""
+    _, d = adb("shell", "dumpsys connectivity")
+    m = re.search(r"Active default network: (\d+)", d)
+    return bool(m) and bool(re.search(rf"network\{{{m.group(1)}\}}[^\n]*ni\{{MOBILE", d))
+
+
 @dataclass
 class Row:
     id: str
@@ -209,6 +216,8 @@ def run_one(sc, platform, opt):
             outs.append(last_line(out))
             m = VIA_RE.search(out) if rc == 0 else None
             via = via or (m and m.group(1))
+            if rc == 0 and not via and platform == "A" and default_is_cell():
+                via = CELL_PREFIX + "default"  # probe without via=: phone had left Wi-Fi
         live = live_check(platform)
         time.sleep(sc.get("alert_wait", opt.alert_wait))  # box reports hits/resisting every ~15 s
         after = box("status")
