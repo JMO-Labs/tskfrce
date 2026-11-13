@@ -295,3 +295,63 @@ def test_repeated_segment_after_grace_not_counted():
     for i in range(10):
         _tcp(c, t, 0, at=140 + i)
     assert c.tally(KID).from_gateway == 0
+
+
+# --- real frames through ResistanceWatch._on_packet (TCP extraction) ---
+def _tcp_watch():
+    pytest.importorskip("scapy")
+    t = [100.0]
+    captured = {}
+    counter = ResistanceCounter(LAN, threshold=3, window=30, grace=30, clock=lambda: t[0])
+    w = ResistanceWatch(
+        SimpleNamespace(lan_iface=""),
+        counter,
+        sniffer_factory=lambda **kw: captured.update(kw) or SimpleNamespace(stop=lambda: None),
+    )
+    w.set_watched(WATCHED)
+    t[0] = 140.0  # past the grace
+    return counter, captured["prn"], t
+
+
+def _frame(flags, dport=50000, seq=0, payload=b"", pad=b""):
+    from scapy.layers.inet import IP, TCP
+    from scapy.layers.l2 import Ether
+    from scapy.packet import Raw
+
+    f = Ether(src=GW, dst=BOX) / IP(src=INET, dst=KID_IP) / TCP(
+        sport=443, dport=dport, flags=flags, seq=seq
+    )
+    if payload:
+        f = f / Raw(payload)
+    # Round-trip so Ether trailer padding dissects as scapy Padding.
+    return Ether(bytes(f) + pad)
+
+
+def test_watch_syn_acks_on_new_ports_are_resisting():
+    counter, prn, _ = _tcp_watch()
+    for i in range(3):
+        prn(_frame("SA", dport=50000 + i))
+    assert counter.resisting() == {KID}
+
+
+def test_watch_repeated_data_segment_is_not_resisting():
+    counter, prn, _ = _tcp_watch()
+    for _ in range(10):
+        prn(_frame("PA", payload=b"x" * 24))
+    assert counter.resisting() == set()
+
+
+def test_watch_advancing_data_segments_are_resisting():
+    counter, prn, _ = _tcp_watch()
+    for i in range(5):
+        prn(_frame("PA", seq=i * 24, payload=b"x" * 24))
+    assert counter.resisting() == {KID}
+
+
+def test_watch_padding_not_counted_as_payload():
+    counter, prn, _ = _tcp_watch()
+    prn(_frame("A", seq=100, pad=b"\0" * 6))
+    prn(_frame("A", seq=100, pad=b"\0" * 6))
+    assert counter.tally(KID).from_gateway == 0
+    info = counter._flows[KID][(INET, 443, KID_IP, 50000)]
+    assert info[0] == 100  # end == seq: zero-length payload

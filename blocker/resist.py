@@ -280,7 +280,7 @@ class ResistanceWatch:
             self._sniffer = None
 
     def _on_packet(self, pkt: Any) -> None:
-        from blocker.scapy_lite import IP, TCP, Ether, IPv6
+        from blocker.scapy_lite import IP, TCP, Ether, IPv6, Raw
 
         if not pkt.haslayer(Ether):
             return
@@ -297,7 +297,7 @@ class ResistanceWatch:
                 sport=t.sport,
                 dport=t.dport,
                 seq=int(t.seq),
-                length=len(bytes(t.payload)),
+                length=len(t[Raw].load) if t.haslayer(Raw) else 0,  # excludes eth padding
                 syn_ack=(int(t.flags) & 0x12) == 0x12,
             )
         self.counter.observe(pkt[Ether].src, pkt[Ether].dst, ip_dst, ip_src, tcp=tcp)
