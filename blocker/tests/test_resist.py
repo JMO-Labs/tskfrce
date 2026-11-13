@@ -256,10 +256,31 @@ def test_frames_within_grace_are_ignored_even_if_new_seq():
 
 def test_new_flows_with_advancing_seq_after_grace_are_bypass():
     c, t = _counter(grace=30)
-    _tcp(c, t, 0, at=105)
+    _tcp(c, t, 0, at=130)  # opened after the grace: baseline only
     for i in range(3):
-        _tcp(c, t, 1 + i * 24, at=140 + i)
+        _tcp(c, t, 24 + i * 24, at=140 + i)
     assert c.resisting() == {KID}
+
+
+def test_prepause_flow_first_seen_in_grace_never_counts_even_if_seq_advances():
+    c, t = _counter(grace=30)
+    _tcp(c, t, 0, at=105)
+    for i in range(30):
+        _tcp(c, t, 24 + i * 24, at=140 + i)
+    assert c.tally(KID).from_gateway == 0
+
+
+def test_single_segment_on_unseen_flow_after_grace_not_counted():
+    c, t = _counter(grace=30)
+    _tcp(c, t, 5000, at=140)
+    assert c.tally(KID).from_gateway == 0
+
+
+def test_seq_wraparound_counts_as_advance():
+    c, t = _counter(grace=30)
+    _tcp(c, t, 0xFFFFFFF0, at=130)
+    _tcp(c, t, 0, at=140)
+    assert c.tally(KID).from_gateway == 1
 
 
 def test_syn_acks_after_grace_are_bypass():
@@ -269,8 +290,8 @@ def test_syn_acks_after_grace_are_bypass():
     assert c.resisting() == {KID}
 
 
-def test_repeated_segment_after_grace_counts_once():
+def test_repeated_segment_after_grace_not_counted():
     c, t = _counter(grace=30)
     for i in range(10):
         _tcp(c, t, 0, at=140 + i)
-    assert c.tally(KID).from_gateway == 1
+    assert c.tally(KID).from_gateway == 0

@@ -95,8 +95,8 @@ class ResistanceCounter:
         self._tallies: dict[str, tuple[float, Tally]] = {}
         # mac -> time it started being watched (the pause start)
         self._since: dict[str, float] = {}
-        # mac -> {flow 5-tuple -> highest seq end seen}
-        self._flows: dict[str, dict[tuple, int]] = {}
+        # mac -> {flow 4-tuple -> (highest seq end, first seen in grace)}
+        self._flows: dict[str, dict[tuple, tuple[int, bool]]] = {}
 
     def set_watched(self, targets: dict[str, TargetAddrs]) -> None:
         """Replace the watched devices; tallies of MACs no longer watched are dropped."""
@@ -125,18 +125,20 @@ class ResistanceCounter:
         """True if a TCP frame is new-flow evidence, not a (pre-pause) retransmit. Lock held."""
         flows = self._flows.setdefault(mac, {})
         key = (_norm(ip_src), tcp.sport, _norm(ip_dst), tcp.dport)
-        end = tcp.seq + max(tcp.length, 1 if tcp.syn_ack else 0)
-        prev = flows.get(key)
-        if prev is None and len(flows) >= _MAX_FLOWS:
-            flows.pop(next(iter(flows)))
-        if prev is None or end > prev:
-            flows[key] = end
+        end = (tcp.seq + max(tcp.length, 1 if tcp.syn_ack else 0)) & 0xFFFFFFFF
         in_grace = ts - self._since.get(mac, ts) < self._grace
-        if in_grace:
-            return False
-        if tcp.syn_ack:
-            return prev is None
-        return prev is None or end > prev
+        entry = flows.get(key)
+        if entry is None:
+            if len(flows) >= _MAX_FLOWS:
+                flows.pop(next(iter(flows)))
+            # A flow first seen in the grace is pre-pause: it never counts.
+            flows[key] = (end, in_grace)
+            return tcp.syn_ack and not in_grace
+        prev, pre_pause = entry
+        advanced = 0 < (end - prev) & 0xFFFFFFFF < 0x80000000  # modular seq compare
+        if advanced:
+            flows[key] = (end, pre_pause)
+        return advanced and not pre_pause and not in_grace
 
     def _in_lan(self, ip: str) -> bool:
         try:
