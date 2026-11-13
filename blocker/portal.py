@@ -54,6 +54,19 @@ def qname_of(wire: bytes) -> str | None:
         return None
 
 
+def qinfo(wire: bytes) -> tuple[str | None, int | None]:
+    """(first question name, qtype) of a DNS packet; (None, None) if unparsable."""
+    from blocker.scapy_lite import DNS
+
+    try:
+        qd = DNS(wire).qd
+        first = qd[0] if isinstance(qd, list) else qd
+        name = first.qname
+        return (name.decode() if isinstance(name, bytes) else str(name)), int(first.qtype)
+    except Exception:  # noqa: BLE001
+        return None, None
+
+
 def handle_query(
     data: bytes,
     addr: tuple[str, int],
@@ -66,9 +79,10 @@ def handle_query(
     # Real addresses, not the box's: Chrome refuses a public name that suddenly resolves to a
     # private IP (rebinding / local-network protection), so the portal never loaded. The firewall
     # catches the traffic instead (:80 -> portal, :443 -> sni_gate). Box IP only if lookup fails.
-    # ponytail: blocking getaddrinfo inline (cached 60 s); async upstream if DNS load matters.
-    name = qname_of(data)
-    ip = real_ip(name.rstrip(".").lower()) if name else None
+    # Only A queries are looked up (bounded, timed-out, capped per client); other types get
+    # NODATA from dns_response, so a paused device can't tunnel data over DNS.
+    name, qtype = qinfo(data)
+    ip = real_ip(name.rstrip(".").lower(), client=addr[0]) if name and qtype == 1 else None
     out = dns_response(data, ip or box_ip)
     if out is not None and on_query is not None:
         try:
@@ -111,6 +125,7 @@ def run_dns(
     sock.bind(bind)
     sock.settimeout(0.5)
     pool = ThreadPoolExecutor(max_workers=HW_WORKERS, thread_name_prefix="hw-dns")
+    portal_pool = ThreadPoolExecutor(max_workers=16, thread_name_prefix="portal-dns")
     inflight: dict[str, int] = {}
     guard = threading.Lock()
 
@@ -119,6 +134,14 @@ def run_dns(
             out = handle(addr[0], data) if handle else None
             if out is None:
                 out = handle_query(data, addr, box_ip, on_query)
+            if out is not None:
+                sock.sendto(out, addr)
+        except Exception:
+            log.debug("DNS handling failed", exc_info=True)
+
+    def portal_answer(addr, data) -> None:
+        try:
+            out = handle_query(data, addr, box_ip, on_query)
             if out is not None:
                 sock.sendto(out, addr)
         except Exception:
@@ -152,12 +175,10 @@ def run_dns(
                 log.debug("claims failed", exc_info=True)
                 continue
             if not slow:
-                if claims is not None:  # pool mode: unclaimed clients never touch upstream
-                    out = handle_query(data, addr, box_ip, on_query)
-                    if out is not None:
-                        sock.sendto(out, addr)
-                else:
-                    answer(addr, data)
+                if claims is None and handle is not None:
+                    answer(addr, data)  # legacy: handle runs inline
+                else:  # lookups may wait on upstream: never on the receive loop
+                    portal_pool.submit(portal_answer, addr, data)
                 continue
             key = key_for(addr[0])
             with guard:
@@ -167,6 +188,7 @@ def run_dns(
             pool.submit(work, key, addr, data)
     finally:
         pool.shutdown(wait=False, cancel_futures=True)
+        portal_pool.shutdown(wait=False, cancel_futures=True)
         sock.close()
 
 
