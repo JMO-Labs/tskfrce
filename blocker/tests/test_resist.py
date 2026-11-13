@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 from blocker.arp import LanFacts, TargetAddrs
-from blocker.resist import ResistanceCounter, ResistanceWatch
+from blocker.resist import ResistanceCounter, ResistanceWatch, TcpInfo
 
 LAN = LanFacts(gateway_ip="10.0.0.1", gateway_mac="aa:aa:aa:aa:aa:01", box_mac="bb:bb:bb:bb:bb:02")
 KID = "cc:cc:cc:cc:cc:03"
@@ -222,3 +222,55 @@ def test_reset_drops_tally():
     c.reset(KID.upper())
     assert c.tally(KID).from_gateway == 0
     assert c.resisting() == set()
+
+
+# --- TCP retransmits of pre-pause flows must not count as bypass (tskfrce#88) ---
+SRV = "23.48.224.5"
+
+
+def _tcp(c, t, seq, *, sport=443, dport=50000, syn_ack=False, at=None, ln=24):
+    if at is not None:
+        t[0] = at
+    c.observe(
+        GW,
+        BOX,
+        KID_IP,
+        SRV,
+        tcp=TcpInfo(sport=sport, dport=dport, seq=seq, length=ln, syn_ack=syn_ack),
+    )
+
+
+def test_retransmit_storm_of_prepause_flow_is_not_bypass():
+    c, t = _counter(grace=30)
+    for i in range(50):
+        _tcp(c, t, 0, at=100 + i * 0.5 if i < 10 else 100 + 20 * i)  # same seq forever
+    assert c.resisting() == set()
+
+
+def test_frames_within_grace_are_ignored_even_if_new_seq():
+    c, t = _counter(grace=30)
+    for i in range(5):
+        _tcp(c, t, i * 24, at=101 + i)
+    assert c.tally(KID).from_gateway == 0
+
+
+def test_new_flows_with_advancing_seq_after_grace_are_bypass():
+    c, t = _counter(grace=30)
+    _tcp(c, t, 0, at=105)
+    for i in range(3):
+        _tcp(c, t, 1 + i * 24, at=140 + i)
+    assert c.resisting() == {KID}
+
+
+def test_syn_acks_after_grace_are_bypass():
+    c, t = _counter(grace=30)
+    for i in range(3):
+        _tcp(c, t, 0, sport=443, dport=50000 + i, syn_ack=True, ln=0, at=140 + i)
+    assert c.resisting() == {KID}
+
+
+def test_repeated_segment_after_grace_counts_once():
+    c, t = _counter(grace=30)
+    for i in range(10):
+        _tcp(c, t, 0, at=140 + i)
+    assert c.tally(KID).from_gateway == 1

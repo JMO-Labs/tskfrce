@@ -25,6 +25,20 @@ from blocker.arp import LanFacts, TargetAddrs
 log = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
+class TcpInfo:
+    """TCP facts of one gateway->box frame, used to tell retransmits from new traffic."""
+
+    sport: int
+    dport: int
+    seq: int
+    length: int = 0
+    syn_ack: bool = False
+
+
+_MAX_FLOWS = 4096  # per-MAC flow-table cap (bounded memory on small boxes)
+
+
 @dataclass
 class Tally:
     """Frame counts for one watched MAC within the current window."""
@@ -63,6 +77,7 @@ class ResistanceCounter:
         window: float = 30.0,
         threshold: int = 20,
         lan_cidrs: list[str] = (),
+        grace: float = 30.0,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
         # A None gateway MAC is unknown, so it must never match a frame.
@@ -72,27 +87,56 @@ class ResistanceCounter:
         self._window = window
         self._threshold = threshold
         self._clock = clock
+        self._grace = grace
         self._lock = threading.Lock()
         self._watched: set[str] = set()
         self._ip2mac: dict[str, str] = {}
         # mac -> (window_start, tally)
         self._tallies: dict[str, tuple[float, Tally]] = {}
+        # mac -> time it started being watched (the pause start)
+        self._since: dict[str, float] = {}
+        # mac -> {flow 5-tuple -> highest seq end seen}
+        self._flows: dict[str, dict[tuple, int]] = {}
 
     def set_watched(self, targets: dict[str, TargetAddrs]) -> None:
         """Replace the watched devices; tallies of MACs no longer watched are dropped."""
         watched = {m.lower() for m in targets}
         ip2mac = _ip_map(targets)
+        now = self._clock()
         with self._lock:
             self._watched = watched
             self._ip2mac = ip2mac
             for mac in list(self._tallies):
                 if mac not in watched:
                     del self._tallies[mac]
+            for mac in watched:
+                self._since.setdefault(mac, now)
+            for d in (self._since, self._flows):
+                for mac in list(d):
+                    if mac not in watched:
+                        del d[mac]
 
     def reset(self, mac: str) -> None:
         """Drop one MAC's tally."""
         with self._lock:
             self._tallies.pop(mac.lower(), None)
+
+    def _is_new_evidence(self, mac: str, ip_src: str, ip_dst: str, tcp: TcpInfo, ts: float) -> bool:
+        """True if a TCP frame is new-flow evidence, not a (pre-pause) retransmit. Lock held."""
+        flows = self._flows.setdefault(mac, {})
+        key = (_norm(ip_src), tcp.sport, _norm(ip_dst), tcp.dport)
+        end = tcp.seq + max(tcp.length, 1 if tcp.syn_ack else 0)
+        prev = flows.get(key)
+        if prev is None and len(flows) >= _MAX_FLOWS:
+            flows.pop(next(iter(flows)))
+        if prev is None or end > prev:
+            flows[key] = end
+        in_grace = ts - self._since.get(mac, ts) < self._grace
+        if in_grace:
+            return False
+        if tcp.syn_ack:
+            return prev is None
+        return prev is None or end > prev
 
     def _in_lan(self, ip: str) -> bool:
         try:
@@ -108,6 +152,7 @@ class ResistanceCounter:
         ip_dst: str | None = None,
         ip_src: str | None = None,
         now: float | None = None,
+        tcp: TcpInfo | None = None,
     ) -> None:
         """Count one box-bound frame. Everything not addressed to the box is ignored.
 
@@ -115,7 +160,9 @@ class ResistanceCounter:
         redirect); a gateway frame to the box whose IP destination is a watched
         device's address, and whose IP *source* is outside the LAN (i.e. real
         internet return traffic, not another LAN host reaching the device),
-        counts as that device's ``from_gateway`` — the signal of a bypass.
+        counts as that device's ``from_gateway`` — the signal of a bypass. TCP frames
+        only count as new-flow evidence (a SYN-ACK or advancing seq) after the grace
+        period; retransmits of a pre-pause flow are ignored.
         """
         src = src_mac.lower()
         dst = dst_mac.lower()
@@ -133,6 +180,8 @@ class ResistanceCounter:
                 and not self._in_lan(ip_src)
             ):
                 mac, field = self._ip2mac[_norm(ip_dst)], "from_gateway"
+                if tcp is not None and not self._is_new_evidence(mac, ip_src, ip_dst, tcp, ts):
+                    return
             else:
                 return
             start, tally = self._tallies.get(mac, (ts, Tally()))
@@ -229,7 +278,7 @@ class ResistanceWatch:
             self._sniffer = None
 
     def _on_packet(self, pkt: Any) -> None:
-        from blocker.scapy_lite import IP, Ether, IPv6
+        from blocker.scapy_lite import IP, TCP, Ether, IPv6
 
         if not pkt.haslayer(Ether):
             return
@@ -239,4 +288,14 @@ class ResistanceWatch:
             ip_dst, ip_src = pkt[IPv6].dst, pkt[IPv6].src
         else:
             ip_dst = ip_src = None
-        self.counter.observe(pkt[Ether].src, pkt[Ether].dst, ip_dst, ip_src)
+        tcp = None
+        if pkt.haslayer(TCP):
+            t = pkt[TCP]
+            tcp = TcpInfo(
+                sport=t.sport,
+                dport=t.dport,
+                seq=int(t.seq),
+                length=len(bytes(t.payload)),
+                syn_ack=(int(t.flags) & 0x12) == 0x12,
+            )
+        self.counter.observe(pkt[Ether].src, pkt[Ether].dst, ip_dst, ip_src, tcp=tcp)
