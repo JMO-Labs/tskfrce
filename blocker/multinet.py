@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import logging
 import threading
-from dataclasses import replace
 from collections.abc import Callable
+from dataclasses import replace
 from typing import Any
 
 from blocker.arp import LanFacts, RedirectionManager, TargetAddrs
