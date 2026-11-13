@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 from blocker.arp import LanFacts, TargetAddrs
-from blocker.resist import ResistanceCounter, ResistanceWatch, TcpInfo, _norm
+from blocker.resist import ResistanceCounter, ResistanceWatch, TcpInfo, UdpInfo, _norm
 
 LAN = LanFacts(gateway_ip="10.0.0.1", gateway_mac="aa:aa:aa:aa:aa:01", box_mac="bb:bb:bb:bb:bb:02")
 KID = "cc:cc:cc:cc:cc:03"
@@ -461,3 +461,39 @@ def test_watch_padding_not_counted_as_payload():
     assert counter.tally(KID).from_gateway == 0
     info = counter._flows[KID][(INET, 443, KID_IP, 50000)]
     assert info[0] == 100  # end == seq: zero-length payload
+
+
+# --- UDP/QUIC flows of pre-pause must not count as bypass (tskfrce#91) ---
+def _udp(c, t, dport, *, at=None):
+    if at is not None:
+        t[0] = at
+    c.observe(GW, BOX, KID_IP, SRV, udp=UdpInfo(sport=443, dport=dport))
+
+
+def test_quic_packets_of_prepause_flow_are_not_bypass():
+    c, t = _counter(grace=30, threshold=20)
+    for i in range(100):
+        _udp(c, t, 50000, at=100 + i * 0.25)  # first seen in grace, runs past it
+    assert c.resisting() == set()
+    assert c.tally(KID).from_gateway == 0
+
+
+def test_new_udp_flows_after_grace_are_bypass():
+    c, t = _counter(grace=30, threshold=20)
+    for i in range(25):
+        _udp(c, t, 51000 + i, at=131 + i * 0.5)
+    assert c.resisting() == {KID}
+
+
+def test_each_new_post_grace_udp_flow_counts_once():
+    c, t = _counter(grace=30)
+    for i in range(10):
+        _udp(c, t, 51000, at=131 + i)
+    assert c.tally(KID).from_gateway == 1
+
+
+def test_one_escaped_syn_ack_per_minute_is_not_bypass():
+    c, t = _counter(grace=30, threshold=20)
+    for i in range(10):
+        _tcp(c, t, 0, dport=40000 + i, syn_ack=True, at=131 + i * 60)
+        assert c.resisting() == set()
