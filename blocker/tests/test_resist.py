@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 from blocker.arp import LanFacts, TargetAddrs
-from blocker.resist import ResistanceCounter, ResistanceWatch
+from blocker.resist import ResistanceCounter, ResistanceWatch, TcpInfo
 
 LAN = LanFacts(gateway_ip="10.0.0.1", gateway_mac="aa:aa:aa:aa:aa:01", box_mac="bb:bb:bb:bb:bb:02")
 KID = "cc:cc:cc:cc:cc:03"
@@ -222,3 +222,138 @@ def test_reset_drops_tally():
     c.reset(KID.upper())
     assert c.tally(KID).from_gateway == 0
     assert c.resisting() == set()
+
+
+# --- TCP retransmits of pre-pause flows must not count as bypass (tskfrce#88) ---
+SRV = "23.48.224.5"
+
+
+def _tcp(c, t, seq, *, sport=443, dport=50000, syn_ack=False, at=None, ln=24):
+    if at is not None:
+        t[0] = at
+    c.observe(
+        GW,
+        BOX,
+        KID_IP,
+        SRV,
+        tcp=TcpInfo(sport=sport, dport=dport, seq=seq, length=ln, syn_ack=syn_ack),
+    )
+
+
+def test_retransmit_storm_of_prepause_flow_is_not_bypass():
+    c, t = _counter(grace=30)
+    for i in range(50):
+        _tcp(c, t, 0, at=100 + i * 0.5 if i < 10 else 100 + 20 * i)  # same seq forever
+    assert c.resisting() == set()
+
+
+def test_frames_within_grace_are_ignored_even_if_new_seq():
+    c, t = _counter(grace=30)
+    for i in range(5):
+        _tcp(c, t, i * 24, at=101 + i)
+    assert c.tally(KID).from_gateway == 0
+
+
+def test_new_flows_with_advancing_seq_after_grace_are_bypass():
+    c, t = _counter(grace=30)
+    _tcp(c, t, 0, at=130)  # opened after the grace: baseline only
+    for i in range(3):
+        _tcp(c, t, 24 + i * 24, at=140 + i)
+    assert c.resisting() == {KID}
+
+
+def test_prepause_flow_first_seen_in_grace_never_counts_even_if_seq_advances():
+    c, t = _counter(grace=30)
+    _tcp(c, t, 0, at=105)
+    for i in range(30):
+        _tcp(c, t, 24 + i * 24, at=140 + i)
+    assert c.tally(KID).from_gateway == 0
+
+
+def test_single_segment_on_unseen_flow_after_grace_not_counted():
+    c, t = _counter(grace=30)
+    _tcp(c, t, 5000, at=140)
+    assert c.tally(KID).from_gateway == 0
+
+
+def test_seq_wraparound_counts_as_advance():
+    c, t = _counter(grace=30)
+    _tcp(c, t, 0xFFFFFFF0, at=130)
+    _tcp(c, t, 0, at=140)
+    assert c.tally(KID).from_gateway == 1
+
+
+def test_syn_acks_after_grace_are_bypass():
+    c, t = _counter(grace=30)
+    for i in range(3):
+        _tcp(c, t, 0, sport=443, dport=50000 + i, syn_ack=True, ln=0, at=140 + i)
+    assert c.resisting() == {KID}
+
+
+def test_repeated_segment_after_grace_not_counted():
+    c, t = _counter(grace=30)
+    for i in range(10):
+        _tcp(c, t, 0, at=140 + i)
+    assert c.tally(KID).from_gateway == 0
+
+
+# --- real frames through ResistanceWatch._on_packet (TCP extraction) ---
+def _tcp_watch():
+    pytest.importorskip("scapy")
+    t = [100.0]
+    captured = {}
+    counter = ResistanceCounter(LAN, threshold=3, window=30, grace=30, clock=lambda: t[0])
+    w = ResistanceWatch(
+        SimpleNamespace(lan_iface=""),
+        counter,
+        sniffer_factory=lambda **kw: captured.update(kw) or SimpleNamespace(stop=lambda: None),
+    )
+    w.set_watched(WATCHED)
+    t[0] = 140.0  # past the grace
+    return counter, captured["prn"], t
+
+
+def _frame(flags, dport=50000, seq=0, payload=b"", pad=b""):
+    from scapy.layers.inet import IP, TCP
+    from scapy.layers.l2 import Ether
+    from scapy.packet import Raw
+
+    f = (
+        Ether(src=GW, dst=BOX)
+        / IP(src=INET, dst=KID_IP)
+        / TCP(sport=443, dport=dport, flags=flags, seq=seq)
+    )
+    if payload:
+        f = f / Raw(payload)
+    # Round-trip so Ether trailer padding dissects as scapy Padding.
+    return Ether(bytes(f) + pad)
+
+
+def test_watch_syn_acks_on_new_ports_are_resisting():
+    counter, prn, _ = _tcp_watch()
+    for i in range(3):
+        prn(_frame("SA", dport=50000 + i))
+    assert counter.resisting() == {KID}
+
+
+def test_watch_repeated_data_segment_is_not_resisting():
+    counter, prn, _ = _tcp_watch()
+    for _ in range(10):
+        prn(_frame("PA", payload=b"x" * 24))
+    assert counter.resisting() == set()
+
+
+def test_watch_advancing_data_segments_are_resisting():
+    counter, prn, _ = _tcp_watch()
+    for i in range(5):
+        prn(_frame("PA", seq=i * 24, payload=b"x" * 24))
+    assert counter.resisting() == {KID}
+
+
+def test_watch_padding_not_counted_as_payload():
+    counter, prn, _ = _tcp_watch()
+    prn(_frame("A", seq=100, pad=b"\0" * 6))
+    prn(_frame("A", seq=100, pad=b"\0" * 6))
+    assert counter.tally(KID).from_gateway == 0
+    info = counter._flows[KID][(INET, 443, KID_IP, 50000)]
+    assert info[0] == 100  # end == seq: zero-length payload
