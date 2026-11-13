@@ -176,7 +176,8 @@ install_updater() {
 main() {
   # Hold the lock for the whole install so update-check.sh never reboots/updates mid-install.
   lock=/run/lock/tskfrce-install.lock
-  if have flock && [ -w "$(dirname "$lock")" ]; then exec 9>>"$lock"; flock -w 600 9 || true; fi
+  # Root-owned, read-only fd: never O_CREAT a file another user may own (fs.protected_regular).
+  if have flock && $root touch "$lock" 2>/dev/null && exec 9<"$lock"; then flock -w 600 9 || true; fi
   check_system
   ensure_docker
   fetch_code

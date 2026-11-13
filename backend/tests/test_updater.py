@@ -165,3 +165,17 @@ def test_timer_does_not_pull_in_the_service():
 def test_installer_takes_the_shared_lock():
     sh = (SCRIPT.parents[1] / "install.sh").read_text()
     assert "tskfrce-install.lock" in sh and "flock" in sh
+
+
+def test_readonly_existing_lock_is_still_taken_and_run(box):
+    lock = box.dir / "install.lock"
+    lock.write_text("")
+    lock.chmod(0o444)  # e.g. owned by another user: never open it with O_CREAT/write
+    (box.dir / "reboot-required").write_text("")
+    assert "systemctl reboot" in box()
+
+
+def test_lock_is_never_opened_for_write():
+    root = SCRIPT.parents[1]
+    for f in (root / "install.sh", SCRIPT):
+        assert "9>>" not in f.read_text() and "9>" not in f.read_text()

@@ -126,7 +126,8 @@ update_app() {
 
 main() {
   mkdir -p "$(dirname "$LOCK")"
-  exec 9>>"$LOCK"
+  [ -e "$LOCK" ] || : >"$LOCK"
+  exec 9<"$LOCK"
   if ! flock -n 9; then say "installer is running; skipping tonight"; return 0; fi
   say "=== nightly update check ==="
   local rc=0
