@@ -138,6 +138,12 @@ EOF
   *) die "usage: tap prep|attach|down" ;;
   esac
   ;;
+cap)  # cap SECONDS: headers-only pcap of the netns Wi-Fi card -> /var/tmp/droidcap.pcap (user-owned)
+  [[ ${2:-} =~ ^[0-9]{1,3}$ ]] && (( $2 >= 1 && $2 <= 600 )) || die "usage: cap SECONDS (1-600)"
+  rm -f /var/tmp/droidcap.pcap
+  in_ns timeout "$2" tcpdump -nn -i "$IF" -s 128 -w /var/tmp/droidcap.pcap 2>/dev/null || true
+  chown "$RUN_AS:$RUN_AS" /var/tmp/droidcap.pcap
+  ;;
 status)
   in_ns ip -br link show "$IF"
   in_ns iw dev "$IF" link | sed -n '1,3p'

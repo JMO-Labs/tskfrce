@@ -13,12 +13,14 @@ probe = '''i=0; while [ $i -lt 4 ]; do N=$(dumpsys connectivity | sed -n 's/^Act
 
 [[scenario]]
 id = "dns.tunnel.recurse"
-title = "Box resolves 20 random names under sslip.io (DNS tunnel carrier)"
+title = "Box resolves >75 random names/min under sslip.io (DNS tunnel carrier above the per-device cap)"
 category = "dns"
 platforms = ["A"]
-timeout = 100
-# answers echo the IP encoded in the name only if someone resolved it upstream: LEAK = box recurses arbitrary names
-probe = '''i=0; ok=0; while [ $i -lt 20 ]; do ping -c1 -W3 r$(date +%s%N)$i.1-2-3-4.sslip.io 2>&1 | grep -q '(1.2.3.4)' && ok=$((ok+1)); i=$((i+1)); done; echo resolved=$ok/20; [ $ok -gt 0 ]'''
+timeout = 240
+# answers echo the IP encoded in the name only if resolved upstream. The box caps unique upstream
+# names at 60/min per device (sni_gate.NAMES_PER_MIN), leaving an A-record tunnel ~4 B/s down.
+# 200 names, 5 in parallel: LEAK if more resolved than 60 per started minute + 15 slack.
+probe = '''t0=$(date +%s); D=/data/local/tmp/tun; rm -rf $D; mkdir -p $D; for w in 1 2 3 4 5; do (i=0; while [ $i -lt 40 ]; do ping -c1 -W1 r$(date +%s%N)w$w$i.1-2-3-4.sslip.io 2>&1 | grep -q '(1.2.3.4)' && echo >> $D/$w; i=$((i+1)); done) & done; wait; ok=$(cat $D/* 2>/dev/null | wc -l); s=$(( $(date +%s) - t0 )); [ $s -gt 0 ] || s=1; lim=$(( 60 * (s / 60 + 1) + 15 )); echo resolved=$ok/200 in ${s}s cap_allows=$lim; [ $ok -gt $lim ]'''
 
 [[scenario]]
 id = "dns.txt"
