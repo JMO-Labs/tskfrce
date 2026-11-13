@@ -73,7 +73,9 @@ def box(tmp_path):
             holder = subprocess.Popen(["flock", str(tmp_path / "install.lock"), "sleep", "30"])
             time.sleep(0.5)
         try:
-            subprocess.run(["bash", str(SCRIPT)], env=env, capture_output=True, text=True, timeout=60)
+            subprocess.run(
+                ["bash", str(SCRIPT)], env=env, capture_output=True, text=True, timeout=60
+            )
         finally:
             if holder:
                 holder.kill()
