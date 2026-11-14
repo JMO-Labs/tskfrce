@@ -6,7 +6,6 @@ import pytest
 from app.core.config import settings
 from app.lock import fingerbank, fingerbank_db
 from app.models.family import get_family
-
 from tests.lock.test_fingerbank import make_db
 
 F = "/api/v1/family"
