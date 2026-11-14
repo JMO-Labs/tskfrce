@@ -4,7 +4,6 @@ import pytest
 from app.core.config import settings
 from app.models.family import get_family
 from app.models.lock import Device
-from app.models.user import User, UserRole
 from app.services.suggestions.engine import suggestions
 
 URL = "/api/v1/internal/devices/seen"
@@ -52,7 +51,7 @@ def test_setting_off_never_holds(client, db):
     assert blocked(client) == []
 
 
-def test_parent_notified_when_held(client, db, on):
+def test_parent_notified_when_held(client, db, on, parent):
     from app.models.inbox import Notification
 
     seen(client, PRIVATE)
@@ -67,10 +66,7 @@ def test_allow_lifts_hold(client, db, on, parent_headers):
     assert blocked(client) == []
 
 
-def test_assign_lifts_hold(client, db, on, parent_headers):
-    kid = User(username="kid", role=UserRole.KID, full_name="Kid", is_active=True)
-    db.add(kid)
-    db.commit()
+def test_assign_lifts_hold(client, db, on, parent_headers, kid):
     seen(client, PRIVATE)
     d = db.query(Device).one()
     r = client.patch(
