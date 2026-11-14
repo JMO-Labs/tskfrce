@@ -6,6 +6,7 @@ import logging
 import random
 import socket
 import threading
+import time
 from collections.abc import Callable
 from types import SimpleNamespace
 
@@ -86,6 +87,25 @@ def scan_once(
     return seen_list
 
 
+class Rescanner:
+    """Fan a rescan request out to every discovery loop (one wake event each)."""
+
+    def __init__(self) -> None:
+        self._events: list[threading.Event] = []
+        self._lock = threading.Lock()
+
+    def register(self) -> threading.Event:
+        ev = threading.Event()
+        with self._lock:
+            self._events.append(ev)
+        return ev
+
+    def trigger(self) -> None:
+        with self._lock:
+            for ev in self._events:
+                ev.set()
+
+
 def run_discovery(
     cfg: Config,
     stop: threading.Event,
@@ -93,13 +113,25 @@ def run_discovery(
     vid: int | None = None,
     iface: str | None = None,
     enrich: Callable[[Seen], Seen] = lambda s: s,
+    wake: threading.Event | None = None,
 ) -> None:
-    """Run periodic ARP/NDP discovery. Pass iface to override cfg.lan_iface."""
+    """Run periodic ARP/NDP discovery. Pass iface to override cfg.lan_iface.
+
+    Setting `wake` cuts the sleep short; it is cleared as a sweep starts, so rescans
+    requested during a sweep coalesce into one extra sweep."""
+    wake = wake or threading.Event()
     while not stop.is_set():
+        wake.clear()
         try:
             for seen in scan_once(cfg, vid=vid, iface=iface, enrich=enrich):
                 if on_seen:
                     on_seen(seen)
         except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
             log.warning("scan on %s failed: %s", iface or cfg.lan_iface, e)
-        stop.wait(cfg.scan_interval + random.uniform(0, min(2.0, cfg.scan_interval * 0.1)))
+        deadline = time.monotonic() + cfg.scan_interval
+        deadline += random.uniform(0, min(2.0, cfg.scan_interval * 0.1))
+        while not stop.is_set() and not wake.is_set():
+            left = deadline - time.monotonic()
+            if left <= 0:
+                break
+            wake.wait(min(left, 0.25))
