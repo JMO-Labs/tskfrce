@@ -1,7 +1,7 @@
 """Fingerbank opt-in setting on family_settings
 
 Revision ID: f2n3g4e5r6b7
-Revises: g2h3o4l5d6p7
+Revises: n4m5f6p7a8r9
 Create Date: 2026-11-14 15:00:00.000000
 """
 
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "f2n3g4e5r6b7"
-down_revision: str | Sequence[str] | None = "g2h3o4l5d6p7"
+down_revision: str | Sequence[str] | None = "n4m5f6p7a8r9"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
