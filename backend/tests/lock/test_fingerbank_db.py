@@ -9,6 +9,7 @@ from app.models.family import get_family
 from tests.lock.test_fingerbank import make_db
 
 F = "/api/v1/family"
+_REAL_DOWNLOAD = fingerbank_db._download  # the autouse fixture stubs the module attr
 
 
 @pytest.fixture(autouse=True)
@@ -336,3 +337,54 @@ def test_device_out_has_friendly_class_and_notice_names_it(client, db, parent_he
     assert d["device_class"] == "Android device"
     n = db.query(Notification).filter_by(kind="new_device", device_id=did).one()
     assert "Android device" in n.body
+
+
+# --- coverage for tskfrce#111 ---
+
+
+def test_download_streams_to_file_with_key_param(tmp_path, monkeypatch):
+    seen = {}
+
+    class R:
+        def raise_for_status(self):
+            seen["checked"] = True
+
+        def iter_bytes(self):
+            return iter([b"ab", b"cd"])
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def stream(method, url, **kw):
+        seen.update(method=method, url=url, **kw)
+        return R()
+
+    monkeypatch.setattr(fingerbank_db.httpx, "stream", stream)
+    dest = tmp_path / "x.tmp"
+    _REAL_DOWNLOAD("secret", dest)
+    assert dest.read_bytes() == b"abcd" and seen["checked"]
+    assert seen["method"] == "GET" and seen["params"] == {"key": "secret"}
+
+
+def test_refresh_skips_when_a_download_is_already_running(db, _env):
+    _enable(db)
+    assert fingerbank_db._lock.acquire(blocking=False)
+    try:
+        assert fingerbank_db.refresh(db) is False
+    finally:
+        fingerbank_db._lock.release()
+    assert _env == []
+
+
+def test_bg_swallows_refresh_errors_and_closes_session(db, monkeypatch):
+    from app.core import database
+
+    closed = []
+    monkeypatch.setattr(database, "SessionLocal", lambda: db)
+    monkeypatch.setattr(db, "close", lambda: closed.append(1))
+    monkeypatch.setattr(fingerbank_db, "refresh", lambda d: 1 / 0)
+    fingerbank_db._bg()  # must not raise
+    assert closed == [1]

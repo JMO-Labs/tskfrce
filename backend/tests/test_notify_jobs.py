@@ -249,3 +249,18 @@ def test_loop_db_locked_logs_warning(db, monkeypatch):
     monkeypatch.setattr(notify_jobs, "tick", boom)
     loop._run_once()
     assert warns and not errs
+
+
+def test_run_once_survives_fingerbank_tick_failure(db, monkeypatch):
+    from app.lock import fingerbank_db, loop
+
+    pushed, errs, rolled = [], [], []
+    monkeypatch.setattr(loop, "SessionLocal", lambda: db)
+    monkeypatch.setattr(loop, "tick", lambda d, n: (["aa"], {}))
+    monkeypatch.setattr(loop, "push_state", lambda b, h: pushed.append(b))
+    monkeypatch.setattr(fingerbank_db, "tick", lambda d: 1 / 0)
+    monkeypatch.setattr(loop.logger, "error", lambda *a, **k: errs.append(a))
+    monkeypatch.setattr(db, "rollback", lambda: rolled.append(1))
+    monkeypatch.setattr(db, "close", lambda: None)
+    loop._run_once()
+    assert pushed == [["aa"]] and errs == [("Fingerbank tick failed",)] and rolled
