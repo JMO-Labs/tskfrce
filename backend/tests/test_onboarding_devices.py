@@ -51,12 +51,14 @@ def test_rescan_returns_429_within_10s(client, db, parent_headers):
     assert resp.status_code == 429
 
 
-def test_rescan_succeeds_after_10s(client, db, parent_headers):
+def test_rescan_succeeds_after_10s(client, db, parent_headers, monkeypatch):
     """POST /devices/rescan succeeds after 10s."""
     fam = get_family(db)
     fam.last_rescan_at = datetime.now(UTC).replace(tzinfo=None) - timedelta(seconds=11)
     db.commit()
+    from app.api import devices
 
+    monkeypatch.setattr(devices.blocker_client, "rescan", lambda: True)
     resp = client.post("/api/v1/devices/rescan", headers=parent_headers)
     assert resp.status_code == 200
     assert resp.json()["ok"] is True
@@ -105,3 +107,13 @@ def test_setup_devices_response_format(db):
     assert "name_source" in result[0]
     assert "maker_guess" in result[0]
     assert "random_mac" in result[0]
+
+
+def test_rescan_reports_blocker_failure(client, db, parent_headers, monkeypatch):
+    """A failed blocker rescan is not ok:true."""
+    from app.api import devices
+
+    monkeypatch.setattr(devices.blocker_client, "rescan", lambda: False)
+    resp = client.post("/api/v1/devices/rescan", headers=parent_headers)
+    assert resp.status_code == 502
+    assert resp.json()["ok"] is False
