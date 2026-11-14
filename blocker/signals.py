@@ -123,9 +123,22 @@ def mdns_from_packet(pkt) -> tuple[str, str, str | None] | None:
         return None
 
 
+def _managed_ifaces() -> list[str]:
+    """Interfaces discovery/multinet manage (same source: lan_networks), de-duplicated."""
+    from blocker.ifaces import lan_networks
+
+    return list(dict.fromkeys(name for name, _ in lan_networks()))
+
+
 class Signals:
-    def __init__(self, cfg: Config, report: Callable[[Config, Seen], object] = report_seen):
+    def __init__(
+        self,
+        cfg: Config,
+        report: Callable[[Config, Seen], object] = report_seen,
+        ifaces: Callable[[], list[str]] = _managed_ifaces,
+    ):
         self.cfg = cfg
+        self._ifaces = ifaces
         self._report = report
         self._lock = threading.Lock()
         self._latest: dict[str, Seen] = {}  # last discovery result per MAC
@@ -169,17 +182,45 @@ class Signals:
         if hn:
             self.update(hn[0], dhcp_hostname=hn[1])
 
+    def _managed(self) -> list[str]:
+        return self._ifaces()
+
+    def _make_sniffer(self, iface: str, filt: str, prn):
+        from blocker.scapy_lite import AsyncSniffer
+
+        return AsyncSniffer(iface=iface, filter=filt, store=False, prn=prn)
+
+    def _sniff_managed(self, stop: threading.Event, filt: str, prn, every: float = 30) -> None:
+        """Keep one sniffer per managed interface (never the scapy default), following changes."""
+        running: dict[str, object] = {}
+        try:
+            while True:
+                want = set(self._managed())
+                for name in set(running) - want:
+                    self._stop_sniffer(running.pop(name))
+                for name in want - set(running):
+                    try:
+                        sn = self._make_sniffer(name, filt, prn)
+                        sn.start()
+                        running[name] = sn
+                    except Exception as e:  # noqa: BLE001 - one bad iface must not stop the rest
+                        log.warning("sniff on %s failed: %s", name, e)
+                if stop.wait(every):
+                    break
+        finally:
+            for sn in running.values():
+                self._stop_sniffer(sn)
+
+    @staticmethod
+    def _stop_sniffer(sn) -> None:
+        try:
+            sn.stop()
+        except Exception as e:  # noqa: BLE001
+            log.debug("sniffer stop failed: %s", e)
+
     def run_dhcp(self, stop: threading.Event) -> None:
         try:
-            from blocker.scapy_lite import sniff
-
-            sniff(
-                iface=self.cfg.lan_iface or None,
-                filter="udp and (port 67 or 68)",
-                store=False,
-                prn=self._on_dhcp,
-                stop_filter=lambda _p: stop.is_set(),
-            )
+            self._sniff_managed(stop, "udp and (port 67 or 68)", self._on_dhcp)
         except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
             log.warning("dhcp sniff stopped: %s", e)
 
@@ -196,22 +237,17 @@ class Signals:
     def run_mdns(self, stop: threading.Event) -> None:
         """Sniff mDNS responses; ask the LAN every MDNS_QUERY_EVERY s so quiet devices answer."""
         try:
-            from blocker.scapy_lite import AsyncSniffer
-
-            sniffer = AsyncSniffer(
-                iface=self.cfg.lan_iface or None,
-                filter="udp port 5353",
-                store=False,
-                prn=self._on_mdns,
+            t = threading.Thread(
+                target=self._sniff_managed,
+                args=(stop, "udp port 5353", self._on_mdns),
+                daemon=True,
             )
-            sniffer.start()
-            try:
-                while True:
-                    self._query_mdns()
-                    if stop.wait(MDNS_QUERY_EVERY):
-                        break
-            finally:
-                sniffer.stop()
+            t.start()
+            while True:
+                self._query_mdns()
+                if stop.wait(MDNS_QUERY_EVERY):
+                    break
+            t.join(timeout=5)
         except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
             log.warning("mdns sniff stopped: %s", e)
 
@@ -222,6 +258,10 @@ class Signals:
 
             qd = [DNSQR(qname=t, qtype="PTR") for t in MDNS_TYPES]
             pkt = IP(dst="224.0.0.251", ttl=255) / UDP(sport=5353, dport=5353) / DNS(qd=qd)
-            send(pkt, iface=self.cfg.lan_iface or None, verbose=False)
+            for iface in self._managed():
+                try:
+                    send(pkt, iface=iface, verbose=False)
+                except Exception as e:  # noqa: BLE001 - other interfaces still get the query
+                    log.warning("mdns query on %s failed: %s", iface, e)
         except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
             log.warning("mdns query failed: %s", e)

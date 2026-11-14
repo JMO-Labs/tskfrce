@@ -155,7 +155,7 @@ def test_query_mdns_sends_ptr_for_each_type(monkeypatch):
     sent = []
     monkeypatch.setattr(sa, "send", lambda pkt, **kw: sent.append(pkt))
     s = sig.Signals.__new__(sig.Signals)
-    s.cfg = type("C", (), {"lan_iface": "eth0"})()
+    s._ifaces = lambda: ["wlo1"]
     s._query_mdns()
     (pkt,) = sent
     assert pkt[sa.IP].dst == "224.0.0.251"
@@ -210,3 +210,53 @@ def test_dhcp_hostname_reported_via_update():
     sg.note_seen(Seen(mac=MAC, ip="10.0.0.5", ipv6=[], hostname=None, vendor="v"))
     assert sg.update(MAC, dhcp_hostname="bobby")
     assert rep.call_args[0][1].body()["dhcp_hostname"] == "bobby"
+
+
+def _two_nic():
+    """Signals with eno2 (management) not managed, wlo1 managed; sniffers recorded."""
+    made = []
+
+    class FakeSniffer:
+        def __init__(self, iface, filt, prn):
+            self.iface, self.filt, self.prn, self.stopped = iface, filt, prn, False
+            made.append(self)
+
+        def start(self):
+            pass
+
+        def stop(self):
+            self.stopped = True
+
+    sg = Signals(CFG, Mock(), ifaces=lambda: ["wlo1"])
+    sg._make_sniffer = lambda i, f, p: FakeSniffer(i, f, p)
+    return sg, made
+
+
+def test_dhcp_sniffs_only_managed_iface_and_sets_fp():
+    import threading
+
+    sg, made = _two_nic()
+    sg.note_seen(Seen(mac=MAC, ip="10.10.40.7", ipv6=[], hostname=None, vendor=None))
+    stop = threading.Event()
+    t = threading.Thread(target=sg.run_dhcp, args=(stop,))
+    t.start()
+    for _ in range(100):
+        if made:
+            break
+        time.sleep(0.01)
+    assert [m.iface for m in made] == ["wlo1"]
+    made[0].prn(_discover([1, 121, 3, 6]))
+    stop.set()
+    t.join(5)
+    assert sg._cache[MAC]["dhcp_fp"] == "1,121,3,6"
+    assert made[0].stopped
+
+
+def test_query_mdns_sent_on_every_managed_iface(monkeypatch):
+    from blocker import scapy_lite as sa
+
+    sent = []
+    monkeypatch.setattr(sa, "send", lambda pkt, **kw: sent.append(kw["iface"]))
+    sg = Signals(CFG, Mock(), ifaces=lambda: ["wlo1", "wlan1"])
+    sg._query_mdns()
+    assert sent == ["wlo1", "wlan1"]
