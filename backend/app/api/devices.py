@@ -234,7 +234,10 @@ def rescan_devices(db: Session = Depends(get_db)):
     if not blocker_client.rescan():
         return JSONResponse(
             status_code=502,
-            content={"ok": False, "detail": "The box couldn't start a scan. Try again in a moment."},
+            content={
+                "ok": False,
+                "detail": "The box couldn't start a scan. Try again in a moment.",
+            },
         )
 
     return {"ok": True, "last_scanned": utc_z(now)}

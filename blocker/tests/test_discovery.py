@@ -150,7 +150,9 @@ def test_rescan_wakes_discovery_within_a_second(tmp_path, monkeypatch):
     calls = _count_sweeps(monkeypatch)
     stop, rescanner = threading.Event(), discovery.Rescanner()
     cfg = _cfg(tmp_path, scan_interval=60)
-    t = threading.Thread(target=run_discovery, args=(cfg, stop), kwargs={"wake": rescanner.register()})
+    t = threading.Thread(
+        target=run_discovery, args=(cfg, stop), kwargs={"wake": rescanner.register()}
+    )
     t.start()
     assert _wait_for(lambda: len(calls) == 1)
     rescanner.trigger()
@@ -171,7 +173,9 @@ def test_rescans_during_a_sweep_coalesce_into_one_extra(tmp_path, monkeypatch):
     calls = _count_sweeps(monkeypatch, on_sweep)
     stop = threading.Event()
     cfg = _cfg(tmp_path, scan_interval=60)
-    t = threading.Thread(target=run_discovery, args=(cfg, stop), kwargs={"wake": rescanner.register()})
+    t = threading.Thread(
+        target=run_discovery, args=(cfg, stop), kwargs={"wake": rescanner.register()}
+    )
     t.start()
     assert _wait_for(lambda: len(calls) == 2)
     time.sleep(0.8)
@@ -185,5 +189,5 @@ def test_service_wires_rescan_into_every_make_api():
     from pathlib import Path
 
     src = (Path(discovery.__file__).parent / "service.py").read_text()
-    calls = re.findall(r"make_api\(.*?\n\s*\)\n", src, re.S)
+    calls = re.findall(r"make_api\(.*?\n\s*\)\n", src, re.DOTALL)
     assert len(calls) == 3 and all("rescan=" in c for c in calls)
