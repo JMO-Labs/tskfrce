@@ -11,6 +11,7 @@ import type { Device, Group, Kid } from '@/v2/types'
 import { ConfirmDelete } from './ConfirmDelete'
 import { DeviceActivity } from './DeviceActivity'
 import { DeviceHead } from './DeviceHead'
+import { FingerbankHint } from './FingerbankHint'
 import { DeviceNetwork } from './DeviceNetwork'
 import { DeviceRightNow } from './DeviceRightNow'
 import { ActivityLine, DetailsBody } from './DeviceRows'
@@ -72,6 +73,8 @@ export function DeviceDetail({ device, kids, groups = [], onDeleted, onRequestOv
         onRename={rename}
         onDelete={open}
       />
+
+      <FingerbankHint device={device} />
 
       <FocusArea focus={rows} label="Device">
         <SummaryRow id="now" icon={ico('schedule')} title="Right now" summary={nowText} focus={rows}>

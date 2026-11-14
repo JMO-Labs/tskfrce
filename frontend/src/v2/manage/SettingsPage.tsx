@@ -6,7 +6,7 @@ import { ParentShell } from '@/v2/parent/ParentShell'
 import { ErrorPanel, RowsSkeleton, Skeleton } from '@/v2/parent/states'
 import { RequireParent } from '@/v2/components/RequireParent'
 import { useFamily, usePatchFamily } from '@/v2/hooks/useFamily'
-import { FamilyCard, GifsCard } from './FamilyCards'
+import { FamilyCard, FingerbankCard, GifsCard } from './FamilyCards'
 import { IntegrationsPane } from '@/v2/integrations/IntegrationsPane'
 import { HoursSection } from './HoursSection'
 import { ParentsPane } from './ParentsPane'
@@ -48,14 +48,14 @@ function SettingsBody() {
       phone={valid ? <BackLink href="/settings">Settings</BackLink> : undefined}
     >
       <div className="ps-detail">
-        {family.isError && ['family', 'look', 'gifs'].includes(section) && (
+        {family.isError && ['family', 'look', 'gifs', 'names'].includes(section) && (
           <>
             <PaneHead title={current.label} sub={current.description} />
             <ErrorPanel kind="unreachable" error={family.error} onRetry={() => family.refetch()} />
           </>
         )}
         {family.isPending && section === 'family' && <div className="fam-rows"><RowsSkeleton rows={3} /></div>}
-        {family.isPending && ['look', 'gifs'].includes(section) && <Skeleton />}
+        {family.isPending && ['look', 'gifs', 'names'].includes(section) && <Skeleton />}
         {section === 'family' && family.data && <FamilyCard fam={family.data} />}
         {section === 'look' && family.data && (
           <AppearancePane
@@ -72,6 +72,7 @@ function SettingsBody() {
           />
         )}
         {section === 'gifs' && family.data && <GifsCard fam={family.data} />}
+        {section === 'names' && family.data && <FingerbankCard fam={family.data} />}
         {section === 'hours' && <HoursSection />}
         {section === 'notifications' && <NotificationsPane />}
         {section === 'homework' && <HomeworkPane />}

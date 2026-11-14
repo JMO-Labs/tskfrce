@@ -138,6 +138,11 @@ export interface Family extends FamilyExtrasFields, FamilyPenaltyFields {
   gif_rating: 'g' | 'pg'
   accent?: AccentKey
   giphy_key_set: boolean
+  fingerbank_enabled: boolean
+  fingerbank_key_set: boolean
+  fingerbank_cloud: boolean
+  fingerbank_hint_seen: boolean
+  fingerbank_synced_at: string | null
   ntfy_upstream_relay: boolean
   chores_lock: boolean
   quick_replies: string[]

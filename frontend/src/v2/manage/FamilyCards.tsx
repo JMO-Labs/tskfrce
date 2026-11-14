@@ -19,7 +19,7 @@ import { GamesBody, gamesLine } from './GamesRow'
 import { PenaltiesBody, penaltiesLine } from './PenaltiesBody'
 import { BedtimeBody, bedtimeLine, HouseholdBody, householdLine, PointsBody, pointsLine, type SaveFamily } from './FamilyRows'
 
-type Fields = Family & { giphy_api_key?: string }
+type Fields = Family & { giphy_api_key?: string; fingerbank_api_key?: string }
 
 interface Draft {
   val: <K extends keyof Fields>(k: K) => Fields[K]
@@ -153,6 +153,42 @@ export function GifsCard({ fam }: { fam: Family }) {
             </>
           ) : (
             <p className="pn-help pn-note">Off. Turn on to search GIFs in chat (needs a free GIPHY key).</p>
+          )}
+        </PaneCard>
+      )}
+    </Pane>
+  )
+}
+
+export function FingerbankCard({ fam }: { fam: Family }) {
+  return (
+    <Pane title="Device names" sub="Recognise phones, consoles and TVs by type." fam={fam}>
+      {({ val, set }) => (
+        <PaneCard icon="devices" title="Better device names (Fingerbank)">
+          <Switchy label="Better device names (Fingerbank)" checked={val('fingerbank_enabled')} onChange={(v) => set({ fingerbank_enabled: v })} />
+          {val('fingerbank_enabled') ? (
+            <>
+              <div className="pn-fields">
+                <PasswordInput
+                  visibilityToggleIcon={PasswordEye}
+                  label="Your Fingerbank key"
+                  autoComplete="off"
+                  placeholder={fam.fingerbank_key_set ? 'Saved' : ''}
+                  value={val('fingerbank_api_key') ?? ''}
+                  onChange={(e) => set({ fingerbank_api_key: e.currentTarget.value })}
+                />
+              </div>
+              <Switchy label="Also ask Fingerbank online for unknown devices" checked={val('fingerbank_cloud')} onChange={(v) => set({ fingerbank_cloud: v })} />
+              <p className="pn-help pn-note">
+                Free account key from{' '}
+                <a className="pn-link" href="https://api.fingerbank.org/users/register" target="_blank" rel="noreferrer">
+                  fingerbank.org
+                </a>
+                . Your home box downloads Fingerbank&apos;s device list once, refreshes it weekly, and matches devices on the box. Nothing leaves your home unless you turn on the online lookup.
+              </p>
+            </>
+          ) : (
+            <p className="pn-help pn-note">Off. Turn on to show names like &quot;Android device&quot; instead of the maker or &quot;Unknown&quot; (needs your own free Fingerbank key).</p>
           )}
         </PaneCard>
       )}
