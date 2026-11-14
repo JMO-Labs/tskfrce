@@ -7,6 +7,8 @@ import { ListHeader } from '@/v2/parent/ListHeader'
 import { SegmentedControl } from '@/v2/parent/SegmentedControl'
 import type { Device, Group as DeviceGroup, Kid } from '@/v2/types'
 import { useNetworkLabels } from '@/v2/hooks/useNetworks'
+import { DeviceControls, NoMatch, useDeviceView } from './DeviceControls'
+import { applyDevices, isFiltered } from './deviceFilter'
 import { deviceSubline, DEVICE_TYPE_ICON, getDeviceType, type DeviceType } from './deviceMeta'
 
 interface Props {
@@ -94,6 +96,8 @@ export function DeviceList({
   // ignored devices live in the pane too, so keep the entry reachable for their undo
   const ignored = devices.filter((d) => d.status === 'ignored').length
   const sorted = devices.filter((d) => d.status === 'assigned' || d.status === 'guest')
+  const view = useDeviceView('devices')
+  const visible = applyDevices(sorted, view.filter, view.sort)
   const item = (d: Device) => {
     const state = deviceState(d)
     const owner = ownerName(kids, d.owner_ids)
@@ -166,6 +170,11 @@ export function DeviceList({
               {networks.map((n) => <option key={n.id} value={n.id}>{n.label}</option>)}
             </select>
           )}
+          {sorted.length > 0 && (
+            <DeviceControls sort={view.sort} onSort={view.setSort} filter={view.filter} onFilter={view.setFilter}
+              owners={kids.map((k) => ({ id: k.id, name: k.full_name || k.username }))}
+              networks={networks.map((n) => ({ id: Number(n.id), label: n.label }))} />
+          )}
           {unknown + ignored > 0 && (
             <button
               type="button"
@@ -183,9 +192,11 @@ export function DeviceList({
           )}
           {sorted.length === 0 ? (unknown + ignored === 0 && (
             <p className="p-device-empty">No devices yet. Open a web page on one to add it.</p>
-          )) : (
+          )) : visible.length === 0 && isFiltered(view.filter) ? (
+            <NoMatch filter={view.filter} onClear={view.clear} />
+          ) : (
             <div className="p-device-list">
-              {byOwner(sorted, kids).map((g) => (
+              {byOwner(visible, kids).map((g) => (
                 <Fold key={g.key} title={g.title} icon={g.icon} count={g.list.length} open={g.list.some((d) => d.id === selectedDevice)}>
                   {g.list.map(item)}
                 </Fold>
