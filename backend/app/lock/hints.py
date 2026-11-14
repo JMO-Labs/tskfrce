@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
+from app.lock.fingerbank import friendly_name
 from app.lock.state import desired_blocked
 from app.models.family import get_family
 from app.models.lock import Device, DeviceHintRejection, Override
@@ -123,10 +124,18 @@ def apply_hint(db: Session, device: Device) -> bool:
         inbox.parents(db),
         "device_hint",
         f"{cand.name} came back with a new address",
-        f"We gave it {names}'s rules. Not the same device? Undo.",
+        f"We gave it {names}'s rules. {_kinds(device, cand)}Not the same device? Undo.",
         device_id=device.id,
     )
     return True
+
+
+def _kinds(new: Device, old: Device) -> str:
+    """'New: Android device; old: Mac. ' when Fingerbank knows either side, else ''."""
+    n, o = friendly_name(new.device_class), friendly_name(old.device_class)
+    if not (n or o):
+        return ""
+    return f"New: {n or 'unknown'}; {old.name}: {o or 'unknown'}. "
 
 
 def inherit(db: Session, device: Device, cand: Device, reason: str) -> None:

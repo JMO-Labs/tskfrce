@@ -8,6 +8,7 @@ from sqlalchemy.exc import OperationalError
 from app.core.config import settings
 from app.core.database import SessionLocal
 from app.core.logging import get_logger
+from app.lock import fingerbank_db
 from app.lock.blocker_client import push_state
 from app.lock.state import tick
 from app.services import kid_alerts, notify_jobs
@@ -36,6 +37,11 @@ def _run_once() -> None:
         now = datetime.now(UTC)
         blocked, homework = tick(db, now)
         push_state(blocked, homework)
+        try:
+            fingerbank_db.tick(db)
+        except Exception as exc:
+            db.rollback()
+            logger.error("Fingerbank tick failed", error=str(exc))
         try:
             kid_alerts.scan(db, now)
         except Exception as exc:

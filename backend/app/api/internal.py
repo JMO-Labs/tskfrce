@@ -17,6 +17,7 @@ from app.api.deps import get_db
 from app.core.config import settings
 from app.lock import activity, fingerbank
 from app.lock.device_names import display_device_name
+from app.lock.fingerbank import friendly_name
 from app.lock.hints import apply_hint
 from app.lock.identity import note_identity_change
 from app.lock.loop import trigger
@@ -248,13 +249,17 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
                 held = fam.hold_private_devices and dev.random_mac and dev.status == "unassigned"
                 dev.held = bool(held)
                 if fam.setup_step is None:
+                    kind = friendly_name(dev.device_class)
                     inbox.notify_parents(
                         db,
                         "new_device",
                         f"New device held: {dev.name}" if held else f"New device: {dev.name}",
-                        "It stays paused until you allow it or say whose it is."
-                        if held
-                        else "Say whose it is so it follows their rules.",
+                        (f"Looks like: {kind}. " if kind else "")
+                        + (
+                            "It stays paused until you allow it or say whose it is."
+                            if held
+                            else "Say whose it is so it follows their rules."
+                        ),
                         device_id=dev.id,
                     )
             db.commit()

@@ -12,7 +12,7 @@ from app.api.deps import get_db, require_parent
 from app.api.devices import device_out
 from app.api.rewards import device_name, redemption_name
 from app.integrations import store as int_store
-from app.lock import hours
+from app.lock import fingerbank_db, hours
 from app.lock.loop import trigger
 from app.lock.schedule import local_now
 from app.lock.state import Prefetch
@@ -72,6 +72,13 @@ def _fam_out(fam, db) -> dict:
         "accent": fam.accent,
         "ntfy_upstream_relay": fam.ntfy_upstream_relay,
         "giphy_key_set": bool(fam.giphy_api_key),  # the key itself is never returned
+        "fingerbank_enabled": fam.fingerbank_enabled,
+        "fingerbank_key_set": bool(fam.fingerbank_api_key),  # the key itself is never returned
+        "fingerbank_cloud": fam.fingerbank_cloud,
+        "fingerbank_hint_seen": fam.fingerbank_hint_seen,
+        "fingerbank_synced_at": fam.fingerbank_synced_at,
+        "fingerbank_last_error": fam.fingerbank_last_error,
+        "fingerbank_last_error_at": fam.fingerbank_last_error_at,
         "hh_default_mult_x10": fam.hh_default_mult_x10,
         "hh_default_minutes": fam.hh_default_minutes,
         "hh_weekly_surprise": fam.hh_weekly_surprise,
@@ -118,6 +125,8 @@ def patch_family(body: FamilyPatch, db: Session = Depends(get_db)):
     for k, v in body.model_dump(exclude_unset=True).items():
         if k == "giphy_api_key" and v is not None:
             fam.giphy_api_key = v.strip() or None
+        elif k == "fingerbank_api_key" and v is not None:
+            fam.fingerbank_api_key = v.strip() or None
         elif k in ("quick_replies", "penalty_sizes", "makeup_chores") and v is not None:
             setattr(fam, k, json.dumps(v))
         elif v is not None:
@@ -125,6 +134,8 @@ def patch_family(body: FamilyPatch, db: Session = Depends(get_db)):
     db.commit()
     if "ntfy_upstream_relay" in body.model_fields_set:
         push.write_conf(fam)
+    if body.model_fields_set & {"fingerbank_enabled", "fingerbank_api_key", "fingerbank_cloud"}:
+        fingerbank_db.apply(fam)  # the loop (woken below) downloads the DB off-request
     trigger()
     return _fam_out(fam, db)
 

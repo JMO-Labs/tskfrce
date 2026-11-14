@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.api.deps import get_db, require_parent
 from app.lock import activity, blocker_client, hours
 from app.lock.device_names import display_device_name, guess_maker_from_signals
+from app.lock.fingerbank import friendly_name
 from app.lock.loop import trigger
 from app.lock.overrides import clear_override, set_homework, set_override
 from app.lock.rules import block_reason, open_reason
@@ -142,6 +143,7 @@ def device_out(
         "mdns_name": d.mdns_name,
         "name_from_parent": d.name_from_parent,
         "model": d.model,
+        "device_class": friendly_name(d.device_class),  # Fingerbank, only when the setting is on
         "random_mac": d.random_mac,
         "vlan_id": d.vlan_id,
         "network_id": d.network_id,
