@@ -147,6 +147,7 @@ def device_out(
         "vlan_id": d.vlan_id,
         "network_id": d.network_id,
         "exempt": bool(d.exempt),
+        "held": bool(d.held),
         "reason": reason or open_reason(f, now_local),
         "chores_done": sum(o.approved for o in f.owners),
         "chores_total": sum(o.total for o in f.owners),
@@ -256,6 +257,7 @@ def bulk_devices(body: DeviceBulk, db: Session = Depends(get_db)):
             raise HTTPException(400, "Pick one or more existing kids to assign these devices to.")
     for d in devs:
         d.status = body.status
+        d.held = False
         d.owners = list(kids)
     _commit(db, "Those devices just changed somewhere else. Refresh and try again.")
     trigger()
@@ -273,6 +275,8 @@ def patch_device(device_id: int, body: DevicePatch, db: Session = Depends(get_db
         d.status = body.status
     if body.exempt is not None:
         d.exempt = body.exempt
+    if body.held is False or body.status is not None or body.owner_ids is not None:
+        d.held = False  # Allow, or any assignment, lifts the hold
     if body.owner_ids is not None:
         kids = db.query(User).filter(User.id.in_(body.owner_ids), User.role == UserRole.KID).all()
         if len(kids) != len(set(body.owner_ids)):

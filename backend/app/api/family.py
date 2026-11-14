@@ -61,6 +61,7 @@ def _fam_out(fam, db) -> dict:
         "timezone": fam.timezone,
         "reset_time": fam.reset_time,
         "new_devices_blocked": fam.new_devices_blocked,
+        "hold_private_devices": fam.hold_private_devices,
         "points_unlock_early": fam.points_unlock_early,
         "early_bonus_cap": fam.early_bonus_cap,
         "screen_time_price": fam.screen_time_price,

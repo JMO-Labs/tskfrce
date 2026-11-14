@@ -110,9 +110,11 @@ def apply_hint(db: Session, device: Device) -> bool:
     hint = find_hint(_signals(device), [_signals(d) for d in kids], naive, paused, rejected)
     if hint is None:
         return False
-    # Names are self-reported: with "Block new devices" on, a hint may only keep a device
-    # paused, never bring a blocked newcomer online by copying an unpaused kid's rules.
-    if get_family(db).new_devices_blocked and hint.candidate_id not in paused:
+    # Names are self-reported: when newcomers are blocked or held (private MAC), a hint may
+    # only keep a device paused, never bring it online by copying an unpaused kid's rules.
+    fam = get_family(db)
+    gated = fam.new_devices_blocked or (fam.hold_private_devices and device.random_mac)
+    if gated and hint.candidate_id not in paused:
         return False
     cand = next(d for d in kids if d.id == hint.candidate_id)
     inherit(db, device, cand, hint.reason)

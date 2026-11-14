@@ -185,3 +185,14 @@ def test_bonus_any_hours_never_opens_an_off_window():
     )
     assert block_reason(f, NOW) == "schedule"
     assert open_reason(f, NOW) is None
+
+
+def test_held_unassigned_blocked_even_when_new_devices_open():
+    f = facts(status="unassigned", new_devices_blocked=False, held=True)
+    assert block_reason(f, NOW) == "new_device"
+    assert is_online(replace(f, held=False), NOW)
+
+
+def test_held_lifted_by_unlock_override():
+    f = facts(status="unassigned", new_devices_blocked=False, held=True, override="unlock")
+    assert is_online(f, NOW)

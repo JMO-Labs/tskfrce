@@ -87,7 +87,7 @@ export function UnknownDevices({ devices, kids }: { devices: Device[]; kids: Kid
                   <tr key={d.id} data-testid="unknown-row" className="p-unk-row" data-on={picked.includes(d.id) || undefined}>
                     <td className="p-unk-chk"><input type="checkbox" aria-label={`Select ${d.name}`} checked={picked.includes(d.id)} onChange={() => toggle(d.id)} /></td>
                     <td className="p-unk-nm">
-                      <b title={d.name}>{d.name}{d.random_mac && <span className="p-unk-tag">private</span>}</b>
+                      <b title={d.name}>{d.name}{d.random_mac && <span className="p-unk-tag">private</span>}{d.held && <span className="p-unk-tag p-unk-held">New, held</span>}</b>
                       {maker(d) && <small className="p-unk-maker">{maker(d)}</small>}
                       <small className="p-unk-mob">{detail(d)}</small>
                     </td>
@@ -100,6 +100,12 @@ export function UnknownDevices({ devices, kids }: { devices: Device[]; kids: Kid
                         {kids.map((k) => <option key={k.id} value={k.id}>{kidName(k)}</option>)}
                         <option value="guest">Guest</option>
                       </select>
+                      {d.held && (
+                        <button type="button" className="p-unk-btn" aria-label={`Allow ${d.name}`} disabled={patch.isPending}
+                          onClick={() => patch.mutate({ id: d.id, patch: { held: false } })}>
+                          <Icon name="check_circle" size={16} />Allow
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
