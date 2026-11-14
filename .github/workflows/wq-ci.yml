@@ -19,9 +19,9 @@ jobs:
             py: ['backend/**', 'blocker/**', 'examples/**', 'ruff.toml', '.github/workflows/wq-ci.yml']
   wq:
     needs: changes
-    if: needs.changes.outputs.py == 'true'
     uses: JMO-Labs/wq-ci/.github/workflows/wq-ci.yml@v1
     with:
+      run: ${{ needs.changes.outputs.py == 'true' }}  # not a job-level if: that hides the required `wq / test` check
       reruns: 1  # one rerun separates a flake from a real failure; a deterministic failure costs 2 runs, not 3
       # The one sqlite backend run for PRs to dev (ci-cd.yml skips its duplicate): -n auto on the 4-vCPU hosted runner.
       test-cmd: >-

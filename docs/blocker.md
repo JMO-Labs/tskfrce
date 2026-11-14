@@ -38,6 +38,7 @@ For the reasoning behind these limits, see the [blocker enforcement decision rec
 | Router that resists blocking | Use the "Test block" button to check; see below |
 | Open an `https://` site on a blocked phone | The connection closes; no block page (the box has no certificate for it). `http://` sites show the block page |
 | Tech-savvy laptop admin hardcoding the router's address | Usually stopped; flagged if it gets through. |
+| Use another device on the network as a proxy | Not covered for same-subnet devices: the box can't see that traffic. See [LAN pivot design note](lan-pivot.md). |
 
 ## What it can't see
 

@@ -6,6 +6,7 @@
 # Optional settings (environment variables):
 #   TASK4CE_DIR          where to install            (default ~/task4ce)
 #   TASK4CE_REF          branch, tag or commit       (default main)
+#   TASK4CE_KEEP         extra names in the install dir to keep on update (space-separated)
 #   TASK4CE_SRC          use this local folder instead of downloading (for tests)
 #   TASK4CE_PORT         web port                    (default 3000, first install only)
 #   TASK4CE_API_PORT     loopback API port           (default 8000, first install only)
@@ -90,19 +91,63 @@ random_hex() {
   if have openssl; then openssl rand -hex 32; else od -An -N32 -tx1 /dev/urandom | tr -d ' \n'; fi
 }
 
+# Stays across installs: settings, data, update log, plus TASK4CE_KEEP (space-separated names in $DIR).
+is_kept() {
+  case "$1" in
+    .env | .env.* | data | update-check.log | .staging | .previous-code) return 0 ;;
+  esac
+  set -f
+  for k in ${TASK4CE_KEEP:-}; do
+    if [ "$1" = "$k" ]; then set +f; return 0; fi
+  done
+  set +f
+  return 1
+}
+
+# True when $DIR has nothing but kept names, or looks like a t@sk4ce install (safe to swap).
+dir_swappable() {
+  [ -f "$DIR/.task4ce-install" ] && return 0
+  [ -f "$DIR/docker-compose.prod.yml" ] && [ -d "$DIR/install" ] && return 0
+  for f in "$DIR"/* "$DIR"/.[!.]* "$DIR"/..?*; do
+    [ -e "$f" ] || [ -L "$f" ] || continue
+    is_kept "${f##*/}" || return 1
+  done
+  return 0
+}
+
 fetch_code() {
   mkdir -p "$DIR" || die "Could not create $DIR." "Pick another folder: TASK4CE_DIR=/some/folder"
+  dir_swappable || die "$DIR is not empty and is not a t@sk4ce install." "Pick an empty folder: TASK4CE_DIR=/some/folder"
+  stage="$DIR/.staging"
+  rm -rf "$stage"
+  mkdir "$stage" || die "Could not create $stage."
   if [ -n "${TASK4CE_SRC:-}" ]; then
     say "Copying t@sk4ce from $TASK4CE_SRC ..."
     (cd "$TASK4CE_SRC" && tar --exclude=.git --exclude=node_modules --exclude=.next \
       --exclude=./data --exclude=./.env --exclude=__pycache__ --exclude=.venv \
-      --exclude=e2e-artifacts -cf - .) | tar -C "$DIR" -xf - ||
+      --exclude=e2e-artifacts -cf - .) | tar -C "$stage" -xf - ||
       die "Could not copy the files from $TASK4CE_SRC."
   else
     say "Downloading t@sk4ce ($REF) ..."
-    curl -fsSL "https://codeload.github.com/$REPO/tar.gz/$REF" | tar -C "$DIR" --strip-components=1 -xzf - ||
+    curl -fsSL "https://codeload.github.com/$REPO/tar.gz/$REF" | tar -C "$stage" --strip-components=1 -xzf - ||
       die "The download failed." "Check the internet connection and run this command again."
   fi
+  # Swap: the old code moves to one backup dir (overwritten each install), the new code moves in.
+  # Deleted-upstream files vanish; kept names are never touched.
+  rm -rf "$DIR/.previous-code"
+  mkdir "$DIR/.previous-code"
+  for f in "$DIR"/* "$DIR"/.[!.]* "$DIR"/..?*; do
+    [ -e "$f" ] || [ -L "$f" ] || continue
+    is_kept "${f##*/}" || mv "$f" "$DIR/.previous-code/"
+  done
+  for f in "$stage"/* "$stage"/.[!.]* "$stage"/..?*; do
+    [ -e "$f" ] || [ -L "$f" ] || continue
+    n="${f##*/}"
+    if is_kept "$n" && { [ -e "$DIR/$n" ] || [ -L "$DIR/$n" ]; }; then continue; fi
+    mv "$f" "$DIR/"
+  done
+  : >"$DIR/.task4ce-install"
+  rm -rf "$stage"
 }
 
 write_env() {
@@ -169,10 +214,17 @@ install_updater() {
   sed "s|^ExecStart=.*|Environment=TASK4CE_DIR=$DIR\nExecStart=/usr/local/bin/update-check.sh|" \
     "$DIR/install/update-check.service" | $root tee /etc/systemd/system/update-check.service >/dev/null
   $root systemctl daemon-reload
+  # Timer only: it activates the service by name at 03:00; starting it must not run a check now.
   $root systemctl enable --now update-check.timer
 }
 
 main() {
+  # Hold the lock for the whole install so update-check.sh never reboots/updates mid-install.
+  lock=/run/lock/tskfrce-install.lock
+  root=""
+  [ "$(id -u)" = 0 ] || { have sudo && root="sudo"; }
+  # Root-owned, read-only fd: never O_CREAT a file another user may own (fs.protected_regular).
+  if have flock && $root touch "$lock" 2>/dev/null && exec 9<"$lock"; then flock -w 600 9 || true; fi
   check_system
   ensure_docker
   fetch_code
@@ -213,4 +265,4 @@ main() {
   say "First time? It will walk you through setup."
 }
 
-main "$@"
+[ -n "${TASK4CE_SOURCE_ONLY:-}" ] || main "$@"

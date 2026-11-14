@@ -9,6 +9,7 @@ import { MantineProvider } from '@mantine/core'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fridgeTheme } from '@/v2/theme'
 import { api } from '@/v2/api'
+import { notifications } from '@mantine/notifications'
 import { UnknownDevices } from '@/v2/manage/UnknownDevices'
 import type { Device, Kid } from '@/v2/types'
 
@@ -111,6 +112,15 @@ describe("Who's this? pane", () => {
     show([dev(1)])
     await userEvent.click(screen.getByRole('button', { name: /Rescan/ }))
     await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/devices/rescan', { method: 'POST' }))
+  })
+
+  test('a failed rescan shows an error toast', async () => {
+    show([dev(1)])
+    apiMock.mockRejectedValue(new Error('The box couldn\'t start a scan.'))
+    await userEvent.click(screen.getByRole('button', { name: /Rescan/ }))
+    await waitFor(() =>
+      expect(notifications.show).toHaveBeenCalledWith(expect.objectContaining({ title: "That didn't work" })),
+    )
   })
 
   test('bulk buttons are disabled while a bulk call is in flight', async () => {

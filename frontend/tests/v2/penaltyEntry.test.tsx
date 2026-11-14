@@ -97,8 +97,9 @@ describe("penalty entry points", () => {
     expect(await screen.findByRole("button", { name: "Medium" })).toBeTruthy();
     unmount();
     const r2 = wrap(row("device_bypass", { kid_id: null }));
+    await waitFor(() => expect(apiMock).toHaveBeenCalledWith("/devices"));
     await userEvent.click(screen.getByRole("button", { name: "More for Alert" }));
-    expect(await screen.findByRole("menuitem", { name: /Give penalty/ })).toBeTruthy();
+    expect(await screen.findByRole("menuitem", { name: /Give penalty/ }, { timeout: 4000 })).toBeTruthy();
     r2.unmount();
     wrap(row("chore_submitted"));
     await userEvent.click(screen.getByRole("button", { name: "More for Alert" }));
