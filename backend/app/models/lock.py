@@ -63,6 +63,9 @@ class Device(Base):
         Boolean, nullable=False, default=False, server_default="0"
     )  # superseded by a relinked private MAC; kept for history, hidden from the list
     exempt = Column(Boolean, nullable=False, default=False, server_default="0")  # never locked
+    held = Column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )  # new private-MAC device paused until a parent allows or assigns it
     is_gateway = Column(
         Boolean, nullable=False, default=False, server_default="0"
     )  # reported by blocker

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.lock.fingerbank import os_family
 from app.lock.hints import inherit
+from app.models.family import get_family
 from app.models.lock import Device, DeviceHintRejection, Override
 from app.services import inbox
 
@@ -52,6 +53,9 @@ def apply_relink(db: Session, device: Device) -> bool:
         and not (c.hint_reason == "relink" and now - c.first_seen <= WINDOW)  # no chains
         and not _conflict(device, c)
     ]
+    if len(cands) > 1:
+        fam = get_family(db)
+        fam.hold_private_hint = True  # powers the one-time "hold new private devices?" card
     if len(cands) != 1:  # none, or ambiguous: leave it to the "is this X?" hint
         return False
     cand = cands[0]

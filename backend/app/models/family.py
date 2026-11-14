@@ -35,6 +35,8 @@ class FamilySettings(Base):
     timezone = Column(String(50), nullable=False, default="UTC")
     reset_time = Column(String(5), nullable=False, default="06:00")
     new_devices_blocked = Column(Boolean, nullable=False, default=False)  # learning mode: fail open
+    hold_private_devices = Column(Boolean, nullable=False, default=False, server_default="0")
+    hold_private_hint = Column(Boolean, nullable=False, default=False, server_default="0")
     points_unlock_early = Column(Boolean, nullable=False, default=False)
     early_bonus_cap = Column(Integer, nullable=False, default=5, server_default="5")
     screen_time_price = Column(Integer, nullable=False, default=20, server_default="20")

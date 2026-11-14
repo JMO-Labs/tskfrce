@@ -35,6 +35,7 @@ const deviceState = (d: Device): { tone: Tone; tip: string; icon: string } => {
   const ov = d.override
   if (ov?.action === 'lock' && !(ov.expires_at && new Date(ov.expires_at).getTime() <= Date.now())) return { tone: 'red', tip: 'Locked by you', icon: 'lock' }
   if (d.exempt) return { tone: 'grey', tip: 'Exempt · always allowed', icon: 'verified_user' }
+  if (d.held) return { tone: 'amb', tip: 'New, held · allow it or pick an owner', icon: 'pause_circle' }
   if (d.status === 'unassigned') return { tone: 'amb', tip: "Who's this? New device, pick an owner", icon: 'help' }
   if (d.status === 'guest') return { tone: 'grey', tip: 'Guest · internet on', icon: 'person' }
   return d.online

@@ -126,6 +126,7 @@ def device_facts(
         penalty=any(o.source == "penalty" for o in live)
         or device_penalty(db, device, now_utc, pre) is not None,
         new_devices_blocked=fam.new_devices_blocked,
+        held=device.held,
         points_unlock_early=fam.points_unlock_early,
         bonus_any_hours=not fam.screen_only_allowed_hours,
         homework_until=homework_until,

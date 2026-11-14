@@ -40,6 +40,7 @@ class DevicePatch(BaseModel):
     owner_ids: list[int] | None = None
     group_ids: list[int] | None = None
     exempt: bool | None = None
+    held: Literal[False] | None = None  # Allow: lift the hold
 
 
 class DeviceBulk(BaseModel):
@@ -97,6 +98,7 @@ class FamilyPatch(BaseModel):
     timezone: str | None = None
     reset_time: str | None = None
     new_devices_blocked: bool | None = None
+    hold_private_devices: bool | None = None
     points_unlock_early: bool | None = None
     early_bonus_cap: int | None = Field(default=None, ge=0, le=50)
     screen_time_price: int | None = Field(default=None, ge=1, le=1000)

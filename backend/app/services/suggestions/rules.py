@@ -308,6 +308,27 @@ def devices_unknown(db: Session, now: datetime) -> list[dict]:
     ]
 
 
+def hold_private(db: Session, now: datetime) -> list[dict]:
+    fam = get_family(db)
+    if fam.hold_private_devices or not fam.hold_private_hint:
+        return []
+    return [
+        _s(
+            "devices.hold_private",
+            None,
+            KID,
+            "ambiguous",
+            now,
+            "Hold new private-address devices?",
+            "A phone came back with a new private address and we couldn't tell whose it "
+            "was. Turn this on and new devices like that wait for you.",
+            "link",
+            "Open settings",
+            "/settings?section=network",
+        )
+    ]
+
+
 def feature_homework(db: Session, now: datetime) -> list[dict]:
     out = []
     for kid in _kids(db):
@@ -372,6 +393,7 @@ RULES = {
     "devices.unknown": devices_unknown,
     "feature.homework": feature_homework,
     "kid.age_up": kid_age_up,
+    "devices.hold_private": hold_private,
 }
 
 from app.services.suggestions.system_rules import (  # noqa: E402  (needs _s above)
