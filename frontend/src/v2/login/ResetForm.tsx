@@ -8,9 +8,11 @@ import { Icon } from '@/v2/parent/Icon'
 import { ErrorPanel, Skeleton } from '@/v2/parent/states'
 import { AuthBrand } from '@/v2/components/AuthBrand'
 import { useLinkCheck } from './useLinkCheck'
+import { useFeatureOpen } from '@/v2/eval/featureMap'
 
 /** Set a new password from a parent's one-time reset link. */
 export function ResetForm({ token }: { token: string | undefined }) {
+  useFeatureOpen('reset')
   useLook('parent')
   const router = useRouter()
   const [password, setPassword] = useState('')

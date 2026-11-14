@@ -23,6 +23,7 @@ import { StepKids } from '@/v2/setup/StepKids'
 import { StepDevices } from '@/v2/setup/StepDevices'
 import { StepChores } from '@/v2/setup/StepChores'
 import { starter } from '@/v2/setup/starterChores'
+import { choresKept, presetWhat, setupDetail } from '@/v2/eval/setupDetail'
 import { StepExtras } from '@/v2/setup/StepExtras'
 import { StepHours } from '@/v2/setup/StepHours'
 import { StepStyle } from '@/v2/setup/StepStyle'
@@ -179,8 +180,10 @@ export default function SetupPage() {
     const body = applyBody('balanced', kids, null)
     run([{ key: `preset:${JSON.stringify(body)}`, run: () => applyPreset.mutateAsync(body) }], 6)
   }
+  const offered = useRef(0) // starters the plan suggested, for chores_kept
   const startTweak = (catalog: PresetCatalog) => {
     const t = tweakStart(presetKids(kids, kidStyles, style), catalog, style)
+    offered.current = t.chores.length
     setChores(t.chores.filter((c) => !addedStarters.includes(c)))
     setAssign(t.assign)
     if (t.hours.length) setHours(t.hours)
@@ -191,7 +194,10 @@ export default function SetupPage() {
   }
   /** Looks good applies the plan; Tweak walks Chores, Hours, Extras, then applies it with those three skipped. */
   const nextPlan = () => {
-    if (tweak === 'chores') return sub('hours')
+    if (tweak === 'chores') {
+      setupDetail(5, choresKept(chores.length, offered.current))
+      return sub('hours')
+    }
     if (tweak === 'hours') return sub('extras')
     if (tweak === null) return run([presetJob()])
     run([
@@ -220,6 +226,7 @@ export default function SetupPage() {
     if (step === 5) return nextPlan()
     if (step > LAST) return
     if (step === 3 && kidDraft.trim()) return setTried(true)
+    if (step === 4) setupDetail(4, presetWhat(style, kidStyles))
     go(step + 1)
   }
 
@@ -290,7 +297,7 @@ export default function SetupPage() {
           {step === 2 && loginFailed && (
             <p role="alert">Your account was created. <Link href="/login">Log in</Link> to continue.</p>
           )}
-          {step === 3 && <StepKids kids={kids} name={kidDraft} onName={setKidDraft} onAdd={(k) => setKids([...kids, k])}
+          {step === 3 && <StepKids kids={kids} name={kidDraft} onName={setKidDraft} onAdd={(k) => { setKids([...kids, k]); setupDetail(3, 'name_edited') }}
               draftError={tried && kidDraft.trim() ? `Add ${kidDraft.trim()} first or clear the field.` : undefined} />}
           {step === 4 && <StepStyle kids={kids} style={style} onStyle={setStyle} styles={kidStyles} onStyles={setKidStyles} />}
           {step === 5 && !tweak && <StepPlan kids={presetKids(kids, kidStyles, style)} style={style} onTweak={startTweak} busy={apply.isPending} />}

@@ -3,6 +3,7 @@ import { WhatLine, EarnLine, type PenLine } from '@/v2/today/PenaltyLines'
 import type { PenaltyDraft, PenaltySize, SizeKey } from '@/v2/penaltyTypes'
 import type { Family } from '@/v2/types'
 import { Setr, Sw, type SaveFamily } from './FamilyRows'
+import { useFeatureOpen } from '@/v2/eval/featureMap'
 
 export const MAX_MAKEUP_LIST = 12
 const SIZES: [SizeKey, string][] = [['small', 'Small'], ['medium', 'Medium'], ['big', 'Big']]
@@ -32,6 +33,7 @@ const drop = (cur: string[], c: string): string[] => (cur.length > 1 ? cur.filte
 
 /** Settings > Family > Penalties: the switch first; sizes and the make-up list only when on. */
 export function PenaltiesBody({ fam, save }: { fam: Family; save: SaveFamily }) {
+  useFeatureOpen('penalties')
   const [text, setText] = useState('')
   const list = fam.makeup_chores ?? []
   const add = () => {

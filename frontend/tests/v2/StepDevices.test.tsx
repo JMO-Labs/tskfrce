@@ -12,6 +12,7 @@ import type { Device, Kid } from '@/v2/types'
 
 jest.mock('@/v2/notify', () => ({ toastOk: jest.fn(), toastFail: jest.fn() }))
 jest.mock('@/v2/api', () => ({ api: jest.fn() }))
+jest.mock('@/v2/eval/track', () => ({ track: jest.fn() }))
 const apiMock = api as unknown as Mock<typeof api>
 
 jest.mock('next/router', () => ({ useRouter: () => require('./helpers/fakeRouter').useFakeRouter() }))
@@ -141,5 +142,19 @@ describe('StepDevices history', () => {
     await userEvent.click(await screen.findByRole('button', { name: /Need an owner/ }))
     await waitFor(() => expect(fakeRouter.query.open).toBe('need'))
     expect(fakeRouter.push).not.toHaveBeenCalled()
+  })
+})
+
+describe('StepDevices telemetry', () => {
+  test('emits devices found bucket once and rescan', async () => {
+    const { track } = jest.requireMock('@/v2/eval/track') as { track: jest.Mock }
+    track.mockClear()
+    apiMock.mockResolvedValue(three)
+    view()
+    await screen.findByText('Looking for devices… 3 found')
+    await waitFor(() => expect(track).toHaveBeenCalledWith('setup_detail', { step: 7, what: 'devices_found_1_3' }))
+    await userEvent.click(screen.getByRole('button', { name: /Rescan/ }))
+    await waitFor(() => expect(track).toHaveBeenCalledWith('setup_detail', { step: 7, what: 'rescan' }))
+    expect(track.mock.calls.filter((c) => c[1].what?.startsWith('devices_found'))).toHaveLength(1)
   })
 })

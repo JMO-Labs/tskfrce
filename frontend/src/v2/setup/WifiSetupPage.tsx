@@ -9,6 +9,7 @@ import { useSetupWifiStatus, useSetupWifiScan } from '@/v2/hooks/useSetupWifi'
 import { api, ApiError } from '@/v2/api'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { track } from '@/v2/eval/track'
+import { setupDetail } from '@/v2/eval/setupDetail'
 import styles from '@/v2/setup/wifiSetup.module.css'
 
 interface NetworkItem {
@@ -77,7 +78,10 @@ export function WifiSetupPage() {
     track('screen_view', { route: '/wifi-setup' })
   }, [])
   useEffect(() => {
-    if (isSuccess) track('feature', { area: 'wifi', action: 'done' })
+    if (isSuccess) {
+      track('feature', { area: 'wifi', action: 'done' })
+      setupDetail(1, 'wifi_changed')
+    }
   }, [isSuccess])
   useEffect(() => {
     if (isError) track('feature', { area: 'wifi', action: 'fail' })

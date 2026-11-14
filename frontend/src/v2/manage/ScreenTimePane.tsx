@@ -8,11 +8,13 @@ import { ErrorPanel, RowsSkeleton } from '@/v2/parent/states'
 import { useFocusParam } from '@/v2/parent/useFocusParam'
 import { ScreenKids } from './ScreenKids'
 import { ScreenRules, type SaveScreen } from './ScreenRules'
+import { useFeatureOpen } from '@/v2/eval/featureMap'
 
 const ROWS = ['price', 'max', 'save', 'gprice', 'auto', 'hrs']
 
 /** Rewards → Screen time: the on switch, one line per rule, one row per kid. Every change saves as it is made. */
 export function ScreenTimePane() {
+  useFeatureOpen('time_bank')
   const q = useScreenTime()
   const patch = usePatchScreenTime()
   const run = useSaveQueue()

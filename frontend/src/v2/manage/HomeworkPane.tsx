@@ -2,9 +2,11 @@ import { useHomeworkSites } from '@/v2/hooks/useHomework'
 import { ErrorPanel, Skeleton } from '@/v2/parent/states'
 import { PaneCard, PaneHead } from './PaneParts'
 import { SiteGroup } from './SiteGroup'
+import { useFeatureOpen } from '@/v2/eval/featureMap'
 
 /** Settings → Homework: the family's allowed and blocked sites for homework mode. */
 export function HomeworkPane() {
+  useFeatureOpen('homework')
   const q = useHomeworkSites()
   return (
     <>

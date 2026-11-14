@@ -1,10 +1,12 @@
 import { useCustomBadges, useRecentAwards } from '@/v2/hooks/useCustomBadges'
 import { Icon } from '@/v2/parent/Icon'
+import { useFeatureOpen } from '@/v2/eval/featureMap'
 
 export type BadgesItem = 'all' | 'custom' | 'recent'
 
 /** Badges list column: All badges, Custom badges, Recent awards. */
 export function BadgesNav({ selected, onSelect }: { selected?: string; onSelect: (item: BadgesItem) => void }) {
+  useFeatureOpen('badges')
   const made = useCustomBadges().data?.length ?? 0
   const recent = useRecentAwards().data?.length ?? 0
   const items = [

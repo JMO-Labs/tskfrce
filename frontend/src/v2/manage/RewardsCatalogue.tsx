@@ -7,9 +7,11 @@ import { DetailHeader } from '@/v2/parent/DetailHeader'
 import { Icon } from '@/v2/parent/Icon'
 import { AffordDots } from './AffordDots'
 import { RewardDetail, rewardGlyph } from './RewardDetail'
+import { useFeatureOpen } from '@/v2/eval/featureMap'
 
 /** Catalogue pane: reward card grid (who can afford it now) and the editor for the picked reward. */
 export function RewardsCatalogue({ pick: urlPick, onPick }: { pick?: string; onPick: (id: number | 'new' | null) => void }) {
+  useFeatureOpen('rewards')
   const rewards = useRewards().data ?? []
   const kids = useScreenTime().data?.kids ?? []
   const small = useMediaQuery('(max-width: 767px)')

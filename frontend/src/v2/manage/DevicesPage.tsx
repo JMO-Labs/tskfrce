@@ -14,6 +14,7 @@ import { DevicesSection } from './DevicesSection'
 import { DeviceDetail } from './DeviceDetail'
 import { GroupDetail } from './GroupDetail'
 import { useSingleFlight } from '@/v2/hooks/useSingleFlight'
+import { useFeatureOpen } from '@/v2/eval/featureMap'
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v)
 
@@ -141,6 +142,7 @@ function DevicesBody() {
 }
 
 export function DevicesPage() {
+  useFeatureOpen('devices')
   return (
     <RequireParent>
       <DevicesBody />
