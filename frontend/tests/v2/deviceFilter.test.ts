@@ -63,7 +63,8 @@ describe('applyDevices filters', () => {
     expect(ids(applyDevices(l, f({ networks: [1] }), 'name'))).toEqual([1])
   })
   it('filters AND together', () => {
-    expect(ids(applyDevices(l, f({ flags: ['online', 'locked'] }), 'name'))).toEqual([2, 1])
+    expect(ids(applyDevices(l, f({ flags: ['online', 'locked'] }), 'name'))).toEqual([])
+    expect(ids(applyDevices(l, f({ flags: ['online', 'unlocked'] }), 'name'))).toEqual([1])
     expect(ids(applyDevices(l, f({ flags: ['online'], networks: [2] }), 'name'))).toEqual([])
     expect(ids(applyDevices(l, f({ flags: ['alerts'], owners: [8] }), 'name'))).toEqual([2])
   })
