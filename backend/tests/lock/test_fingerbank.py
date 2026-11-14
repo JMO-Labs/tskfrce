@@ -111,8 +111,11 @@ def test_naming_precedence():
         k.get("mdns"), k.get("host"), k.get("fp"), k.get("vendor"), k.get("cls")
     )
     assert n(cls=ANDROID, vendor="Liteon") == ("Android device", "device_class")
-    assert n(cls=ANDROID, host="pixel")[1] == "hostname"
+    assert n(cls=ANDROID, host="pixel")[1] == "device_class"
+    assert n(cls=ANDROID, mdns="pixel.local")[1] == "device_class"
     assert n(cls=ANDROID, fp="1,3,6,7,31")[1] == "fingerprint"
+    assert n(mdns="tv.local", host="h1")[1] == "mdns"
+    assert n(host="h1", vendor="Liteon") == ("h1", "hostname")
     assert n(vendor="Liteon") == ("Liteon device", "vendor")
 
 
@@ -136,3 +139,18 @@ def test_cloud_key_never_logged(monkeypatch, caplog):
     caplog.set_level(logging.INFO)
     fingerbank.lookup("1,3", "host")
     assert "s3cr3t-key" not in caplog.text
+
+
+def test_model_beats_mdns_and_hostname():
+    assert display_device_name("tv.local", "h", None, "V", None, "Pixel 8") == (
+        "Pixel 8",
+        "model",
+    )
+
+
+def test_ip_like_hostname_never_a_name():
+    for h in ("192-168-1-242.maas", "10-0-0-5", "1-2-3-4.lan"):
+        assert display_device_name(None, h, None, "Acme") == ("Acme device", "vendor")
+    assert display_device_name(None, "192-168-1-9.maas", None, None)[0] == "Unknown device"
+    assert display_device_name(None, "k1-n2.maas", None, None)[0] == "k1-n2.maas"
+    assert display_device_name("10-0-0-5.local", None, None, None)[1] == "unknown"

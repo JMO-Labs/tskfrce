@@ -272,7 +272,7 @@ def _short_name(d: Device) -> str:
     """Best display name, minus any DNS domain suffix (after the first dot)."""
     name = (
         d.name
-        or display_device_name(d.mdns_name, d.hostname, d.dhcp_fp, d.vendor, d.device_class)[0]
+        or display_device_name(d.mdns_name, d.hostname, d.dhcp_fp, d.vendor, d.device_class, d.model)[0]
     )
     return name.split(".", 1)[0] or name
 

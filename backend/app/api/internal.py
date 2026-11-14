@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db
 from app.core.config import settings
 from app.lock import activity, fingerbank
+from app.lock.device_names import display_device_name
 from app.lock.hints import apply_hint
 from app.lock.identity import note_identity_change
 from app.lock.loop import trigger
@@ -207,6 +208,10 @@ def _apply(dev: Device, body: SeenReport, now: datetime) -> None:
     if dev.dhcp_fp and not dev.device_class:
         if found := fingerbank.lookup(dev.dhcp_fp, dev.hostname):
             dev.device_class, dev.device_class_score = found
+    if not dev.name_from_parent:
+        dev.name = display_device_name(
+            dev.mdns_name, dev.hostname, dev.dhcp_fp, dev.vendor, dev.device_class, dev.model
+        )[0][:100]
     # Set is_gateway if this MAC matches the gateway_mac reported by blocker
     if body.gateway_mac:
         dev.is_gateway = dev.mac == body.gateway_mac
@@ -224,7 +229,7 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
     if new:
         dev = Device(
             mac=body.mac,
-            name=(body.hostname or body.dhcp_hostname or body.vendor or "Unknown device")[:100],
+            name="Unknown device",
             status="unassigned",
             first_seen=now,
         )
