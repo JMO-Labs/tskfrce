@@ -676,3 +676,20 @@ def test_new_ip_for_unblocked_mac_is_ignored():
     svc._on_new_ip(MAC, "192.168.1.77")
     assert len(fw.applied) == n
     assert svc._devices[MAC].ip == "192.168.1.50"
+
+
+def test_resist_once_sends_evidence_and_logs_once(caplog):
+    ev = [{"src": "203.0.113.9:443", "proto": "tcp", "flags": "SA", "class": "new"}]
+    watch = SimpleNamespace(
+        set_watched=Mock(),
+        stop=Mock(),
+        counter=Mock(resisting=Mock(return_value={MAC}), evidence=Mock(return_value=ev)),
+    )
+    calls = []
+    svc, _, _ = _svc(watch=watch, report=lambda c, m, evidence=None: calls.append(evidence) or True)
+    with caplog.at_level("INFO"):
+        svc._resist_once()
+        svc._resist_once()
+    assert calls[0] == {MAC: ev}
+    assert calls[1] is None
+    assert len([r for r in caplog.records if "bypass alert" in r.message]) == 1

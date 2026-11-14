@@ -100,9 +100,14 @@ def fetch_state(cfg: Config) -> dict | None:
         return None
 
 
-def report_resisting(cfg: Config, macs: set[str]) -> bool:
+def report_resisting(
+    cfg: Config, macs: set[str], evidence: dict[str, list[dict[str, str]]] | None = None
+) -> bool:
+    body: dict = {"resisting": sorted(macs)}
+    if evidence:
+        body["evidence"] = evidence
     try:
-        _request(cfg, "/devices/resisting", {"resisting": sorted(macs)})
+        _request(cfg, "/devices/resisting", body)
         return True
     except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
         log.warning("report_resisting failed: %s", e)

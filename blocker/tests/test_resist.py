@@ -461,3 +461,31 @@ def test_watch_padding_not_counted_as_payload():
     assert counter.tally(KID).from_gateway == 0
     info = counter._flows[KID][(INET, 443, KID_IP, 50000)]
     assert info[0] == 100  # end == seq: zero-length payload
+
+
+def test_evidence_sample_classifies_new_and_retransmit():
+    c, _ = _counter(grace=0)
+    c.observe(GW, BOX, KID_IP, INET, tcp=TcpInfo(443, 5000, 100, 0, True, flags="SA"))
+    c.observe(GW, BOX, KID_IP, INET, tcp=TcpInfo(443, 5000, 100, 0, True, flags="SA"))
+    ev = c.evidence(KID)
+    assert ev == [
+        {"src": f"{INET}:443", "proto": "tcp", "flags": "SA", "class": "new"},
+        {"src": f"{INET}:443", "proto": "tcp", "flags": "SA", "class": "retx"},
+    ]
+
+
+def test_evidence_is_capped_and_cleared_with_window():
+    c, t = _counter()
+    for _ in range(25):
+        c.observe(GW, BOX, KID_IP, INET, proto="udp", sport=443)
+    ev = c.evidence(KID)
+    assert len(ev) == 10
+    assert ev[0] == {"src": f"{INET}:443", "proto": "udp", "flags": "", "class": "new"}
+    t[0] += 31
+    assert c.evidence(KID) == []
+
+
+def test_evidence_empty_under_threshold_report():
+    c, _ = _counter()
+    c.observe(GW, BOX, KID_IP, INET, proto="udp", sport=1)
+    assert c.resisting() == set()

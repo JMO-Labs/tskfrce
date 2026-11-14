@@ -34,9 +34,11 @@ class TcpInfo:
     seq: int
     length: int = 0
     syn_ack: bool = False
+    flags: str = ""
 
 
-_MAX_FLOWS = 4096  # per-MAC flow-table cap (bounded memory on small boxes)
+_MAX_FLOWS = 4096
+_MAX_SAMPLE = 10  # frames kept per MAC and window as report evidence  # per-MAC flow-table cap (bounded memory on small boxes)
 
 
 @dataclass
@@ -95,6 +97,8 @@ class ResistanceCounter:
         self._tallies: dict[str, tuple[float, Tally]] = {}
         # mac -> time it started being watched (the pause start)
         self._since: dict[str, float] = {}
+        # mac -> (window_start, classified sample of the frames seen in that window)
+        self._samples: dict[str, tuple[float, list[dict[str, str]]]] = {}
         # mac -> {flow 4-tuple -> (highest seq end, first seen in grace)}
         self._flows: dict[str, dict[tuple, tuple[int, bool]]] = {}
 
@@ -111,7 +115,7 @@ class ResistanceCounter:
                     del self._tallies[mac]
             for mac in watched:
                 self._since.setdefault(mac, now)
-            for d in (self._since, self._flows):
+            for d in (self._since, self._flows, self._samples):
                 for mac in list(d):
                     if mac not in watched:
                         del d[mac]
@@ -155,6 +159,8 @@ class ResistanceCounter:
         ip_src: str | None = None,
         now: float | None = None,
         tcp: TcpInfo | None = None,
+        proto: str | None = None,
+        sport: int | None = None,
     ) -> None:
         """Count one box-bound frame. Everything not addressed to the box is ignored.
 
@@ -182,7 +188,9 @@ class ResistanceCounter:
                 and not self._in_lan(ip_src)
             ):
                 mac, field = self._ip2mac[_norm(ip_dst)], "from_gateway"
-                if tcp is not None and not self._is_new_evidence(mac, ip_src, ip_dst, tcp, ts):
+                new = tcp is None or self._is_new_evidence(mac, ip_src, ip_dst, tcp, ts)
+                self._sample(mac, ts, ip_src, tcp, proto, sport, new)
+                if not new:
                     return
             else:
                 return
@@ -191,6 +199,34 @@ class ResistanceCounter:
                 start, tally = ts, Tally()
             setattr(tally, field, getattr(tally, field) + 1)
             self._tallies[mac] = (start, tally)
+
+    def _sample(self, mac, ts, ip_src, tcp, proto, sport, new) -> None:
+        """Keep the first few gateway->device frames of the window, classified. Lock held."""
+        start, items = self._samples.get(mac, (ts, []))
+        if ts - start >= self._window:
+            start, items = ts, []
+        if len(items) < _MAX_SAMPLE:
+            if tcp is not None:
+                proto, sport = "tcp", tcp.sport
+            port = f":{sport}" if sport is not None else ""
+            src = f"[{ip_src}]{port}" if port and ":" in ip_src else f"{ip_src}{port}"
+            items.append(
+                {
+                    "src": src,
+                    "proto": proto or "ip",
+                    "flags": tcp.flags if tcp else "",
+                    "class": "new" if new else "retx",
+                }
+            )
+        self._samples[mac] = (start, items)
+
+    def evidence(self, mac: str) -> list[dict[str, str]]:
+        """Classified sample (<=10 frames) of this window's gateway return traffic for mac."""
+        with self._lock:
+            entry = self._samples.get(mac.lower())
+            if entry is None or self._clock() - entry[0] >= self._window:
+                return []
+            return list(entry[1])
 
     def tally(self, mac: str) -> Tally:
         """Current-window counts for mac (zeros if unwatched or window expired)."""
@@ -291,7 +327,7 @@ class ResistanceWatch:
             self._sniffer = None
 
     def _on_packet(self, pkt: Any) -> None:
-        from blocker.scapy_lite import IP, TCP, Ether, IPv6, Raw
+        from blocker.scapy_lite import IP, TCP, UDP, Ether, IPv6, Raw
 
         if not pkt.haslayer(Ether):
             return
@@ -311,8 +347,14 @@ class ResistanceWatch:
                 seq=int(t.seq),
                 length=len(t[Raw].load) if t.haslayer(Raw) else 0,  # excludes eth padding
                 syn_ack=(int(t.flags) & 0x12) == 0x12,
+                flags=str(t.flags),
             )
-        self.counter.observe(pkt[Ether].src, pkt[Ether].dst, ip_dst, ip_src, tcp=tcp)
+        proto, sport = None, None
+        if tcp is None and pkt.haslayer(UDP):
+            proto, sport = "udp", pkt[UDP].sport
+        self.counter.observe(
+            pkt[Ether].src, pkt[Ether].dst, ip_dst, ip_src, tcp=tcp, proto=proto, sport=sport
+        )
 
     def _announced_ip(self, pkt: Any) -> None:
         """A watched MAC announcing an IP it isn't known by (ARP, DHCP REQUEST/ACK) -> callback."""

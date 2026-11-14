@@ -274,6 +274,14 @@ class SiteManager:
                 for m in s.parts.watch.counter.resisting()
             }
 
+    def evidence(self, mac: str) -> list[dict[str, str]]:
+        with self._lock:
+            out: list[dict[str, str]] = []
+            for s in self.sites.values():
+                if s.parts is not None:
+                    out += s.parts.watch.counter.evidence(mac)
+            return out[:10]
+
     def infra(self) -> tuple[set[str], set[str]]:
         """(MACs, IPs) of site gateways and the box: never enforce or spoof these."""
         macs: set[str] = set()
