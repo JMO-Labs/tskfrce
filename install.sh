@@ -176,6 +176,8 @@ install_updater() {
 main() {
   # Hold the lock for the whole install so update-check.sh never reboots/updates mid-install.
   lock=/run/lock/tskfrce-install.lock
+  root=""
+  [ "$(id -u)" = 0 ] || { have sudo && root="sudo"; }
   # Root-owned, read-only fd: never O_CREAT a file another user may own (fs.protected_regular).
   if have flock && $root touch "$lock" 2>/dev/null && exec 9<"$lock"; then flock -w 600 9 || true; fi
   check_system
