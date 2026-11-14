@@ -5,8 +5,8 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.lock.state import desired_blocked
 from app.lock.fingerbank import friendly_name
+from app.lock.state import desired_blocked
 from app.models.family import get_family
 from app.models.lock import Device, DeviceHintRejection, Override
 from app.models.user import UserRole

@@ -150,6 +150,7 @@ def test_tick_downloads_off_thread_only_when_due(db, _env, monkeypatch):
 
 # --- failures: last error, backoff, env, choice, discovery (review of tskfrce#105) ---
 
+
 def _fail(monkeypatch, exc):
     calls = []
 
