@@ -67,7 +67,13 @@ def test_cloud_needs_optin_and_key(monkeypatch):
                 pass
 
             def json(self):
-                return {"device": {"name": "Android OS", "parents": [{"name": "Google OS"}, {"name": "Operating System"}]}, "score": 87}  # noqa: E501
+                return {
+                    "device": {
+                        "name": "Android OS",
+                        "parents": [{"name": "Google OS"}, {"name": "Operating System"}],
+                    },
+                    "score": 87,
+                }  # noqa: E501
 
         return R()
 
