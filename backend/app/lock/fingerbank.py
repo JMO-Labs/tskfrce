@@ -8,6 +8,8 @@ import httpx
 from app.core.config import settings
 
 log = logging.getLogger(__name__)
+# httpx logs full request URLs at INFO; the API key travels in the query string.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 API = "https://api.fingerbank.org/api/v2/combinations/interrogate"
 _cache: dict[tuple, tuple[str, int] | None] = {}
 _FAMILIES = (  # substring of the class path (lowercase) -> OS family

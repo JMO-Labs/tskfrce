@@ -47,7 +47,7 @@ def test_offline_lookup_picks_best_score(tmp_path, monkeypatch):
 
 
 def test_no_fingerprint_no_lookup(monkeypatch):
-    monkeypatch.setattr(fingerbank, "_offline", lambda *a: pytest.fail("looked up"))
+    monkeypatch.setattr(fingerbank, "_lookup", lambda *a: pytest.fail("looked up"))
     assert fingerbank.lookup(None) is None and fingerbank.lookup("") is None
 
 
@@ -121,3 +121,18 @@ def test_os_family_conflict_blocks_relink():
     assert _conflict(a, Device(device_class=IOS))
     assert not _conflict(a, Device(device_class="Operating System/Google OS/Android OS 14"))
     assert not _conflict(a, Device())
+
+
+def test_cloud_key_never_logged(monkeypatch, caplog):
+    import logging
+
+    monkeypatch.setattr(settings, "FINGERBANK_CLOUD", True)
+    monkeypatch.setattr(settings, "FINGERBANK_API_KEY", "s3cr3t-key")
+    monkeypatch.setattr(
+        fingerbank.httpx.HTTPTransport,
+        "handle_request",
+        lambda self, req: fingerbank.httpx.Response(200, json={}, request=req),
+    )
+    caplog.set_level(logging.INFO)
+    fingerbank.lookup("1,3", "host")
+    assert "s3cr3t-key" not in caplog.text
