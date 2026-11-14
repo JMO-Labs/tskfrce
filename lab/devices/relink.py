@@ -173,7 +173,7 @@ def show(tag, mac):
             ov = (e.box("status", mac)["device"].get("override") or {}).get("action")
         except Exception:  # noqa: BLE001 - hidden/replaced rows aren't in /devices
             pass
-    say(f"  {tag}:", json.dumps({k: d[k] for k in ("id", "status", "owners", "hint_of_id", "hint_reason", "replaced")} if d else None), "override", ov)  # fmt: skip
+    say(f"  {tag}:", json.dumps({k: d[k] for k in ("id", "status", "owners", "hint_of_id", "hint_reason", "replaced", "first_seen", "last_seen")} if d else None), "override", ov)  # fmt: skip
     return d
 
 

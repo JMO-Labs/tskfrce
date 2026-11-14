@@ -38,6 +38,7 @@ id = "l.doh"
 title = "DNS over HTTPS to Cloudflare (curl --doh-url)"
 platforms = ["L"]
 probe = '''curl -s -m10 --doh-url https://1.1.1.1/dns-query https://example.com | grep -q 'Example Domain' '''
+alerts_allowed = ["locked_try"]  # a DoH attempt while paused is a real "tried while locked" signal
 
 [[scenario]]
 id = "l.sni_google"
