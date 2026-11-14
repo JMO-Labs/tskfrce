@@ -1,6 +1,6 @@
 """device class (Fingerbank)
 
-Revision ID: b1c2d3e4f5a6
+Revision ID: f1n2g3e4r5b6
 Revises: 8085632db8db
 Create Date: 2026-11-14 12:00:00.000000
 """
@@ -10,7 +10,7 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "b1c2d3e4f5a6"
+revision: str = "f1n2g3e4r5b6"
 down_revision: str | Sequence[str] | None = "8085632db8db"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
