@@ -22,6 +22,7 @@ DEFAULT_CADENCE = 2.0
 HEAL_ROUNDS = 4
 HEAL_INTERVAL = 1.2
 REDETECT_INTERVAL = 30.0  # seconds between retries while a gateway MAC is unresolved
+POKE_DEBOUNCE = 0.5  # seconds: collapse a rejoin's DISCOVER+REQUEST into one burst
 
 
 @dataclass(frozen=True)
@@ -221,6 +222,7 @@ class RedirectionManager:
         self._targets: dict[str, TargetAddrs] = {}
         self._stops: dict[str, threading.Event] = {}
         self._threads: dict[str, threading.Thread] = {}
+        self._poked: dict[str, float] = {}
 
     def _lanfacts(self) -> LanFacts:
         # Re-detect while a gateway MAC is unresolved (ARP/ND not populated at boot):
@@ -267,9 +269,14 @@ class RedirectionManager:
 
     def poke(self, mac: str) -> None:
         """Spoof this device right now (it just rejoined); no-op unless it is actively enforced."""
+        now = time.monotonic()
         with self._lock:
             target = next((t for m, t in self._targets.items() if m.lower() == mac.lower()), None)
             live = target is not None and _active(target) and target.mac in self._threads
+            if live and now - self._poked.get(target.mac, -POKE_DEBOUNCE) < POKE_DEBOUNCE:
+                return  # DISCOVER+REQUEST arrive back to back: one burst covers both
+            if live:
+                self._poked[target.mac] = now
         if live:
             self._burst(target)
 

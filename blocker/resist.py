@@ -407,14 +407,17 @@ class ResistanceWatch:
         self.counter.observe(pkt[Ether].src, pkt[Ether].dst, ip_dst, ip_src, tcp=tcp, udp=udp)
 
     def _dhcp_rejoin(self, pkt: Any) -> None:
-        """Any DHCP frame from a watched MAC (DISCOVER/REQUEST, whatever its hostname or vendor
-        class) -> re-poison now: a rejoining device must not get a window before the next cadence."""
+        """DHCP DISCOVER/REQUEST from a watched MAC (whatever its hostname or vendor class)
+        -> re-poison now: a rejoining device must not get a window before the next cadence.
+        Server OFFER/ACK (chaddr = the kid's MAC) are ignored."""
         if self._on_dhcp is None:
             return
         try:
             from blocker.scapy_lite import BOOTP, DHCP, Ether
 
             if not (pkt.haslayer(DHCP) and pkt.haslayer(BOOTP)):
+                return
+            if not {1, 3} & {o[1] for o in pkt[DHCP].options if o[0] == "message-type"}:
                 return
             watched = {m.lower() for m in (self._watched or {})}
             for mac in {

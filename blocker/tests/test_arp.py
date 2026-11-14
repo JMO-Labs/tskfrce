@@ -304,6 +304,8 @@ def test_poke_spoofs_now_for_active_target_only():
     n = len(fs.calls)
     m.poke(DEV.upper())
     assert len(fs.calls) == n + 1
+    m.poke(DEV)  # back-to-back DISCOVER/REQUEST: debounced
+    assert len(fs.calls) == n + 1
     m.poke("de:ad:be:ef:00:99")
     assert len(fs.calls) == n + 1
     m.stop_all()

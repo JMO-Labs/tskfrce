@@ -531,4 +531,6 @@ def test_any_dhcp_from_watched_mac_fires_rejoin_callback():
     prn(_dhcp("discover", src=KID, chaddr=KID, opts=opts))
     prn(_dhcp("request", src=KID, chaddr=KID.upper(), opts=opts))
     prn(_dhcp("discover", src="dd:dd:dd:dd:dd:04", chaddr="dd:dd:dd:dd:dd:04"))  # unwatched
+    prn(_dhcp("offer", src=GW, chaddr=KID))  # server replies are not a rejoin
+    prn(_dhcp("ack", src=GW, chaddr=KID))
     assert got == [KID, KID]
