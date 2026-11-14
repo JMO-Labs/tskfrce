@@ -8,7 +8,7 @@ from unittest.mock import Mock
 
 from blocker.backend import Seen
 from blocker.config import Config
-from blocker.signals import Signals, dhcp_fp_from_packet, mdns_from_packet
+from blocker.signals import Signals, dhcp_fp_from_packet, dhcp_hostname_from_packet, mdns_from_packet
 from scapy.all import BOOTP, DHCP, DNS, DNSRR, IP, UDP, Ether
 
 CFG = Config("http://b", "b", "t", "", Path("/tmp"))
@@ -156,3 +156,45 @@ def test_query_mdns_sends_ptr_for_each_type(monkeypatch):
     assert pkt[sa.IP].dst == "224.0.0.251"
     names = {q.qname.decode() for q in pkt[sa.DNS].qd}
     assert names == set(sig.MDNS_TYPES)
+
+
+def _req(*opts, src=MAC):
+    return (
+        Ether(src=src, dst="ff:ff:ff:ff:ff:ff")
+        / IP(src="0.0.0.0", dst="255.255.255.255")
+        / UDP(sport=68, dport=67)
+        / BOOTP(chaddr=bytes.fromhex(MAC.replace(":", "")))
+        / DHCP(options=[("message-type", "request"), *opts, "end"])
+    )
+
+
+def test_dhcp_hostname_option12():
+    assert dhcp_hostname_from_packet(_req(("hostname", b"bobby-laptop"))) == (MAC, "bobby-laptop")
+
+
+def test_dhcp_hostname_option81_host_part_only_when_12_absent():
+    fqdn = ("client_FQDN", b"\x00\x00\x00bobby-pc.home.lan")
+    assert dhcp_hostname_from_packet(_req(fqdn)) == (MAC, "bobby-pc")
+    both = _req(("hostname", b"x12"), fqdn)
+    assert dhcp_hostname_from_packet(both) == (MAC, "x12")
+
+
+def test_dhcp_hostname_spoofed_chaddr_ignored():
+    pkt = _req(("hostname", b"evil"), src="aa:bb:cc:dd:ee:99")
+    assert dhcp_hostname_from_packet(pkt) is None
+
+
+def test_dhcp_hostname_sanitized():
+    got = dhcp_hostname_from_packet(_req(("hostname", b"bo\x00b\x07by\n")))
+    assert got == (MAC, "bobby")
+    assert dhcp_hostname_from_packet(_req(("hostname", b"\x01\x02"))) is None
+    got = dhcp_hostname_from_packet(_req(("hostname", b"a" * 100)))
+    assert got == (MAC, "a" * 63)
+
+
+def test_dhcp_hostname_reported_via_update():
+    rep = Mock()
+    sg = Signals(CFG, rep)
+    sg.note_seen(Seen(mac=MAC, ip="10.0.0.5", ipv6=[], hostname=None, vendor="v"))
+    assert sg.update(MAC, dhcp_hostname="bobby")
+    assert rep.call_args[0][1].body()["dhcp_hostname"] == "bobby"
