@@ -220,7 +220,7 @@ def test_lookup_failure_does_not_block_discovery(client, db, monkeypatch):
     assert seen(client, dhcp_fp="1,3,6")
 
 
-def test_relink_notice_shows_both_classes(client, db, kid, monkeypatch):
+def test_relink_notice_shows_both_classes(client, db, parent, kid, monkeypatch):
     from app.lock import fingerbank
 
     monkeypatch.setattr(
@@ -232,7 +232,7 @@ def test_relink_notice_shows_both_classes(client, db, kid, monkeypatch):
     assert "New: Android device; Timmy's phone: Android device." in n.body
 
 
-def test_relink_same_as_today_when_setting_off(client, db, kid):
+def test_relink_same_as_today_when_setting_off(client, db, parent, kid):
     """No class known (setting off): relinks as before and the notice has no class text."""
     old = _old(db, kid)
     did = seen(client)
