@@ -78,9 +78,9 @@ def find_hint(
         return None
     best = max(s for s, _ in scored)
     top = [c for s, c in scored if s == best]
-    if len({c.owner_ids for c in top}) > 1:
+    if len(top) > 1:  # ambiguous: never guess which device it is
         return None
-    return Hint(max(top, key=lambda c: c.last_seen).id, REASON[best])
+    return Hint(top[0].id, REASON[best])
 
 
 def _signals(d: Device) -> DeviceSignals:

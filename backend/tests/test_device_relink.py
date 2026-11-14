@@ -31,10 +31,17 @@ def _old(db, kid, mac=OLD_MAC, silent=timedelta(minutes=5), **kw):
 
 def seen(client, mac=NEW_MAC, **kw):
     r = client.post(
-        URL, json={"mac": mac, "ip": "10.0.0.9", "hostname": "phone", **kw}, headers=tok()
+        URL, json={"mac": mac, "ip": "10.0.0.9", **{"hostname": "phone", **kw}}, headers=tok()
     )
     assert r.status_code == 200, r.text
     return r.json()["id"]
+
+
+def _assert_asked(db, did):
+    """No auto-link: parents are asked via a new_device notification, no link notice."""
+    db.expire_all()
+    assert db.query(Notification).filter_by(kind="new_device", device_id=did).count() >= 1
+    assert not db.query(Notification).filter_by(kind="device_hint").count()
 
 
 def test_relink_within_window(client, db, parent, kid):
@@ -100,6 +107,93 @@ def test_replaced_hidden_from_list(client, db, parent_headers, kid):
     did = seen(client)
     ids = [d["id"] for d in client.get("/api/v1/devices", headers=parent_headers).json()]
     assert did in ids and old.id not in ids
+
+
+def _status(db, did):
+    db.expire_all()
+    return db.get(Device, did).status
+
+
+def test_online_candidate_never_relinked(client, db, kid):
+    old = _old(db, kid, silent=timedelta(seconds=3))
+    assert _status(db, seen(client)) == "unassigned"
+    assert db.get(Device, old.id).replaced is False
+
+
+def test_same_owner_online_sibling_untouched(client, db, kid):
+    phone = _old(db, kid, silent=timedelta(minutes=5))
+    laptop = _old(db, kid, mac="9a:ff:8e:8e:6c:01", silent=timedelta(seconds=2))
+    did = seen(client)
+    db.expire_all()
+    assert db.get(Device, did).hint_of_id == phone.id  # the silent phone, not the laptop
+    assert db.get(Device, laptop.id).replaced is False
+
+
+def test_two_silent_same_owner_candidates_no_relink(client, db, parent, kid):
+    a = _old(db, kid, silent=timedelta(minutes=5))
+    b = _old(db, kid, mac="9a:ff:8e:8e:6c:01", silent=timedelta(minutes=3))
+    did = seen(client)
+    assert _status(db, did) == "unassigned"
+    assert not db.get(Device, a.id).replaced and not db.get(Device, b.id).replaced
+    _assert_asked(db, did)
+
+
+def test_two_silent_same_owner_same_hostname_inherits_nothing(client, db, parent, kid):
+    _old(db, kid, silent=timedelta(minutes=5), hostname="timmy-phone")
+    _old(db, kid, mac="9a:ff:8e:8e:6c:01", silent=timedelta(minutes=3), hostname="timmy-phone")
+    did = seen(client, hostname="timmy-phone")
+    db.expire_all()
+    d = db.get(Device, did)
+    assert d.status == "unassigned" and d.owners == [] and d.hint_of_id is None
+    _assert_asked(db, did)
+
+
+def test_two_owners_online_sibling_untouched(client, db, kid, parent):
+    phone = _old(db, kid, silent=timedelta(minutes=5))
+    other = _old(db, parent, mac="9a:ff:8e:8e:6c:01", silent=timedelta(seconds=2))
+    did = seen(client)
+    db.expire_all()
+    assert db.get(Device, did).hint_of_id == phone.id
+    assert db.get(Device, other.id).replaced is False
+
+
+def test_two_owners_both_silent_no_relink(client, db, kid, parent):
+    _old(db, kid, silent=timedelta(minutes=5))
+    _old(db, parent, mac="9a:ff:8e:8e:6c:01", silent=timedelta(minutes=4))
+    did = seen(client)
+    assert _status(db, did) == "unassigned"
+    _assert_asked(db, did)
+
+
+def test_guest_join_while_phone_online(client, db, kid):
+    phone = _old(db, kid, silent=timedelta(seconds=5))
+    assert _status(db, seen(client)) == "unassigned"
+    assert db.get(Device, phone.id).replaced is False
+
+
+def test_relinked_device_is_not_a_source_for_chain(client, db, kid):
+    _old(db, kid)
+    first = seen(client)
+    db.get(Device, first).last_seen = _now() - timedelta(minutes=2)
+    db.commit()
+    second = seen(client, mac="22:e2:a7:7b:cc:07", hostname="other")
+    assert _status(db, first) == "assigned"
+    assert _status(db, second) == "unassigned"
+    assert db.get(Device, first).replaced is False
+
+
+def test_replaced_device_reappearing_undoes_relink(client, db, parent, kid):
+    old = _old(db, kid)
+    did = seen(client)
+    assert _status(db, did) == "assigned"
+    seen(client, mac=OLD_MAC)
+    db.expire_all()
+    new, old_row = db.get(Device, did), db.get(Device, old.id)
+    assert old_row.replaced is False
+    assert new.status == "unassigned" and new.owners == [] and new.hint_of_id is None
+    assert db.get(DeviceHintRejection, (did, old.id)) is not None
+    titles = [n.title for n in db.query(Notification).filter_by(kind="device_hint")]
+    assert any("came back" in t for t in titles)
 
 
 def test_seen_stores_device_class_and_vetoes_relink(client, db, kid, monkeypatch):
