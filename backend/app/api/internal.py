@@ -31,6 +31,7 @@ from app.models.lock import Device, Vlan
 from app.models.network import Network
 from app.schemas.homework import ActivityReport
 from app.services import inbox
+from app.services.network_match import backfill_network_ids, resolve_network_id
 
 MAC_RE = re.compile(r"^([0-9a-f]{2}:){5}[0-9a-f]{2}$")
 EVIDENCE_MAX = 1000
@@ -63,6 +64,7 @@ class SeenReport(BaseModel):
     vid: int | None = Field(default=None, ge=1, le=4094)  # null = untagged LAN
     gateway_mac: str | None = Field(default=None, max_length=17)  # blocker's gateway MAC
     box_mac: str | None = Field(default=None, max_length=17)  # blocker's own MAC
+    iface: str | None = Field(default=None, max_length=15)  # interface it was seen on
 
     @field_validator("mac", "gateway_mac", "box_mac")
     @classmethod
@@ -196,8 +198,10 @@ class NetworksReport(BaseModel):
     networks: list[NetworkItem] = Field(max_length=100)
 
 
-def _apply(dev: Device, body: SeenReport, now: datetime) -> None:
+def _apply(db: Session, dev: Device, body: SeenReport, now: datetime) -> None:
     dev.ip, dev.last_seen = body.ip, now
+    if nid := resolve_network_id(db, body.ip, body.iface):  # unresolved: keep the old value
+        dev.network_id = nid
     dev.ipv6 = body.ipv6
     dev.hostname = body.hostname or body.dhcp_hostname or dev.hostname
     dev.vendor = body.vendor or dev.vendor
@@ -233,7 +237,7 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
             status="unassigned",
             first_seen=now,
         )
-        _apply(dev, body, now)
+        _apply(db, dev, body, now)
         db.add(dev)
         try:
             db.flush()
@@ -260,7 +264,7 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
         old_ip = dev.ip
         hinted = undo_if_reappeared(db, dev)
         before = (dev.mdns_name, dev.model, dev.dhcp_fp, dev.hostname)
-        _apply(dev, body, now)
+        _apply(db, dev, body, now)
         if old_ip is not None and body.ip is not None and old_ip != body.ip:
             activity.log(db, dev.id, "address_change", now, detail=f"{old_ip} → {body.ip}")
         note_identity_change(db, dev, before[1], now)
@@ -521,6 +525,7 @@ def report_networks(body: NetworksReport, db: Session = Depends(get_db)) -> dict
         net.last_seen = now
         db.flush()
         upserted += 1
+    backfill_network_ids(db)
     db.commit()
     _touch(db)
     return {"ok": True, "upserted": upserted}
