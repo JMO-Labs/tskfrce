@@ -417,7 +417,10 @@ class ResistanceWatch:
 
             if not (pkt.haslayer(DHCP) and pkt.haslayer(BOOTP)):
                 return
-            if not {1, 3} & {o[1] for o in pkt[DHCP].options if o[0] == "message-type"}:
+            # scapy yields ints when parsed off the wire, names when built in memory
+            if not {1, 3, "discover", "request"} & {
+                o[1] for o in pkt[DHCP].options if o[0] == "message-type"
+            }:
                 return
             watched = {m.lower() for m in (self._watched or {})}
             for mac in {
