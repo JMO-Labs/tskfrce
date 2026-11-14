@@ -8,7 +8,12 @@ from unittest.mock import Mock
 
 from blocker.backend import Seen
 from blocker.config import Config
-from blocker.signals import Signals, dhcp_fp_from_packet, dhcp_hostname_from_packet, mdns_from_packet
+from blocker.signals import (
+    Signals,
+    dhcp_fp_from_packet,
+    dhcp_hostname_from_packet,
+    mdns_from_packet,
+)
 from scapy.all import BOOTP, DHCP, DNS, DNSRR, IP, UDP, Ether
 
 CFG = Config("http://b", "b", "t", "", Path("/tmp"))

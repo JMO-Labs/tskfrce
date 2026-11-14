@@ -41,7 +41,16 @@ class Seen:
         return {k: v for k, v in asdict(self).items() if v is not None or k not in _OPTIONAL}
 
 
-_OPTIONAL = ("mdns_name", "model", "dhcp_fp", "dhcp_hostname", "vid", "iface", "gateway_mac", "box_mac")
+_OPTIONAL = (
+    "mdns_name",
+    "model",
+    "dhcp_fp",
+    "dhcp_hostname",
+    "vid",
+    "iface",
+    "gateway_mac",
+    "box_mac",
+)
 
 
 def _request(cfg: Config, path: str, body: dict | None = None):
