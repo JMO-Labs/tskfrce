@@ -15,7 +15,7 @@ from typing import Any
 from blocker.arp import LanFacts, RedirectionManager, TargetAddrs
 from blocker.config import Config
 from blocker.devices_meta import enrich_seen_with_gateway_and_box
-from blocker.discovery import run_discovery
+from blocker.discovery import Rescanner, run_discovery
 from blocker.ifaces import lan_addrs
 from blocker.resist import ResistanceCounter, ResistanceWatch
 
@@ -120,8 +120,10 @@ class InterfaceManager:
         *,
         on_seen: Any = None,
         lan_cidrs: list[str] | None = None,
+        rescanner: Rescanner | None = None,
     ) -> None:
         self.cfg = cfg
+        self._rescanner = rescanner or Rescanner()
         self._on_seen = on_seen or (lambda s: None)
         self.on_new_ip: Callable[[str, str], None] = lambda mac, ip: None  # set by Service
         self._lan_cidrs = lan_cidrs or []
@@ -192,7 +194,14 @@ class InterfaceManager:
             )
 
         try:
-            run_discovery(self.cfg, stop, self._on_seen, iface=iface, enrich=enrich)
+            run_discovery(
+                self.cfg,
+                stop,
+                self._on_seen,
+                iface=iface,
+                enrich=enrich,
+                wake=self._rescanner.register(),
+            )
         except Exception:
             log.exception("discovery on %s crashed", iface)
             with self._lock:
