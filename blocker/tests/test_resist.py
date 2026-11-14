@@ -18,7 +18,8 @@ LAN_CIDRS = ["10.0.0.0/8", "fe80::/10"]
 
 def _counter(watched=WATCHED, **kw):
     t = [100.0]
-    c = ResistanceCounter(LAN, threshold=3, window=30, clock=lambda: t[0], **kw)
+    kw.setdefault("threshold", 3)
+    c = ResistanceCounter(LAN, window=30, clock=lambda: t[0], **kw)
     c.set_watched(watched)
     return c, t
 
@@ -461,3 +462,10 @@ def test_watch_padding_not_counted_as_payload():
     assert counter.tally(KID).from_gateway == 0
     info = counter._flows[KID][(INET, 443, KID_IP, 50000)]
     assert info[0] == 100  # end == seq: zero-length payload
+
+
+def test_one_escaped_syn_ack_per_minute_is_not_bypass():
+    c, t = _counter(grace=30, threshold=20)
+    for i in range(10):
+        _tcp(c, t, 0, dport=40000 + i, syn_ack=True, at=131 + i * 60)
+        assert c.resisting() == set()
