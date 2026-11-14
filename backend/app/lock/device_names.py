@@ -1,5 +1,7 @@
 """Device name and type guessing from DHCP fingerprints and mDNS hints."""
 
+import re
+
 from app.lock.fingerbank import friendly_name
 
 # DHCP option-55 fingerprints mapped to device type guesses
@@ -69,31 +71,38 @@ def guess_maker_from_signals(dhcp_fp: str | None, mdns_name: str | None) -> str 
     return None
 
 
+_IP_LIKE = re.compile(r"^\d+-\d+-\d+-\d+(\.|$)")
+
+
+def usable_name(name: str | None) -> str | None:
+    """A hostname that is just a dashed IP names nothing; skip it."""
+    return None if not name or _IP_LIKE.match(name) else name
+
+
 def display_device_name(
     mdns_name: str | None,
     hostname: str | None,
     dhcp_fp: str | None,
     vendor: str | None,
     device_class: str | None = None,
+    model: str | None = None,
 ) -> tuple[str, str]:
     """Choose the best device display name and return (name, source).
 
-    Priority: mDNS name > hostname > fingerprint guess > device class > vendor guess > "Unknown device".
-    source is one of: "mdns", "hostname", "fingerprint", "device_class", "vendor", "unknown".
+    Priority: Fingerbank class/model > mDNS > hostname > fingerprint guess > vendor > "Unknown device".
+    Dashed-IP hostnames are never used. source is one of: "device_class", "model",
+    "fingerprint", "mdns", "hostname", "vendor", "unknown".
     """
-    if mdns_name:
-        return mdns_name, "mdns"
-    if hostname:
-        return hostname, "hostname"
-
-    device_type = guess_device_type_from_fingerprint(dhcp_fp, mdns_name)
-    if device_type:
-        return device_type, "fingerprint"
-
     if cls := friendly_name(device_class):
         return cls, "device_class"
-
+    if model:
+        return model, "model"
+    if name := usable_name(mdns_name):
+        return name, "mdns"
+    if name := usable_name(hostname):
+        return name, "hostname"
+    if device_type := guess_device_type_from_fingerprint(dhcp_fp, mdns_name):
+        return device_type, "fingerprint"
     if vendor:
         return f"{vendor} device", "vendor"
-
     return "Unknown device", "unknown"

@@ -42,6 +42,9 @@ class Device(Base):
     id = Column(Integer, primary_key=True)
     mac = Column(String(17), nullable=False, unique=True, index=True)
     name = Column(String(100), nullable=False)
+    name_from_parent = Column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )  # a parent set the name; auto-naming never overwrites it
     vendor = Column(String(100), nullable=True)
     hostname = Column(String(255), nullable=True)
     ip = Column(String(45), nullable=True)

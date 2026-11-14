@@ -47,7 +47,7 @@ def _setup_devices(devs: list[Device]) -> list[dict]:
     out = []
     for d in devs:
         display_name, name_source = display_device_name(
-            d.mdns_name, d.hostname, d.dhcp_fp, d.vendor, d.device_class
+            d.mdns_name, d.hostname, d.dhcp_fp, d.vendor, d.device_class, d.model
         )
         maker_guess = guess_maker_from_signals(d.dhcp_fp, d.mdns_name)
         item = {
@@ -140,6 +140,7 @@ def device_out(
         "hint_of_id": d.hint_of_id,
         "hint_reason": d.hint_reason,
         "mdns_name": d.mdns_name,
+        "name_from_parent": d.name_from_parent,
         "model": d.model,
         "random_mac": d.random_mac,
         "vlan_id": d.vlan_id,
@@ -268,7 +269,7 @@ def bulk_devices(body: DeviceBulk, db: Session = Depends(get_db)):
 def patch_device(device_id: int, body: DevicePatch, db: Session = Depends(get_db)):
     d = _device(db, device_id)
     if body.name is not None:
-        d.name = body.name
+        d.name, d.name_from_parent = body.name, True
     if body.status is not None:
         d.status = body.status
     if body.exempt is not None:

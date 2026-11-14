@@ -46,7 +46,8 @@ def test_seen_dash_mac_normalized(client, db):
 
 def test_report_does_not_overwrite_parent_name(client, db):
     client.post(URL, json=BODY, headers=tok())
-    db.query(Device).one().name = "Timmy's iPad"
+    d = db.query(Device).one()
+    d.name, d.name_from_parent = "Timmy's iPad", True
     db.commit()
     client.post(URL, json={**BODY, "hostname": "new"}, headers=tok())
     db.expire_all()
