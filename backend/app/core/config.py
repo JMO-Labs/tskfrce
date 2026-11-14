@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     NTFY_UPSTREAM_URL: str = "https://ntfy.sh"  # generic kid alerts go here; "" = off
     NTFY_UPSTREAM_TOKEN: str | None = None  # optional Bearer token for that server
     NTFY_CONF_FILE: str | None = None  # shared server.yml the ntfy container reads
+    # Device class lookup: offline Fingerbank SQLite; cloud API is opt-in with the parent's key
+    FINGERBANK_DB_PATH: str | None = None
+    FINGERBANK_CLOUD: bool = False
+    FINGERBANK_API_KEY: str | None = None
     BLOCKER_URL: str = "http://127.0.0.1:7777"
     EDGE_TOKEN: str | None = None  # Caddy edge token for hotspot portal auth
     LOCK_INTERVAL_SECONDS: int = 30

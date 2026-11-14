@@ -1,5 +1,7 @@
 """Device name and type guessing from DHCP fingerprints and mDNS hints."""
 
+from app.lock.fingerbank import friendly_name
+
 # DHCP option-55 fingerprints mapped to device type guesses
 # See: https://dhcp-fingerprint.github.io/
 FINGERPRINT_HINTS = {
@@ -68,12 +70,16 @@ def guess_maker_from_signals(dhcp_fp: str | None, mdns_name: str | None) -> str 
 
 
 def display_device_name(
-    mdns_name: str | None, hostname: str | None, dhcp_fp: str | None, vendor: str | None
+    mdns_name: str | None,
+    hostname: str | None,
+    dhcp_fp: str | None,
+    vendor: str | None,
+    device_class: str | None = None,
 ) -> tuple[str, str]:
     """Choose the best device display name and return (name, source).
 
-    Priority: mDNS name > hostname > fingerprint guess > vendor guess > "Unknown device".
-    source is one of: "mdns", "hostname", "fingerprint", "vendor", "unknown".
+    Priority: mDNS name > hostname > fingerprint guess > device class > vendor guess > "Unknown device".
+    source is one of: "mdns", "hostname", "fingerprint", "device_class", "vendor", "unknown".
     """
     if mdns_name:
         return mdns_name, "mdns"
@@ -83,6 +89,9 @@ def display_device_name(
     device_type = guess_device_type_from_fingerprint(dhcp_fp, mdns_name)
     if device_type:
         return device_type, "fingerprint"
+
+    if cls := friendly_name(device_class):
+        return cls, "device_class"
 
     if vendor:
         return f"{vendor} device", "vendor"

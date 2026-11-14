@@ -47,7 +47,7 @@ def _setup_devices(devs: list[Device]) -> list[dict]:
     out = []
     for d in devs:
         display_name, name_source = display_device_name(
-            d.mdns_name, d.hostname, d.dhcp_fp, d.vendor
+            d.mdns_name, d.hostname, d.dhcp_fp, d.vendor, d.device_class
         )
         maker_guess = guess_maker_from_signals(d.dhcp_fp, d.mdns_name)
         item = {

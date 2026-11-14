@@ -52,6 +52,8 @@ class Device(Base):
     mdns_name = Column(String(255), nullable=True)
     model = Column(String(255), nullable=True)
     dhcp_fp = Column(String(255), nullable=True)
+    device_class = Column(String(255), nullable=True)  # Fingerbank class path
+    device_class_score = Column(Integer, nullable=True)
     hint_of_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), nullable=True)
     hint_reason = Column(String(10), nullable=True)  # name | model | timing | relink
     vlan_id = Column(Integer, nullable=True)  # null = the untagged LAN

@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
+from app.lock.fingerbank import os_family
 from app.lock.hints import inherit
 from app.models.lock import Device, DeviceHintRejection, Override
 from app.services import inbox
@@ -14,12 +15,13 @@ MIN_SILENCE = 2 * SCAN_INTERVAL  # an online device is never a candidate
 
 
 def _conflict(a: Device, b: Device) -> bool:
-    """True when both sides know a fingerprint field and the values differ."""
+    """True when both sides know a fingerprint field and the values differ (or OS families differ)."""
     for k in ("vendor", "dhcp_fp", "mdns_name", "model"):
         x, y = getattr(a, k), getattr(b, k)
         if x and y and x.lower() != y.lower():
             return True
-    return False
+    fa, fb = os_family(a.device_class), os_family(b.device_class)
+    return bool(fa and fb and fa != fb)
 
 
 def apply_relink(db: Session, device: Device) -> bool:

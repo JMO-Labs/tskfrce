@@ -164,3 +164,27 @@ def test_replaced_device_reappearing_undoes_relink(client, db, parent, kid):
     assert db.get(DeviceHintRejection, (did, old.id)) is not None
     titles = [n.title for n in db.query(Notification).filter_by(kind="device_hint")]
     assert any("came back" in t for t in titles)
+
+
+def test_seen_stores_device_class_and_vetoes_relink(client, db, kid, monkeypatch):
+    from app.lock import fingerbank
+
+    monkeypatch.setattr(
+        fingerbank, "lookup", lambda fp, host=None: ("Operating System/Apple OS/Apple iOS", 90)
+    )
+    old = _old(db, kid, device_class="Operating System/Google OS/Android OS")
+    did = seen(client, dhcp_fp="1,3,6")
+    db.expire_all()
+    d = db.get(Device, did)
+    assert (d.device_class, d.device_class_score) == ("Operating System/Apple OS/Apple iOS", 90)
+    assert d.status == "unassigned" and db.get(Device, old.id).replaced is False
+
+
+def test_lookup_failure_does_not_block_discovery(client, db, monkeypatch):
+    from app.lock import fingerbank
+
+    def boom(*a, **k):
+        raise RuntimeError("x")
+
+    monkeypatch.setattr(fingerbank, "_lookup", boom)
+    assert seen(client, dhcp_fp="1,3,6")
