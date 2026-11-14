@@ -43,7 +43,7 @@ def test_start_binds_control_api_to_loopback(monkeypatch):
         def shutdown(self):
             pass
 
-    def fake_make_api(state, token, tester, host, port):
+    def fake_make_api(state, token, tester, host, port, **kw):
         seen["host"] = host
         return FakeServer()
 
@@ -83,7 +83,7 @@ def test_bridge_bind_retries_without_rebinding_loopback(monkeypatch):
     calls = []
     fails = {"172.29.50.1": 2}
 
-    def fake_make_api(state, token, tester, host, port):
+    def fake_make_api(state, token, tester, host, port, **kw):
         calls.append(host)
         if fails.get(host, 0) > 0:
             fails[host] -= 1
@@ -101,7 +101,7 @@ def test_bridge_bind_retries_without_rebinding_loopback(monkeypatch):
 
 
 def test_loopback_bind_failure_stops_and_flags(monkeypatch):
-    def fake_make_api(state, token, tester, host, port):
+    def fake_make_api(state, token, tester, host, port, **kw):
         raise OSError(98, "Address in use")
 
     monkeypatch.setattr(svc_mod, "make_api", fake_make_api)

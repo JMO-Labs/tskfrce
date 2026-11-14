@@ -214,10 +214,17 @@ install_updater() {
   sed "s|^ExecStart=.*|Environment=TASK4CE_DIR=$DIR\nExecStart=/usr/local/bin/update-check.sh|" \
     "$DIR/install/update-check.service" | $root tee /etc/systemd/system/update-check.service >/dev/null
   $root systemctl daemon-reload
+  # Timer only: it activates the service by name at 03:00; starting it must not run a check now.
   $root systemctl enable --now update-check.timer
 }
 
 main() {
+  # Hold the lock for the whole install so update-check.sh never reboots/updates mid-install.
+  lock=/run/lock/tskfrce-install.lock
+  root=""
+  [ "$(id -u)" = 0 ] || { have sudo && root="sudo"; }
+  # Root-owned, read-only fd: never O_CREAT a file another user may own (fs.protected_regular).
+  if have flock && $root touch "$lock" 2>/dev/null && exec 9<"$lock"; then flock -w 600 9 || true; fi
   check_system
   ensure_docker
   fetch_code

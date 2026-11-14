@@ -36,6 +36,14 @@ class TcpInfo:
     syn_ack: bool = False
 
 
+@dataclass(frozen=True)
+class UdpInfo:
+    """UDP ports of one gateway->box frame (QUIC etc.): a flow counts once, if opened post-grace."""
+
+    sport: int
+    dport: int
+
+
 _MAX_FLOWS = 4096  # per-MAC flow-table cap (bounded memory on small boxes)
 
 
@@ -140,6 +148,18 @@ class ResistanceCounter:
             flows[key] = (end, pre_pause)
         return advanced and not pre_pause and not in_grace
 
+    def _is_new_udp_flow(self, mac: str, ip_src: str, ip_dst: str, udp: UdpInfo, ts: float) -> bool:
+        """True only for the first packet of a UDP flow first seen after the grace. Lock held."""
+        flows = self._flows.setdefault(mac, {})
+        key = ("udp", _norm(ip_src), udp.sport, _norm(ip_dst), udp.dport)
+        if key in flows:
+            return False
+        if len(flows) >= _MAX_FLOWS:
+            flows.pop(next(iter(flows)))
+        in_grace = ts - self._since.get(mac, ts) < self._grace
+        flows[key] = (0, in_grace)
+        return not in_grace
+
     def _in_lan(self, ip: str) -> bool:
         try:
             addr = ipaddress.ip_address(ip)
@@ -155,6 +175,7 @@ class ResistanceCounter:
         ip_src: str | None = None,
         now: float | None = None,
         tcp: TcpInfo | None = None,
+        udp: UdpInfo | None = None,
     ) -> None:
         """Count one box-bound frame. Everything not addressed to the box is ignored.
 
@@ -164,7 +185,8 @@ class ResistanceCounter:
         internet return traffic, not another LAN host reaching the device),
         counts as that device's ``from_gateway`` — the signal of a bypass. TCP frames
         only count as new-flow evidence (a SYN-ACK or advancing seq) after the grace
-        period; retransmits of a pre-pause flow are ignored.
+        period; retransmits of a pre-pause flow are ignored. UDP frames count once per flow, and
+        only for flows first seen after the grace.
         """
         src = src_mac.lower()
         dst = dst_mac.lower()
@@ -183,6 +205,8 @@ class ResistanceCounter:
             ):
                 mac, field = self._ip2mac[_norm(ip_dst)], "from_gateway"
                 if tcp is not None and not self._is_new_evidence(mac, ip_src, ip_dst, tcp, ts):
+                    return
+                if udp is not None and not self._is_new_udp_flow(mac, ip_src, ip_dst, udp, ts):
                     return
             else:
                 return
@@ -291,7 +315,7 @@ class ResistanceWatch:
             self._sniffer = None
 
     def _on_packet(self, pkt: Any) -> None:
-        from blocker.scapy_lite import IP, TCP, Ether, IPv6, Raw
+        from blocker.scapy_lite import IP, TCP, UDP, Ether, IPv6, Raw
 
         if not pkt.haslayer(Ether):
             return
@@ -312,7 +336,8 @@ class ResistanceWatch:
                 length=len(t[Raw].load) if t.haslayer(Raw) else 0,  # excludes eth padding
                 syn_ack=(int(t.flags) & 0x12) == 0x12,
             )
-        self.counter.observe(pkt[Ether].src, pkt[Ether].dst, ip_dst, ip_src, tcp=tcp)
+        udp = UdpInfo(pkt[UDP].sport, pkt[UDP].dport) if pkt.haslayer(UDP) else None
+        self.counter.observe(pkt[Ether].src, pkt[Ether].dst, ip_dst, ip_src, tcp=tcp, udp=udp)
 
     def _announced_ip(self, pkt: Any) -> None:
         """A watched MAC announcing an IP it isn't known by (ARP, DHCP REQUEST/ACK) -> callback."""

@@ -3,6 +3,7 @@
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from sqlalchemy import delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
@@ -230,8 +231,14 @@ def rescan_devices(db: Session = Depends(get_db)):
     fam.last_rescan_at = now
     db.commit()
 
-    # Ask blocker to rescan (best-effort, failures logged)
-    blocker_client.rescan()
+    if not blocker_client.rescan():
+        return JSONResponse(
+            status_code=502,
+            content={
+                "ok": False,
+                "detail": "The box couldn't start a scan. Try again in a moment.",
+            },
+        )
 
     return {"ok": True, "last_scanned": utc_z(now)}
 
