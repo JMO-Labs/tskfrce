@@ -1,4 +1,4 @@
-"""Migration n4m5f6p7a8r9: devices.name_from_parent backfills parent-edited names, downgrade drops it."""
+"""Migration n4m5f6p7a8r9: devices.name_from_parent backfills every row as refreshable (0), downgrade drops it."""
 
 import importlib.util
 from pathlib import Path
@@ -24,8 +24,10 @@ def test_up_and_down():
             "('laptop','laptop',NULL,NULL),"  # auto-named from hostname
             "('Unknown device',NULL,NULL,NULL),"
             "('Apple device',NULL,NULL,'Apple'),"
-            "('Emma''s tablet','android-1234',NULL,'Samsung'),"  # parent-edited
-            "('Kitchen',NULL,NULL,NULL)"
+            "('Emma''s tablet','android-1234',NULL,'Samsung'),"  # edits were never recorded: refreshable
+            "('Kitchen',NULL,NULL,NULL),"
+            "('k1-n2.maas','192-168-1-242.maas',NULL,NULL),"  # stale beta rows
+            "('192-168-1-242.maas','k1-n2.maas',NULL,NULL)"
         )
         with Operations.context(MigrationContext.configure(c)):
             mod.upgrade()
@@ -34,8 +36,10 @@ def test_up_and_down():
                 "laptop": 0,
                 "Unknown device": 0,
                 "Apple device": 0,
-                "Emma's tablet": 1,
-                "Kitchen": 1,
+                "Emma's tablet": 0,
+                "Kitchen": 0,
+                "k1-n2.maas": 0,
+                "192-168-1-242.maas": 0,
             }
             mod.downgrade()
         cols = {r[1] for r in c.exec_driver_sql("PRAGMA table_info(devices)")}

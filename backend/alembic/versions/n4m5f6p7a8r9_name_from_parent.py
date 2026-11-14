@@ -21,12 +21,7 @@ def upgrade() -> None:
         b.add_column(
             sa.Column("name_from_parent", sa.Boolean(), nullable=False, server_default="0")
         )
-    # Names that differ from what auto-naming gives were edited by a parent: keep them.
-    op.execute(
-        "UPDATE devices SET name_from_parent = 1 WHERE name != 'Unknown device' "
-        "AND name != COALESCE(hostname, '') AND name != COALESCE(mdns_name, '') "
-        "AND name != COALESCE(vendor || ' device', '') AND name != COALESCE(vendor, '')"
-    )
+    # Parent edits were not recorded before this column: all existing names stay refreshable.
 
 
 def downgrade() -> None:
