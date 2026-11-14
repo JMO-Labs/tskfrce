@@ -25,7 +25,7 @@ describe('Fingerbank last error', () => {
   })
 
   test('card shows the error when enabled, nothing when clean', () => {
-    const fam = { fingerbank_enabled: true, fingerbank_key_set: true, fingerbank_cloud: false, fingerbank_last_error: 'bad_key' } as Family
+    const fam = { name: 'Home', fingerbank_enabled: true, fingerbank_key_set: true, fingerbank_cloud: false, fingerbank_last_error: 'bad_key' } as Family
     const { unmount } = wrap(<FingerbankCard fam={fam} />)
     expect(screen.getByRole('alert').textContent).toMatch(/rejected your key/)
     unmount()
