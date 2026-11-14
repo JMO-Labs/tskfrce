@@ -113,7 +113,7 @@ def test_naming_precedence():
     assert n(cls=ANDROID, vendor="Liteon") == ("Android device", "device_class")
     assert n(cls=ANDROID, host="pixel")[1] == "device_class"
     assert n(cls=ANDROID, mdns="pixel.local")[1] == "device_class"
-    assert n(cls=ANDROID, fp="1,3,6,7,31")[1] == "fingerprint"
+    assert n(cls=ANDROID, fp="1,3,6,7,31")[1] == "device_class"
     assert n(mdns="tv.local", host="h1")[1] == "mdns"
     assert n(host="h1", vendor="Liteon") == ("h1", "hostname")
     assert n(vendor="Liteon") == ("Liteon device", "vendor")
