@@ -3,6 +3,7 @@ import { Icon } from '@/v2/parent/Icon'
 import { useBulkDevices, usePatchDevice, useRescanDevices } from '@/v2/hooks/useDevices'
 import type { Device, Kid } from '@/v2/types'
 import { ago } from './deviceMeta'
+import { useNetworkLabels } from '@/v2/hooks/useNetworks'
 import { DeviceControls, NoMatch, useDeviceView } from './DeviceControls'
 import { applyDevices } from './deviceFilter'
 
@@ -15,6 +16,7 @@ export function UnknownDevices({ devices, kids }: { devices: Device[]; kids: Kid
   const unknown = applyDevices(all, view.filter, view.sort)
   const ignored = devices.filter((d) => d.status === 'ignored')
   const [rawPicked, setPicked] = useState<number[]>([])
+  const { networks } = useNetworkLabels()
   const patch = usePatchDevice()
   const bulk = useBulkDevices()
   const rescan = useRescanDevices()
@@ -46,7 +48,8 @@ export function UnknownDevices({ devices, kids }: { devices: Device[]; kids: Kid
         </button>
       </div>
 
-      {all.length > 0 && <DeviceControls sort={view.sort} onSort={view.setSort} filter={view.filter} onFilter={view.setFilter} />}
+      {all.length > 0 && <DeviceControls sort={view.sort} onSort={view.setSort} filter={view.filter} onFilter={view.setFilter}
+        hideFlags={['unassigned']} networks={networks.map((n) => ({ id: Number(n.id), label: n.label }))} />}
       {all.length === 0 ? (
         <p className="p-device-empty">Nobody new. Every device on your network has an owner.</p>
       ) : unknown.length === 0 ? (
