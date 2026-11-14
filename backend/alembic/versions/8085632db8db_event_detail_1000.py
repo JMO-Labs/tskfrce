@@ -22,4 +22,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    raise NotImplementedError("forward-only")
+    op.execute(sa.text("UPDATE device_events SET detail = substr(detail, 1, 120) WHERE length(detail) > 120"))
+    with op.batch_alter_table("device_events") as b:
+        b.alter_column("detail", existing_type=sa.String(1000), type_=sa.String(120))
