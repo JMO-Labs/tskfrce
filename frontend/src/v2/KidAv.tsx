@@ -63,10 +63,12 @@ export function useKidBadges() {
 export const useKidBadge = (id: number | null | undefined, name: string | null): Badge => useKidBadges()(id, name)
 
 /** Kid bubble span: unique short label in the kid's color. */
-export function KidAv({ id, name, className = 'pk-av', title }: { id: number | null | undefined; name: string | null; className?: string; title?: string }) {
+/** `alt` names the bubble as an image for assistive tech; without it the bubble is decorative. */
+export function KidAv({ id, name, className = 'pk-av', title, alt }: { id: number | null | undefined; name: string | null; className?: string; title?: string; alt?: string }) {
   const { label, style } = useKidBadge(id, name)
+  const a11y = alt ? { role: 'img', 'aria-label': alt } : { 'aria-hidden': true as const }
   return (
-    <span className={className} style={style} title={title} aria-hidden="true">
+    <span className={className} style={style} title={title} {...a11y}>
       {label}
     </span>
   )

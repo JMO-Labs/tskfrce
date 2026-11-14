@@ -6,7 +6,7 @@ test.describe('parent journeys', () => {
 
   test('send back needs a note, approve clears the item', async ({ page }) => {
     await page.goto('/')
-    await page.getByRole('button', { name: /^Needs you/ }).click()
+    await page.getByRole('button', { name: 'Review', exact: true }).click()
     const needs = page.getByRole('region', { name: 'Needs you' })
     await expect(needs).toContainText('E2E sweep')
 
@@ -21,8 +21,7 @@ test.describe('parent journeys', () => {
     await expect(needs.getByText('E2E sweep')).toHaveCount(0)
 
     // approving the other one clears it too
-    const card = needs.locator('.p-arow').filter({ hasText: 'E2E dishes' })
-    await card.getByRole('button', { name: 'Approve', exact: true }).click()
+    await needs.getByRole('group', { name: 'E2E dishes' }).getByRole('button', { name: 'Approve', exact: true }).click()
     await expect(needs.getByText('E2E dishes')).toHaveCount(0)
   })
 

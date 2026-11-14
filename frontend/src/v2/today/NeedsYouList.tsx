@@ -95,6 +95,7 @@ export function NeedsYouList({ items, today }: { items: NeedsItem[]; today?: str
             return (
               <ActionRow
                 key={key}
+                label={i.title}
                 icon={i.integration?.icon ?? k.icon}
                 iconTone={k.tone}
                 iconLabel={k.label}

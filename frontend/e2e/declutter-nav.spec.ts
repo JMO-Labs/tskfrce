@@ -37,7 +37,7 @@ test.beforeEach(async ({ page }) => {
   page.on('console', (m) => m.type() === 'error' && errors.push(`console: ${m.text()}`))
 })
 
-const tab = (page: Page, name: string) => page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name })
+const tab = (page: Page, name: string) => page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name, exact: true })
 const discardSheet = (page: Page) => page.getByRole('dialog', { name: 'Discard changes?' })
 const noNavErrors = () => expect(errors.filter((e) => /cancel|Unhandled|Route change/i.test(e))).toEqual([])
 
