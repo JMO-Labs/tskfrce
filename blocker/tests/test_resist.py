@@ -513,3 +513,24 @@ def test_one_escaped_syn_ack_per_minute_is_not_bypass():
     for i in range(10):
         _tcp(c, t, 0, dport=40000 + i, syn_ack=True, at=131 + i * 60)
         assert c.resisting() == set()
+
+
+def test_any_dhcp_from_watched_mac_fires_rejoin_callback():
+    pytest.importorskip("scapy")
+    got = []
+    captured = {}
+    w = ResistanceWatch(
+        SimpleNamespace(lan_iface=""),
+        ResistanceCounter(LAN),
+        sniffer_factory=lambda **kw: captured.update(kw) or SimpleNamespace(stop=lambda: None),
+        on_dhcp=got.append,
+    )
+    w.set_watched(WATCHED)
+    prn = captured["prn"]
+    opts = [("hostname", b"new-name"), ("vendor_class_id", b"android-dhcp-14")]
+    prn(_dhcp("discover", src=KID, chaddr=KID, opts=opts))
+    prn(_dhcp("request", src=KID, chaddr=KID.upper(), opts=opts))
+    prn(_dhcp("discover", src="dd:dd:dd:dd:dd:04", chaddr="dd:dd:dd:dd:dd:04"))  # unwatched
+    prn(_dhcp("offer", src=GW, chaddr=KID))  # server replies are not a rejoin
+    prn(_dhcp("ack", src=GW, chaddr=KID))
+    assert got == [KID, KID]

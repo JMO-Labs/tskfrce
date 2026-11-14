@@ -65,7 +65,7 @@ def test_rescan_succeeds_after_10s(client, db, parent_headers, monkeypatch):
 
 
 def test_display_device_name_priority():
-    """display_device_name follows priority: mDNS > hostname > fingerprint > vendor > unknown."""
+    """display_device_name follows priority: class/model > mDNS > hostname > fingerprint > vendor > unknown."""
     assert display_device_name("phone.local", "host1", "1,3,6", "Apple")[0] == "phone.local"
     assert display_device_name(None, "host1", "1,3,6", "Apple")[0] == "host1"
     assert display_device_name(None, None, "1,121,3,6,15,119,252", "Unknown")[0] == "iPhone"

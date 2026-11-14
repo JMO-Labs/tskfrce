@@ -46,7 +46,8 @@ def test_seen_dash_mac_normalized(client, db):
 
 def test_report_does_not_overwrite_parent_name(client, db):
     client.post(URL, json=BODY, headers=tok())
-    db.query(Device).one().name = "Timmy's iPad"
+    d = db.query(Device).one()
+    d.name, d.name_from_parent = "Timmy's iPad", True
     db.commit()
     client.post(URL, json={**BODY, "hostname": "new"}, headers=tok())
     db.expire_all()
@@ -74,3 +75,25 @@ def test_trigger_wakes_running_loop_from_other_thread(monkeypatch):
     th.join()
     assert len(calls) == 2
     assert calls[1] - calls[0] < 5
+
+
+def test_hostname_vendor_change_keeps_locked_device_blocked(client, db):
+    """#109: a DHCP hostname/vendor/fingerprint change (#95 capture, #217/#218 relink) never
+    drops a locked device from the blocker's targets, not even for one report."""
+    get_family(db).new_devices_blocked = True
+    db.commit()
+    mac = "16:e2:a7:7b:cc:06"  # private (random) MAC: the relink path is eligible
+    first = {**BODY, "mac": mac, "hostname": "pixel-7"}
+    client.post(URL, json=first, headers=tok())
+    assert client.get("/api/v1/internal/state", headers=tok()).json()["blocked"] == [mac]
+    for extra in (
+        {"hostname": None, "dhcp_hostname": "android-9f3a"},
+        {"hostname": "other-name", "vendor": "Google"},
+        {"dhcp_fp": "1,3,6,15,26,28,51,58,59,43", "mdns_name": "x.local", "model": "Pixel"},
+    ):
+        assert client.post(URL, json={**first, **extra}, headers=tok()).status_code == 200
+        blocked = client.get("/api/v1/internal/state", headers=tok()).json()["blocked"]
+        assert blocked == [mac]
+    db.expire_all()
+    d = db.query(Device).filter_by(mac=mac).one()
+    assert not d.replaced and d.hint_of_id is None

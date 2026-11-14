@@ -164,7 +164,10 @@ class InterfaceManager:
                     redir = RedirectionManager(cfg_iface, lan=lan)
                     counter = ResistanceCounter(lan, lan_cidrs=self._lan_cidrs)
                     watch = ResistanceWatch(
-                        cfg_iface, counter, on_new_ip=lambda m, ip: self.on_new_ip(m, ip)
+                        cfg_iface,
+                        counter,
+                        on_new_ip=lambda m, ip: self.on_new_ip(m, ip),
+                        on_dhcp=redir.poke,
                     )
                     self._managers[iface] = (stop_ev, redir, watch)
 

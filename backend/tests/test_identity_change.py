@@ -21,7 +21,7 @@ def _seen(client, **kw):
 
 
 def _setup(db, status="assigned"):
-    db.add(Device(mac=MAC, name="Pad", status=status))
+    db.add(Device(mac=MAC, name="Pad", status=status, name_from_parent=True))
     db.commit()
 
 
