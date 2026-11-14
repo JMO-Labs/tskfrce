@@ -74,3 +74,12 @@ def test_relink_same_network_id(client, db, kid):
     did = seen(client, ip="192.168.1.9", iface="eno2")
     db.expire_all()
     assert db.get(Device, did).status == "assigned"
+
+
+def test_resolve_ignores_invalid_subnet_or_ip(db):
+    from app.services.network_match import resolve_network_id
+
+    db.add(Network(iface="eno2", subnet="garbage", auto_label="Wired"))
+    db.commit()
+    assert resolve_network_id(db, "192.168.1.5") is None
+    assert resolve_network_id(db, "not-an-ip") is None

@@ -19,11 +19,11 @@ def conn():
         c.exec_driver_sql("CREATE TABLE networks (id INTEGER PRIMARY KEY, iface TEXT, subnet TEXT)")
         c.exec_driver_sql("CREATE TABLE devices (id INTEGER PRIMARY KEY, ip TEXT, network_id INT)")
         c.exec_driver_sql(
-            "INSERT INTO networks VALUES (1,'eno2','192.168.1.0/24'),(2,'wlo1','192.168.2.0/24'),(3,'x',NULL)"
+            "INSERT INTO networks VALUES (1,'eno2','192.168.1.0/24'),(2,'wlo1','192.168.2.0/24'),(3,'x',NULL),(4,'y','garbage')"
         )
         c.exec_driver_sql(
             "INSERT INTO devices VALUES (1,'192.168.1.5',NULL),(2,'192.168.2.5',NULL),"
-            "(3,'10.9.9.9',NULL),(4,NULL,NULL),(5,'192.168.2.6',1)"
+            "(3,'10.9.9.9',NULL),(4,NULL,NULL),(5,'192.168.2.6',1),(6,'not-an-ip',NULL)"
         )
         yield c
 
@@ -36,4 +36,4 @@ def test_backfill(conn):
         mod.upgrade()
         mod.downgrade()
     rows = dict(conn.exec_driver_sql("SELECT id, network_id FROM devices").fetchall())
-    assert rows == {1: 1, 2: 2, 3: None, 4: None, 5: 1}  # existing values untouched
+    assert rows == {1: 1, 2: 2, 3: None, 4: None, 5: 1, 6: None}  # existing untouched; bad subnet/ip skipped
