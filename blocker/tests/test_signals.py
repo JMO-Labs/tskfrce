@@ -177,6 +177,13 @@ def test_dhcp_hostname_option12():
     assert dhcp_hostname_from_packet(_req(("hostname", b"bobby-laptop"))) == (MAC, "bobby-laptop")
 
 
+def test_dhcp_hostname_option81_wire_format():
+    fqdn = ("client_FQDN", b"\x05\x00\x00\x08bobby-pc\x04home\x00")
+    assert dhcp_hostname_from_packet(_req(fqdn)) == (MAC, "bobby-pc")
+    bad = ("client_FQDN", b"\x04\x00\x00\x20abc")
+    assert dhcp_hostname_from_packet(_req(bad)) is None
+
+
 def test_dhcp_hostname_option81_host_part_only_when_12_absent():
     fqdn = ("client_FQDN", b"\x00\x00\x00bobby-pc.home.lan")
     assert dhcp_hostname_from_packet(_req(fqdn)) == (MAC, "bobby-pc")

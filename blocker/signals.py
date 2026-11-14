@@ -75,8 +75,13 @@ def dhcp_hostname_from_packet(pkt) -> tuple[str, str] | None:
         opts = {o[0]: o[1] for o in pkt[DHCP].options if isinstance(o, tuple) and len(o) > 1}
         name = _clean_hostname(opts.get("hostname"))
         if name is None and isinstance(opts.get("client_FQDN"), bytes):
-            fqdn = _clean_hostname(opts["client_FQDN"][3:])  # skip flags + 2 rcode bytes
-            name = _clean_hostname(fqdn.split(".")[0]) if fqdn else None
+            raw = opts["client_FQDN"]
+            if len(raw) > 3 and raw[0] & 0x04:  # RFC 4702 E flag: canonical wire format
+                n = raw[3]
+                name = _clean_hostname(raw[4 : 4 + n]) if n and 4 + n <= len(raw) else None
+            else:
+                fqdn = _clean_hostname(raw[3:])  # skip flags + 2 rcode bytes
+                name = _clean_hostname(fqdn.split(".")[0]) if fqdn else None
         return (mac, name) if name else None
     except Exception:  # noqa: BLE001 - best effort, the daemon keeps running
         return None
