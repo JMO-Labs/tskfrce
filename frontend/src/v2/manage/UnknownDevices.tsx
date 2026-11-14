@@ -3,14 +3,20 @@ import { Icon } from '@/v2/parent/Icon'
 import { useBulkDevices, usePatchDevice, useRescanDevices } from '@/v2/hooks/useDevices'
 import type { Device, Kid } from '@/v2/types'
 import { ago } from './deviceMeta'
+import { useNetworkLabels } from '@/v2/hooks/useNetworks'
+import { DeviceControls, NoMatch, useDeviceView } from './DeviceControls'
+import { applyDevices } from './deviceFilter'
 
 const kidName = (k: Kid) => k.full_name || k.username
 
 /** "Who's this?" pane: every unknown device in one table, owner per row, bulk actions on a selection. */
 export function UnknownDevices({ devices, kids }: { devices: Device[]; kids: Kid[] }) {
-  const unknown = devices.filter((d) => d.status === 'unassigned')
+  const all = devices.filter((d) => d.status === 'unassigned')
+  const view = useDeviceView('unknown')
+  const unknown = applyDevices(all, view.filter, view.sort)
   const ignored = devices.filter((d) => d.status === 'ignored')
   const [rawPicked, setPicked] = useState<number[]>([])
+  const { networks } = useNetworkLabels()
   const patch = usePatchDevice()
   const bulk = useBulkDevices()
   const rescan = useRescanDevices()
@@ -34,7 +40,7 @@ export function UnknownDevices({ devices, kids }: { devices: Device[]; kids: Kid
       <div className="p-unk-head">
         <span className="p-unk-big"><Icon name="help" size={24} /></span>
         <div>
-          <h2>Who&apos;s this?{unknown.length > 0 && <span className="p-unk-n"> · {unknown.length}</span>}</h2>
+          <h2>Who&apos;s this?{all.length > 0 && <span className="p-unk-n"> · {all.length}</span>}</h2>
           <p>Devices that joined your network and have no owner. Unknown devices follow &quot;New devices allowed&quot;.</p>
         </div>
         <button type="button" className="p-unk-btn" disabled={rescan.isPending} onClick={() => rescan.mutate(undefined)}>
@@ -42,8 +48,12 @@ export function UnknownDevices({ devices, kids }: { devices: Device[]; kids: Kid
         </button>
       </div>
 
-      {unknown.length === 0 ? (
+      {all.length > 0 && <DeviceControls sort={view.sort} onSort={view.setSort} filter={view.filter} onFilter={view.setFilter}
+        hideFlags={['unassigned']} networks={networks.map((n) => ({ id: Number(n.id), label: n.label }))} />}
+      {all.length === 0 ? (
         <p className="p-device-empty">Nobody new. Every device on your network has an owner.</p>
+      ) : unknown.length === 0 ? (
+        <NoMatch filter={view.filter} onClear={view.clear} />
       ) : (
         <>
           {picked.length > 0 && (
