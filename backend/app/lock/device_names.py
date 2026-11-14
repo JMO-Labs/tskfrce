@@ -89,7 +89,7 @@ def display_device_name(
 ) -> tuple[str, str]:
     """Choose the best device display name and return (name, source).
 
-    Priority: Fingerbank class/model > mDNS > hostname > vendor > "Unknown device".
+    Priority: Fingerbank class/model > mDNS > hostname > fingerprint guess > vendor > "Unknown device".
     Dashed-IP hostnames are never used. source is one of: "device_class", "model",
     "fingerprint", "mdns", "hostname", "vendor", "unknown".
     """
@@ -97,12 +97,12 @@ def display_device_name(
         return cls, "device_class"
     if model:
         return model, "model"
-    if device_type := guess_device_type_from_fingerprint(dhcp_fp, mdns_name):
-        return device_type, "fingerprint"
     if name := usable_name(mdns_name):
         return name, "mdns"
     if name := usable_name(hostname):
         return name, "hostname"
+    if device_type := guess_device_type_from_fingerprint(dhcp_fp, mdns_name):
+        return device_type, "fingerprint"
     if vendor:
         return f"{vendor} device", "vendor"
     return "Unknown device", "unknown"

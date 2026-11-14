@@ -42,3 +42,11 @@ def test_parent_edit_is_kept(client, db, parent_headers):
     assert _dev(db).name_from_parent is True
     _seen(client, hostname="new.maas", mdns_name="x.local")
     assert _dev(db).name == "Mia's laptop"
+
+
+def test_fingerprint_guess_ranks_below_hostname_above_vendor():
+    from app.lock.device_names import display_device_name
+
+    fp = "1,121,3,6,15,119,252,95"
+    assert display_device_name(None, "kids-pc", fp, "Apple") == ("kids-pc", "hostname")
+    assert display_device_name(None, None, fp, "Apple") == ("iPhone", "fingerprint")
