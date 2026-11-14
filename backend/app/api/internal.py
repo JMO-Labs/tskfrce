@@ -56,6 +56,7 @@ class SeenReport(BaseModel):
     mdns_name: str | None = Field(default=None, max_length=255)
     model: str | None = Field(default=None, max_length=255)
     dhcp_fp: str | None = Field(default=None, max_length=255)
+    dhcp_hostname: str | None = Field(default=None, max_length=255)  # DHCP option 12/81
     vid: int | None = Field(default=None, ge=1, le=4094)  # null = untagged LAN
     gateway_mac: str | None = Field(default=None, max_length=17)  # blocker's gateway MAC
     box_mac: str | None = Field(default=None, max_length=17)  # blocker's own MAC
@@ -163,7 +164,7 @@ class NetworksReport(BaseModel):
 def _apply(dev: Device, body: SeenReport, now: datetime) -> None:
     dev.ip, dev.last_seen = body.ip, now
     dev.ipv6 = body.ipv6
-    dev.hostname = body.hostname or dev.hostname
+    dev.hostname = body.hostname or body.dhcp_hostname or dev.hostname
     dev.vendor = body.vendor or dev.vendor
     if "vid" in body.model_fields_set:  # absent key keeps the old value; explicit null = untagged
         dev.vlan_id = body.vid
@@ -186,7 +187,7 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
     if new:
         dev = Device(
             mac=body.mac,
-            name=(body.hostname or body.vendor or "Unknown device")[:100],
+            name=(body.hostname or body.dhcp_hostname or body.vendor or "Unknown device")[:100],
             status="unassigned",
             first_seen=now,
         )
@@ -215,12 +216,12 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
         trigger()
     else:
         old_ip = dev.ip
-        before = (dev.mdns_name, dev.model, dev.dhcp_fp)
+        before = (dev.mdns_name, dev.model, dev.dhcp_fp, dev.hostname)
         _apply(dev, body, now)
         if old_ip is not None and body.ip is not None and old_ip != body.ip:
             activity.log(db, dev.id, "address_change", now, detail=f"{old_ip} → {body.ip}")
         note_identity_change(db, dev, before[1], now)
-        changed = before != (dev.mdns_name, dev.model, dev.dhcp_fp)
+        changed = before != (dev.mdns_name, dev.model, dev.dhcp_fp, dev.hostname)
         hinted = (
             changed
             and dev.status == "unassigned"
