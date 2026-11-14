@@ -2,12 +2,13 @@
 
 import hmac
 import ipaddress
+import json
 import re
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AfterValidator, BaseModel, Field, field_validator, model_validator
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -31,6 +32,7 @@ from app.schemas.homework import ActivityReport
 from app.services import inbox
 
 MAC_RE = re.compile(r"^([0-9a-f]{2}:){5}[0-9a-f]{2}$")
+EVIDENCE_MAX = 1000
 
 router = APIRouter(prefix="/api/v1/internal", tags=["internal"])
 
@@ -103,8 +105,24 @@ class VlansReport(BaseModel):
     vlans: list[VlanItem] = Field(max_length=4094)
 
 
+def _mac(m: str) -> str:
+    return m.strip().lower().replace("-", ":")
+
+
+# Over-long evidence fields are truncated (not rejected): a bad sample must not drop the alert.
+_Field = Annotated[str, AfterValidator(lambda s: s[:60])]
+
+
 class ResistingReport(BaseModel):
     resisting: list[str] = Field(max_length=1000)
+    # mac -> classified sample of the frames that crossed the threshold
+    evidence: dict[
+        str,
+        Annotated[
+            list[Annotated[dict[str, _Field], Field(max_length=8)]],
+            Field(max_length=10),
+        ],
+    ] = Field(default_factory=dict, max_length=1000)
 
     @field_validator("resisting")
     @classmethod
@@ -113,6 +131,22 @@ class ResistingReport(BaseModel):
         if not all(MAC_RE.match(m) for m in out):
             raise ValueError("MAC address must look like aa:bb:cc:dd:ee:ff.")
         return out
+
+    @model_validator(mode="after")
+    def _evidence_only_resisting(self) -> "ResistingReport":
+        keep = {m: v for m, v in self.evidence.items() if _mac(m) in set(self.resisting)}
+        self.evidence = keep
+        return self
+
+    def detail_for(self, mac: str) -> str | None:
+        """Bounded JSON of the MAC's sample (<=10 frames, short fields), or None."""
+        sample = {m.strip().lower().replace("-", ":"): v for m, v in self.evidence.items()}.get(mac)
+        if not sample:
+            return None
+        items = [{str(k)[:8]: str(v)[:60] for k, v in f.items()} for f in sample[:10]]
+        while items and len(js := json.dumps(items, separators=(",", ":"))) > EVIDENCE_MAX:
+            items.pop()
+        return js if items else None
 
 
 class HitsReport(BaseModel):
@@ -324,7 +358,7 @@ def devices_resisting(body: ResistingReport, db: Session = Depends(get_db)) -> d
                     continue
                 dev.resisting_since = now
                 flagged += 1
-                activity.log(db, dev.id, "bypass", now)
+                activity.log(db, dev.id, "bypass", now, detail=body.detail_for(dev.mac))
                 # security ping: notify.ping applies quiet hours (quiet_security)
                 inbox.notify_parents(
                     db,

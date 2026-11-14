@@ -136,6 +136,7 @@ class Service:
         self._lan_cidrs = lan_cidrs or DEFAULT_LAN_CIDRS
         self._network_enforce: dict[str, bool] = {}
         self._sites = sites or SiteManager(cfg, on_seen=self._on_seen, lan_cidrs=self._lan_cidrs)
+        self._alerted: set[str] = set()
         self._portal_ip = portal_ip
         # When using InterfaceManager, _watch will be set to None; each interface manages its own
         self._watch = watch if not self._using_iface_mgr else None
@@ -448,7 +449,13 @@ class Service:
             resisting = self._iface_manager.resisting() | self._sites.resisting()
         else:
             resisting = self._watch.counter.resisting() | self._sites.resisting()
-        self._report(self.cfg, resisting)
+        evidence = self._evidence(resisting)
+        if evidence:
+            ok = self._report(self.cfg, resisting, evidence=evidence)
+        else:
+            ok = self._report(self.cfg, resisting)
+        if ok is not False:  # keep re-sending evidence until a report succeeds
+            self._alerted = set(resisting)
         h = self.hits.drain()
         if h:
             self._report_hits(self.cfg, h)
@@ -461,6 +468,24 @@ class Service:
                 report_networks(self.cfg, self._iface_manager.networks())
             except Exception:
                 log.exception("network report failed")
+
+    def _evidence(self, resisting: set[str]) -> dict[str, list[dict[str, str]]]:
+        """Classified frame samples for newly resisting MACs; logs one INFO line per alert."""
+        fresh = resisting - self._alerted
+        out: dict[str, list[dict[str, str]]] = {}
+        for mac in sorted(fresh):
+            try:
+                src = self._iface_manager if self._using_iface_mgr else self._watch.counter
+                ev = src.evidence(mac)
+                if not isinstance(ev, list) or not ev:
+                    ev = self._sites.evidence(mac)
+            except Exception:
+                log.debug("evidence lookup failed", exc_info=True)
+                continue
+            if isinstance(ev, list) and ev:
+                out[mac] = ev
+                log.info("bypass alert %s: %s", mac, ev)
+        return out
 
     def _resist_loop(self) -> None:
         while not self._stop.wait(self.cfg.resist_interval):

@@ -153,3 +153,46 @@ def test_hits_skips_device_that_is_open_now(client, db):
     _blocked(db)  # blocked_since set, but nothing locks it
     assert client.post(HITS, json={"hits": {MAC: 1}}, headers=tok()).json() == {"logged": 0}
     assert _events(db, "locked_try") == []
+
+
+def test_resisting_stores_evidence_in_event_detail(client, db):
+    _seen(client)
+    ev = [{"src": "203.0.113.9:443", "proto": "tcp", "flags": "SA", "class": "new"}] * 10
+    r = client.post(RES, json={"resisting": [MAC], "evidence": {MAC: ev}}, headers=tok())
+    assert r.status_code == 200
+    import json
+
+    (e,) = _events(db, "bypass")
+    assert json.loads(e.detail) == ev
+
+
+def test_resisting_without_evidence_leaves_detail_null(client, db):
+    _seen(client)
+    client.post(RES, json={"resisting": [MAC]}, headers=tok())
+    (e,) = _events(db, "bypass")
+    assert e.detail is None
+
+
+def test_resisting_evidence_is_bounded(client, db):
+    _seen(client)
+    ev = [{"src": "2001:db8::9:443", "proto": "tcp", "flags": "SA", "class": "new"}] * 10
+    ev = [{**x, "src": "x" * 500} for x in ev]
+    r = client.post(RES, json={"resisting": [MAC], "evidence": {MAC: ev}}, headers=tok())
+    assert r.status_code == 200
+    (e,) = _events(db, "bypass")
+    assert len(e.detail) <= 1000
+
+
+def test_resisting_evidence_for_unlisted_mac_logs_no_bypass(client, db):
+    _seen(client)
+    ev = [{"src": "203.0.113.9:443", "proto": "tcp", "flags": "SA", "class": "new"}]
+    r = client.post(RES, json={"resisting": [], "evidence": {MAC: ev}}, headers=tok())
+    assert r.status_code == 200
+    assert _events(db, "bypass") == []
+
+
+def test_resisting_oversized_evidence_rejected(client, db):
+    _seen(client)
+    big = [{"src": "x"} for _ in range(11)]
+    r = client.post(RES, json={"resisting": [MAC], "evidence": {MAC: big}}, headers=tok())
+    assert r.status_code == 422

@@ -250,6 +250,14 @@ class InterfaceManager:
                     macs.update(watch.counter.resisting())
             return macs
 
+    def evidence(self, mac: str) -> list[dict[str, str]]:
+        with self._lock:
+            out: list[dict[str, str]] = []
+            for _, _, watch in self._managers.values():
+                if watch is not None:
+                    out += watch.counter.evidence(mac)
+            return out[:10]
+
     def infra(self) -> tuple[set[str], set[str]]:
         """Return (gateway_macs, gateway_ips) to never enforce/spoof. Includes IPv6."""
         with self._lock:

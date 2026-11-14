@@ -63,7 +63,7 @@ class DeviceEvent(Base):
     by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     other_device_id = Column(Integer, ForeignKey("devices.id", ondelete="SET NULL"), nullable=True)
     minutes = Column(Integer, nullable=True)
-    detail = Column(String(120), nullable=True)
+    detail = Column(String(1000), nullable=True)
     reviewed_at = Column(DateTime, nullable=True)
 
 

@@ -34,6 +34,7 @@ class TcpInfo:
     seq: int
     length: int = 0
     syn_ack: bool = False
+    flags: str = ""
 
 
 @dataclass(frozen=True)
@@ -45,6 +46,8 @@ class UdpInfo:
 
 
 _MAX_FLOWS = 4096  # per-MAC flow-table cap (bounded memory on small boxes)
+_MAX_SAMPLE = 10  # frames kept per MAC and window as report evidence
+_MAX_RETX = 3  # of those, at most this many retransmits
 
 
 @dataclass
@@ -103,6 +106,8 @@ class ResistanceCounter:
         self._tallies: dict[str, tuple[float, Tally]] = {}
         # mac -> time it started being watched (the pause start)
         self._since: dict[str, float] = {}
+        # mac -> (window_start, classified sample of the frames seen in that window)
+        self._samples: dict[str, tuple[float, list[dict[str, str]]]] = {}
         # mac -> {flow 4-tuple -> (highest seq end, first seen in grace)}
         self._flows: dict[str, dict[tuple, tuple[int, bool]]] = {}
 
@@ -119,7 +124,7 @@ class ResistanceCounter:
                     del self._tallies[mac]
             for mac in watched:
                 self._since.setdefault(mac, now)
-            for d in (self._since, self._flows):
+            for d in (self._since, self._flows, self._samples):
                 for mac in list(d):
                     if mac not in watched:
                         del d[mac]
@@ -204,9 +209,17 @@ class ResistanceCounter:
                 and not self._in_lan(ip_src)
             ):
                 mac, field = self._ip2mac[_norm(ip_dst)], "from_gateway"
-                if tcp is not None and not self._is_new_evidence(mac, ip_src, ip_dst, tcp, ts):
-                    return
-                if udp is not None and not self._is_new_udp_flow(mac, ip_src, ip_dst, udp, ts):
+                if tcp is not None:
+                    new = self._is_new_evidence(mac, ip_src, ip_dst, tcp, ts)
+                elif udp is not None:
+                    new = self._is_new_udp_flow(mac, ip_src, ip_dst, udp, ts)
+                else:
+                    new = True
+                frame = self._frame(ip_src, tcp, udp, new)
+                if not new:
+                    live = self._tallies.get(mac)
+                    if live is not None and ts - live[0] < self._window:
+                        self._sample(mac, live[0], frame)
                     return
             else:
                 return
@@ -215,6 +228,56 @@ class ResistanceCounter:
                 start, tally = ts, Tally()
             setattr(tally, field, getattr(tally, field) + 1)
             self._tallies[mac] = (start, tally)
+            if field == "from_gateway":
+                self._sample(mac, start, frame)
+
+    @staticmethod
+    def _frame(ip_src, tcp, udp, new) -> dict[str, str]:
+        proto, sport = None, None
+        if tcp is not None:
+            proto, sport = "tcp", tcp.sport
+        elif udp is not None:
+            proto, sport = "udp", udp.sport
+        port = f":{sport}" if sport is not None else ""
+        src = f"[{ip_src}]{port}" if port and ":" in ip_src else f"{ip_src}{port}"
+        return {
+            "src": src,
+            "proto": proto or "ip",
+            "flags": tcp.flags if tcp else "",
+            "class": "new" if new else "retx",
+        }
+
+    def _sample(self, mac: str, start: float, frame: dict[str, str]) -> None:
+        """Sample of the frames in the tally window (same start); new frames win. Lock held."""
+        entry = self._samples.get(mac)
+        items = entry[1] if entry is not None and entry[0] == start else []
+        retx = [i for i, f in enumerate(items) if f["class"] == "retx"]
+        if frame["class"] == "retx":
+            if len(items) >= _MAX_SAMPLE or len(retx) >= _MAX_RETX:
+                self._samples[mac] = (start, items)
+                return
+        elif len(items) >= _MAX_SAMPLE:
+            if not retx:
+                self._samples[mac] = (start, items)
+                return
+            del items[retx[0]]
+        items.append(frame)
+        self._samples[mac] = (start, items)
+
+    def evidence(self, mac: str) -> list[dict[str, str]]:
+        """Classified sample (<=10 frames) of this window's gateway return traffic for mac."""
+        mac = mac.lower()
+        with self._lock:
+            entry = self._samples.get(mac)
+            live = self._tallies.get(mac)
+            if (
+                entry is None
+                or live is None
+                or entry[0] != live[0]
+                or self._clock() - live[0] >= self._window
+            ):
+                return []
+            return list(entry[1])
 
     def tally(self, mac: str) -> Tally:
         """Current-window counts for mac (zeros if unwatched or window expired)."""
@@ -335,6 +398,7 @@ class ResistanceWatch:
                 seq=int(t.seq),
                 length=len(t[Raw].load) if t.haslayer(Raw) else 0,  # excludes eth padding
                 syn_ack=(int(t.flags) & 0x12) == 0x12,
+                flags=str(t.flags),
             )
         udp = UdpInfo(pkt[UDP].sport, pkt[UDP].dport) if pkt.haslayer(UDP) else None
         self.counter.observe(pkt[Ether].src, pkt[Ether].dst, ip_dst, ip_src, tcp=tcp, udp=udp)
