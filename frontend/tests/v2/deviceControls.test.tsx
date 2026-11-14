@@ -11,6 +11,14 @@ describe('DeviceControls', () => {
     open()
     expect(screen.getByRole('button', { name: 'Guest' })).toBeTruthy()
   })
+  it('network chips are multi-select', () => {
+    const onFilter = jest.fn()
+    const nets = [{ id: 1, label: 'Home' }, { id: 2, label: 'Guest' }]
+    render(<DeviceControls {...base} onFilter={onFilter} filter={{ ...EMPTY_FILTER, networks: [1] }} networks={nets} />)
+    open()
+    fireEvent.click(screen.getByRole('button', { name: 'Guest' }))
+    expect(onFilter).toHaveBeenCalledWith({ ...EMPTY_FILTER, networks: [1, 2] })
+  })
   it('leaves out flags listed in hideFlags', () => {
     render(<DeviceControls {...base} hideFlags={['unassigned']} />)
     open()
