@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { useFamily, usePatchFamily } from '@/v2/hooks/useFamily'
 import type { Device } from '@/v2/types'
 
@@ -13,9 +14,9 @@ export function FingerbankHint({ device }: { device: Device }) {
   return (
     <p className="pn-help pn-note" role="note">
       Can&apos;t tell what this device is. Turn on better device names to recognise it.{' '}
-      <a className="pn-link" href="/settings?section=names" onClick={dismiss}>
+      <Link className="pn-link" href="/settings?section=names" onClick={dismiss}>
         Turn on
-      </a>{' '}
+      </Link>{' '}
       <button type="button" className="p-btn" onClick={dismiss}>
         Dismiss
       </button>
