@@ -2,6 +2,7 @@
 
 from app.models.lock import Device
 from app.models.network import Network
+
 from tests.test_device_relink import _old, seen, tok
 
 
@@ -39,7 +40,10 @@ def test_devices_api_returns_network_id(client, db, parent_headers):
     n1, n2 = _nets(db)
     a = seen(client, ip="192.168.1.7", mac="aa:00:00:00:00:04")
     b = seen(client, ip="192.168.2.7", mac="aa:00:00:00:00:05")
-    got = {d["id"]: d["network_id"] for d in client.get("/api/v1/devices", headers=parent_headers).json()}
+    got = {
+        d["id"]: d["network_id"]
+        for d in client.get("/api/v1/devices", headers=parent_headers).json()
+    }
     assert (got[a], got[b]) == (n1, n2)
 
 
