@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import AfterValidator, BaseModel, Field, field_validator, model_validator
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -109,13 +109,17 @@ def _mac(m: str) -> str:
     return m.strip().lower().replace("-", ":")
 
 
+# Over-long evidence fields are truncated (not rejected): a bad sample must not drop the alert.
+_Field = Annotated[str, AfterValidator(lambda s: s[:60])]
+
+
 class ResistingReport(BaseModel):
     resisting: list[str] = Field(max_length=1000)
     # mac -> classified sample of the frames that crossed the threshold
     evidence: dict[
         str,
         Annotated[
-            list[Annotated[dict[str, Annotated[str, Field(max_length=100)]], Field(max_length=8)]],
+            list[Annotated[dict[str, _Field], Field(max_length=8)]],
             Field(max_length=10),
         ],
     ] = Field(default_factory=dict, max_length=1000)
