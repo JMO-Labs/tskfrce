@@ -15,7 +15,8 @@ def test_up_and_down():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     with sa.create_engine("sqlite://").begin() as c:
-        c.exec_driver_sql("CREATE TABLE devices (id INTEGER PRIMARY KEY, name VARCHAR(50), "
+        c.exec_driver_sql(
+            "CREATE TABLE devices (id INTEGER PRIMARY KEY, name VARCHAR(50), "
             "hostname VARCHAR(255), mdns_name VARCHAR(255), vendor VARCHAR(255))"
         )
         c.exec_driver_sql(
