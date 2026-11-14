@@ -109,10 +109,11 @@ def test_best_strength_wins():
     assert (h.candidate_id, h.reason) == (1, "name")
 
 
-def test_tie_same_owners_most_recent():
+def test_tie_same_owners_ambiguous():
+    """Never guess by most recent: a same-owner tie is ambiguous too (#100)."""
     a = sig(1, mdns_name="x", seen_ago=timedelta(hours=3))
     b = sig(2, mdns_name="x", seen_ago=timedelta(hours=1))
-    assert run(new(mdns_name="x"), [a, b]).candidate_id == 2
+    assert run(new(mdns_name="x"), [a, b]) is None
 
 
 def test_tie_different_owners_ambiguous():

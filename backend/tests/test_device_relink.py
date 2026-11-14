@@ -129,7 +129,7 @@ def test_same_owner_online_sibling_untouched(client, db, kid):
     assert db.get(Device, laptop.id).replaced is False
 
 
-def test_two_silent_same_owner_candidates_no_relink(client, db, kid):
+def test_two_silent_same_owner_candidates_no_relink(client, db, parent, kid):
     a = _old(db, kid, silent=timedelta(minutes=5))
     b = _old(db, kid, mac="9a:ff:8e:8e:6c:01", silent=timedelta(minutes=3))
     did = seen(client)
@@ -138,7 +138,7 @@ def test_two_silent_same_owner_candidates_no_relink(client, db, kid):
     _assert_asked(db, did)
 
 
-def test_two_silent_same_owner_same_hostname_inherits_nothing(client, db, kid):
+def test_two_silent_same_owner_same_hostname_inherits_nothing(client, db, parent, kid):
     _old(db, kid, silent=timedelta(minutes=5), hostname="timmy-phone")
     _old(db, kid, mac="9a:ff:8e:8e:6c:01", silent=timedelta(minutes=3), hostname="timmy-phone")
     did = seen(client, hostname="timmy-phone")
