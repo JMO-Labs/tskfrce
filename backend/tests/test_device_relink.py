@@ -218,3 +218,35 @@ def test_lookup_failure_does_not_block_discovery(client, db, monkeypatch):
 
     monkeypatch.setattr(fingerbank, "_lookup", boom)
     assert seen(client, dhcp_fp="1,3,6")
+
+
+def test_relink_notice_shows_both_classes(client, db, kid, monkeypatch):
+    from app.lock import fingerbank
+
+    monkeypatch.setattr(
+        fingerbank, "lookup", lambda fp, host=None: ("Operating System/Google OS/Android OS", 90)
+    )
+    _old(db, kid, device_class="Operating System/Google OS/Android OS")
+    did = seen(client, dhcp_fp="1,3,6")
+    n = db.query(Notification).filter_by(kind="device_hint", device_id=did).one()
+    assert "New: Android device; Timmy's phone: Android device." in n.body
+
+
+def test_relink_same_as_today_when_setting_off(client, db, kid):
+    """No class known (setting off): relinks as before and the notice has no class text."""
+    old = _old(db, kid)
+    did = seen(client)
+    db.expire_all()
+    assert db.get(Device, did).hint_of_id == old.id
+    n = db.query(Notification).filter_by(kind="device_hint", device_id=did).one()
+    assert "New:" not in n.body
+    assert n.body == "We kept its rules. Not the same device? Undo."
+
+
+def test_hint_prompt_shows_classes(db, kid):
+    from app.lock.hints import _kinds
+
+    a = Device(mac="a", name="n", device_class="Operating System/Apple OS/Apple iOS")
+    b = Device(mac="b", name="Dad's phone", device_class=None)
+    assert _kinds(a, b) == "New: Apple iOS device; Dad's phone: unknown. "
+    assert _kinds(Device(mac="c", name="x"), b) == ""

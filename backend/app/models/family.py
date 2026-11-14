@@ -44,6 +44,9 @@ class FamilySettings(Base):
     fingerbank_api_key = Column(String(100), nullable=True)  # write-only through the API
     fingerbank_cloud = Column(Boolean, nullable=False, default=False, server_default="0")
     fingerbank_synced_at = Column(DateTime, nullable=True)  # naive UTC; offline DB last fetched
+    fingerbank_attempted_at = Column(DateTime, nullable=True)  # last download try (backoff)
+    fingerbank_last_error = Column(String(30), nullable=True)  # code only, never a URL or key
+    fingerbank_last_error_at = Column(DateTime, nullable=True)
     fingerbank_hint_seen = Column(Boolean, nullable=False, default=False, server_default="0")
     gif_rating = Column(String(2), nullable=False, default="g", server_default="g")
     listen_only = Column(Boolean, nullable=False, default=False, server_default="0")

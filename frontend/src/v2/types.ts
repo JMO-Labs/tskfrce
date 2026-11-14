@@ -56,6 +56,8 @@ export interface Device extends DevicePenaltyFields {
   model?: string | null
   dhcp_fp?: string | null
   random_mac?: boolean
+  /** Fingerbank class ("Android device"), only when the setting is on and it matched */
+  device_class?: string | null
   /** null/absent = the untagged LAN */
   vlan_id?: number | null
   network_id?: number | null
@@ -143,6 +145,9 @@ export interface Family extends FamilyExtrasFields, FamilyPenaltyFields {
   fingerbank_cloud: boolean
   fingerbank_hint_seen: boolean
   fingerbank_synced_at: string | null
+  /** bad_key | rate_limited | offline | invalid_db | failed | cloud_* */
+  fingerbank_last_error: string | null
+  fingerbank_last_error_at: string | null
   ntfy_upstream_relay: boolean
   chores_lock: boolean
   quick_replies: string[]

@@ -76,6 +76,8 @@ def _fam_out(fam, db) -> dict:
         "fingerbank_cloud": fam.fingerbank_cloud,
         "fingerbank_hint_seen": fam.fingerbank_hint_seen,
         "fingerbank_synced_at": fam.fingerbank_synced_at,
+        "fingerbank_last_error": fam.fingerbank_last_error,
+        "fingerbank_last_error_at": fam.fingerbank_last_error_at,
         "hh_default_mult_x10": fam.hh_default_mult_x10,
         "hh_default_minutes": fam.hh_default_minutes,
         "hh_weekly_surprise": fam.hh_weekly_surprise,

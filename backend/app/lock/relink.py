@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.lock.fingerbank import os_family
-from app.lock.hints import inherit
+from app.lock.hints import _kinds, inherit
 from app.models.lock import Device, DeviceHintRejection, Override
 from app.services import inbox
 
@@ -62,7 +62,7 @@ def apply_relink(db: Session, device: Device) -> bool:
         inbox.parents(db),
         "device_hint",
         f"{cand.name} reconnected with a new address",
-        "We kept its rules. Not the same device? Undo.",
+        f"We kept its rules. {_kinds(device, cand)}Not the same device? Undo.",
         device_id=device.id,
     )
     return True

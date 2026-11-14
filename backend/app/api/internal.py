@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db
 from app.core.config import settings
 from app.lock import activity, fingerbank
+from app.lock.fingerbank import friendly_name
 from app.lock.hints import apply_hint
 from app.lock.identity import note_identity_change
 from app.lock.loop import trigger
@@ -241,11 +242,13 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
                 not (apply_relink(db, dev) or apply_hint(db, dev))
                 and get_family(db).setup_step is None
             ):
+                kind = friendly_name(dev.device_class)
                 inbox.notify_parents(
                     db,
                     "new_device",
                     f"New device: {dev.name}",
-                    "Say whose it is so it follows their rules.",
+                    (f"Looks like: {kind}. " if kind else "")
+                    + "Say whose it is so it follows their rules.",
                     device_id=dev.id,
                 )
             db.commit()

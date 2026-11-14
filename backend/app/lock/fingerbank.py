@@ -2,6 +2,7 @@
 
 import logging
 import sqlite3
+import time
 
 import httpx
 
@@ -11,6 +12,9 @@ log = logging.getLogger(__name__)
 # httpx logs full request URLs at INFO; the API key travels in the query string.
 logging.getLogger("httpx").setLevel(logging.WARNING)
 API = "https://api.fingerbank.org/api/v2/combinations/interrogate"
+BACKOFF = {"bad_key": 86400.0}  # seconds before the cloud is asked again; default 1h
+cloud_error: str | None = None  # "cloud_<kind>" of the last cloud failure; None after a success
+_cloud_retry_at = 0.0
 _cache: dict[tuple, tuple[str, int] | None] = {}
 _FAMILIES = (  # substring of the class path (lowercase) -> OS family
     ("android", "android"),
@@ -28,6 +32,21 @@ _FRIENDLY = {"android": "Android device", "ios": "Apple iOS device", "windows": 
 
 def cache_clear() -> None:
     _cache.clear()
+
+
+def cloud_reset() -> None:
+    global cloud_error, _cloud_retry_at
+    cloud_error, _cloud_retry_at = None, 0.0
+
+
+def error_code(e: Exception) -> str:
+    """Short, secret-free reason for a failed Fingerbank call."""
+    if isinstance(e, httpx.HTTPStatusError):
+        s = e.response.status_code
+        return "bad_key" if s in (401, 403) else "rate_limited" if s == 429 else "failed"
+    if isinstance(e, httpx.TransportError | OSError):
+        return "offline"
+    return "failed"
 
 
 def os_family(path: str | None) -> str | None:
@@ -84,8 +103,25 @@ def _lookup(fp: str, hostname: str | None) -> tuple[str, int] | None:
     if settings.FINGERBANK_DB_PATH:
         return _offline(fp, settings.FINGERBANK_DB_PATH)
     if settings.FINGERBANK_CLOUD and settings.FINGERBANK_API_KEY:
-        return _cloud(fp, hostname)
+        return _cloud_guarded(fp, hostname)
     return None
+
+
+def _cloud_guarded(fp: str, hostname: str | None) -> tuple[str, int] | None:
+    """Cloud lookup that stops asking for a while after a failure (key errors, 429, offline)."""
+    global cloud_error, _cloud_retry_at
+    if time.monotonic() < _cloud_retry_at:
+        return None
+    try:
+        res = _cloud(fp, hostname)
+    except Exception as e:  # noqa: BLE001
+        code = error_code(e)
+        cloud_error = f"cloud_{code}"
+        _cloud_retry_at = time.monotonic() + BACKOFF.get(code, 3600.0)
+        log.warning("fingerbank cloud lookup failed: %s", code)
+        return None
+    cloud_error = None
+    return res
 
 
 def lookup(fp: str | None, hostname: str | None = None) -> tuple[str, int] | None:
@@ -100,5 +136,7 @@ def lookup(fp: str | None, hostname: str | None = None) -> tuple[str, int] | Non
     except Exception as e:  # noqa: BLE001 - discovery must never depend on this
         log.warning("fingerbank lookup failed: %s", type(e).__name__)
         return None
+    if res is None and cloud_error and not settings.FINGERBANK_DB_PATH:
+        return None  # a failed cloud call is not an answer: do not cache it
     _cache[key] = res
     return res

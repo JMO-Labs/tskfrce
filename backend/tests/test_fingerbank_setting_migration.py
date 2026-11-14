@@ -12,7 +12,8 @@ PATH = (
     Path(__file__).resolve().parent.parent / "alembic/versions/f2n3g4e5r6b7_fingerbank_setting.py"
 )
 NEW = {"fingerbank_enabled", "fingerbank_cloud", "fingerbank_hint_seen",
-       "fingerbank_api_key", "fingerbank_synced_at"}  # fmt: skip
+       "fingerbank_api_key", "fingerbank_synced_at", "fingerbank_attempted_at",
+       "fingerbank_last_error", "fingerbank_last_error_at"}  # fmt: skip
 
 
 def _load():

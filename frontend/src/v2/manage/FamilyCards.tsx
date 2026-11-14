@@ -160,6 +160,17 @@ export function GifsCard({ fam }: { fam: Family }) {
   )
 }
 
+const FB_ERRORS: Record<string, string> = {
+  bad_key: 'Fingerbank rejected your key. Check it and save again.',
+  rate_limited: 'Fingerbank says too many requests. We will retry later.',
+  offline: "Couldn't reach Fingerbank. We will retry in an hour.",
+  invalid_db: 'Fingerbank sent something unexpected. We will retry in an hour.',
+  failed: 'The last Fingerbank update failed. We will retry in an hour.',
+}
+
+/** Last Fingerbank failure in words (cloud_* codes share the texts), or null. */
+export const fingerbankError = (code: string | null | undefined) => (code ? FB_ERRORS[code.replace(/^cloud_/, '')] ?? FB_ERRORS.failed : null)
+
 export function FingerbankCard({ fam }: { fam: Family }) {
   return (
     <Pane title="Device names" sub="Recognise phones, consoles and TVs by type." fam={fam}>
@@ -178,13 +189,18 @@ export function FingerbankCard({ fam }: { fam: Family }) {
                   onChange={(e) => set({ fingerbank_api_key: e.currentTarget.value })}
                 />
               </div>
-              <Switchy label="Also ask Fingerbank online for unknown devices" checked={val('fingerbank_cloud')} onChange={(v) => set({ fingerbank_cloud: v })} />
+              <Switchy label="Ask Fingerbank online instead of downloading its list" checked={val('fingerbank_cloud')} onChange={(v) => set({ fingerbank_cloud: v })} />
+              {fingerbankError(fam.fingerbank_last_error) && (
+                <p className="pn-help pn-note" role="alert">
+                  {fingerbankError(fam.fingerbank_last_error)}
+                </p>
+              )}
               <p className="pn-help pn-note">
                 Free account key from{' '}
                 <a className="pn-link" href="https://api.fingerbank.org/users/register" target="_blank" rel="noreferrer">
                   fingerbank.org
                 </a>
-                . Your home box downloads Fingerbank&apos;s device list once, refreshes it weekly, and matches devices on the box. Nothing leaves your home unless you turn on the online lookup.
+                . Your home box downloads Fingerbank&apos;s device list once, refreshes it weekly, and matches devices on the box. Nothing leaves your home unless you choose the online lookup, which sends each new device&apos;s network fingerprint to Fingerbank instead.
               </p>
             </>
           ) : (

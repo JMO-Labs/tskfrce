@@ -61,6 +61,12 @@ export function DeviceNetwork({ device, timeZone }: { device: Device; timeZone?:
             <b className="pk-mono">{device.hostname}</b>
           </div>
         )}
+        {device.device_class && (
+          <div className="pk-kv">
+            <span>Type</span>
+            <b>{device.device_class}</b>
+          </div>
+        )}
         <div className="pk-kv">
           <span>Maker</span>
           <b>{device.vendor ?? 'Unknown'}</b>

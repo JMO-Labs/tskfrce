@@ -24,10 +24,16 @@ def upgrade() -> None:
             b.add_column(sa.Column(c, sa.Boolean(), nullable=False, server_default="0"))
         b.add_column(sa.Column("fingerbank_api_key", sa.String(100), nullable=True))
         b.add_column(sa.Column("fingerbank_synced_at", sa.DateTime(), nullable=True))
+        b.add_column(sa.Column("fingerbank_attempted_at", sa.DateTime(), nullable=True))
+        b.add_column(sa.Column("fingerbank_last_error", sa.String(30), nullable=True))
+        b.add_column(sa.Column("fingerbank_last_error_at", sa.DateTime(), nullable=True))
 
 
 def downgrade() -> None:
     with op.batch_alter_table("family_settings") as b:
+        b.drop_column("fingerbank_last_error_at")
+        b.drop_column("fingerbank_last_error")
+        b.drop_column("fingerbank_attempted_at")
         b.drop_column("fingerbank_synced_at")
         b.drop_column("fingerbank_api_key")
         for c in reversed(_BOOLS):
