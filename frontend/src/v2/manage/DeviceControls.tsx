@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Icon } from '@/v2/parent/Icon'
-import { EMPTY_FILTER, FLAGS, SORTS, isFiltered, loadSort, saveSort, type DeviceFilter, type Flag, type SortKey } from './deviceFilter'
+import { EMPTY_FILTER, FLAGS, FLAG_GROUP, SORTS, isFiltered, loadSort, saveSort, type DeviceFilter, type Flag, type SortKey } from './deviceFilter'
 
 /** Sort + filter state for one list; the sort choice persists per browser under `scope`. */
 export function useDeviceView(scope: string) {
@@ -42,7 +42,10 @@ export function DeviceControls({ sort, onSort, filter, onFilter, owners = [], ne
       </div>
       {open && (
         <div className="p-dctl-panel" role="group" aria-label="Filters">
-          <div className="p-dctl-chips">{FLAGS.filter((f) => !hideFlags.includes(f.value)).map((f) => chip(filter.flags.includes(f.value), f.label, () => toggle(f.value)))}</div>
+          {([['lock', 'Lock state'], ['other', 'Other']] as const).map(([g, label]) => {
+            const fs = FLAGS.filter((f) => FLAG_GROUP[f.value] === g && !hideFlags.includes(f.value))
+            return fs.length > 0 && <div key={g} className="p-dctl-chips" aria-label={label}>{fs.map((f) => chip(filter.flags.includes(f.value), f.label, () => toggle(f.value)))}</div>
+          })}
           {owners.length > 0 && (
             <div className="p-dctl-chips" aria-label="Owner">{owners.map((o) => chip(filter.owners.includes(o.id), o.name, () => onFilter({ ...filter, owners: tog(filter.owners, o.id) })))}</div>
           )}

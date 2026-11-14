@@ -75,6 +75,7 @@ describe('applyDevices filters', () => {
     expect(ids(applyDevices(l, f({ flags: ['online'], networks: [1] }), 'name'))).toEqual([1])
   })
   it('several networks / owners OR together', () => {
+    // device 3 has no network_id, so a network filter leaves it out on purpose
     expect(ids(applyDevices(l, f({ networks: [1, 2] }), 'name'))).toEqual([2, 1])
     expect(ids(applyDevices(l, f({ owners: [7, 8] }), 'name'))).toEqual([2, 1])
   })
