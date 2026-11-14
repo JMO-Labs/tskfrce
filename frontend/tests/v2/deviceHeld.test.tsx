@@ -7,7 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fridgeTheme } from '@/v2/theme'
 import { api } from '@/v2/api'
 import { DeviceDetail } from '@/v2/manage/DeviceDetail'
-import { DeviceList } from '@/v2/manage/DeviceList'
+import { UnknownDevices } from '@/v2/manage/UnknownDevices'
 import type { Device } from '@/v2/types'
 import { fakeRouter } from './helpers/fakeRouter'
 
@@ -41,10 +41,13 @@ beforeEach(() => {
   })
 })
 
-test('the list marks a held device "New, held"', () => {
+// held devices are unassigned, so the parent finds them in the "Who's this?" list
+test('the list marks a held device "New, held" and Allow lifts the hold', async () => {
   fakeRouter.reset('/devices', {})
-  render(wrap(<DeviceList devices={[held]} kids={[]} onSelectDevice={() => {}} />))
-  expect(screen.getByRole('img', { name: /New, held/ })).toBeInTheDocument()
+  render(wrap(<UnknownDevices devices={[held]} kids={[]} />))
+  expect(screen.getByText('New, held')).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: 'Allow Unknown phone' }))
+  await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/devices/5', { method: 'PATCH', body: { held: false } }))
 })
 
 test('Allow lifts the hold', async () => {
