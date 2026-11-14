@@ -24,7 +24,7 @@ MDNS_TYPES = (
     "_airplay._tcp.local.",
 )
 MDNS_QUERY_EVERY = 300  # s
-_FIELDS = ("mdns_name", "model", "dhcp_fp")
+_FIELDS = ("mdns_name", "model", "dhcp_fp", "dhcp_hostname")
 _FRESH = 600  # s: only trust discovery entries this recent for IP -> MAC
 
 
@@ -47,6 +47,42 @@ def dhcp_fp_from_packet(pkt) -> tuple[str, str] | None:
         if pkt[Ether].src.lower() != mac:  # relayed or spoofed: sender is not the client
             return None
         return mac, fp
+    except Exception:  # noqa: BLE001 - best effort, the daemon keeps running
+        return None
+
+
+def _clean_hostname(raw) -> str | None:
+    if isinstance(raw, bytes):
+        raw = raw.decode("utf-8", "replace")
+    if not isinstance(raw, str):
+        return None
+    s = "".join(c for c in raw if c.isprintable() and c != "\ufffd").strip()
+    return s[:63] or None
+
+
+def dhcp_hostname_from_packet(pkt) -> tuple[str, str] | None:
+    """(client mac, hostname) from option 12, else the host part of option 81. Never raises."""
+    try:
+        from blocker.scapy_lite import BOOTP, DHCP, Ether
+
+        if not (pkt.haslayer(DHCP) and pkt.haslayer(BOOTP) and pkt.haslayer(Ether)):
+            return None
+        if pkt[BOOTP].op != 1:
+            return None
+        mac = ":".join(f"{b:02x}" for b in bytes(pkt[BOOTP].chaddr)[:6])
+        if pkt[Ether].src.lower() != mac:
+            return None
+        opts = {o[0]: o[1] for o in pkt[DHCP].options if isinstance(o, tuple) and len(o) > 1}
+        name = _clean_hostname(opts.get("hostname"))
+        if name is None and isinstance(opts.get("client_FQDN"), bytes):
+            raw = opts["client_FQDN"]
+            if len(raw) > 3 and raw[0] & 0x04:  # RFC 4702 E flag: canonical wire format
+                n = raw[3]
+                name = _clean_hostname(raw[4 : 4 + n]) if n and 4 + n <= len(raw) else None
+            else:
+                fqdn = _clean_hostname(raw[3:])  # skip flags + 2 rcode bytes
+                name = _clean_hostname(fqdn.split(".")[0]) if fqdn else None
+        return (mac, name) if name else None
     except Exception:  # noqa: BLE001 - best effort, the daemon keeps running
         return None
 
@@ -126,9 +162,12 @@ class Signals:
     # --- DHCP ---------------------------------------------------------------
 
     def _on_dhcp(self, pkt) -> None:
-        got = dhcp_fp_from_packet(pkt)
-        if got:
-            self.update(got[0], dhcp_fp=got[1])
+        fp = dhcp_fp_from_packet(pkt)
+        if fp:
+            self.update(fp[0], dhcp_fp=fp[1])
+        hn = dhcp_hostname_from_packet(pkt)
+        if hn:
+            self.update(hn[0], dhcp_hostname=hn[1])
 
     def run_dhcp(self, stop: threading.Event) -> None:
         try:

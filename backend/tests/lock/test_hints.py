@@ -37,6 +37,11 @@ def test_strong_name_case_insensitive():
     assert (h.candidate_id, h.reason) == (1, "name")
 
 
+def test_dhcp_hostname_matches_like_name():
+    h = run(new(hostname="Bobby-Laptop"), [sig(1, hostname="bobby-laptop")])
+    assert (h.candidate_id, h.reason) == (1, "name")
+
+
 def test_empty_name_never_matches():
     assert run(new(mdns_name=""), [sig(1, mdns_name="")]) is None
     assert run(new(), [sig(1)]) is None
