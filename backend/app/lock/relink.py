@@ -73,7 +73,12 @@ def undo_if_reappeared(db: Session, device: Device) -> bool:
     if not device.replaced:
         return False
     device.replaced = False
-    linked = db.query(Device).filter(Device.hint_of_id == device.id, Device.hint_reason == "relink")
+    cutoff = datetime.now(UTC).replace(tzinfo=None) - WINDOW  # older links may be parent-confirmed
+    linked = db.query(Device).filter(
+        Device.hint_of_id == device.id,
+        Device.hint_reason == "relink",
+        Device.first_seen >= cutoff,
+    )
     for new in linked:
         db.merge(DeviceHintRejection(device_id=new.id, candidate_id=device.id))
         new.owners, new.groups = [], []

@@ -37,6 +37,13 @@ def seen(client, mac=NEW_MAC, **kw):
     return r.json()["id"]
 
 
+def _assert_asked(db, did):
+    """No auto-link: parents are asked via a new_device notification, no link notice."""
+    db.expire_all()
+    assert db.query(Notification).filter_by(kind="new_device", device_id=did).count() >= 1
+    assert not db.query(Notification).filter_by(kind="device_hint").count()
+
+
 def test_relink_within_window(client, db, parent, kid):
     old = _old(db, kid)
     did = seen(client)
@@ -125,8 +132,20 @@ def test_same_owner_online_sibling_untouched(client, db, kid):
 def test_two_silent_same_owner_candidates_no_relink(client, db, kid):
     a = _old(db, kid, silent=timedelta(minutes=5))
     b = _old(db, kid, mac="9a:ff:8e:8e:6c:01", silent=timedelta(minutes=3))
-    assert _status(db, seen(client)) == "unassigned"
+    did = seen(client)
+    assert _status(db, did) == "unassigned"
     assert not db.get(Device, a.id).replaced and not db.get(Device, b.id).replaced
+    _assert_asked(db, did)
+
+
+def test_two_silent_same_owner_same_hostname_inherits_nothing(client, db, kid):
+    _old(db, kid, silent=timedelta(minutes=5), hostname="timmy-phone")
+    _old(db, kid, mac="9a:ff:8e:8e:6c:01", silent=timedelta(minutes=3), hostname="timmy-phone")
+    did = seen(client, hostname="timmy-phone")
+    db.expire_all()
+    d = db.get(Device, did)
+    assert d.status == "unassigned" and d.owners == [] and d.hint_of_id is None
+    _assert_asked(db, did)
 
 
 def test_two_owners_online_sibling_untouched(client, db, kid, parent):
@@ -141,7 +160,9 @@ def test_two_owners_online_sibling_untouched(client, db, kid, parent):
 def test_two_owners_both_silent_no_relink(client, db, kid, parent):
     _old(db, kid, silent=timedelta(minutes=5))
     _old(db, parent, mac="9a:ff:8e:8e:6c:01", silent=timedelta(minutes=4))
-    assert _status(db, seen(client)) == "unassigned"
+    did = seen(client)
+    assert _status(db, did) == "unassigned"
+    _assert_asked(db, did)
 
 
 def test_guest_join_while_phone_online(client, db, kid):
