@@ -171,3 +171,18 @@ def test_strict_mode_hint_never_unblocks(client, db, kid):
     did = seen(client, mdns_name="x")
     d = db.get(Device, did)
     assert d.status == "unassigned" and d.hint_of_id is None
+
+
+def test_dhcp_hostname_fills_empty_hostname_only(client, db):
+    did = seen(client, mac="aa:00:00:00:00:07", hostname=None, dhcp_hostname="bobby-laptop")
+    assert db.get(Device, did).hostname == "bobby-laptop"
+    assert db.get(Device, did).name == "bobby-laptop"
+    did = seen(client, mac="aa:00:00:00:00:08", hostname="rdns-name", dhcp_hostname="bobby")
+    assert db.get(Device, did).hostname == "rdns-name"
+
+
+def test_dhcp_hostname_relinks(client, db, parent, kid):
+    _old(db, kid, hostname="bobby-laptop")
+    did = seen(client, hostname=None, dhcp_hostname="Bobby-Laptop")
+    d = db.get(Device, did)
+    assert (d.hint_reason, d.status) == ("name", "assigned")
