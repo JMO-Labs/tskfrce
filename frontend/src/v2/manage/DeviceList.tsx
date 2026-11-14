@@ -173,7 +173,7 @@ export function DeviceList({
           {sorted.length > 0 && (
             <DeviceControls sort={view.sort} onSort={view.setSort} filter={view.filter} onFilter={view.setFilter}
               owners={kids.map((k) => ({ id: k.id, name: k.full_name || k.username }))}
-              networks={networks.map((n) => ({ id: Number(n.id), label: n.label }))} />
+              networks={netFilter ? [] : networks.map((n) => ({ id: Number(n.id), label: n.label }))} />
           )}
           {unknown + ignored > 0 && (
             <button

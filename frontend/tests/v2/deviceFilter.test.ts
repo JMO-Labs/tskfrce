@@ -50,6 +50,14 @@ describe('applyDevices filters', () => {
     expect(ids(applyDevices(l, f({ flags: ['private'] }), 'name'))).toEqual([2])
     expect(ids(applyDevices(l, f({ flags: ['unassigned'] }), 'name'))).toEqual([3])
   })
+  it('unassigned = no owner (assigned device without owner, not guests)', () => {
+    const m = [
+      dev({ id: 10, name: 'A', status: 'assigned', owner_ids: [] }),
+      dev({ id: 11, name: 'B', status: 'assigned', owner_ids: [7] }),
+      dev({ id: 12, name: 'C', status: 'guest', owner_ids: [] }),
+    ]
+    expect(ids(applyDevices(m, f({ flags: ['unassigned'] }), 'name'))).toEqual([10])
+  })
   it('owner and network', () => {
     expect(ids(applyDevices(l, f({ owner: 8 }), 'name'))).toEqual([2])
     expect(ids(applyDevices(l, f({ network: 1 }), 'name'))).toEqual([1])

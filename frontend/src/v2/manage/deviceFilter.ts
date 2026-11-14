@@ -61,7 +61,7 @@ const FLAG_TEST: Record<Flag, (d: Device) => boolean> = {
   unlocked: (d) => !isLocked(d),
   alerts: (d) => d.resisting || d.alerts > 0,
   private: (d) => !!d.random_mac,
-  unassigned: (d) => d.status === 'unassigned',
+  unassigned: (d) => d.owner_ids.length === 0 && d.status !== 'guest',
 }
 
 export const matches = (d: Device, f: DeviceFilter): boolean => {
