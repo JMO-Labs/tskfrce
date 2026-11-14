@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 from blocker.arp import LanFacts, TargetAddrs
-from blocker.resist import ResistanceCounter, ResistanceWatch, TcpInfo, _norm
+from blocker.resist import ResistanceCounter, ResistanceWatch, TcpInfo, UdpInfo, _norm
 
 LAN = LanFacts(gateway_ip="10.0.0.1", gateway_mac="aa:aa:aa:aa:aa:01", box_mac="bb:bb:bb:bb:bb:02")
 KID = "cc:cc:cc:cc:cc:03"
@@ -18,7 +18,8 @@ LAN_CIDRS = ["10.0.0.0/8", "fe80::/10"]
 
 def _counter(watched=WATCHED, **kw):
     t = [100.0]
-    c = ResistanceCounter(LAN, threshold=3, window=30, clock=lambda: t[0], **kw)
+    kw.setdefault("threshold", 3)
+    c = ResistanceCounter(LAN, window=30, clock=lambda: t[0], **kw)
     c.set_watched(watched)
     return c, t
 
@@ -475,9 +476,9 @@ def test_evidence_sample_classifies_new_and_retransmit():
 
 
 def test_evidence_is_capped_and_cleared_with_window():
-    c, t = _counter()
-    for _ in range(25):
-        c.observe(GW, BOX, KID_IP, INET, proto="udp", sport=443)
+    c, t = _counter(grace=0)
+    for i in range(25):
+        c.observe(GW, BOX, KID_IP, INET, udp=UdpInfo(443, 5000 + i))
     ev = c.evidence(KID)
     assert len(ev) == 10
     assert ev[0] == {"src": f"{INET}:443", "proto": "udp", "flags": "", "class": "new"}
@@ -505,3 +506,10 @@ def test_evidence_window_matches_tally_window():
     t[0] += 31
     c.observe(GW, BOX, KID_IP, INET, tcp=TcpInfo(443, 5000, 100, 0, True))  # retx, no live tally
     assert c.evidence(KID) == []
+
+
+def test_one_escaped_syn_ack_per_minute_is_not_bypass():
+    c, t = _counter(grace=30, threshold=20)
+    for i in range(10):
+        _tcp(c, t, 0, dport=40000 + i, syn_ack=True, at=131 + i * 60)
+        assert c.resisting() == set()

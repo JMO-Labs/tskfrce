@@ -541,7 +541,7 @@ def test_interface_discovery_reports_that_networks_gateway(monkeypatch):
 
     got = {}
 
-    def fake_run(cfg, stop, on_seen, iface=None, enrich=lambda s: s):
+    def fake_run(cfg, stop, on_seen, iface=None, enrich=lambda s: s, **kw):
         got[iface] = enrich(Seen(mac=MAC, ip="10.0.5.1", ipv6=[], hostname=None, vendor=None))
 
     monkeypatch.setattr(multinet, "run_discovery", fake_run)

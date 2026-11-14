@@ -37,6 +37,14 @@ class TcpInfo:
     flags: str = ""
 
 
+@dataclass(frozen=True)
+class UdpInfo:
+    """UDP ports of one gateway->box frame (QUIC etc.): a flow counts once, if opened post-grace."""
+
+    sport: int
+    dport: int
+
+
 _MAX_FLOWS = 4096  # per-MAC flow-table cap (bounded memory on small boxes)
 _MAX_SAMPLE = 10  # frames kept per MAC and window as report evidence
 _MAX_RETX = 3  # of those, at most this many retransmits
@@ -145,6 +153,18 @@ class ResistanceCounter:
             flows[key] = (end, pre_pause)
         return advanced and not pre_pause and not in_grace
 
+    def _is_new_udp_flow(self, mac: str, ip_src: str, ip_dst: str, udp: UdpInfo, ts: float) -> bool:
+        """True only for the first packet of a UDP flow first seen after the grace. Lock held."""
+        flows = self._flows.setdefault(mac, {})
+        key = ("udp", _norm(ip_src), udp.sport, _norm(ip_dst), udp.dport)
+        if key in flows:
+            return False
+        if len(flows) >= _MAX_FLOWS:
+            flows.pop(next(iter(flows)))
+        in_grace = ts - self._since.get(mac, ts) < self._grace
+        flows[key] = (0, in_grace)
+        return not in_grace
+
     def _in_lan(self, ip: str) -> bool:
         try:
             addr = ipaddress.ip_address(ip)
@@ -160,8 +180,7 @@ class ResistanceCounter:
         ip_src: str | None = None,
         now: float | None = None,
         tcp: TcpInfo | None = None,
-        proto: str | None = None,
-        sport: int | None = None,
+        udp: UdpInfo | None = None,
     ) -> None:
         """Count one box-bound frame. Everything not addressed to the box is ignored.
 
@@ -171,7 +190,8 @@ class ResistanceCounter:
         internet return traffic, not another LAN host reaching the device),
         counts as that device's ``from_gateway`` — the signal of a bypass. TCP frames
         only count as new-flow evidence (a SYN-ACK or advancing seq) after the grace
-        period; retransmits of a pre-pause flow are ignored.
+        period; retransmits of a pre-pause flow are ignored. UDP frames count once per flow, and
+        only for flows first seen after the grace.
         """
         src = src_mac.lower()
         dst = dst_mac.lower()
@@ -189,8 +209,13 @@ class ResistanceCounter:
                 and not self._in_lan(ip_src)
             ):
                 mac, field = self._ip2mac[_norm(ip_dst)], "from_gateway"
-                new = tcp is None or self._is_new_evidence(mac, ip_src, ip_dst, tcp, ts)
-                frame = self._frame(ip_src, tcp, proto, sport, new)
+                if tcp is not None:
+                    new = self._is_new_evidence(mac, ip_src, ip_dst, tcp, ts)
+                elif udp is not None:
+                    new = self._is_new_udp_flow(mac, ip_src, ip_dst, udp, ts)
+                else:
+                    new = True
+                frame = self._frame(ip_src, tcp, udp, new)
                 if not new:
                     live = self._tallies.get(mac)
                     if live is not None and ts - live[0] < self._window:
@@ -207,9 +232,12 @@ class ResistanceCounter:
                 self._sample(mac, start, frame)
 
     @staticmethod
-    def _frame(ip_src, tcp, proto, sport, new) -> dict[str, str]:
+    def _frame(ip_src, tcp, udp, new) -> dict[str, str]:
+        proto, sport = None, None
         if tcp is not None:
             proto, sport = "tcp", tcp.sport
+        elif udp is not None:
+            proto, sport = "udp", udp.sport
         port = f":{sport}" if sport is not None else ""
         src = f"[{ip_src}]{port}" if port and ":" in ip_src else f"{ip_src}{port}"
         return {
@@ -372,12 +400,8 @@ class ResistanceWatch:
                 syn_ack=(int(t.flags) & 0x12) == 0x12,
                 flags=str(t.flags),
             )
-        proto, sport = None, None
-        if tcp is None and pkt.haslayer(UDP):
-            proto, sport = "udp", pkt[UDP].sport
-        self.counter.observe(
-            pkt[Ether].src, pkt[Ether].dst, ip_dst, ip_src, tcp=tcp, proto=proto, sport=sport
-        )
+        udp = UdpInfo(pkt[UDP].sport, pkt[UDP].dport) if pkt.haslayer(UDP) else None
+        self.counter.observe(pkt[Ether].src, pkt[Ether].dst, ip_dst, ip_src, tcp=tcp, udp=udp)
 
     def _announced_ip(self, pkt: Any) -> None:
         """A watched MAC announcing an IP it isn't known by (ARP, DHCP REQUEST/ACK) -> callback."""

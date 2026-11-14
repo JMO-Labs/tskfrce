@@ -29,7 +29,7 @@ from blocker.backend import (
 )
 from blocker.config import Config
 from blocker.devices_meta import enrich_seen_with_gateway_and_box
-from blocker.discovery import run_discovery
+from blocker.discovery import Rescanner, run_discovery
 from blocker.hits import HitCounter
 from blocker.homework import HomeworkGate
 from blocker.hw_wiring import HomeworkWiring
@@ -111,11 +111,12 @@ class Service:
     ) -> None:
         self.cfg = cfg
         self._fw = firewall
+        self._rescanner = Rescanner()
         self._using_iface_mgr = cfg.lan_iface == ""
         if self._using_iface_mgr:
             # InterfaceManager will be set up later with on_seen callback after full init
             self._iface_manager: InterfaceManager | None = InterfaceManager(
-                cfg, lan_cidrs=lan_cidrs
+                cfg, lan_cidrs=lan_cidrs, rescanner=self._rescanner
             )
             self._redir = None  # type: ignore
         else:
@@ -562,7 +563,13 @@ class Service:
             self._spawn(lambda: self._iface_manager.run(self._stop))
         else:
             self._spawn(
-                lambda: run_discovery(self.cfg, self._stop, self._on_seen, enrich=self._enrich)
+                lambda: run_discovery(
+                    self.cfg,
+                    self._stop,
+                    self._on_seen,
+                    enrich=self._enrich,
+                    wake=self._rescanner.register(),
+                )
             )
         if self.cfg.lan_iface or self.cfg.mirror_iface:
             self._spawn(lambda: self._vlan.run(self._stop))
@@ -584,6 +591,7 @@ class Service:
                 self.test_block,
                 self.cfg.bind_host,
                 self.cfg.blocker_port,
+                rescan=self._rescanner.trigger,
             )
             self._spawn(self._api.serve_forever)
 
@@ -637,6 +645,7 @@ class Service:
                     self.test_block,
                     host,
                     port,
+                    rescan=self._rescanner.trigger,
                 )
                 self._api_servers.append(server)
                 self._spawn(server.serve_forever)
@@ -667,6 +676,7 @@ class Service:
                     self.test_block,
                     host,
                     port,
+                    rescan=self._rescanner.trigger,
                 )
                 self._api_servers.append(server)
                 self._spawn(server.serve_forever)
