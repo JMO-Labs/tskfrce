@@ -7,7 +7,9 @@ import sqlalchemy as sa
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 
-PATH = Path(__file__).resolve().parent.parent / "alembic/versions/g2h3o4l5d6p7_hold_private_devices.py"
+PATH = (
+    Path(__file__).resolve().parent.parent / "alembic/versions/g2h3o4l5d6p7_hold_private_devices.py"
+)
 
 
 def _cols(c, table):

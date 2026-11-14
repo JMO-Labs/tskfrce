@@ -1,7 +1,6 @@
 """Opt-in: new private-MAC devices start held until a parent acts (tskfrce#102)."""
 
 import pytest
-
 from app.core.config import settings
 from app.models.family import get_family
 from app.models.lock import Device
@@ -74,7 +73,9 @@ def test_assign_lifts_hold(client, db, on, parent_headers):
     db.commit()
     seen(client, PRIVATE)
     d = db.query(Device).one()
-    r = client.patch(f"/api/v1/devices/{d.id}", json={"owner_ids": [kid.id]}, headers=parent_headers)
+    r = client.patch(
+        f"/api/v1/devices/{d.id}", json={"owner_ids": [kid.id]}, headers=parent_headers
+    )
     assert r.json()["held"] is False
 
 
@@ -96,8 +97,11 @@ def _ambiguous(client, db, kid_ids=2):
     for i in range(2):
         db.add(
             Device(
-                mac=f"fa:00:00:00:00:0{i}", name=f"p{i}", status="assigned",
-                last_seen=now - timedelta(minutes=3), first_seen=now - timedelta(days=1),
+                mac=f"fa:00:00:00:00:0{i}",
+                name=f"p{i}",
+                status="assigned",
+                last_seen=now - timedelta(minutes=3),
+                first_seen=now - timedelta(days=1),
             )
         )
     db.commit()
