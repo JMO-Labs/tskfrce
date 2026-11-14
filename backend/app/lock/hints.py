@@ -28,6 +28,7 @@ class DeviceSignals:
     mdns_name: str | None = None
     model: str | None = None
     dhcp_fp: str | None = None
+    hostname: str | None = None  # reverse DNS or DHCP option 12/81
 
     @property
     def random_mac(self) -> bool:
@@ -42,6 +43,8 @@ class Hint:
 
 def _strength(new: DeviceSignals, c: DeviceSignals, paused_ids: set[int]) -> int:
     if new.mdns_name and (c.mdns_name or "").lower() == new.mdns_name.lower():
+        return STRONG
+    if new.hostname and (c.hostname or "").lower() == new.hostname.lower():
         return STRONG
     if new.model and new.dhcp_fp and (c.model, c.dhcp_fp) == (new.model, new.dhcp_fp):
         return MEDIUM
@@ -83,7 +86,7 @@ def find_hint(
 def _signals(d: Device) -> DeviceSignals:
     return DeviceSignals(
         d.id, d.mac, d.first_seen, d.last_seen, frozenset(o.id for o in d.owners),
-        d.mdns_name, d.model, d.dhcp_fp,
+        d.mdns_name, d.model, d.dhcp_fp, d.hostname,
     )  # fmt: skip
 
 
