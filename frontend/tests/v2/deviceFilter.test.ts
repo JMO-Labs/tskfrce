@@ -59,12 +59,25 @@ describe('applyDevices filters', () => {
     expect(ids(applyDevices(m, f({ flags: ['unassigned'] }), 'name'))).toEqual([10])
   })
   it('owner and network', () => {
-    expect(ids(applyDevices(l, f({ owner: 8 }), 'name'))).toEqual([2])
-    expect(ids(applyDevices(l, f({ network: 1 }), 'name'))).toEqual([1])
+    expect(ids(applyDevices(l, f({ owners: [8] }), 'name'))).toEqual([2])
+    expect(ids(applyDevices(l, f({ networks: [1] }), 'name'))).toEqual([1])
   })
   it('filters AND together', () => {
-    expect(ids(applyDevices(l, f({ flags: ['online', 'alerts'] }), 'name'))).toEqual([])
-    expect(ids(applyDevices(l, f({ flags: ['alerts'], owner: 8 }), 'name'))).toEqual([2])
+    expect(ids(applyDevices(l, f({ flags: ['online', 'locked'] }), 'name'))).toEqual([])
+    expect(ids(applyDevices(l, f({ flags: ['online', 'unlocked'] }), 'name'))).toEqual([1])
+    expect(ids(applyDevices(l, f({ flags: ['online'], networks: [2] }), 'name'))).toEqual([])
+    expect(ids(applyDevices(l, f({ flags: ['alerts'], owners: [8] }), 'name'))).toEqual([2])
+  })
+  it('Locked + Unlocked returns both', () => {
+    expect(ids(applyDevices(l, f({ flags: ['locked', 'unlocked'] }), 'name'))).toEqual([2, 3, 1])
+  })
+  it('Online + one network returns only online devices on it', () => {
+    expect(ids(applyDevices(l, f({ flags: ['online'], networks: [1] }), 'name'))).toEqual([1])
+  })
+  it('several networks / owners OR together', () => {
+    // device 3 has no network_id, so a network filter leaves it out on purpose
+    expect(ids(applyDevices(l, f({ networks: [1, 2] }), 'name'))).toEqual([2, 1])
+    expect(ids(applyDevices(l, f({ owners: [7, 8] }), 'name'))).toEqual([2, 1])
   })
   it('search name/hostname/ip/mac/maker', () => {
     expect(ids(applyDevices(l, f({ q: 'xbo' }), 'name'))).toEqual([1])

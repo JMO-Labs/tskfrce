@@ -19,9 +19,9 @@ export const FLAGS: { value: Flag; label: string }[] = [
   { value: 'unassigned', label: 'Unassigned' },
 ]
 
-export interface DeviceFilter { flags: Flag[]; owner: number | null; network: number | null; q: string }
-export const EMPTY_FILTER: DeviceFilter = { flags: [], owner: null, network: null, q: '' }
-export const isFiltered = (f: DeviceFilter) => f.flags.length > 0 || f.owner !== null || f.network !== null || f.q.trim() !== ''
+export interface DeviceFilter { flags: Flag[]; owners: number[]; networks: number[]; q: string }
+export const EMPTY_FILTER: DeviceFilter = { flags: [], owners: [], networks: [], q: '' }
+export const isFiltered = (f: DeviceFilter) => f.flags.length > 0 || f.owners.length > 0 || f.networks.length > 0 || f.q.trim() !== ''
 
 const maker = (d: Device) => d.vendor || d.maker_guess || null
 const time = (s?: string | null) => (s ? new Date(s).getTime() || null : null)
@@ -64,10 +64,19 @@ const FLAG_TEST: Record<Flag, (d: Device) => boolean> = {
   unassigned: (d) => d.owner_ids.length === 0 && d.status !== 'guest',
 }
 
+/** Chips in one group combine with OR; groups combine with AND. */
+export const FLAG_GROUP: Record<Flag, 'lock' | 'other'> = {
+  locked: 'lock', unlocked: 'lock', online: 'other', alerts: 'other', private: 'other', unassigned: 'other',
+}
+const groupOk = (d: Device, flags: Flag[], g: 'lock' | 'other') => {
+  const sel = flags.filter((fl) => FLAG_GROUP[fl] === g)
+  return sel.length === 0 || sel.some((fl) => FLAG_TEST[fl](d))
+}
+
 export const matches = (d: Device, f: DeviceFilter): boolean => {
-  if (!f.flags.every((fl) => FLAG_TEST[fl](d))) return false
-  if (f.owner !== null && !d.owner_ids.includes(f.owner)) return false
-  if (f.network !== null && d.network_id !== f.network) return false
+  if (!groupOk(d, f.flags, 'lock') || !groupOk(d, f.flags, 'other')) return false
+  if (f.owners.length && !f.owners.some((o) => d.owner_ids.includes(o))) return false
+  if (f.networks.length && !(d.network_id != null && f.networks.includes(d.network_id))) return false
   const q = f.q.trim().toLowerCase()
   if (!q) return true
   return [d.name, d.hostname, d.ip, d.mac, maker(d)].some((v) => v?.toLowerCase().includes(q))
