@@ -218,3 +218,39 @@ def test_lookup_failure_does_not_block_discovery(client, db, monkeypatch):
 
     monkeypatch.setattr(fingerbank, "_lookup", boom)
     assert seen(client, dhcp_fp="1,3,6")
+
+
+def test_rotation_relinks_on_later_scan(client, db, kid):
+    """Gap first_seen - last_seen is 25 s (< MIN_SILENCE); relinks once silence reaches 40 s."""
+    old = _old(db, kid, silent=timedelta(seconds=25))
+    did = seen(client)
+    assert _status(db, did) == "unassigned"
+    new = db.get(Device, did)
+    old.last_seen = _now() - timedelta(seconds=45)
+    new.first_seen = old.last_seen + timedelta(seconds=25)
+    db.commit()
+    assert seen(client) == did
+    assert _status(db, did) == "assigned"
+    assert db.get(Device, did).hint_of_id == old.id
+    assert db.get(Device, old.id).replaced is True
+
+
+def test_still_seen_candidate_never_relinked_on_rescan(client, db, kid):
+    old = _old(db, kid, silent=timedelta(seconds=25))
+    did = seen(client)
+    old.last_seen = _now() - timedelta(seconds=5)
+    db.commit()
+    seen(client)
+    assert _status(db, did) == "unassigned"
+    assert db.get(Device, old.id).replaced is False
+
+
+def test_no_reeval_after_window(client, db, kid):
+    old = _old(db, kid, silent=timedelta(seconds=25))
+    did = seen(client)
+    new = db.get(Device, did)
+    new.first_seen = _now() - timedelta(minutes=11)
+    old.last_seen = new.first_seen - timedelta(seconds=60)
+    db.commit()
+    seen(client)
+    assert _status(db, did) == "unassigned"

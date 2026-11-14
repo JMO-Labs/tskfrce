@@ -49,7 +49,8 @@ def apply_relink(db: Session, device: Device) -> bool:
         )  # fmt: skip
         if c.random_mac
         and c.id not in rejected
-        and MIN_SILENCE <= device.first_seen - c.last_seen <= WINDOW
+        and now - c.last_seen >= MIN_SILENCE
+        and timedelta(0) <= device.first_seen - c.last_seen <= WINDOW
         and not (c.hint_reason == "relink" and now - c.first_seen <= WINDOW)  # no chains
         and not _conflict(device, c)
     ]
