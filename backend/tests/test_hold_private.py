@@ -110,6 +110,64 @@ def test_ambiguous_relink_suggests_setting_once_off(client, db):
     assert [s["rule"] for s in items if s["rule"] == "devices.hold_private"]
 
 
+def test_suggestion_stays_gone_once_dismissed(client, db, parent_headers):
+    _ambiguous(client, db)
+    s = next(i for i in suggestions(db)["items"] if i["rule"] == "devices.hold_private")
+    r = client.post(
+        "/api/v1/suggestions/dismiss",
+        json={"key": s["key"], "fingerprint": s["fingerprint"]},
+        headers=parent_headers,
+    )
+    assert r.status_code == 200
+    seen(client, "fe:00:00:00:00:98")  # another ambiguous relink does not bring it back
+    r = client.get("/api/v1/suggestions", headers=parent_headers)
+    assert "devices.hold_private" not in [i["rule"] for i in r.json()["items"]]
+
+
+def _kid_device(db, kid, mac="aa:00:00:00:00:01", silent=3, **kw):
+    from datetime import datetime, timedelta
+
+    d = Device(
+        mac=mac, name="Timmy's iPad", status="assigned", mdns_name="Bobbys-iPad",
+        first_seen=datetime.utcnow() - timedelta(days=9),
+        last_seen=datetime.utcnow() - timedelta(minutes=silent), **kw,
+    )  # fmt: skip
+    d.owners = [kid]
+    db.add(d)
+    db.commit()
+    return d
+
+
+def test_hinted_private_device_is_held_not_opened(client, db, on, kid):
+    _kid_device(db, kid, silent=120)  # outside the relink window: only the hint applies
+    seen(client, PRIVATE, mdns_name="bobbys-ipad")
+    d = db.query(Device).filter_by(mac=PRIVATE).one()
+    assert d.held is True and d.hint_of_id is None
+    assert PRIVATE in blocked(client)
+
+
+def test_single_candidate_relink_unaffected_by_setting(client, db, on, kid):
+    old = _kid_device(db, kid, mac="fa:00:00:00:00:07")
+    seen(client, PRIVATE)
+    d = db.query(Device).filter_by(mac=PRIVATE).one()
+    assert d.held is False and d.status == "assigned" and d.owners == [kid]
+    assert d.hint_of_id == old.id and PRIVATE not in blocked(client)
+
+
+def test_relink_of_paused_device_stays_paused(client, db, on, kid):
+    from datetime import datetime
+
+    from app.models.lock import Override
+
+    old = _kid_device(db, kid, mac="fa:00:00:00:00:07")
+    db.add(Override(device_id=old.id, action="lock", source="manual", created_at=datetime.utcnow()))
+    db.commit()
+    seen(client, PRIVATE)
+    d = db.query(Device).filter_by(mac=PRIVATE).one()
+    assert d.hint_of_id == old.id and d.held is False
+    assert PRIVATE in blocked(client)
+
+
 def test_no_suggestion_when_on(client, db, on):
     _ambiguous(client, db)
     assert not [s for s in suggestions(db)["items"] if s["rule"] == "devices.hold_private"]
