@@ -20,6 +20,7 @@ from app.lock.fingerbank import friendly_name
 from app.lock.hints import apply_hint
 from app.lock.identity import note_identity_change
 from app.lock.loop import trigger
+from app.lock.relink import WINDOW as RELINK_WINDOW
 from app.lock.relink import apply_relink, undo_if_reappeared
 from app.lock.rules import block_reason
 from app.lock.schedule import local_now
@@ -272,10 +273,15 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
             activity.log(db, dev.id, "address_change", now, detail=f"{old_ip} → {body.ip}")
         note_identity_change(db, dev, before[1], now)
         changed = before != (dev.mdns_name, dev.model, dev.dhcp_fp, dev.hostname)
+        young = (
+            dev.random_mac and dev.hint_of_id is None and now - dev.first_seen <= RELINK_WINDOW
+        )  # a rotating phone's old MAC only goes silent after the new one appears
         hinted = hinted or (
-            changed
-            and dev.status == "unassigned"
-            and (apply_relink(db, dev) or apply_hint(db, dev))
+            dev.status == "unassigned"
+            and (
+                (changed and (apply_relink(db, dev) or apply_hint(db, dev)))
+                or (young and not changed and apply_relink(db, dev))
+            )
         )
     if new and dev.hostname:
         _note_new_address(db, dev, now)
