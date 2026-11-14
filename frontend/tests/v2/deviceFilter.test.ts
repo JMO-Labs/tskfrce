@@ -1,5 +1,4 @@
-import { describe, expect, it, beforeEach } from 'vitest'
-import { applyDevices, loadSort, saveSort, sortDevices, EMPTY_FILTER, type DeviceFilter } from './deviceFilter'
+import { applyDevices, loadSort, saveSort, sortDevices, EMPTY_FILTER, type DeviceFilter } from '@/v2/manage/deviceFilter'
 import type { Device } from '@/v2/types'
 
 const dev = (o: Partial<Device>): Device => ({
