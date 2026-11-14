@@ -18,7 +18,8 @@ LAN_CIDRS = ["10.0.0.0/8", "fe80::/10"]
 
 def _counter(watched=WATCHED, **kw):
     t = [100.0]
-    c = ResistanceCounter(LAN, threshold=3, window=30, clock=lambda: t[0], **kw)
+    kw.setdefault("threshold", 3)
+    c = ResistanceCounter(LAN, window=30, clock=lambda: t[0], **kw)
     c.set_watched(watched)
     return c, t
 
