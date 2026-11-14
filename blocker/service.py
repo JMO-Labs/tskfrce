@@ -556,7 +556,9 @@ class Service:
             log.exception("enable_forwarding failed")
         if not self._using_iface_mgr and self._watch is None:
             counter = ResistanceCounter(self._redir._lanfacts(), lan_cidrs=self._lan_cidrs)
-            self._watch = ResistanceWatch(self.cfg, counter, on_new_ip=self._on_new_ip)
+            self._watch = ResistanceWatch(
+                self.cfg, counter, on_new_ip=self._on_new_ip, on_dhcp=self._redir.poke
+            )
         self._spawn(self._reconcile_loop)
         self._spawn(self._resist_loop)
         if self._using_iface_mgr:

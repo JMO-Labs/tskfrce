@@ -318,8 +318,10 @@ class ResistanceWatch:
         *,
         sniffer_factory: Callable[..., Any] = _real_sniffer,
         on_new_ip: Callable[[str, str], None] | None = None,
+        on_dhcp: Callable[[str], None] | None = None,
     ) -> None:
         self._cfg = cfg
+        self._on_dhcp = on_dhcp
         self._on_new_ip = on_new_ip
         self.counter = counter
         self._factory = sniffer_factory
@@ -383,6 +385,7 @@ class ResistanceWatch:
         if not pkt.haslayer(Ether):
             return
         self._announced_ip(pkt)
+        self._dhcp_rejoin(pkt)
         if pkt.haslayer(IP):
             ip_dst, ip_src = pkt[IP].dst, pkt[IP].src
         elif pkt.haslayer(IPv6):
@@ -402,6 +405,25 @@ class ResistanceWatch:
             )
         udp = UdpInfo(pkt[UDP].sport, pkt[UDP].dport) if pkt.haslayer(UDP) else None
         self.counter.observe(pkt[Ether].src, pkt[Ether].dst, ip_dst, ip_src, tcp=tcp, udp=udp)
+
+    def _dhcp_rejoin(self, pkt: Any) -> None:
+        """Any DHCP frame from a watched MAC (DISCOVER/REQUEST, whatever its hostname or vendor
+        class) -> re-poison now: a rejoining device must not get a window before the next cadence."""
+        if self._on_dhcp is None:
+            return
+        try:
+            from blocker.scapy_lite import BOOTP, DHCP, Ether
+
+            if not (pkt.haslayer(DHCP) and pkt.haslayer(BOOTP)):
+                return
+            watched = {m.lower() for m in (self._watched or {})}
+            for mac in {
+                pkt[Ether].src.lower(),
+                ":".join(f"{b:02x}" for b in bytes(pkt[BOOTP].chaddr)[:6]),
+            } & watched:
+                self._on_dhcp(mac)
+        except Exception:
+            log.exception("dhcp rejoin handling failed")
 
     def _announced_ip(self, pkt: Any) -> None:
         """A watched MAC announcing an IP it isn't known by (ARP, DHCP REQUEST/ACK) -> callback."""

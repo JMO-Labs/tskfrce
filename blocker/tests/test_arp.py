@@ -294,3 +294,16 @@ def test_burst_is_sent_outside_the_lock():
     m.set_targets({DEV: TargetAddrs(mac=DEV, ip="192.168.1.50", alt_ip=("192.168.1.99",))})
     m.stop_all()
     assert held[1] is False
+
+
+def test_poke_spoofs_now_for_active_target_only():
+    fs = FakeSend()
+    m = RedirectionManager(CFG, lan=LAN, send=fs, cadence=30)
+    m.set_targets({DEV: TargetAddrs(mac=DEV, ip="192.168.1.50")})
+    assert fs.event.wait(1.0)
+    n = len(fs.calls)
+    m.poke(DEV.upper())
+    assert len(fs.calls) == n + 1
+    m.poke("de:ad:be:ef:00:99")
+    assert len(fs.calls) == n + 1
+    m.stop_all()

@@ -265,6 +265,14 @@ class RedirectionManager:
         except Exception:
             log.exception("redirect burst failed for %s", target.mac)
 
+    def poke(self, mac: str) -> None:
+        """Spoof this device right now (it just rejoined); no-op unless it is actively enforced."""
+        with self._lock:
+            target = next((t for m, t in self._targets.items() if m.lower() == mac.lower()), None)
+            live = target is not None and _active(target) and target.mac in self._threads
+        if live:
+            self._burst(target)
+
     def stop_all(self) -> None:
         with self._lock:
             threads = list(self._threads.values())
