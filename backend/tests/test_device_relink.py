@@ -31,7 +31,7 @@ def _old(db, kid, mac=OLD_MAC, silent=timedelta(minutes=5), **kw):
 
 def seen(client, mac=NEW_MAC, **kw):
     r = client.post(
-        URL, json={"mac": mac, "ip": "10.0.0.9", "hostname": "phone", **kw}, headers=tok()
+        URL, json={"mac": mac, "ip": "10.0.0.9", **{"hostname": "phone", **kw}}, headers=tok()
     )
     assert r.status_code == 200, r.text
     return r.json()["id"]
@@ -113,11 +113,12 @@ def test_online_candidate_never_relinked(client, db, kid):
     assert db.get(Device, old.id).replaced is False
 
 
-def test_two_same_owner_candidates_no_relink(client, db, kid):
-    _old(db, kid, silent=timedelta(minutes=5))
+def test_same_owner_online_sibling_untouched(client, db, kid):
+    phone = _old(db, kid, silent=timedelta(minutes=5))
     laptop = _old(db, kid, mac="9a:ff:8e:8e:6c:01", silent=timedelta(seconds=2))
     did = seen(client)
-    assert _status(db, did) == "unassigned"
+    db.expire_all()
+    assert db.get(Device, did).hint_of_id == phone.id  # the silent phone, not the laptop
     assert db.get(Device, laptop.id).replaced is False
 
 
@@ -128,11 +129,19 @@ def test_two_silent_same_owner_candidates_no_relink(client, db, kid):
     assert not db.get(Device, a.id).replaced and not db.get(Device, b.id).replaced
 
 
-def test_two_owners_no_relink(client, db, kid, parent):
-    _old(db, kid, silent=timedelta(minutes=5))
+def test_two_owners_online_sibling_untouched(client, db, kid, parent):
+    phone = _old(db, kid, silent=timedelta(minutes=5))
     other = _old(db, parent, mac="9a:ff:8e:8e:6c:01", silent=timedelta(seconds=2))
-    assert _status(db, seen(client)) == "unassigned"
+    did = seen(client)
+    db.expire_all()
+    assert db.get(Device, did).hint_of_id == phone.id
     assert db.get(Device, other.id).replaced is False
+
+
+def test_two_owners_both_silent_no_relink(client, db, kid, parent):
+    _old(db, kid, silent=timedelta(minutes=5))
+    _old(db, parent, mac="9a:ff:8e:8e:6c:01", silent=timedelta(minutes=4))
+    assert _status(db, seen(client)) == "unassigned"
 
 
 def test_guest_join_while_phone_online(client, db, kid):
@@ -146,7 +155,7 @@ def test_relinked_device_is_not_a_source_for_chain(client, db, kid):
     first = seen(client)
     db.get(Device, first).last_seen = _now() - timedelta(minutes=2)
     db.commit()
-    second = seen(client, mac="22:e2:a7:7b:cc:07")
+    second = seen(client, mac="22:e2:a7:7b:cc:07", hostname="other")
     assert _status(db, first) == "assigned"
     assert _status(db, second) == "unassigned"
     assert db.get(Device, first).replaced is False
