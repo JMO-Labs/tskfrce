@@ -19,7 +19,7 @@ from app.lock import activity
 from app.lock.hints import apply_hint
 from app.lock.identity import note_identity_change
 from app.lock.loop import trigger
-from app.lock.relink import apply_relink
+from app.lock.relink import apply_relink, undo_if_reappeared
 from app.lock.rules import block_reason
 from app.lock.schedule import local_now
 from app.lock.state import Prefetch, desired_blocked, device_facts
@@ -250,13 +250,14 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
         trigger()
     else:
         old_ip = dev.ip
+        hinted = undo_if_reappeared(db, dev)
         before = (dev.mdns_name, dev.model, dev.dhcp_fp, dev.hostname)
         _apply(dev, body, now)
         if old_ip is not None and body.ip is not None and old_ip != body.ip:
             activity.log(db, dev.id, "address_change", now, detail=f"{old_ip} → {body.ip}")
         note_identity_change(db, dev, before[1], now)
         changed = before != (dev.mdns_name, dev.model, dev.dhcp_fp, dev.hostname)
-        hinted = (
+        hinted = hinted or (
             changed
             and dev.status == "unassigned"
             and (apply_relink(db, dev) or apply_hint(db, dev))
