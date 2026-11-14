@@ -1,7 +1,7 @@
 """devices.name_from_parent
 
 Revision ID: n4m5f6p7a8r9
-Revises: n3t4w5k6i7d8
+Revises: g2h3o4l5d6p7
 Create Date: 2026-11-14 13:00:00.000000
 """
 
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "n4m5f6p7a8r9"
-down_revision: str | Sequence[str] | None = "n3t4w5k6i7d8"
+down_revision: str | Sequence[str] | None = "g2h3o4l5d6p7"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
