@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Icon } from '@/v2/parent/Icon'
-import { EMPTY_FILTER, FLAGS, SORTS, isFiltered, loadSort, saveSort, type DeviceFilter, type Flag, type SortKey } from './deviceFilter'
+import { EMPTY_FILTER, FLAGS, FLAG_GROUP, SORTS, isFiltered, loadSort, saveSort, type DeviceFilter, type Flag, type SortKey } from './deviceFilter'
 
 /** Sort + filter state for one list; the sort choice persists per browser under `scope`. */
 export function useDeviceView(scope: string) {
@@ -23,8 +23,9 @@ interface Props {
 /** One compact row: search, sort dropdown, and a Filter button that opens the chips. */
 export function DeviceControls({ sort, onSort, filter, onFilter, owners = [], networks = [], hideFlags = [] }: Props) {
   const [open, setOpen] = useState(false)
-  const n = filter.flags.length + (filter.owner !== null ? 1 : 0) + (filter.network !== null ? 1 : 0)
+  const n = filter.flags.length + filter.owners.length + filter.networks.length
   const toggle = (f: Flag) => onFilter({ ...filter, flags: filter.flags.includes(f) ? filter.flags.filter((x) => x !== f) : [...filter.flags, f] })
+  const tog = (a: number[], id: number) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id])
   const chip = (on: boolean, label: string, click: () => void) => (
     <button key={label} type="button" className="p-chip p-fchip" data-on={on} aria-pressed={on} onClick={click}>{label}</button>
   )
@@ -41,12 +42,15 @@ export function DeviceControls({ sort, onSort, filter, onFilter, owners = [], ne
       </div>
       {open && (
         <div className="p-dctl-panel" role="group" aria-label="Filters">
-          <div className="p-dctl-chips">{FLAGS.filter((f) => !hideFlags.includes(f.value)).map((f) => chip(filter.flags.includes(f.value), f.label, () => toggle(f.value)))}</div>
+          {([['lock', 'Lock state'], ['other', 'Other']] as const).map(([g, label]) => {
+            const fs = FLAGS.filter((f) => FLAG_GROUP[f.value] === g && !hideFlags.includes(f.value))
+            return fs.length > 0 && <div key={g} className="p-dctl-chips" aria-label={label}>{fs.map((f) => chip(filter.flags.includes(f.value), f.label, () => toggle(f.value)))}</div>
+          })}
           {owners.length > 0 && (
-            <div className="p-dctl-chips" aria-label="Owner">{owners.map((o) => chip(filter.owner === o.id, o.name, () => onFilter({ ...filter, owner: filter.owner === o.id ? null : o.id })))}</div>
+            <div className="p-dctl-chips" aria-label="Owner">{owners.map((o) => chip(filter.owners.includes(o.id), o.name, () => onFilter({ ...filter, owners: tog(filter.owners, o.id) })))}</div>
           )}
           {networks.length > 1 && (
-            <div className="p-dctl-chips" aria-label="Network">{networks.map((w) => chip(filter.network === w.id, w.label, () => onFilter({ ...filter, network: filter.network === w.id ? null : w.id })))}</div>
+            <div className="p-dctl-chips" aria-label="Network">{networks.map((w) => chip(filter.networks.includes(w.id), w.label, () => onFilter({ ...filter, networks: tog(filter.networks, w.id) })))}</div>
           )}
         </div>
       )}
