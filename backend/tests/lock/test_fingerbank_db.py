@@ -197,6 +197,17 @@ def test_success_clears_last_error(db, _env, monkeypatch):
     assert fam.fingerbank_last_error is None and fam.fingerbank_last_error_at is None
 
 
+class _NoClose:
+    def __init__(self, db):
+        self._db = db
+
+    def __getattr__(self, name):
+        return getattr(self._db, name)
+
+    def close(self):
+        pass
+
+
 def test_failed_refresh_is_not_retried_on_next_tick(db, _env, monkeypatch):
     started = []
 
@@ -209,8 +220,10 @@ def test_failed_refresh_is_not_retried_on_next_tick(db, _env, monkeypatch):
             self.target()
 
     monkeypatch.setattr(fingerbank_db.threading, "Thread", T)
-    monkeypatch.setattr("app.core.database.SessionLocal", lambda: db)
-    monkeypatch.setattr(db, "close", lambda: None)
+    # _bg closes its session: hand it a proxy so the test session stays usable. Patching
+    # db.close itself would outlive the db fixture teardown (autouse monkeypatch is set up
+    # first) and leave the Postgres session idle in transaction, hanging the next TRUNCATE.
+    monkeypatch.setattr("app.core.database.SessionLocal", lambda: _NoClose(db))
     fam = _enable(db)
     calls = _fail(monkeypatch, _status(401))
     fingerbank_db.tick(db)
