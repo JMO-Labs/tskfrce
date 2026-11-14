@@ -1,0 +1,47 @@
+# Phase 3: Ubuntu laptop (platform L, box device 49). The kid is assumed to have sudo (own laptop).
+# Probes print via=<gateway MAC the laptop used>; rc 0 = real example.com page came back.
+# Teardowns always run (runner `finally`), so the laptop's ARP/DNS go back to normal.
+
+[[scenario]]
+id = "l.plain"
+title = "Laptop does nothing special"
+platforms = ["L"]
+probe = '''curl -s -m10 https://example.com | grep -q 'Example Domain' '''
+
+[[scenario]]
+id = "l.static_arp"
+live_check = false  # router answers go to the box, so even Google goes dark
+alerts_allowed = ["bypass", "resisting"]
+title = "Pin the real router MAC (static ARP) so the box's spoof is ignored"
+platforms = ["L"]
+locked_setup = "sudo -n ip neigh replace 10.10.40.1 lladdr f4:92:bf:8b:d8:2b dev wlp2s0 nud permanent"
+probe = '''curl -s -m10 https://example.com | grep -q 'Example Domain' && echo via=$(ip neigh show 10.10.40.1 | awk '{print $5}')'''
+teardown = "sudo -n ip neigh del 10.10.40.1 dev wlp2s0; true"
+
+[[scenario]]
+id = "l.static_arp_early"
+live_check = false
+title = "Static ARP set while still unlocked (kid prepares before the pause)"
+platforms = ["L"]
+setup = "sudo -n ip neigh replace 10.10.40.1 lladdr f4:92:bf:8b:d8:2b dev wlp2s0 nud permanent"
+probe = '''curl -s -m10 https://example.com | grep -q 'Example Domain' && echo via=$(ip neigh show 10.10.40.1 | awk '{print $5}')'''
+teardown = "sudo -n ip neigh del 10.10.40.1 dev wlp2s0; true"
+
+[[scenario]]
+id = "l.dns_direct"
+title = "Ask 1.1.1.1 directly for DNS, then fetch"
+platforms = ["L"]
+probe = '''ip=$(dig +short +time=3 +tries=1 @1.1.1.1 example.com A | grep -E '^[0-9.]+$' | head -1); [ -n "$ip" ] && curl -s -m10 --resolve example.com:443:$ip https://example.com | grep -q 'Example Domain' '''
+
+[[scenario]]
+id = "l.doh"
+title = "DNS over HTTPS to Cloudflare (curl --doh-url)"
+platforms = ["L"]
+probe = '''curl -s -m10 --doh-url https://1.1.1.1/dns-query https://example.com | grep -q 'Example Domain' '''
+
+[[scenario]]
+id = "l.sni_google"
+title = "SNI www.google.com aimed at a non-Google IP (1.1.1.1): does the gate dial the IP or the name?"
+platforms = ["L"]
+# escape = Cloudflare's own cert comes back, i.e. the gate tunnelled to the IP the kid chose
+probe = """echo | timeout 8 openssl s_client -connect 1.1.1.1:443 -servername www.google.com 2>/dev/null | grep -q 'CN = cloudflare-dns.com'"""

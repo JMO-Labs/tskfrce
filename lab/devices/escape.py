@@ -30,11 +30,22 @@ SSH = [
     str(Path.home() / ".ssh/id_gen_key"),
     "ubuntu@192.168.1.98",
 ]
-MAC = "c4:8b:66:54:72:0d"
+MACS = {"A": "c4:8b:66:54:72:0d", "L": "98:22:ef:94:7e:f5"}  # box device MAC per platform
+MAC = MACS["A"]  # main() switches it to the platform under test
+# laptop (L) is reached from the droid netns: same Wi-Fi subnet, so a paused laptop's replies
+# don't go via its (spoofed) gateway; from this host's 192.168.1.x they would, and SSH dies
+LAPTOP = [
+    "sudo", "-n", "/usr/local/sbin/droidns", "run", "ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8",
+    "-o", f"UserKnownHostsFile={Path.home()}/.ssh/known_hosts", "-i", f"{Path.home()}/.ssh/id_gen_key",
+    "defender@10.10.40.79",
+]
 RC_RE = re.compile(r"__RC=(\d+)\s*$")
 VIA_RE = re.compile(r"via=(\S+)")
 CELL_PREFIX = "10.0.2."  # emulator cellular (eth0); Wi-Fi/box side is 10.0.77.x
-LIVE = "/data/local/tmp/kit/live.sh"
+LIVE = {  # gate passes www.google.com: still on the box's Wi-Fi while paused
+    "A": "/data/local/tmp/kit/live.sh",
+    "L": "curl -s -m8 -o /dev/null -w '%{http_code}' https://www.google.com/generate_204 | grep -q 204",
+}
 
 
 def default_is_cell():
@@ -63,8 +74,9 @@ def adb(*args, timeout=30):
         return 124, ""
 
 
-def box(cmd, mac=MAC):
+def box(cmd, mac=None):
     """Run boxctl.py inside the backend container; returns parsed JSON."""
+    mac = mac or MAC
     remote = f"docker exec -i task4ce-backend-1 python - {cmd} {mac}"
     with open(HERE / "boxctl.py", "rb") as f:
         p = subprocess.run([*SSH, remote], stdin=f, capture_output=True, text=True, timeout=90)
@@ -87,10 +99,18 @@ def sh(platform, cmd, timeout):
             return r.returncode, r.stdout
         except subprocess.TimeoutExpired:
             return 124, "timeout"
-    if platform != "A":
+    if platform not in ("A", "L"):
         return 255, f"no driver for {platform}"
-    # subshell so `exit N` inside a probe still reaches the sentinel; missing sentinel = adb/transport failure
-    rc, out = adb("shell", f"( {cmd}\n); echo __RC=$?", timeout=timeout)
+    # subshell so `exit N` inside a probe still reaches the sentinel; missing sentinel = transport failure
+    wrapped = f"( {cmd}\n); echo __RC=$?"
+    if platform == "L":
+        try:
+            p = subprocess.run([*LAPTOP, wrapped], capture_output=True, text=True, timeout=timeout)
+            rc, out = p.returncode, p.stdout
+        except subprocess.TimeoutExpired:
+            return 124, ""
+    else:
+        rc, out = adb("shell", wrapped, timeout=timeout)
     if rc == 124:
         return 124, out
     m = RC_RE.search(out)
@@ -169,10 +189,10 @@ def last_line(out):
 
 def live_check(platform):
     """True if the device still reaches Google's 204 endpoint through the box (still on its Wi-Fi)."""
-    if platform != "A":
+    if platform not in LIVE:
         return True
     for i in range(2):
-        rc, out = sh(platform, LIVE, 30)
+        rc, out = sh(platform, LIVE[platform], 30)
         if rc == 0:
             return True
         time.sleep(3)
@@ -218,7 +238,8 @@ def run_one(sc, platform, opt):
             via = via or (m and m.group(1))
             if rc == 0 and not via and platform == "A" and default_is_cell():
                 via = CELL_PREFIX + "default"  # probe without via=: phone had left Wi-Fi
-        live = live_check(platform)
+        # live_check = false: rows where a total blackout (even Google) is the expected outcome
+        live = live_check(platform) if sc.get("live_check", True) else True
         time.sleep(sc.get("alert_wait", opt.alert_wait))  # box reports hits/resisting every ~15 s
         after = box("status")
         box("unlock")
@@ -361,6 +382,8 @@ def main():
         "--scenarios", nargs="*", default=sorted(map(str, HERE.glob("scenarios*.toml")))
     )
     opt = ap.parse_args()
+    global MAC
+    MAC = MACS.get(opt.platform, MAC)
     if opt.selftest:
         return selftest()
     scs = [s for s in load(opt.scenarios) if fnmatch.fnmatch(s["id"], opt.only)]
