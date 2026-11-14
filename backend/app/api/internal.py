@@ -1,8 +1,8 @@
 """Internal endpoints used by the network blocker (shared-token auth)."""
 
 import hmac
-import json
 import ipaddress
+import json
 import re
 from datetime import UTC, datetime
 from typing import Annotated, Literal
