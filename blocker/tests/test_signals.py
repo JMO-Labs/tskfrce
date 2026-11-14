@@ -155,6 +155,7 @@ def test_query_mdns_sends_ptr_for_each_type(monkeypatch):
     sent = []
     monkeypatch.setattr(sa, "send", lambda pkt, **kw: sent.append(pkt))
     s = sig.Signals.__new__(sig.Signals)
+    s.cfg = CFG
     s._ifaces = lambda: ["wlo1"]
     s._query_mdns()
     (pkt,) = sent
@@ -248,7 +249,7 @@ def test_dhcp_sniffs_each_managed_iface_and_sets_fp():
             break
         time.sleep(0.01)
     assert sorted(m.iface for m in made) == ["eno2", "wlo1"]
-    next(m for m in made if m.iface == "wlo1").prn(_req((55, bytes([1, 121, 3, 6]))))
+    next(m for m in made if m.iface == "wlo1").prn(_req(("param_req_list", [1, 121, 3, 6])))
     stop.set()
     t.join(5)
     assert sg._cache[MAC]["dhcp_fp"] == "1,121,3,6"
