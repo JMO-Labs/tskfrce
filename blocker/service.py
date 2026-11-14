@@ -450,9 +450,11 @@ class Service:
             resisting = self._watch.counter.resisting() | self._sites.resisting()
         evidence = self._evidence(resisting)
         if evidence:
-            self._report(self.cfg, resisting, evidence=evidence)
+            ok = self._report(self.cfg, resisting, evidence=evidence)
         else:
-            self._report(self.cfg, resisting)
+            ok = self._report(self.cfg, resisting)
+        if ok is not False:  # keep re-sending evidence until a report succeeds
+            self._alerted = set(resisting)
         h = self.hits.drain()
         if h:
             self._report_hits(self.cfg, h)
@@ -469,7 +471,6 @@ class Service:
     def _evidence(self, resisting: set[str]) -> dict[str, list[dict[str, str]]]:
         """Classified frame samples for newly resisting MACs; logs one INFO line per alert."""
         fresh = resisting - self._alerted
-        self._alerted = set(resisting)
         out: dict[str, list[dict[str, str]]] = {}
         for mac in sorted(fresh):
             try:

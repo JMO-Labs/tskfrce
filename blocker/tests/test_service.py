@@ -693,3 +693,31 @@ def test_resist_once_sends_evidence_and_logs_once(caplog):
     assert calls[0] == {MAC: ev}
     assert calls[1] is None
     assert len([r for r in caplog.records if "bypass alert" in r.message]) == 1
+
+
+def _ev_svc(resisting, report):
+    ev = [{"src": "203.0.113.9:443", "proto": "udp", "flags": "", "class": "new"}]
+    watch = SimpleNamespace(
+        set_watched=Mock(),
+        stop=Mock(),
+        counter=Mock(resisting=Mock(return_value=resisting), evidence=Mock(return_value=ev)),
+    )
+    return _svc(watch=watch, report=report)[0]
+
+
+def test_resist_once_under_threshold_sends_no_evidence(caplog):
+    calls = []
+    svc = _ev_svc(set(), lambda c, m, evidence=None: calls.append(evidence) or True)
+    with caplog.at_level("INFO"):
+        svc._resist_once()
+    assert calls == [None]
+    assert not [r for r in caplog.records if "bypass alert" in r.message]
+
+
+def test_failed_report_keeps_evidence_for_retry():
+    calls = []
+    results = iter([False, True])
+    svc = _ev_svc({MAC}, lambda c, m, evidence=None: calls.append(evidence) or next(results))
+    svc._resist_once()
+    svc._resist_once()
+    assert calls[0] is not None and calls[1] == calls[0]

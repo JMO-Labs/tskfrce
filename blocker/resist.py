@@ -37,8 +37,9 @@ class TcpInfo:
     flags: str = ""
 
 
-_MAX_FLOWS = 4096
-_MAX_SAMPLE = 10  # frames kept per MAC and window as report evidence  # per-MAC flow-table cap (bounded memory on small boxes)
+_MAX_FLOWS = 4096  # per-MAC flow-table cap (bounded memory on small boxes)
+_MAX_SAMPLE = 10  # frames kept per MAC and window as report evidence
+_MAX_RETX = 3  # of those, at most this many retransmits
 
 
 @dataclass
@@ -189,8 +190,11 @@ class ResistanceCounter:
             ):
                 mac, field = self._ip2mac[_norm(ip_dst)], "from_gateway"
                 new = tcp is None or self._is_new_evidence(mac, ip_src, ip_dst, tcp, ts)
-                self._sample(mac, ts, ip_src, tcp, proto, sport, new)
+                frame = self._frame(ip_src, tcp, proto, sport, new)
                 if not new:
+                    live = self._tallies.get(mac)
+                    if live is not None and ts - live[0] < self._window:
+                        self._sample(mac, live[0], frame)
                     return
             else:
                 return
@@ -199,32 +203,51 @@ class ResistanceCounter:
                 start, tally = ts, Tally()
             setattr(tally, field, getattr(tally, field) + 1)
             self._tallies[mac] = (start, tally)
+            if field == "from_gateway":
+                self._sample(mac, start, frame)
 
-    def _sample(self, mac, ts, ip_src, tcp, proto, sport, new) -> None:
-        """Keep the first few gateway->device frames of the window, classified. Lock held."""
-        start, items = self._samples.get(mac, (ts, []))
-        if ts - start >= self._window:
-            start, items = ts, []
-        if len(items) < _MAX_SAMPLE:
-            if tcp is not None:
-                proto, sport = "tcp", tcp.sport
-            port = f":{sport}" if sport is not None else ""
-            src = f"[{ip_src}]{port}" if port and ":" in ip_src else f"{ip_src}{port}"
-            items.append(
-                {
-                    "src": src,
-                    "proto": proto or "ip",
-                    "flags": tcp.flags if tcp else "",
-                    "class": "new" if new else "retx",
-                }
-            )
+    @staticmethod
+    def _frame(ip_src, tcp, proto, sport, new) -> dict[str, str]:
+        if tcp is not None:
+            proto, sport = "tcp", tcp.sport
+        port = f":{sport}" if sport is not None else ""
+        src = f"[{ip_src}]{port}" if port and ":" in ip_src else f"{ip_src}{port}"
+        return {
+            "src": src,
+            "proto": proto or "ip",
+            "flags": tcp.flags if tcp else "",
+            "class": "new" if new else "retx",
+        }
+
+    def _sample(self, mac: str, start: float, frame: dict[str, str]) -> None:
+        """Sample of the frames in the tally window (same start); new frames win. Lock held."""
+        entry = self._samples.get(mac)
+        items = entry[1] if entry is not None and entry[0] == start else []
+        retx = [i for i, f in enumerate(items) if f["class"] == "retx"]
+        if frame["class"] == "retx":
+            if len(items) >= _MAX_SAMPLE or len(retx) >= _MAX_RETX:
+                self._samples[mac] = (start, items)
+                return
+        elif len(items) >= _MAX_SAMPLE:
+            if not retx:
+                self._samples[mac] = (start, items)
+                return
+            del items[retx[0]]
+        items.append(frame)
         self._samples[mac] = (start, items)
 
     def evidence(self, mac: str) -> list[dict[str, str]]:
         """Classified sample (<=10 frames) of this window's gateway return traffic for mac."""
+        mac = mac.lower()
         with self._lock:
-            entry = self._samples.get(mac.lower())
-            if entry is None or self._clock() - entry[0] >= self._window:
+            entry = self._samples.get(mac)
+            live = self._tallies.get(mac)
+            if (
+                entry is None
+                or live is None
+                or entry[0] != live[0]
+                or self._clock() - live[0] >= self._window
+            ):
                 return []
             return list(entry[1])
 

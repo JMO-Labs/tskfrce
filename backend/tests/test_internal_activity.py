@@ -181,3 +181,18 @@ def test_resisting_evidence_is_bounded(client, db):
     assert r.status_code == 200
     (e,) = _events(db, "bypass")
     assert len(e.detail) <= 1000
+
+
+def test_resisting_evidence_for_unlisted_mac_logs_no_bypass(client, db):
+    _seen(client)
+    ev = [{"src": "203.0.113.9:443", "proto": "tcp", "flags": "SA", "class": "new"}]
+    r = client.post(RES, json={"resisting": [], "evidence": {MAC: ev}}, headers=tok())
+    assert r.status_code == 200
+    assert _events(db, "bypass") == []
+
+
+def test_resisting_oversized_evidence_rejected(client, db):
+    _seen(client)
+    big = [{"src": "x"} for _ in range(11)]
+    r = client.post(RES, json={"resisting": [MAC], "evidence": {MAC: big}}, headers=tok())
+    assert r.status_code == 422

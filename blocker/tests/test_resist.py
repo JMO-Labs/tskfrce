@@ -485,7 +485,23 @@ def test_evidence_is_capped_and_cleared_with_window():
     assert c.evidence(KID) == []
 
 
-def test_evidence_empty_under_threshold_report():
-    c, _ = _counter()
-    c.observe(GW, BOX, KID_IP, INET, proto="udp", sport=1)
-    assert c.resisting() == set()
+def test_evidence_shows_new_frames_after_many_retx():
+    c, _ = _counter(grace=0)
+    c.observe(GW, BOX, KID_IP, INET, tcp=TcpInfo(443, 5000, 100, 0, True, flags="SA"))
+    for _ in range(10):
+        c.observe(GW, BOX, KID_IP, INET, tcp=TcpInfo(443, 5000, 100, 0, True, flags="SA"))
+    for i in range(20):
+        c.observe(GW, BOX, KID_IP, INET, tcp=TcpInfo(443, 6000 + i, 1, 0, True, flags="SA"))
+    assert c.resisting() == {KID}
+    ev = c.evidence(KID)
+    assert len(ev) == 10
+    assert sum(f["class"] == "new" for f in ev) >= 7
+
+
+def test_evidence_window_matches_tally_window():
+    c, t = _counter(grace=0)
+    c.observe(GW, BOX, KID_IP, INET, tcp=TcpInfo(443, 5000, 100, 0, True))
+    c.observe(GW, BOX, KID_IP, INET, tcp=TcpInfo(443, 5000, 100, 0, True))
+    t[0] += 31
+    c.observe(GW, BOX, KID_IP, INET, tcp=TcpInfo(443, 5000, 100, 0, True))  # retx, no live tally
+    assert c.evidence(KID) == []

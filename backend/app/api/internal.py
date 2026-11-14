@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -105,10 +105,20 @@ class VlansReport(BaseModel):
     vlans: list[VlanItem] = Field(max_length=4094)
 
 
+def _mac(m: str) -> str:
+    return m.strip().lower().replace("-", ":")
+
+
 class ResistingReport(BaseModel):
     resisting: list[str] = Field(max_length=1000)
     # mac -> classified sample of the frames that crossed the threshold
-    evidence: dict[str, list[dict[str, str]]] = Field(default_factory=dict, max_length=1000)
+    evidence: dict[
+        str,
+        Annotated[
+            list[Annotated[dict[str, Annotated[str, Field(max_length=100)]], Field(max_length=8)]],
+            Field(max_length=10),
+        ],
+    ] = Field(default_factory=dict, max_length=1000)
 
     @field_validator("resisting")
     @classmethod
@@ -117,6 +127,12 @@ class ResistingReport(BaseModel):
         if not all(MAC_RE.match(m) for m in out):
             raise ValueError("MAC address must look like aa:bb:cc:dd:ee:ff.")
         return out
+
+    @model_validator(mode="after")
+    def _evidence_only_resisting(self) -> "ResistingReport":
+        keep = {m: v for m, v in self.evidence.items() if _mac(m) in set(self.resisting)}
+        self.evidence = keep
+        return self
 
     def detail_for(self, mac: str) -> str | None:
         """Bounded JSON of the MAC's sample (<=10 frames, short fields), or None."""
