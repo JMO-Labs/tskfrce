@@ -36,4 +36,11 @@ def test_backfill(conn):
         mod.upgrade()
         mod.downgrade()
     rows = dict(conn.exec_driver_sql("SELECT id, network_id FROM devices").fetchall())
-    assert rows == {1: 1, 2: 2, 3: None, 4: None, 5: 1, 6: None}  # existing untouched; bad subnet/ip skipped
+    assert rows == {
+        1: 1,
+        2: 2,
+        3: None,
+        4: None,
+        5: 1,
+        6: None,
+    }  # existing untouched; bad subnet/ip skipped
