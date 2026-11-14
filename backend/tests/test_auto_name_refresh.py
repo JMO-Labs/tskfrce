@@ -35,7 +35,9 @@ def test_ip_like_hostname_not_used_on_create_or_refresh(client, db):
 def test_parent_edit_is_kept(client, db, parent_headers):
     _seen(client, hostname="old.maas")
     did = _dev(db).id
-    r = client.patch(f"/api/v1/devices/{did}", json={"name": "Mia's laptop"}, headers=parent_headers)
+    r = client.patch(
+        f"/api/v1/devices/{did}", json={"name": "Mia's laptop"}, headers=parent_headers
+    )
     assert r.status_code == 200
     assert _dev(db).name_from_parent is True
     _seen(client, hostname="new.maas", mdns_name="x.local")
