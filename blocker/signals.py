@@ -183,6 +183,8 @@ class Signals:
             self.update(hn[0], dhcp_hostname=hn[1])
 
     def _managed(self) -> list[str]:
+        if self.cfg.lan_iface:  # single-interface mode: only the enforced iface
+            return [self.cfg.lan_iface]
         return self._ifaces()
 
     def _make_sniffer(self, iface: str, filt: str, prn):

@@ -212,10 +212,7 @@ def test_dhcp_hostname_reported_via_update():
     assert rep.call_args[0][1].body()["dhcp_hostname"] == "bobby"
 
 
-def _two_nic():
-    """Signals with eno2 (management) not managed, wlo1 managed; sniffers recorded."""
-    made = []
-
+def _fake_sniffers(sg, made):
     class FakeSniffer:
         def __init__(self, iface, filt, prn):
             self.iface, self.filt, self.prn, self.stopped = iface, filt, prn, False
@@ -227,12 +224,18 @@ def _two_nic():
         def stop(self):
             self.stopped = True
 
-    sg = Signals(CFG, Mock(), ifaces=lambda: ["wlo1"])
     sg._make_sniffer = lambda i, f, p: FakeSniffer(i, f, p)
+
+
+def _two_nic():
+    """Two NICs: eno2 and wlo1 both managed; sniffers recorded."""
+    made = []
+    sg = Signals(CFG, Mock(), ifaces=lambda: ["eno2", "wlo1"])
+    _fake_sniffers(sg, made)
     return sg, made
 
 
-def test_dhcp_sniffs_only_managed_iface_and_sets_fp():
+def test_dhcp_sniffs_each_managed_iface_and_sets_fp():
     import threading
 
     sg, made = _two_nic()
@@ -241,15 +244,70 @@ def test_dhcp_sniffs_only_managed_iface_and_sets_fp():
     t = threading.Thread(target=sg.run_dhcp, args=(stop,))
     t.start()
     for _ in range(100):
-        if made:
+        if len(made) >= 2:
             break
         time.sleep(0.01)
-    assert [m.iface for m in made] == ["wlo1"]
-    made[0].prn(_discover([1, 121, 3, 6]))
+    assert sorted(m.iface for m in made) == ["eno2", "wlo1"]
+    next(m for m in made if m.iface == "wlo1").prn(_req((55, bytes([1, 121, 3, 6]))))
     stop.set()
     t.join(5)
     assert sg._cache[MAC]["dhcp_fp"] == "1,121,3,6"
-    assert made[0].stopped
+    assert all(m.stopped for m in made)
+
+
+def test_sniffers_follow_iface_changes():
+    import threading
+
+    ifs = ["eno2"]
+    made = []
+    sg = Signals(CFG, Mock(), ifaces=lambda: list(ifs))
+    _fake_sniffers(sg, made)
+    stop = threading.Event()
+    t = threading.Thread(target=sg._sniff_managed, args=(stop, "f", None, 0.01))
+    t.start()
+
+    def wait(cond):
+        for _ in range(300):
+            if cond():
+                return
+            time.sleep(0.01)
+        raise AssertionError("timeout")
+
+    wait(lambda: len(made) == 1)
+    ifs.append("wlo1")
+    wait(lambda: len(made) == 2)
+    assert made[1].iface == "wlo1"
+    ifs.remove("eno2")
+    wait(lambda: made[0].stopped)
+    assert not made[1].stopped
+    stop.set()
+    t.join(5)
+
+
+def test_single_iface_mode_only_lan_iface(monkeypatch):
+    import threading
+
+    from blocker import scapy_lite as sa
+
+    cfg = Config("http://b", "b", "t", "eth0", Path("/tmp"))
+    sg = Signals(cfg, Mock(), ifaces=lambda: ["eth0", "wlo1"])
+    made = []
+    _fake_sniffers(sg, made)
+    stop = threading.Event()
+    t = threading.Thread(target=sg._sniff_managed, args=(stop, "f", None, 0.01))
+    t.start()
+    for _ in range(100):
+        if made:
+            break
+        time.sleep(0.01)
+    time.sleep(0.05)
+    stop.set()
+    t.join(5)
+    assert [m.iface for m in made] == ["eth0"]
+    sent = []
+    monkeypatch.setattr(sa, "send", lambda pkt, **kw: sent.append(kw["iface"]))
+    sg._query_mdns()
+    assert sent == ["eth0"]
 
 
 def test_query_mdns_sent_on_every_managed_iface(monkeypatch):
