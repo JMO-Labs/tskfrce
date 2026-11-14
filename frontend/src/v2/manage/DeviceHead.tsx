@@ -1,5 +1,5 @@
 import { usePenaltyAction } from '@/v2/hooks/usePenalties'
-import { useTestBlock } from '@/v2/hooks/useDevices'
+import { usePatchDevice, useTestBlock } from '@/v2/hooks/useDevices'
 import { useSingleFlight } from '@/v2/hooks/useSingleFlight'
 import { clockText } from '@/v2/clockText'
 import { DetailHeader, type StatusChip } from '@/v2/parent/DetailHeader'
@@ -56,6 +56,7 @@ export function DeviceHead({ device, locked, ov, timeZone, blockNew, pendingActi
   const test = useTestBlock()
   const netLabel = useNetworkLabels().labelFor(device)
   const forgive = usePenaltyAction()
+  const allow = usePatchDevice()
   const pen = device.penalty
   const onceTest = useSingleFlight() // a slow test must not swallow the next save
   const runTest = () =>
@@ -89,6 +90,11 @@ export function DeviceHead({ device, locked, ov, timeZone, blockNew, pendingActi
             </>
           ),
         }
+    : device.held
+      ? {
+          tone: 'amb', icon: 'pause_circle', label: 'New, held',
+          pop: <p className="ch-pop-p">A new device on a private address. It stays paused until you allow it or say whose it is.</p>,
+        }
     : locked
       ? {
           tone: 'grey', icon: 'lock', label: 'Locked',
@@ -117,6 +123,8 @@ export function DeviceHead({ device, locked, ov, timeZone, blockNew, pendingActi
       status={status}
       main={pen ? (
         <ActionButton icon="favorite" busy={forgive.isPending} disabled={forgive.isPending} onClick={() => forgive.mutate({ id: pen.id, action: 'forgive' })}>Forgive</ActionButton>
+      ) : device.held ? (
+        <ActionButton icon="check_circle" busy={allow.isPending} disabled={allow.isPending} onClick={() => allow.mutate({ id: device.id, patch: { held: false } }, { onError: toastFail })}>Allow</ActionButton>
       ) : locked ? (
         <ActionButton icon="lock_open" busy={busy('unlock')} disabled={!!pendingAction} onClick={() => onOverride('unlock')}>Unlock 30 min</ActionButton>
       ) : (

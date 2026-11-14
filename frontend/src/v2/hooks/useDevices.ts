@@ -10,6 +10,8 @@ export interface DevicePatch {
   owner_ids?: number[]
   group_ids?: number[]
   exempt?: boolean
+  /** Allow: lift the hold on a new private-address device */
+  held?: false
 }
 
 // polled so a second tab, an expired override or a new device shows up without a reload

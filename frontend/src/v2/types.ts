@@ -56,6 +56,8 @@ export interface Device extends DevicePenaltyFields {
   model?: string | null
   dhcp_fp?: string | null
   random_mac?: boolean
+  /** new private-address device paused until a parent allows or assigns it */
+  held?: boolean
   /** null/absent = the untagged LAN */
   vlan_id?: number | null
   network_id?: number | null
@@ -131,6 +133,7 @@ export interface Family extends FamilyExtrasFields, FamilyPenaltyFields {
   timezone: string
   reset_time: string
   new_devices_blocked: boolean
+  hold_private_devices?: boolean
   points_unlock_early: boolean
   early_bonus_cap: number
   screen_time_price: number

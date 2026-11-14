@@ -26,6 +26,9 @@ export function HomeNetworkPane() {
             <Setr label="Block new devices until I assign them" info={<Info label="About blocking new devices">New phones and laptops stay paused until you give them an owner.</Info>}>
               <Sw label="Block new devices" checked={fam.new_devices_blocked} onChange={(v) => void queue(() => patch.mutateAsync({ new_devices_blocked: v }))} />
             </Setr>
+            <Setr label="New private-address devices start paused" info={<Info label="About holding private-address devices">A new phone on a private Wi-Fi address waits until you allow it or say whose it is. Devices on hardware addresses are never held.</Info>}>
+              <Sw label="Hold new private-address devices" checked={!!fam.hold_private_devices} onChange={(v) => void queue(() => patch.mutateAsync({ hold_private_devices: v }))} />
+            </Setr>
             {box && (
               <Setr label="Home box">
                 <Chip tone={box.online ? 'acc' : 'amb'} icon={box.online ? 'check_circle' : 'router'}>

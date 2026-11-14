@@ -237,17 +237,20 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
         try:
             db.flush()
             # a hint sends its own notice; no bell while the wizard is running
-            if (
-                not (apply_relink(db, dev) or apply_hint(db, dev))
-                and get_family(db).setup_step is None
-            ):
-                inbox.notify_parents(
-                    db,
-                    "new_device",
-                    f"New device: {dev.name}",
-                    "Say whose it is so it follows their rules.",
-                    device_id=dev.id,
-                )
+            if not (apply_relink(db, dev) or apply_hint(db, dev)):
+                fam = get_family(db)
+                held = fam.hold_private_devices and dev.random_mac and dev.status == "unassigned"
+                dev.held = bool(held)
+                if fam.setup_step is None:
+                    inbox.notify_parents(
+                        db,
+                        "new_device",
+                        f"New device held: {dev.name}" if held else f"New device: {dev.name}",
+                        "It stays paused until you allow it or say whose it is."
+                        if held
+                        else "Say whose it is so it follows their rules.",
+                        device_id=dev.id,
+                    )
             db.commit()
         except IntegrityError:  # concurrent first report for the same MAC
             db.rollback()
