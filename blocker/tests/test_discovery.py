@@ -191,3 +191,15 @@ def test_service_wires_rescan_into_every_make_api():
     src = (Path(discovery.__file__).parent / "service.py").read_text()
     calls = re.findall(r"make_api\(.*?\n\s*\)\n", src, re.DOTALL)
     assert len(calls) == 3 and all("rescan=" in c for c in calls)
+
+
+def test_scan_once_hands_each_seen_over_right_after_its_report(tmp_path, reported):
+    arp = [("192.168.1.5", "aa:bb:cc:00:00:01")]
+    order = []
+    scan_once(
+        _cfg(tmp_path),
+        send=_send(arp),
+        resolve=lambda ip: None,
+        on_report=lambda s: order.append(len(reported)),
+    )
+    assert order == [1]

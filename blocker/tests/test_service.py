@@ -721,3 +721,38 @@ def test_failed_report_keeps_evidence_for_retry():
     svc._resist_once()
     svc._resist_once()
     assert calls[0] is not None and calls[1] == calls[0]
+
+
+def test_seen_answered_blocked_is_enforced_without_a_poll():
+    svc, fw, redir = _svc()
+    s = _seen(MAC, "192.168.1.50")
+    s.blocked = True
+    svc._on_seen(s)
+    assert redir.targets[MAC].ip == "192.168.1.50"
+    assert MAC in fw.applied[-1]
+
+
+def test_seen_answered_open_is_left_alone():
+    svc, _, redir = _svc()
+    s = _seen(MAC, "192.168.1.50")
+    s.blocked = False
+    svc._on_seen(s)
+    assert MAC not in redir.targets
+
+
+def test_unanswered_new_mac_fails_closed_only_when_configured():
+    svc, _, redir = _svc()
+    svc._on_seen(_seen(MAC, "192.168.1.50"))  # default: open
+    assert MAC not in redir.targets
+    svc._block_unknown = True
+    svc._on_seen(_seen(MAC2, "192.168.1.51"))
+    assert redir.targets[MAC2].ip == "192.168.1.51"
+
+
+def test_poll_is_authoritative_over_fast_block():
+    svc, _, redir = _svc(fetch_state=lambda cfg: {"blocked": []})
+    s = _seen(MAC, "192.168.1.50")
+    s.blocked = True
+    svc._on_seen(s)
+    svc._reconcile_once()
+    assert MAC not in redir.targets

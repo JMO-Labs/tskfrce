@@ -171,3 +171,32 @@ def test_relink_of_paused_device_stays_paused(client, db, on, kid):
 def test_no_suggestion_when_on(client, db, on):
     _ambiguous(client, db)
     assert not [s for s in suggestions(db)["items"] if s["rule"] == "devices.hold_private"]
+
+
+def post_seen(client, mac, **kw):
+    body = {"mac": mac, "ip": "10.0.0.5", "ipv6": [], "hostname": "pad", "vendor": "X", **kw}
+    return client.post(URL, json=body, headers=tok()).json()
+
+
+def test_seen_answers_blocked_for_held_device(client, on):
+    assert post_seen(client, PRIVATE)["blocked"] is True
+
+
+def test_seen_answers_open_for_default_family(client):
+    assert post_seen(client, PRIVATE)["blocked"] is False
+
+
+def test_seen_answers_blocked_when_new_devices_blocked(client, db):
+    get_family(db).new_devices_blocked = True
+    db.commit()
+    assert post_seen(client, HARDWARE)["blocked"] is True
+
+
+def test_state_tells_blocker_to_fail_closed_only_when_configured(client, db):
+    def flag():
+        return client.get("/api/v1/internal/state", headers=tok()).json()["block_unknown"]
+
+    assert flag() is False
+    get_family(db).hold_private_devices = True
+    db.commit()
+    assert flag() is True

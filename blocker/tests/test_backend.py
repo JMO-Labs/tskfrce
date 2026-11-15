@@ -197,3 +197,18 @@ def test_report_workarounds_false_on_unreachable():
         backend.report_workarounds(_cfg("http://127.0.0.1:1"), {"aa:aa:aa:aa:aa:01": ["vpn"]})
         is False
     )
+
+
+def test_report_seen_records_blocked_answer(make_stub):
+    s = make_stub(body=b'{"id": 7, "blocked": true}')
+    seen = Seen(mac="aa:bb:cc:dd:ee:ff", ip="10.0.0.5", ipv6=[], hostname=None, vendor=None)
+    assert report_seen(_cfg(s.url), seen) == 7
+    assert seen.blocked is True
+    assert "blocked" not in json.loads(s.requests[0][3])
+
+
+def test_fetch_state_carries_block_unknown(make_stub):
+    from blocker.backend import fetch_state
+
+    s = make_stub(body=b'{"blocked": [], "block_unknown": true}')
+    assert fetch_state(_cfg(s.url))["block_unknown"] is True
