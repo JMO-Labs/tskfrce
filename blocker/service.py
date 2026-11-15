@@ -200,7 +200,11 @@ class Service:
                 )
                 unsafe = self._unsafe_ips(lan) | site_ips
             # listen-only: nothing is paused anywhere (discovery continues)
-            blocked = set() if self._listen_only else set(self.store.current()) | self._probing | self._fast
+            blocked = (
+                set()
+                if self._listen_only
+                else set(self.store.current()) | self._probing | self._fast
+            )
             blocked = {m for m in blocked if self._enforced_here(m)}
             skipped = {m for m in blocked if m.lower() in infra}
             if skipped:
