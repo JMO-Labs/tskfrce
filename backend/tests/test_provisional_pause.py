@@ -108,7 +108,6 @@ def test_parent_allow_ends_provisional(client, db, kid):
     did = seen(client)
     d = db.get(Device, did)
     d.held = False  # a parent allowed it
-    d.random_mac = True
     get_family(db).hold_private_devices = True  # fall-through would re-hold it
     db.commit()
     seen(client)
