@@ -26,6 +26,7 @@ MDNS_TYPES = (
 MDNS_QUERY_EVERY = 300  # s
 _FIELDS = ("mdns_name", "model", "dhcp_fp", "dhcp_hostname")
 WAKE_GAP = 2.0  # s between announcement-triggered rescans
+_WOKEN_MAX = 128  # cap on remembered MACs that already triggered a wake
 _FRESH = 600  # s: only trust discovery entries this recent for IP -> MAC
 
 
@@ -131,6 +132,19 @@ def _managed_ifaces() -> list[str]:
     return list(dict.fromkeys(name for name, _ in lan_networks()))
 
 
+def _own_macs() -> set[str]:
+    """MACs of the managed interfaces: the blocker's own ARP frames must not wake discovery."""
+    from blocker.scapy_lite import get_if_hwaddr
+
+    out: set[str] = set()
+    for name in _managed_ifaces():
+        try:
+            out.add(get_if_hwaddr(name).lower())
+        except Exception:  # noqa: BLE001 - iface may have vanished
+            pass
+    return out
+
+
 class Signals:
     def __init__(
         self,
@@ -139,7 +153,10 @@ class Signals:
         ifaces: Callable[[], list[str]] = _managed_ifaces,
         on_unknown: Callable[[], None] | None = None,
         clock: Callable[[], float] = time.monotonic,
+        own_macs: Callable[[], set[str]] = _own_macs,
     ):
+        self._own_macs = own_macs
+        self._woken: dict[str, float] = {}  # mac -> time of the wake it caused
         self.cfg = cfg
         self._on_unknown = on_unknown  # wake discovery: an unknown MAC just announced itself
         self._clock = clock
@@ -181,8 +198,9 @@ class Signals:
     # --- DHCP ---------------------------------------------------------------
 
     def _wake_for_unknown(self, pkt) -> None:
-        """DHCP REQUEST/ACK or ARP announcement from a MAC discovery hasn't seen -> rescan now.
-        Rate limited globally (frames can be forged): at most one wake per WAKE_GAP s."""
+        """DHCP ACK or ARP announcement from a MAC discovery hasn't seen -> rescan now.
+        Rate limited globally (frames can be forged): at most one wake per WAKE_GAP s,
+        and one per MAC per scan_interval. The blocker's own MACs never wake."""
         if self._on_unknown is None:
             return
         from blocker.resist import _announcement
@@ -190,12 +208,32 @@ class Signals:
         found = _announcement(pkt)
         if found is None:
             return
+        mac = found[0]
+        if self._is_request(pkt) or mac in self._own_macs():
+            return
         with self._lock:
             now = self._clock()
-            if found[0] in self._latest or now - self._last_wake < WAKE_GAP:
+            if mac in self._latest or now - self._last_wake < WAKE_GAP:
                 return
+            ttl = max(self.cfg.scan_interval, WAKE_GAP)
+            self._woken = {m: t for m, t in self._woken.items() if now - t < ttl}
+            if mac in self._woken:
+                return  # already woke a scan for it; it stays unknown (silent or off-subnet)
+            if len(self._woken) >= _WOKEN_MAX:
+                self._woken.pop(next(iter(self._woken)))
+            self._woken[mac] = now
             self._last_wake = now
         self._on_unknown()
+
+    @staticmethod
+    def _is_request(pkt) -> bool:
+        """A DHCP REQUEST: the client has no lease yet, so the ACK (not this) triggers the scan."""
+        from blocker.scapy_lite import DHCP
+
+        if not pkt.haslayer(DHCP):
+            return False
+        opts = {o[0]: o[1] for o in pkt[DHCP].options if isinstance(o, tuple) and len(o) > 1}
+        return opts.get("message-type") in (3, "request")
 
     def _on_dhcp(self, pkt) -> None:
         try:
