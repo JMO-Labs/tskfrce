@@ -162,7 +162,7 @@ class Service:
         self.failed = False  # set when the control API cannot start; main exits non-zero
         self._api = None
         self._api_servers: list = []  # For multi-bind API servers
-        self.signals = Signals(cfg)
+        self.signals = Signals(cfg, on_unknown=self._rescanner.trigger)
         self._vlan = VlanDetector(cfg)
         # Homework mode: gate and wiring
         self._gate = HomeworkGate()

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 import time
 from pathlib import Path
 from unittest.mock import Mock
@@ -9,6 +10,7 @@ from unittest.mock import Mock
 from blocker.backend import Seen
 from blocker.config import Config
 from blocker.signals import (
+    WAKE_GAP,
     Signals,
     dhcp_fp_from_packet,
     dhcp_hostname_from_packet,
@@ -319,3 +321,117 @@ def test_query_mdns_sent_on_every_managed_iface(monkeypatch):
     sg = Signals(CFG, Mock(), ifaces=lambda: ["wlo1", "wlan1"])
     sg._query_mdns()
     assert sent == ["wlo1", "wlan1"]
+
+
+# --- unknown-MAC announcement wakes discovery (tskfrce#123) ------------------
+
+
+def _request(mac=MAC, ip="10.0.0.9"):
+    return (
+        Ether(src=mac, dst="ff:ff:ff:ff:ff:ff")
+        / IP(src="0.0.0.0", dst="255.255.255.255")
+        / UDP(sport=68, dport=67)
+        / BOOTP(chaddr=bytes.fromhex(mac.replace(":", "")))
+        / DHCP(options=[("message-type", "request"), ("requested_addr", ip), "end"])
+    )
+
+
+def _ack(mac=MAC, ip="10.0.0.9"):
+    return (
+        Ether(src="02:00:00:00:00:01", dst=mac)
+        / IP(src="10.0.0.1", dst=ip)
+        / UDP(sport=67, dport=68)
+        / BOOTP(op=2, yiaddr=ip, chaddr=bytes.fromhex(mac.replace(":", "")))
+        / DHCP(options=[("message-type", "ack"), "end"])
+    )
+
+
+def _arp(mac=MAC, ip="10.0.0.9"):
+    from scapy.all import ARP
+
+    return Ether(src=mac, dst="ff:ff:ff:ff:ff:ff") / ARP(op=1, hwsrc=mac, psrc=ip, pdst=ip)
+
+
+def _sgw(clock, own=()):
+    wake = Mock()
+    return Signals(CFG, Mock(), on_unknown=wake, clock=clock, own_macs=lambda: set(own)), wake
+
+
+def test_unknown_mac_dhcp_ack_wakes_discovery():
+    sg, wake = _sgw(lambda: 100.0)
+    sg._on_dhcp(_ack())
+    wake.assert_called_once_with()
+
+
+def test_dhcp_request_does_not_take_the_wake():
+    """The client has no address yet; the ACK a few ms later must still be able to wake."""
+    sg, wake = _sgw(lambda: 100.0)
+    sg._on_dhcp(_request())
+    wake.assert_not_called()
+    sg._on_dhcp(_ack())
+    wake.assert_called_once_with()
+
+
+def test_unknown_mac_arp_announcement_wakes_discovery():
+    sg, wake = _sgw(lambda: 100.0)
+    sg._on_dhcp(_arp())
+    wake.assert_called_once_with()
+
+
+def test_known_mac_does_not_wake():
+    sg, wake = _sgw(lambda: 100.0)
+    sg.note_seen(Seen(mac=MAC, ip="10.0.0.9", ipv6=[], hostname=None, vendor=None))
+    sg._on_dhcp(_ack())
+    wake.assert_not_called()
+
+
+def test_discover_without_ip_does_not_wake():
+    sg, wake = _sgw(lambda: 100.0)
+    sg._on_dhcp(_discover([1, 3]))
+    wake.assert_not_called()
+
+
+def test_forged_mac_flood_is_rate_limited():
+    t = [100.0]
+    sg, wake = _sgw(lambda: t[0])
+    for i in range(50):
+        sg._on_dhcp(_ack(mac=f"aa:bb:cc:00:00:{i:02x}"))
+    assert wake.call_count == 1
+    t[0] += 2.5
+    sg._on_dhcp(_ack(mac="aa:bb:cc:00:01:00"))
+    assert wake.call_count == 2
+
+
+def test_dhcp_sniffer_also_listens_for_arp():
+    seen = []
+    sg = Signals(CFG, Mock(), ifaces=list)
+    sg._sniff_managed = lambda stop, filt, prn, every=30: seen.append(filt)
+    sg.run_dhcp(threading.Event())
+    assert "arp" in seen[0] and "port 67" in seen[0]
+
+
+def test_own_interface_mac_does_not_wake():
+    sg, wake = _sgw(lambda: 100.0, own={MAC})
+    sg._on_dhcp(_arp())
+    wake.assert_not_called()
+
+
+def test_same_unknown_mac_wakes_once_within_ttl():
+    t = [100.0]
+    sg, wake = _sgw(lambda: t[0])
+    sg._on_dhcp(_arp())
+    t[0] += WAKE_GAP + 0.5
+    sg._on_dhcp(_arp())
+    assert wake.call_count == 1
+    t[0] += 30
+    sg._on_dhcp(_arp())
+    assert wake.call_count == 2
+
+
+def test_woken_mac_memory_is_bounded():
+    t = [100.0]
+    sg, _wake = _sgw(lambda: t[0])
+    for i in range(500):
+        t[0] += WAKE_GAP + 0.1
+        sg._on_dhcp(_arp(mac=f"aa:bb:cc:00:{i // 256:02x}:{i % 256:02x}"))
+    assert len(sg._woken) <= 128
