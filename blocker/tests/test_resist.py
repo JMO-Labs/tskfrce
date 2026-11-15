@@ -606,7 +606,9 @@ def test_dot_syn_from_watched_mac_fires_dot_callback():
     prn = captured["prn"]
 
     def pkt(dport, flags, src=KID):
-        return Ether(src=src, dst=BOX) / IP(src=KID_IP, dst=LAN.box_ip) / TCP(dport=dport, flags=flags)
+        return (
+            Ether(src=src, dst=BOX) / IP(src=KID_IP, dst=LAN.box_ip) / TCP(dport=dport, flags=flags)
+        )
 
     prn(pkt(443, "S"))  # DoH-style: not DoT
     prn(pkt(853, "A"))  # not a SYN
