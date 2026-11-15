@@ -23,7 +23,7 @@ HEAL_ROUNDS = 4
 HEAL_INTERVAL = 1.2
 REDETECT_INTERVAL = 30.0  # seconds between retries while a gateway MAC is unresolved
 ANSWER_FOLLOW_UPS = (0.15, 0.3, 0.5)  # seconds after an immediate answer: out-shout the router
-POKE_DEBOUNCE = 0.5  # seconds: collapse a rejoin's DISCOVER+REQUEST into one burst
+BURST_MIN_GAP = 1.0  # seconds: at most one burst (+follow-ups) per device, however chatty
 
 
 @dataclass(frozen=True)
@@ -271,32 +271,27 @@ class RedirectionManager:
         except Exception:
             log.exception("redirect burst failed for %s", target.mac)
 
-    def poke(self, mac: str) -> None:
-        """Spoof this device right now (it just rejoined); no-op unless it is actively enforced."""
-        now = time.monotonic()
-        with self._lock:
-            target = next((t for m, t in self._targets.items() if m.lower() == mac.lower()), None)
-            live = target is not None and _active(target) and target.mac in self._threads
-            if live and now - self._poked.get(target.mac, -POKE_DEBOUNCE) < POKE_DEBOUNCE:
-                return  # DISCOVER+REQUEST arrive back to back: one burst covers both
-            if live:
-                self._poked[target.mac] = now
-        if live:
-            self._burst(target)
-
     def answer(self, mac: str) -> None:
-        """A paused device asked for the gateway (ARP who-has / NS / gratuitous ARP): reply now,
-        then repeat shortly so we override the real router's answer. No-op unless enforced."""
+        """A paused device sent DHCP/ARP/NS (rejoin): re-poison both device and router sides now
+        (redirect_packets is bidirectional), then repeat shortly to out-shout the real router.
+        One shared trigger, rate-limited to one burst per device per BURST_MIN_GAP.
+        No-op unless enforced."""
+        now = time.monotonic()
         with self._lock:
             target = next((t for m, t in self._targets.items() if m.lower() == mac.lower()), None)
             if target is None or not _active(target) or target.mac not in self._threads:
                 return
+            if now - self._poked.get(target.mac, -BURST_MIN_GAP) < BURST_MIN_GAP:
+                return
+            self._poked[target.mac] = now
             start = bool(self._follow_ups) and target.mac not in self._following
             if start:
                 self._following.add(target.mac)
         self._burst(target)
         if start:
             threading.Thread(target=self._follow, args=(target.mac,), daemon=True).start()
+
+    poke = answer  # DHCP rejoin uses the same trigger
 
     def _follow(self, mac: str) -> None:
         try:

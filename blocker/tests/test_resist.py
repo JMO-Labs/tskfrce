@@ -560,13 +560,13 @@ def test_gateway_who_has_ns_and_gratuitous_arp_fire_query_callback():
     prn(Ether(src=KID, dst=bc) / ARP(op=1, hwsrc=KID, psrc=KID_IP, pdst=LAN.gateway_ip))
     prn(Ether(src=KID, dst=bc) / ARP(op=1, hwsrc=KID, psrc=KID_IP, pdst=KID_IP))  # gratuitous
     prn(Ether(src=KID, dst=bc) / ARP(op=1, hwsrc=KID, psrc="0.0.0.0", pdst=KID_IP))  # probe
-    prn(Ether(src=KID, dst=bc) / ARP(op=1, hwsrc=KID, psrc=KID_IP, pdst="10.0.0.77"))  # other host
+    prn(Ether(src=KID, dst=bc) / ARP(op=1, hwsrc=KID, psrc=KID_IP, pdst="10.0.0.77"))  # any ARP
     prn(Ether(src="dd:dd:dd:dd:dd:04", dst=bc) / ARP(op=1, psrc="10.0.0.9", pdst=LAN.gateway_ip))
     prn(Ether(src=KID, dst=bc) / ARP(op=2, hwsrc=KID, psrc=KID_IP, pdst=LAN.gateway_ip))  # reply
-    assert got == [KID, KID, KID]
+    assert got == [KID] * 5
     ns = Ether(src=KID, dst="33:33:ff:00:00:01") / IPv6(src=KID_IP6, dst="ff02::1:ff00:1")
     prn(ns / ICMPv6ND_NS(tgt="fe80::1"))
-    assert got == [KID, KID, KID]  # no gateway_ip6 known: not the router
+    assert got == [KID] * 5  # no gateway_ip6 known: not the router
 
 
 def test_ndp_ns_for_router_fires_query_callback():
