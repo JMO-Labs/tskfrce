@@ -384,7 +384,7 @@ def test_forged_mac_flood_is_rate_limited():
 
 def test_dhcp_sniffer_also_listens_for_arp():
     seen = []
-    sg = Signals(CFG, Mock(), ifaces=lambda: [])
+    sg = Signals(CFG, Mock(), ifaces=list)
     sg._sniff_managed = lambda stop, filt, prn, every=30: seen.append(filt)
     sg.run_dhcp(threading.Event())
     assert "arp" in seen[0] and "port 67" in seen[0]
