@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 
+from app.models.family import get_family
 from app.models.inbox import Notification
 from app.models.lock import Device, Override
 
@@ -107,7 +108,11 @@ def test_parent_allow_ends_provisional(client, db, kid):
     did = seen(client)
     d = db.get(Device, did)
     d.held = False  # a parent allowed it
+    d.random_mac = True
+    get_family(db).hold_private_devices = True  # fall-through would re-hold it
     db.commit()
     seen(client)
     db.expire_all()
-    assert not db.get(Device, did).held
+    d = db.get(Device, did)
+    assert not d.held and not d.held_provisional
+    assert db.query(Notification).filter_by(kind="new_device", device_id=did).count() == 0
