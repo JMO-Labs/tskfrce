@@ -312,3 +312,15 @@ def test_poke_and_answer_share_one_rate_limited_trigger():
     time.sleep(0.4)
     assert len(fs.calls) == n + 3  # follow-ups only
     m.stop_all()
+
+
+def test_ipv6_enabled_after_start_is_redetected(monkeypatch):
+    from dataclasses import replace
+
+    from blocker import arp
+
+    monkeypatch.setattr(arp, "REDETECT_INTERVAL", 0.0)
+    results = [replace(LAN, gateway_ip6=None, gateway_mac6=None), replace(LAN, gateway_ip6="fe80::1")]
+    m = RedirectionManager(CFG, detect=lambda _cfg: results.pop(0) if len(results) > 1 else results[0])
+    assert m._lanfacts().gateway_ip6 is None
+    assert m._lanfacts().gateway_ip6 == "fe80::1"

@@ -23,9 +23,11 @@ def _pair(ip, mac):
     return (None, NS(ip=ip, mac=mac))
 
 
-def _send(arp=(), ndp=()):
+def _send(arp=(), ndp=(), listen=()):
+    rows = {"arp": arp, "ndp": ndp, "ndp_listen": listen}
+
     def send(kind, cfg, iface=None):
-        return ([_pair(*r) for r in (arp if kind == "arp" else ndp)], [])
+        return ([_pair(*r) for r in rows[kind]], [])
 
     return send
 
@@ -203,3 +205,35 @@ def test_scan_once_hands_each_seen_over_right_after_its_report(tmp_path, reporte
         on_report=lambda s: order.append(len(reported)),
     )
     assert order == [1]
+
+
+def test_scan_learns_global_and_temporary_v6_from_passive_ndp(tmp_path, reported):
+    arp = [("192.168.1.5", "aa:bb:cc:00:00:01")]
+    ndp = [("fe80::1", "aa:bb:cc:00:00:01")]
+    listen = [
+        ("2600:4040::c68b", "AA:BB:CC:00:00:01"),
+        ("2600:4040::beef", "aa:bb:cc:00:00:01"),
+        ("fe80::1", "aa:bb:cc:00:00:01"),
+    ]
+    out = scan_once(_cfg(tmp_path), send=_send(arp, ndp, listen), resolve=lambda ip: None)
+    assert out[0].ipv6 == ["fe80::1", "2600:4040::c68b", "2600:4040::beef"]
+
+
+def test_scan_survives_failing_passive_listen(tmp_path, reported):
+    arp = [("192.168.1.5", "aa:bb:cc:00:00:01")]
+
+    def send(kind, cfg, iface=None):
+        if kind == "ndp_listen":
+            raise OSError("no sniff")
+        return ([_pair(*r) for r in (arp if kind == "arp" else [])], [])
+
+    out = scan_once(_cfg(tmp_path), send=send, resolve=lambda ip: None)
+    assert len(out) == 1
+
+
+def test_ndp_sender_addrs_uses_target_for_dad():
+    from blocker.discovery import ndp_sender_addr
+
+    assert ndp_sender_addr("::", "2600::7") == "2600::7"
+    assert ndp_sender_addr("2600::8", "fe80::1") == "2600::8"
+    assert ndp_sender_addr("ff02::1", "x") is None

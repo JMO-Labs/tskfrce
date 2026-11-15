@@ -28,6 +28,42 @@ def resolve_hostname(ip: str) -> str | None:
         return None
 
 
+LISTEN_SECS = 3.0
+
+
+def ndp_sender_addr(src: str, target: str) -> str | None:
+    """The address an NDP message proves belongs to its sender: the source, or the
+    tentative target of a DAD probe (src ::). None for multicast sources."""
+    if src == "::":
+        return target
+    return None if src.lower().startswith("ff") else src
+
+
+def _listen_ndp(iface: str | None):
+    """Passively collect (sent=None, rcv) for NS/NA seen on the LAN: every address a
+    device uses (link-local, SLAAC global, temporary) shows up in its NDP traffic."""
+    from blocker.scapy_lite import Ether, ICMPv6ND_NA, ICMPv6ND_NS, IPv6, sniff
+
+    found = []
+
+    def grab(pkt):
+        if IPv6 not in pkt or Ether not in pkt:
+            return
+        tgt = pkt[ICMPv6ND_NS].tgt if ICMPv6ND_NS in pkt else pkt[ICMPv6ND_NA].tgt
+        ip = ndp_sender_addr(pkt[IPv6].src, tgt)
+        if ip:
+            found.append((None, SimpleNamespace(ip=ip, mac=pkt[Ether].src)))
+
+    sniff(
+        iface=iface,
+        filter="icmp6 and (ip6[40] == 135 or ip6[40] == 136)",
+        prn=grab,
+        store=False,
+        timeout=LISTEN_SECS,
+    )
+    return found, []
+
+
 def _scapy_send(kind: str, cfg: Config, iface: str | None = None):
     """Real scapy I/O. Returns (answered, unanswered) where answered holds
     (sent, rcv) pairs and rcv exposes `.ip` and `.mac`. iface overrides cfg.lan_iface."""
@@ -39,6 +75,8 @@ def _scapy_send(kind: str, cfg: Config, iface: str | None = None):
         pkt = Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=net)
         ans, unans = srp(pkt, iface=iface, timeout=2, verbose=0)
         return [(s, SimpleNamespace(ip=r[ARP].psrc, mac=r[ARP].hwsrc)) for s, r in ans], unans
+    if kind == "ndp_listen":
+        return _listen_ndp(iface)
     pkt = Ether(dst="33:33:00:00:00:01") / IPv6(dst="ff02::1") / ICMPv6EchoRequest()
     ans, unans = srp(pkt, iface=iface, timeout=2, multi=True, verbose=0)
     return [(s, SimpleNamespace(ip=r[IPv6].src, mac=r[Ether].src)) for s, r in ans], unans
@@ -61,13 +99,14 @@ def scan_once(
     for _, rcv in send("arp", cfg, iface)[0]:
         v4[_norm(rcv.mac)] = rcv.ip
     v6: dict[str, list[str]] = {}
-    try:
-        for _, rcv in send("ndp", cfg, iface)[0]:
-            addrs = v6.setdefault(_norm(rcv.mac), [])
-            if rcv.ip not in addrs:
-                addrs.append(rcv.ip)
-    except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
-        log.warning("ndp sweep failed: %s", e)
+    for kind in ("ndp", "ndp_listen"):
+        try:
+            for _, rcv in send(kind, cfg, iface)[0]:
+                addrs = v6.setdefault(_norm(rcv.mac), [])
+                if rcv.ip not in addrs:
+                    addrs.append(rcv.ip)
+        except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
+            log.warning("%s sweep failed: %s", kind, e)
     seen_list = []
     for mac, ip in v4.items():
         hostname = resolve(ip)

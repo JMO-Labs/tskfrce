@@ -229,12 +229,13 @@ class RedirectionManager:
         self._following: set[str] = set()  # MACs with a follow-up chain running
 
     def _lanfacts(self) -> LanFacts:
-        # Re-detect while a gateway MAC is unresolved (ARP/ND not populated at boot):
+        # Re-detect while a gateway or its MAC is unresolved (ARP/ND not populated at boot,
+        # IPv6 enabled at the router after start):
         # without it restore() can't heal and unblocks fall back to slow cache expiry.
         lan = self._lan
         stale = lan is None or (
             self._autodetect
-            and (not lan.gateway_mac or (lan.gateway_ip6 and not lan.gateway_mac6))
+            and (not lan.gateway_mac or not lan.gateway_ip6 or not lan.gateway_mac6)
             and time.monotonic() - self._lan_at >= REDETECT_INTERVAL
         )
         if stale:
