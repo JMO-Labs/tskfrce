@@ -3,6 +3,7 @@
 from datetime import timedelta
 
 from app.models.lock import Device, Override
+
 from tests.test_device_relink import NEW_MAC, _now, _old, seen
 
 HW = "a8:bb:cc:dd:ee:03"

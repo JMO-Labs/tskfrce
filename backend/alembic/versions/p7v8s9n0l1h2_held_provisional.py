@@ -18,7 +18,9 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     with op.batch_alter_table("devices") as b:
-        b.add_column(sa.Column("held_provisional", sa.Boolean(), nullable=False, server_default="0"))
+        b.add_column(
+            sa.Column("held_provisional", sa.Boolean(), nullable=False, server_default="0")
+        )
 
 
 def downgrade() -> None:

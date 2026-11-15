@@ -77,9 +77,8 @@ def settle_provisional(db: Session, device: Device) -> None:
     now = datetime.now(UTC).replace(tzinfo=None)
     if device.status != "unassigned" or not device.held:  # linked, assigned or allowed
         device.held = False
-    elif (
-        now - device.first_seen <= WINDOW
-        and any(c.last_seen <= device.first_seen for c in _candidates(db, device, now, timedelta(0)))
+    elif now - device.first_seen <= WINDOW and any(
+        c.last_seen <= device.first_seen for c in _candidates(db, device, now, timedelta(0))
     ):
         return  # still a plausible relink
     else:
