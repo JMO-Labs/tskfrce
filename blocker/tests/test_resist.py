@@ -1,3 +1,4 @@
+import dataclasses
 from types import SimpleNamespace
 
 import pytest
@@ -536,12 +537,12 @@ def test_any_dhcp_from_watched_mac_fires_rejoin_callback():
     assert got == [KID, KID]
 
 
-def _query_watch():
+def _query_watch(lan=LAN):
     got = []
     captured = {}
     w = ResistanceWatch(
         SimpleNamespace(lan_iface=""),
-        ResistanceCounter(LAN),
+        ResistanceCounter(lan),
         sniffer_factory=lambda **kw: captured.update(kw) or SimpleNamespace(stop=lambda: None),
         on_query=got.append,
     )
@@ -566,3 +567,21 @@ def test_gateway_who_has_ns_and_gratuitous_arp_fire_query_callback():
     ns = Ether(src=KID, dst="33:33:ff:00:00:01") / IPv6(src=KID_IP6, dst="ff02::1:ff00:1")
     prn(ns / ICMPv6ND_NS(tgt="fe80::1"))
     assert got == [KID, KID, KID]  # no gateway_ip6 known: not the router
+
+
+def test_ndp_ns_for_router_fires_query_callback():
+    pytest.importorskip("scapy")
+    from scapy.layers.inet6 import ICMPv6ND_NS, IPv6
+    from scapy.layers.l2 import Ether
+
+    got, prn = _query_watch(dataclasses.replace(LAN, gateway_ip6="FE80:0::1"))
+    mc = "33:33:ff:00:00:01"
+
+    def ns(src, tgt):
+        return Ether(src=src, dst=mc) / IPv6(src=KID_IP6, dst="ff02::1:ff00:1") / ICMPv6ND_NS(tgt=tgt)
+
+    prn(ns(KID, "fe80::1"))
+    assert got == [KID]
+    prn(ns(KID, "fe80::2"))  # another host
+    prn(ns("dd:dd:dd:dd:dd:04", "fe80::1"))  # unwatched MAC
+    assert got == [KID]

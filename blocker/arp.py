@@ -226,6 +226,7 @@ class RedirectionManager:
         self._stops: dict[str, threading.Event] = {}
         self._threads: dict[str, threading.Thread] = {}
         self._poked: dict[str, float] = {}
+        self._following: set[str] = set()  # MACs with a follow-up chain running
 
     def _lanfacts(self) -> LanFacts:
         # Re-detect while a gateway MAC is unresolved (ARP/ND not populated at boot):
@@ -290,11 +291,21 @@ class RedirectionManager:
             target = next((t for m, t in self._targets.items() if m.lower() == mac.lower()), None)
             if target is None or not _active(target) or target.mac not in self._threads:
                 return
+            start = bool(self._follow_ups) and target.mac not in self._following
+            if start:
+                self._following.add(target.mac)
         self._burst(target)
-        if self._follow_ups:
+        if start:
             threading.Thread(target=self._follow, args=(target.mac,), daemon=True).start()
 
     def _follow(self, mac: str) -> None:
+        try:
+            self._follow_loop(mac)
+        finally:
+            with self._lock:
+                self._following.discard(mac)
+
+    def _follow_loop(self, mac: str) -> None:
         prev = 0.0
         for at in self._follow_ups:
             time.sleep(at - prev)
