@@ -448,10 +448,7 @@ class ResistanceWatch:
                 return
             gws = self.counter.gateway_ips
             if pkt.haslayer(ARP):
-                a = pkt[ARP]
-                if a.op != 1:
-                    return
-                hit = a.pdst in gws or a.psrc in ("0.0.0.0", a.pdst)
+                hit = True  # any ARP from a paused device may teach the router its real MAC
             else:
                 hit = pkt.haslayer(ICMPv6ND_NS) and _norm(pkt[ICMPv6ND_NS].tgt) in {
                     _norm(i) for i in gws
