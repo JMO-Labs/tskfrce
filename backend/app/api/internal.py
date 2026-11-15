@@ -22,7 +22,12 @@ from app.lock.hints import apply_hint
 from app.lock.identity import note_identity_change
 from app.lock.loop import trigger
 from app.lock.relink import WINDOW as RELINK_WINDOW
-from app.lock.relink import apply_relink, undo_if_reappeared
+from app.lock.relink import (
+    apply_relink,
+    provisional_pause,
+    settle_provisional,
+    undo_if_reappeared,
+)
 from app.lock.rules import block_reason
 from app.lock.schedule import local_now
 from app.lock.state import Prefetch, desired_blocked, device_facts
@@ -246,7 +251,9 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
             # a hint sends its own notice; no bell while the wizard is running
             if not (apply_relink(db, dev) or apply_hint(db, dev)):
                 fam = get_family(db)
-                held = fam.hold_private_devices and dev.random_mac and dev.status == "unassigned"
+                held = (
+                    fam.hold_private_devices and dev.random_mac and dev.status == "unassigned"
+                ) or provisional_pause(db, dev)
                 dev.held = bool(held)
                 if fam.setup_step is None:
                     kind = friendly_name(dev.device_class)
@@ -288,6 +295,8 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
                 or (young and not changed and apply_relink(db, dev))
             )
         )
+    if not new:
+        settle_provisional(db, dev)
     if new and dev.hostname:
         _note_new_address(db, dev, now)
     activity.sample(db, dev, now)
