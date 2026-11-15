@@ -39,7 +39,9 @@ def test_sync_wires_on_dot_into_watch(monkeypatch):
     monkeypatch.setattr(multinet, "RedirectionManager", FakeRedir)
     monkeypatch.setattr(multinet, "ResistanceCounter", lambda *a, **k: None)
     monkeypatch.setattr(multinet, "ResistanceWatch", FakeWatch)
-    monkeypatch.setattr(multinet.threading, "Thread", lambda **k: SimpleNamespace(start=lambda: None))
+    monkeypatch.setattr(
+        multinet.threading, "Thread", lambda **k: SimpleNamespace(start=lambda: None)
+    )
     got = []
     mgr = InterfaceManager(SimpleNamespace(lan_iface=""))
     mgr.on_dot = got.append

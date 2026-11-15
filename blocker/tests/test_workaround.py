@@ -113,7 +113,7 @@ def test_other_categories_unaffected_by_pending():
 
 
 def test_dot_mac_case_insensitive():
-    t, now = _clock()
+    _t, now = _clock()
     c = WorkaroundCounter({"1.1.1.1": "AA:BB"}.get, clock=now)
     c.add("1.1.1.1", "dns.google.")
     c.dot("aa:bb")
@@ -121,7 +121,7 @@ def test_dot_mac_case_insensitive():
 
 
 def test_dot_bounds_macs():
-    t, now = _clock()
+    _t, now = _clock()
     c = WorkaroundCounter({"1.1.1.1": "aa:bb"}.get, clock=now)
     c.add("1.1.1.1", "dns.google.")
     for i in range(1000):
