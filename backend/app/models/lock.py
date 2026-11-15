@@ -69,6 +69,9 @@ class Device(Base):
     held = Column(
         Boolean, nullable=False, default=False, server_default="0"
     )  # new private-MAC device paused until a parent allows or assigns it
+    held_provisional = Column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )  # held only while relink may still link it to a paused kid device
     is_gateway = Column(
         Boolean, nullable=False, default=False, server_default="0"
     )  # reported by blocker

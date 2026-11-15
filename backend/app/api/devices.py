@@ -149,6 +149,7 @@ def device_out(
         "needs_pins": needs_pins,
         "hint_of_id": d.hint_of_id,
         "hint_reason": d.hint_reason,
+        "pause_reason": "possible relink" if d.held_provisional else None,
         "mdns_name": d.mdns_name,
         "name_from_parent": d.name_from_parent,
         "model": d.model,
