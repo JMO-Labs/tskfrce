@@ -83,3 +83,25 @@ def test_resolve_ignores_invalid_subnet_or_ip(db):
     db.commit()
     assert resolve_network_id(db, "192.168.1.5") is None
     assert resolve_network_id(db, "not-an-ip") is None
+
+
+def test_report_fills_null_subnet_then_backfills_offline_device(client, db):
+    net = Network(iface="eno2", subnet=None, auto_label="Network on eno2")
+    db.add(net)
+    db.commit()
+    nid = net.id
+    did = seen(client, ip="192.168.1.64", mac="aa:00:00:00:00:07")
+    db.expire_all()
+    dev = db.get(Device, did)
+    dev.network_id = None
+    db.commit()
+    r = client.post(
+        "/api/v1/internal/networks",
+        json={"networks": [{"iface": "eno2", "subnet": "192.168.1.0/24", "auto_label": "x"}]},
+        headers=tok(),
+    )
+    assert r.status_code == 200
+    db.expire_all()
+    assert db.query(Network).count() == 1
+    assert db.get(Network, nid).subnet == "192.168.1.0/24"
+    assert db.get(Device, did).network_id == nid
