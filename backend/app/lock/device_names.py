@@ -72,11 +72,17 @@ def guess_maker_from_signals(dhcp_fp: str | None, mdns_name: str | None) -> str 
 
 
 _IP_LIKE = re.compile(r"^\d+-\d+-\d+-\d+(\.|$)")
+_HEX = re.compile(r"[0-9a-fA-F]+(-[0-9a-fA-F]+)*")
 
 
 def usable_name(name: str | None) -> str | None:
-    """A hostname that is just a dashed IP names nothing; skip it."""
-    return None if not name or _IP_LIKE.match(name) else name
+    """Dashed IPs and machine ids (long hex/UUIDs, all-hex or all-digit) name nothing."""
+    if not name or _IP_LIKE.match(name):
+        return None
+    bare = name.replace("-", "")
+    if _HEX.fullmatch(bare) and (len(bare) >= 16 or _HEX.fullmatch(name)):
+        return None
+    return name
 
 
 def display_device_name(
