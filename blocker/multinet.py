@@ -168,6 +168,7 @@ class InterfaceManager:
                         counter,
                         on_new_ip=lambda m, ip: self.on_new_ip(m, ip),
                         on_dhcp=redir.poke,
+                        on_query=redir.answer,
                     )
                     self._managers[iface] = (stop_ev, redir, watch)
 
