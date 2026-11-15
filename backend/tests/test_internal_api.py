@@ -97,3 +97,13 @@ def test_hostname_vendor_change_keeps_locked_device_blocked(client, db):
     db.expire_all()
     d = db.query(Device).filter_by(mac=mac).one()
     assert not d.replaced and d.hint_of_id is None
+
+
+def test_seen_listen_only_never_reports_blocked(client, db):
+    """#118: in listen-only mode the answer is not blocked, even for a new (locked) device."""
+    fam = get_family(db)
+    fam.new_devices_blocked = True
+    fam.listen_only = True
+    db.commit()
+    r = client.post(URL, json=BODY, headers=tok())
+    assert r.status_code == 200 and r.json()["blocked"] is False
