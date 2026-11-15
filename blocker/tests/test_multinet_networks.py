@@ -33,7 +33,7 @@ def test_sync_wires_on_dot_into_watch(monkeypatch):
 
     class FakeRedir:
         def __init__(self, *a, **k):
-            self.poke = self.answer = None
+            self.poke = self.answer = self.answer_ns = None
 
         def _lanfacts(self):
             return SimpleNamespace(gateway_ip="x")
