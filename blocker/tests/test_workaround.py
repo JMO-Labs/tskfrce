@@ -110,3 +110,21 @@ def test_other_categories_unaffected_by_pending():
     c.add("1.1.1.1", "dns.google.")
     c.add("1.1.1.1", "nordvpn.com.")
     assert c.drain() == {"aa:bb": ["vpn"]}
+
+
+def test_dot_mac_case_insensitive():
+    t, now = _clock()
+    c = WorkaroundCounter({"1.1.1.1": "AA:BB"}.get, clock=now)
+    c.add("1.1.1.1", "dns.google.")
+    c.dot("aa:bb")
+    assert c.drain() == {"aa:bb": ["private_dns"]}
+
+
+def test_dot_bounds_macs():
+    t, now = _clock()
+    c = WorkaroundCounter({"1.1.1.1": "aa:bb"}.get, clock=now)
+    c.add("1.1.1.1", "dns.google.")
+    for i in range(1000):
+        c._found[f"m{i}"] = {"vpn"}
+    c.dot("aa:bb")
+    assert "aa:bb" not in c.drain()

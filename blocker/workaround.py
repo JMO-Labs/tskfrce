@@ -63,6 +63,7 @@ class WorkaroundCounter:
         mac = self._resolve(ip)
         if mac is None:
             return
+        mac = mac.lower()
         with self._lock:
             if cat == "private_dns":  # Android Private DNS follows with DoT; app DoH (443) doesn't
                 if mac in self._pending or len(self._pending) < MAX_MACS:
@@ -74,9 +75,12 @@ class WorkaroundCounter:
 
     def dot(self, mac: str) -> None:
         """A TCP 853 SYN from mac: confirms a private_dns lookup made within DOT_WINDOW."""
+        mac = mac.lower()
         with self._lock:
             t = self._pending.pop(mac, None)
             if t is None or self._clock() - t > DOT_WINDOW:
+                return
+            if mac not in self._found and len(self._found) >= MAX_MACS:
                 return
             self._found.setdefault(mac, set()).add("private_dns")
 

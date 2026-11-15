@@ -126,6 +126,7 @@ class InterfaceManager:
         self._rescanner = rescanner or Rescanner()
         self._on_seen = on_seen or (lambda s: None)
         self.on_new_ip: Callable[[str, str], None] = lambda mac, ip: None  # set by Service
+        self.on_dot: Callable[[str], None] = lambda mac: None  # set by Service
         self._lan_cidrs = lan_cidrs or []
         self._lock = threading.Lock()
         # iface -> (stop_event, RedirectionManager, ResistanceWatch)
@@ -169,6 +170,7 @@ class InterfaceManager:
                         on_new_ip=lambda m, ip: self.on_new_ip(m, ip),
                         on_dhcp=redir.poke,
                         on_query=redir.answer,
+                        on_dot=lambda m: self.on_dot(m),
                     )
                     self._managers[iface] = (stop_ev, redir, watch)
 

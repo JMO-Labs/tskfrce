@@ -177,6 +177,7 @@ class Service:
         if self._using_iface_mgr and self._iface_manager:
             self._iface_manager._on_seen = self._on_seen
             self._iface_manager.on_new_ip = self._on_new_ip
+            self._iface_manager.on_dot = self.workarounds.dot
 
     # --- policy application -------------------------------------------------
 
