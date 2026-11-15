@@ -94,6 +94,15 @@ def ndp_advert(
     return eth / IPv6(src=gateway_ip6, dst=target_ip6) / na
 
 
+def ns_solicited_reply(target_ip6: str, target_mac: str, gateway_ip6: str, box_mac: str):
+    """Solicited NA (S=1, R=1, O=1) answering target's NS for the gateway with box_mac, so
+    Neighbor Unreachability Detection confirms the spoof instead of falling back to multicast."""
+    from blocker.scapy_lite import Ether, ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, IPv6
+
+    na = ICMPv6ND_NA(tgt=gateway_ip6, R=1, S=1, O=1) / ICMPv6NDOptDstLLAddr(lladdr=box_mac)
+    return Ether(src=box_mac, dst=target_mac) / IPv6(src=gateway_ip6, dst=target_ip6) / na
+
+
 def redirect_packets(target: TargetAddrs, lan: LanFacts) -> list:
     """Spoofed packets that point the target and the gateway at this box.
 
@@ -313,6 +322,24 @@ class RedirectionManager:
         self._burst(target)
         if start:
             threading.Thread(target=self._follow, args=(target.mac,), daemon=True).start()
+
+    def answer_ns(self, mac: str, src_ip6: str, tgt: str) -> None:
+        """A paused device sent NS for the gateway (NUD probe): answer it as the router, solicited.
+        No-op for unpaused devices, DAD probes (src ::) and any other target."""
+        with self._lock:
+            target = next((t for m, t in self._targets.items() if m.lower() == mac.lower()), None)
+            if target is None or not _active(target) or target.mac not in self._threads:
+                return
+        if src_ip6 == "::":
+            return
+        try:
+            lan = self._lanfacts()
+            if not lan.gateway_ip6 or tgt.lower() != lan.gateway_ip6.lower():
+                return
+            pkt = ns_solicited_reply(src_ip6, target.mac, lan.gateway_ip6, lan.box_mac)
+            self._send([pkt], self.cfg.lan_iface or None)
+        except Exception:
+            log.exception("NS answer failed for %s", mac)
 
     poke = answer  # DHCP rejoin uses the same trigger
 

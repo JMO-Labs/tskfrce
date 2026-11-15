@@ -16,6 +16,7 @@ from blocker.arp import (
     TargetAddrs,
     arp_reply,
     ndp_advert,
+    ns_solicited_reply,
     redirect_packets,
     restore,
 )
@@ -379,3 +380,35 @@ def test_every_ndp_frame_is_sourced_from_that_ifaces_box_mac(box):
     ):
         for p in _ndp(redirect_packets(t, lan)) + _ndp(restore(t, lan)):
             assert p[Ether].src == box
+
+
+def test_ns_solicited_reply_flags_and_macs():
+    from scapy.all import Ether, ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, IPv6
+
+    p = ns_solicited_reply("fe80::50", DEV, "fe80::1", "bb:bb:bb:bb:bb:bb")
+    na = p[ICMPv6ND_NA]
+    assert (na.R, na.S, na.O, na.tgt) == (1, 1, 1, "fe80::1")
+    assert p[ICMPv6NDOptDstLLAddr].lladdr == "bb:bb:bb:bb:bb:bb"
+    assert (p[Ether].src, p[Ether].dst) == ("bb:bb:bb:bb:bb:bb", DEV)
+    assert (p[IPv6].src, p[IPv6].dst) == ("fe80::1", "fe80::50")
+
+
+def test_answer_ns_only_for_blocked_mac_asking_for_gateway():
+    from scapy.all import ICMPv6ND_NA
+
+    fs = FakeSend()
+    m = RedirectionManager(CFG, lan=LAN, send=fs, cadence=30, follow_ups=())
+    m.set_targets({DEV: TargetAddrs(mac=DEV, ip="192.168.1.50", ip6=("fe80::50",))})
+    assert fs.event.wait(1.0)
+    n = len(fs.calls)
+    m.answer_ns(DEV.upper(), "fe80::50", "fe80::1")
+    assert len(fs.calls) == n + 1
+    assert fs.calls[-1][0][ICMPv6ND_NA].S == 1
+    m.answer_ns("de:ad:be:ef:00:99", "fe80::99", "fe80::1")  # not blocked
+    m.answer_ns(DEV, "fe80::50", "fe80::77")  # not the gateway
+    m.answer_ns(DEV, "::", "fe80::1")  # DAD probe: nobody to answer
+    assert len(fs.calls) == n + 1
+    m.stop_all()
+    k = len(fs.calls)
+    m.answer_ns(DEV, "fe80::50", "fe80::1")  # unpaused: nothing more sent
+    assert len(fs.calls) == k
