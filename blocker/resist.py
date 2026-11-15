@@ -342,8 +342,10 @@ class ResistanceWatch:
         on_dhcp: Callable[[str], None] | None = None,
         on_query: Callable[[str], None] | None = None,
         on_dot: Callable[[str], None] | None = None,
+        on_ns: Callable[[str, str, str], None] | None = None,
     ) -> None:
         self._cfg = cfg
+        self._on_ns = on_ns
         self._on_dot = on_dot
         self._on_query = on_query
         self._on_dhcp = on_dhcp
@@ -471,10 +473,10 @@ class ResistanceWatch:
     def _gateway_query(self, pkt: Any) -> None:
         """Watched MAC asking for the gateway (ARP who-has, NS for the router) or announcing
         itself (gratuitous/probe ARP) -> answer now, before the real router wins the race."""
-        if self._on_query is None:
+        if self._on_query is None and self._on_ns is None:
             return
         try:
-            from blocker.scapy_lite import ARP, Ether, ICMPv6ND_NS
+            from blocker.scapy_lite import ARP, Ether, ICMPv6ND_NS, IPv6
 
             src = pkt[Ether].src.lower()
             if src not in {m.lower() for m in (self._watched or {})}:
@@ -486,8 +488,10 @@ class ResistanceWatch:
                 hit = pkt.haslayer(ICMPv6ND_NS) and _norm(pkt[ICMPv6ND_NS].tgt) in {
                     _norm(i) for i in gws
                 }
-            if hit:
+            if hit and self._on_query is not None:
                 self._on_query(src)
+            if self._on_ns is not None and pkt.haslayer(ICMPv6ND_NS) and hit:
+                self._on_ns(src, pkt[IPv6].src, pkt[ICMPv6ND_NS].tgt)
         except Exception:
             log.exception("gateway query handling failed")
 

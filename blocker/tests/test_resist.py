@@ -643,3 +643,29 @@ def test_counter_keeps_last_facts_when_provider_fails():
     c.set_watched(WATCHED)
     c.observe(GW, BOX, KID_IP, INET)
     assert c.resisting() == {KID}
+
+
+def test_ns_for_gateway_from_watched_mac_fires_on_ns_with_addresses():
+    pytest.importorskip("scapy")
+    from dataclasses import replace
+
+    from scapy.layers.inet6 import ICMPv6ND_NS, IPv6
+    from scapy.layers.l2 import Ether
+
+    lan = replace(LAN, gateway_ip6="fe80::1")
+    got = []
+    captured = {}
+    w = ResistanceWatch(
+        SimpleNamespace(lan_iface=""),
+        ResistanceCounter(lan),
+        sniffer_factory=lambda **kw: captured.update(kw) or SimpleNamespace(stop=lambda: None),
+        on_ns=lambda *a: got.append(a),
+    )
+    w.set_watched(WATCHED)
+    prn = captured["prn"]
+    base = Ether(src=KID, dst=BOX) / IPv6(src=KID_IP6, dst="fe80::1")
+    prn(base / ICMPv6ND_NS(tgt="fe80::1"))
+    prn(base / ICMPv6ND_NS(tgt="fe80::77"))  # not the router
+    other = Ether(src="dd:dd:dd:dd:dd:04", dst=BOX) / IPv6(src="fe80::9", dst="fe80::1")
+    prn(other / ICMPv6ND_NS(tgt="fe80::1"))
+    assert got == [(KID, KID_IP6, "fe80::1")]
