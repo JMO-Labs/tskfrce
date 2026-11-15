@@ -1,5 +1,6 @@
 import ipaddress
 import threading
+from dataclasses import dataclass
 from types import SimpleNamespace
 
 from blocker import multinet
@@ -42,8 +43,12 @@ def test_sync_wires_on_dot_into_watch(monkeypatch):
     monkeypatch.setattr(
         multinet.threading, "Thread", lambda **k: SimpleNamespace(start=lambda: None)
     )
+    @dataclass
+    class Cfg:
+        lan_iface: str = ""
+
     got = []
-    mgr = InterfaceManager(SimpleNamespace(lan_iface=""))
+    mgr = InterfaceManager(Cfg())
     mgr.on_dot = got.append
     mgr.sync()
     seen["on_dot"]("aa:bb")
