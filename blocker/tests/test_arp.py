@@ -350,3 +350,32 @@ def test_redirect_without_gateway_v6_sends_no_na():
     lan = replace(LAN, gateway_ip6=None, gateway_mac6=None)
     pkts = redirect_packets(TargetAddrs(mac=DEV, ip="192.168.1.50"), lan)
     assert not [p for p in pkts if p.haslayer(ICMPv6ND_NA)]
+
+
+def _ndp(pkts):
+    from scapy.all import ICMPv6ND_NA, Ether
+
+    return [p for p in pkts if p.haslayer(ICMPv6ND_NA) and p.haslayer(Ether)]
+
+
+def test_ndp_advert_ether_src_is_sending_iface_mac():
+    from scapy.all import Ether, ICMPv6NDOptDstLLAddr
+
+    p = ndp_advert("fe80::50", DEV, "fe80::1", "bb:bb:bb:bb:bb:bb")
+    assert p[Ether].src == "bb:bb:bb:bb:bb:bb"
+    assert p[ICMPv6NDOptDstLLAddr].lladdr == "bb:bb:bb:bb:bb:bb"
+
+
+@pytest.mark.parametrize("box", ["30:89:4a:9b:a6:54", "9c:2d:cd:4f:96:79"])
+def test_every_ndp_frame_is_sourced_from_that_ifaces_box_mac(box):
+    from dataclasses import replace
+
+    from scapy.all import Ether
+
+    lan = replace(LAN, box_mac=box)
+    for t in (
+        TargetAddrs(DEV, "192.168.1.50", ("fe80::50",)),
+        TargetAddrs(DEV, "192.168.1.50"),  # v6 unknown: all-nodes advert
+    ):
+        for p in _ndp(redirect_packets(t, lan)) + _ndp(restore(t, lan)):
+            assert p[Ether].src == box

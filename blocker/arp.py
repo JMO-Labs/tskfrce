@@ -71,18 +71,27 @@ def arp_reply(target_ip: str, target_mac: str, gateway_ip: str, box_mac: str):
 
 
 def ndp_advert(
-    target_ip6: str, target_mac: str, gateway_ip6: str, box_mac: str, *, router: bool = True
+    target_ip6: str,
+    target_mac: str,
+    gateway_ip6: str,
+    box_mac: str,
+    *,
+    router: bool = True,
+    src_mac: str | None = None,
 ):
     """Neighbor Advertisement telling target that gateway_ip6 is at box_mac.
 
     ``router`` sets the R flag: True when impersonating the router to a device,
-    False when advertising a host (the device) to the gateway.
+    False when advertising a host (the device) to the gateway. ``src_mac`` is the
+    Ether source: the sending interface's own MAC (default ``box_mac``). Left unset,
+    scapy picks the default-route iface's MAC, which a Wi-Fi AP drops on a multi-homed box.
     """
     from blocker.scapy_lite import Ether, ICMPv6ND_NA, ICMPv6NDOptDstLLAddr, IPv6
 
     flag = 1 if router else 0
     na = ICMPv6ND_NA(tgt=gateway_ip6, R=flag, S=0, O=1) / ICMPv6NDOptDstLLAddr(lladdr=box_mac)
-    return Ether(dst=target_mac) / IPv6(src=gateway_ip6, dst=target_ip6) / na
+    eth = Ether(src=src_mac or box_mac, dst=target_mac)
+    return eth / IPv6(src=gateway_ip6, dst=target_ip6) / na
 
 
 def redirect_packets(target: TargetAddrs, lan: LanFacts) -> list:
@@ -140,10 +149,21 @@ def restore(target: TargetAddrs, lan: LanFacts) -> list:
     if lan.gateway_ip6 and lan.gateway_mac6:
         for ip6 in target.ip6:
             # truth: advertise the v6 gateway's real MAC, resolved separately from v4
-            pkts.append(ndp_advert(ip6, target.mac, lan.gateway_ip6, lan.gateway_mac6))
+            pkts.append(
+                ndp_advert(
+                    ip6, target.mac, lan.gateway_ip6, lan.gateway_mac6, src_mac=lan.box_mac
+                )
+            )
             # heal the gateway: the device's v6 address is really at the device's MAC
             pkts.append(
-                ndp_advert(lan.gateway_ip6, lan.gateway_mac6, ip6, target.mac, router=False)
+                ndp_advert(
+                    lan.gateway_ip6,
+                    lan.gateway_mac6,
+                    ip6,
+                    target.mac,
+                    router=False,
+                    src_mac=lan.box_mac,
+                )
             )
     return pkts
 
