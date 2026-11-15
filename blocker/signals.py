@@ -25,6 +25,7 @@ MDNS_TYPES = (
 )
 MDNS_QUERY_EVERY = 300  # s
 _FIELDS = ("mdns_name", "model", "dhcp_fp", "dhcp_hostname")
+WAKE_GAP = 2.0  # s between announcement-triggered rescans
 _FRESH = 600  # s: only trust discovery entries this recent for IP -> MAC
 
 
@@ -136,8 +137,13 @@ class Signals:
         cfg: Config,
         report: Callable[[Config, Seen], object] = report_seen,
         ifaces: Callable[[], list[str]] = _managed_ifaces,
+        on_unknown: Callable[[], None] | None = None,
+        clock: Callable[[], float] = time.monotonic,
     ):
         self.cfg = cfg
+        self._on_unknown = on_unknown  # wake discovery: an unknown MAC just announced itself
+        self._clock = clock
+        self._last_wake = float("-inf")
         self._ifaces = ifaces
         self._report = report
         self._lock = threading.Lock()
@@ -174,7 +180,28 @@ class Signals:
 
     # --- DHCP ---------------------------------------------------------------
 
+    def _wake_for_unknown(self, pkt) -> None:
+        """DHCP REQUEST/ACK or ARP announcement from a MAC discovery hasn't seen -> rescan now.
+        Rate limited globally (frames can be forged): at most one wake per WAKE_GAP s."""
+        if self._on_unknown is None:
+            return
+        from blocker.resist import _announcement
+
+        found = _announcement(pkt)
+        if found is None:
+            return
+        with self._lock:
+            now = self._clock()
+            if found[0] in self._latest or now - self._last_wake < WAKE_GAP:
+                return
+            self._last_wake = now
+        self._on_unknown()
+
     def _on_dhcp(self, pkt) -> None:
+        try:
+            self._wake_for_unknown(pkt)
+        except Exception as e:  # noqa: BLE001 - best effort
+            log.debug("announcement wake failed: %s", e)
         fp = dhcp_fp_from_packet(pkt)
         if fp:
             self.update(fp[0], dhcp_fp=fp[1])
@@ -222,7 +249,7 @@ class Signals:
 
     def run_dhcp(self, stop: threading.Event) -> None:
         try:
-            self._sniff_managed(stop, "udp and (port 67 or 68)", self._on_dhcp)
+            self._sniff_managed(stop, "arp or (udp and (port 67 or 68))", self._on_dhcp)
         except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
             log.warning("dhcp sniff stopped: %s", e)
 

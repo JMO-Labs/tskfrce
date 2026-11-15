@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 import time
 from pathlib import Path
 from unittest.mock import Mock
@@ -319,3 +320,71 @@ def test_query_mdns_sent_on_every_managed_iface(monkeypatch):
     sg = Signals(CFG, Mock(), ifaces=lambda: ["wlo1", "wlan1"])
     sg._query_mdns()
     assert sent == ["wlo1", "wlan1"]
+
+
+# --- unknown-MAC announcement wakes discovery (tskfrce#123) ------------------
+
+
+def _request(mac=MAC, ip="10.0.0.9"):
+    return (
+        Ether(src=mac, dst="ff:ff:ff:ff:ff:ff")
+        / IP(src="0.0.0.0", dst="255.255.255.255")
+        / UDP(sport=68, dport=67)
+        / BOOTP(chaddr=bytes.fromhex(mac.replace(":", "")))
+        / DHCP(options=[("message-type", "request"), ("requested_addr", ip), "end"])
+    )
+
+
+def _arp(mac=MAC, ip="10.0.0.9"):
+    from scapy.all import ARP
+
+    return Ether(src=mac, dst="ff:ff:ff:ff:ff:ff") / ARP(op=1, hwsrc=mac, psrc=ip, pdst=ip)
+
+
+def _sg(clock):
+    wake = Mock()
+    return Signals(CFG, Mock(), on_unknown=wake, clock=clock), wake
+
+
+def test_unknown_mac_dhcp_request_wakes_discovery():
+    sg, wake = _sg(lambda: 100.0)
+    sg._on_dhcp(_request())
+    wake.assert_called_once_with()
+
+
+def test_unknown_mac_arp_announcement_wakes_discovery():
+    sg, wake = _sg(lambda: 100.0)
+    sg._on_dhcp(_arp())
+    wake.assert_called_once_with()
+
+
+def test_known_mac_does_not_wake():
+    sg, wake = _sg(lambda: 100.0)
+    sg.note_seen(Seen(mac=MAC, ip="10.0.0.9"))
+    sg._on_dhcp(_request())
+    wake.assert_not_called()
+
+
+def test_discover_without_ip_does_not_wake():
+    sg, wake = _sg(lambda: 100.0)
+    sg._on_dhcp(_discover([1, 3]))
+    wake.assert_not_called()
+
+
+def test_forged_mac_flood_is_rate_limited():
+    t = [100.0]
+    sg, wake = _sg(lambda: t[0])
+    for i in range(50):
+        sg._on_dhcp(_request(mac=f"aa:bb:cc:00:00:{i:02x}"))
+    assert wake.call_count == 1
+    t[0] += 2.5
+    sg._on_dhcp(_request(mac="aa:bb:cc:00:01:00"))
+    assert wake.call_count == 2
+
+
+def test_dhcp_sniffer_also_listens_for_arp():
+    seen = []
+    sg = Signals(CFG, Mock(), ifaces=lambda: [])
+    sg._sniff_managed = lambda stop, filt, prn, every=30: seen.append(filt)
+    sg.run_dhcp(threading.Event())
+    assert "arp" in seen[0] and "port 67" in seen[0]
