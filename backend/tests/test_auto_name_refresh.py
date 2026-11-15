@@ -50,3 +50,17 @@ def test_fingerprint_guess_ranks_below_hostname_above_vendor():
     fp = "1,121,3,6,15,119,252,95"
     assert display_device_name(None, "kids-pc", fp, "Apple") == ("kids-pc", "hostname")
     assert display_device_name(None, None, fp, "Apple") == ("iPhone", "fingerprint")
+
+
+def test_usable_name_rejects_machine_ids():
+    from app.lock.device_names import display_device_name, usable_name
+
+    assert usable_name("e097b8cf9b6e41bdbb64bf205dd82f7c") is None
+    assert usable_name("e097b8cf-9b6e-41bd-bb64-bf205dd82f7c") is None
+    assert usable_name("deadbeef") is None
+    assert usable_name("12345") is None
+    assert usable_name("homeassistant") == "homeassistant"
+    assert usable_name("homeassistant.maas") == "homeassistant.maas"
+    assert display_device_name(
+        "e097b8cf9b6e41bdbb64bf205dd82f7c", "homeassistant.maas", None, None
+    ) == ("homeassistant.maas", "hostname")
