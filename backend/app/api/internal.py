@@ -251,11 +251,14 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
             # a hint sends its own notice; no bell while the wizard is running
             if not (apply_relink(db, dev) or apply_hint(db, dev)):
                 fam = get_family(db)
+                # a provisional pause may lift by itself: no notice until settle_provisional
+                # decides (a link sends the relink notice instead)
+                prov = provisional_pause(db, dev)
                 held = (
                     fam.hold_private_devices and dev.random_mac and dev.status == "unassigned"
-                ) or provisional_pause(db, dev)
+                ) or prov
                 dev.held = bool(held)
-                if fam.setup_step is None:
+                if fam.setup_step is None and not prov:
                     kind = friendly_name(dev.device_class)
                     inbox.notify_parents(
                         db,

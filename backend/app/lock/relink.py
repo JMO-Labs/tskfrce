@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
-from app.lock.fingerbank import os_family
+from app.lock.fingerbank import friendly_name, os_family
 from app.lock.hints import _kinds, inherit
 from app.lock.state import desired_blocked
 from app.models.family import get_family
@@ -81,8 +81,23 @@ def settle_provisional(db: Session, device: Device) -> None:
         c.last_seen <= device.first_seen for c in _candidates(db, device, now, timedelta(0))
     ):
         return  # still a plausible relink
-    else:
-        device.held = bool(get_family(db).hold_private_devices and device.random_mac)
+    else:  # ruled out without a link: send the new-device notice that was deferred
+        fam = get_family(db)
+        device.held = bool(fam.hold_private_devices and device.random_mac)
+        if fam.setup_step is None:
+            kind = friendly_name(device.device_class)
+            inbox.notify_parents(
+                db,
+                "new_device",
+                f"New device held: {device.name}" if device.held else f"New device: {device.name}",
+                (f"Looks like: {kind}. " if kind else "")
+                + (
+                    "It stays paused until you allow it or say whose it is."
+                    if device.held
+                    else "Say whose it is so it follows their rules."
+                ),
+                device_id=device.id,
+            )
     device.held_provisional = False
 
 

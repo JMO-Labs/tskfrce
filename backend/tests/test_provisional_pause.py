@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 
+from app.models.inbox import Notification
 from app.models.lock import Device, Override
 
 from tests.test_device_relink import NEW_MAC, _now, _old, seen
@@ -14,11 +15,14 @@ def pause(db, dev):
     db.commit()
 
 
-def test_provisional_pause_set(client, db, kid):
+def test_provisional_pause_set(client, db, kid, parent_headers):
     old = _old(db, kid, silent=timedelta(seconds=10))
     pause(db, old)
     d = db.get(Device, seen(client))
     assert d.status == "unassigned" and d.held and d.held_provisional
+    assert not db.query(Notification).filter_by(kind="new_device").count()
+    r = client.get("/api/v1/devices", headers=parent_headers)
+    assert [x["pause_reason"] for x in r.json() if x["id"] == d.id] == ["possible relink"]
 
 
 def test_lifted_on_conflict(client, db, kid):
@@ -47,6 +51,8 @@ def test_replaced_on_link(client, db, kid):
     old = _old(db, kid, silent=timedelta(seconds=10))
     pause(db, old)
     did = seen(client)
+    d = db.get(Device, did)
+    assert d.held and d.held_provisional  # kept while the link is still possible
     old.last_seen = _now() - timedelta(seconds=50)
     db.commit()
     seen(client)
@@ -54,6 +60,8 @@ def test_replaced_on_link(client, db, kid):
     d = db.get(Device, did)
     assert d.status == "assigned" and d.hint_reason == "relink"
     assert not d.held and not d.held_provisional
+    assert not db.query(Notification).filter_by(kind="new_device").count()
+    assert db.query(Notification).filter_by(kind="device_hint").count() >= 1
 
 
 def test_never_when_nothing_paused(client, db, kid):
@@ -80,3 +88,4 @@ def test_expires_after_window(client, db, kid):
     seen(client)
     db.expire_all()
     assert not db.get(Device, did).held
+    assert db.query(Notification).filter_by(kind="new_device", device_id=did).count() == 1
