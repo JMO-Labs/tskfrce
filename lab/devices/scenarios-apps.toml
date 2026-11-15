@@ -1,22 +1,25 @@
 # Real kid apps (installed by apps-kit.sh). Oracle: app-probe.sh = per-UID rx bytes after launch + scroll.
-# rc 0 = >300 KB real content, 3 = 20-300 KB, 1 = less. Screenshot of the final screen: /sdcard/escape-<pkg>.png.
+# rc 0 = > MIN (3rd arg, default 300 KB; ~half the app's unpaused payload when logged out), 3 = 20 KB..MIN, 1 = less.
+# Unpaused calibration 2026-11-15 (40 s, no accounts): Roblox 51 MB, TikTok 15 MB, Discord 13 MB, ChatGPT 9.5 MB,
+# Snapchat 3.4 MB, Twitch 3 MB, Pinterest 645 KB, Netflix 409 KB, Instagram 302 KB, Reddit/WhatsApp/char.ai/Telegram
+# ~230 KB, Spotify 190 KB, YouTube Kids 121 KB (parent gate), YouTube 11 MB via a video link.
+# Those are FIRST launches; later launches use cached assets: Discord 27-35 KB, Snapchat 43 KB, Instagram 120 KB,
+# WhatsApp 35 KB, char.ai 100 KB, ChatGPT 55-61 KB, Telegram 2-4 KB. MIN uses the cached figure. Paused noise: -4..+0.1 KB. Screenshot of the final screen: /sdcard/escape-<pkg>.png.
 
 [[scenario]]
-skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
 id = "app.youtube"
 title = "YouTube app: launch, scroll, count bytes received"
 category = "apps"
 platforms = ["A"]
-probe = '''/data/local/tmp/kit/app-probe.sh com.google.android.youtube 40'''
+probe = '''/data/local/tmp/kit/app-probe.sh com.google.android.youtube 40 300000 'https://www.youtube.com/watch?v=jNQXAC9IVRw''''
 timeout = 100
 
 [[scenario]]
-skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
 id = "app.ytkids"
 title = "YouTube Kids app: launch, scroll, count bytes received"
 category = "apps"
 platforms = ["A"]
-probe = '''/data/local/tmp/kit/app-probe.sh com.google.android.apps.youtube.kids 40'''
+probe = '''/data/local/tmp/kit/app-probe.sh com.google.android.apps.youtube.kids 40 60000'''
 timeout = 100
 
 [[scenario]]
@@ -38,52 +41,46 @@ probe = '''/data/local/tmp/kit/app-probe.sh com.zhiliaoapp.musically 40'''
 timeout = 100
 
 [[scenario]]
-skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
 id = "app.discord"
 title = "Discord app: launch, scroll, count bytes received"
 category = "apps"
 platforms = ["A"]
-probe = '''/data/local/tmp/kit/app-probe.sh com.discord 40'''
+probe = '''/data/local/tmp/kit/app-probe.sh com.discord 40 13000'''
 timeout = 100
 
 [[scenario]]
-skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
 id = "app.snapchat"
 title = "Snapchat app: launch, scroll, count bytes received"
 category = "apps"
 platforms = ["A"]
-probe = '''/data/local/tmp/kit/app-probe.sh com.snapchat.android 40'''
+probe = '''/data/local/tmp/kit/app-probe.sh com.snapchat.android 40 20000'''
 timeout = 100
 
 [[scenario]]
-skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
 id = "app.instagram"
 title = "Instagram app: launch, scroll, count bytes received"
 category = "apps"
 platforms = ["A"]
-probe = '''/data/local/tmp/kit/app-probe.sh com.instagram.android 40'''
+probe = '''/data/local/tmp/kit/app-probe.sh com.instagram.android 40 55000'''
 timeout = 100
 
 [[scenario]]
-skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
 id = "app.whatsapp"
 title = "WhatsApp app: launch, scroll, count bytes received"
 category = "apps"
 platforms = ["A"]
-probe = '''/data/local/tmp/kit/app-probe.sh com.whatsapp 40'''
+probe = '''/data/local/tmp/kit/app-probe.sh com.whatsapp 40 16000'''
 timeout = 100
 
 [[scenario]]
-skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
 id = "app.spotify"
 title = "Spotify app: launch, scroll, count bytes received"
 category = "apps"
 platforms = ["A"]
-probe = '''/data/local/tmp/kit/app-probe.sh com.spotify.music 40'''
+probe = '''/data/local/tmp/kit/app-probe.sh com.spotify.music 40 95000'''
 timeout = 100
 
 [[scenario]]
-skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
 id = "app.twitch"
 title = "Twitch app: launch, scroll, count bytes received"
 category = "apps"
@@ -92,16 +89,14 @@ probe = '''/data/local/tmp/kit/app-probe.sh tv.twitch.android.app 40'''
 timeout = 100
 
 [[scenario]]
-skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
 id = "app.reddit"
 title = "Reddit app: launch, scroll, count bytes received"
 category = "apps"
 platforms = ["A"]
-probe = '''/data/local/tmp/kit/app-probe.sh com.reddit.frontpage 40'''
+probe = '''/data/local/tmp/kit/app-probe.sh com.reddit.frontpage 40 120000'''
 timeout = 100
 
 [[scenario]]
-skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
 id = "app.pinterest"
 title = "Pinterest app: launch, scroll, count bytes received"
 category = "apps"
@@ -110,48 +105,45 @@ probe = '''/data/local/tmp/kit/app-probe.sh com.pinterest 40'''
 timeout = 100
 
 [[scenario]]
-skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
 id = "app.netflix"
 title = "Netflix app: launch, scroll, count bytes received"
 category = "apps"
 platforms = ["A"]
-probe = '''/data/local/tmp/kit/app-probe.sh com.netflix.mediaclient 40'''
+probe = '''/data/local/tmp/kit/app-probe.sh com.netflix.mediaclient 40 200000'''
 timeout = 100
 
 [[scenario]]
-skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
 id = "app.telegram"
 title = "Telegram app: launch, scroll, count bytes received"
 category = "apps"
 platforms = ["A"]
-probe = '''/data/local/tmp/kit/app-probe.sh org.telegram.messenger 40'''
+probe = '''/data/local/tmp/kit/app-probe.sh org.telegram.messenger 40 110000'''
+skip = "logged out (needs a phone-number account): cached launch fetches 2-4 KB, inside probe noise (+-4 KB)"
 timeout = 100
 
 [[scenario]]
-skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
 id = "app.characterai"
 title = "Character.AI app: launch, scroll, count bytes received"
 category = "apps"
 platforms = ["A"]
-probe = '''/data/local/tmp/kit/app-probe.sh ai.character.app 40'''
+probe = '''/data/local/tmp/kit/app-probe.sh ai.character.app 40 45000'''
 timeout = 100
 
 [[scenario]]
-skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
 id = "app.chatgpt"
 title = "ChatGPT app: launch, scroll, count bytes received"
 category = "apps"
 platforms = ["A"]
-probe = '''/data/local/tmp/kit/app-probe.sh com.openai.chatgpt 40'''
+probe = '''/data/local/tmp/kit/app-probe.sh com.openai.chatgpt 40 27000'''
 timeout = 100
 
 [[scenario]]
-skip = "uncalibrated: app-probe thresholds + first-run dialogs pending (see README Apps)"
 id = "app.gemini"
 title = "Google Gemini app: launch, scroll, count bytes received"
 category = "apps"
 platforms = ["A"]
 probe = '''/data/local/tmp/kit/app-probe.sh com.google.android.apps.bard 40'''
+skip = "Gemini needs a newer Google app; this emulator image has no Play Store updates (0 B unpaused)"
 timeout = 100
 
 [[scenario]]

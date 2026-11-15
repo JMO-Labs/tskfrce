@@ -3,7 +3,7 @@
 #  1. F-Droid parts (Aurora Store, Firefox/Fennec, Orbot): download, check sha256 against the repo index, adb install.
 #  2. WireGuard: official APK (not on F-Droid; no published hash, so sha256 is pinned below, trust-on-first-use).
 #  3. Genuine Play builds via Aurora Store anonymous login, driven by uiautomator (apps-kit.sh aurora PKG...).
-#  4. Push app-probe.sh.
+#  4. Push app-probe.sh and tor.sh.
 # Usage: apps-kit.sh [fdroid|aurora PKG...|probe]   (no arg = fdroid + probe; aurora needs the box UNLOCKED, hold runs/.lock)
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -58,8 +58,10 @@ fdroid() {
 }
 
 probe() {
-  "${ADB[@]}" push "$HERE/app-probe.sh" /data/local/tmp/kit/app-probe.sh >/dev/null
-  "${ADB[@]}" shell chmod 755 /data/local/tmp/kit/app-probe.sh
+  for f in app-probe.sh tor.sh; do
+    "${ADB[@]}" push "$HERE/$f" "/data/local/tmp/kit/$f" >/dev/null
+    "${ADB[@]}" shell chmod 755 "/data/local/tmp/kit/$f"
+  done
 }
 
 aurora() { # PKG...: one-time Aurora login (Anonymous) then Play install through its UI

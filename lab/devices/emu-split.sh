@@ -5,6 +5,7 @@
 # Hidden/undocumented flags, found the hard way:
 #   -wifi-tap needs netsim Wi-Fi off (-feature -WiFiPacketStream), else netsim ignores the TAP;
 #   -net-tap would replace the CELLULAR side instead.
+# EMU_GPU: -gpu mode. "guest" falls back to lavapipe on this image (SIGSEGVs in app GL); try swangle_indirect.
 # Emulator runs as the user, so it needs the kvm group (sg picks it up without re-login).
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -12,5 +13,5 @@ SDK=/home/user/Android/Sdk
 sudo -n /usr/local/sbin/droidns tap down
 sudo -n /usr/local/sbin/droidns tap prep
 exec sg kvm -c "ANDROID_HOME=$SDK $SDK/emulator/emulator -avd kidphone -no-window -no-audio \
-  -no-boot-anim -no-snapshot -gpu guest -feature -Vulkan,-WiFiPacketStream \
+  -no-boot-anim -no-snapshot -gpu ${EMU_GPU:-guest} -feature -Vulkan,-WiFiPacketStream \
   -wifi-tap droidtap -wifi-tap-script-up $HERE/tap-up.sh"

@@ -207,10 +207,24 @@ skip = "needs the WARP app (not installed; Aurora can install it)"
 
 [[scenario]]
 id = "vpn.tor"
-title = "Orbot installed; needs a UI-driven probe (not implemented)"
+title = "Orbot (Tor) started while paused"
+category = "vpn"
 platforms = ["A"]
-probe = '''true'''
-skip = "Orbot installed; needs a UI-driven probe (not implemented)"
+setup = "am force-stop org.torproject.android"
+locked_setup = "am force-stop org.torproject.android"
+probe = '''/data/local/tmp/kit/tor.sh 90'''
+teardown = "am force-stop org.torproject.android"
+timeout = 140
+
+[[scenario]]
+id = "vpn.tor.running"
+title = "Orbot (Tor) already connected when the pause starts"
+category = "vpn"
+platforms = ["A"]
+setup = "am force-stop org.torproject.android"
+probe = '''/data/local/tmp/kit/tor.sh 90'''
+teardown = "am force-stop org.torproject.android"
+timeout = 140
 
 [[scenario]]
 id = "vpn.psiphon"

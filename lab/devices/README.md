@@ -69,7 +69,13 @@ against the repo index) and WireGuard (official APK, pinned sha256), and pushes 
 UNLOCKED and while holding `runs/.lock`. Rows: `scenarios-apps.toml` (`--only 'app.*'`).
 Oracle: `app-probe.sh PKG SECS` = force-stop, launch, scroll, then per-UID rx bytes read from the netd eBPF map
 (`dumpsys netstats --full --uid`, section `mAppUidStatsMap`, live; the 2 h `UID stats` history and `/proc/net/xt_qtaguid` are
-useless on Android 15). rc 0 = rx > 300 KB, 3 = 20-300 KB, 1 = less. Screenshot: `/sdcard/escape-PKG.png`.
+useless on Android 15). `app-probe.sh PKG SECS [MIN] [URI]`: rc 0 = payload > MIN (default 300 KB), 3 = 20 KB..MIN, 1 = less.
+MIN per row ~= half the app's unpaused payload (lab phone has no accounts, so logged-out apps fetch little; table in
+`scenarios-apps.toml`). URI opens a deep link instead of the launcher (YouTube: a video). The probe pre-grants
+notifications so the permission dialog never covers content. Screenshot: `/sdcard/escape-PKG.png`.
+Tor: `tor.sh` opens Orbot and taps Connect (VPN consent pre-granted via `appops ACTIVATE_VPN`), then fetches
+check.torproject.org through SOCKS 9050. Rows `vpn.tor` (started while paused) and `vpn.tor.running` (connected before).
 Notes: app UID is `appId=` in `dumpsys package`; rx includes loopback and any traffic the app made, so look at the screenshot.
 Unlocked baselines (40 s): Roblox 46.8 MB, TikTok 6.7 MB; YouTube/Chrome baselines too low or blocked by first-run dialogs, so thresholds are unvalidated.
-Emulator needs `-gpu guest` (SwiftShader crashes on Chromium-based apps); Brawl Stars / Among Us do not fit the 6 GB data disk.
+Emulator GPU: `-gpu guest` silently falls back to lavapipe on this image and SIGSEGVs in app GL (YouTube Kids); launch with
+`EMU_GPU=swangle_indirect lab/devices/emu-split.sh` (stable for the full app battery); Brawl Stars / Among Us do not fit the 6 GB data disk.
