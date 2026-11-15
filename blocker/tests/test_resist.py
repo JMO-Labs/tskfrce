@@ -1,3 +1,4 @@
+import dataclasses
 from types import SimpleNamespace
 
 import pytest
@@ -241,7 +242,7 @@ def test_filter_also_captures_arp_and_dhcp():
     _, cap = _watch_cb(lambda *a: None)
     assert cap["filter"] == (
         f"(ether dst {BOX} and (ether src {GW.lower()} or ether src {KID}))"
-        " or arp or (udp and (port 67 or port 68))"
+        " or arp or (udp and (port 67 or port 68)) or (icmp6 and ip6[40] == 135)"
     )
 
 
@@ -534,3 +535,55 @@ def test_any_dhcp_from_watched_mac_fires_rejoin_callback():
     prn(_dhcp("offer", src=GW, chaddr=KID))  # server replies are not a rejoin
     prn(_dhcp("ack", src=GW, chaddr=KID))
     assert got == [KID, KID]
+
+
+def _query_watch(lan=LAN):
+    got = []
+    captured = {}
+    w = ResistanceWatch(
+        SimpleNamespace(lan_iface=""),
+        ResistanceCounter(lan),
+        sniffer_factory=lambda **kw: captured.update(kw) or SimpleNamespace(stop=lambda: None),
+        on_query=got.append,
+    )
+    w.set_watched(WATCHED)
+    return got, captured["prn"]
+
+
+def test_gateway_who_has_ns_and_gratuitous_arp_fire_query_callback():
+    pytest.importorskip("scapy")
+    from scapy.layers.inet6 import ICMPv6ND_NS, IPv6
+    from scapy.layers.l2 import ARP, Ether
+
+    got, prn = _query_watch()
+    bc = "ff:ff:ff:ff:ff:ff"
+    prn(Ether(src=KID, dst=bc) / ARP(op=1, hwsrc=KID, psrc=KID_IP, pdst=LAN.gateway_ip))
+    prn(Ether(src=KID, dst=bc) / ARP(op=1, hwsrc=KID, psrc=KID_IP, pdst=KID_IP))  # gratuitous
+    prn(Ether(src=KID, dst=bc) / ARP(op=1, hwsrc=KID, psrc="0.0.0.0", pdst=KID_IP))  # probe
+    prn(Ether(src=KID, dst=bc) / ARP(op=1, hwsrc=KID, psrc=KID_IP, pdst="10.0.0.77"))  # other host
+    prn(Ether(src="dd:dd:dd:dd:dd:04", dst=bc) / ARP(op=1, psrc="10.0.0.9", pdst=LAN.gateway_ip))
+    prn(Ether(src=KID, dst=bc) / ARP(op=2, hwsrc=KID, psrc=KID_IP, pdst=LAN.gateway_ip))  # reply
+    assert got == [KID, KID, KID]
+    ns = Ether(src=KID, dst="33:33:ff:00:00:01") / IPv6(src=KID_IP6, dst="ff02::1:ff00:1")
+    prn(ns / ICMPv6ND_NS(tgt="fe80::1"))
+    assert got == [KID, KID, KID]  # no gateway_ip6 known: not the router
+
+
+def test_ndp_ns_for_router_fires_query_callback():
+    pytest.importorskip("scapy")
+    from scapy.layers.inet6 import ICMPv6ND_NS, IPv6
+    from scapy.layers.l2 import Ether
+
+    got, prn = _query_watch(dataclasses.replace(LAN, gateway_ip6="FE80:0::1"))
+    mc = "33:33:ff:00:00:01"
+
+    def ns(src, tgt):
+        return (
+            Ether(src=src, dst=mc) / IPv6(src=KID_IP6, dst="ff02::1:ff00:1") / ICMPv6ND_NS(tgt=tgt)
+        )
+
+    prn(ns(KID, "fe80::1"))
+    assert got == [KID]
+    prn(ns(KID, "fe80::2"))  # another host
+    prn(ns("dd:dd:dd:dd:dd:04", "fe80::1"))  # unwatched MAC
+    assert got == [KID]

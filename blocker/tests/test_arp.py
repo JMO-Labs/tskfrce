@@ -309,3 +309,31 @@ def test_poke_spoofs_now_for_active_target_only():
     m.poke("de:ad:be:ef:00:99")
     assert len(fs.calls) == n + 1
     m.stop_all()
+
+
+def test_answer_replies_immediately_then_follows_up():
+    fs = FakeSend()
+    m = RedirectionManager(CFG, lan=LAN, send=fs, cadence=30, follow_ups=(0.05, 0.1))
+    m.set_targets({DEV: TargetAddrs(mac=DEV, ip="192.168.1.50")})
+    assert fs.event.wait(1.0)
+    n = len(fs.calls)
+    m.answer(DEV.upper())
+    assert len(fs.calls) == n + 1  # synchronous, no debounce wait
+    m.answer("de:ad:be:ef:00:99")  # not enforced: nothing
+    time.sleep(0.4)
+    assert len(fs.calls) == n + 3
+    m.stop_all()
+
+
+def test_answer_coalesces_follow_ups_per_mac():
+    fs = FakeSend()
+    m = RedirectionManager(CFG, lan=LAN, send=fs, cadence=30, follow_ups=(0.1, 0.2))
+    m.set_targets({DEV: TargetAddrs(mac=DEV, ip="192.168.1.50")})
+    assert fs.event.wait(1.0)
+    n = len(fs.calls)
+    for _ in range(5):
+        m.answer(DEV)  # flood: each replies now, but only one follow-up chain
+    assert len(fs.calls) == n + 5
+    time.sleep(0.5)
+    assert len(fs.calls) == n + 7
+    m.stop_all()

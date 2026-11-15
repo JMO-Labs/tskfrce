@@ -94,6 +94,7 @@ class ResistanceCounter:
         # A None gateway MAC is unknown, so it must never match a frame.
         self._gateways = frozenset(m.lower() for m in (lan.gateway_mac, lan.gateway_mac6) if m)
         self._box = lan.box_mac.lower()
+        self.gateway_ips = frozenset(i for i in (lan.gateway_ip, lan.gateway_ip6) if i)
         self._lan_nets = tuple(ipaddress.ip_network(c) for c in lan_cidrs)
         self._window = window
         self._threshold = threshold
@@ -319,8 +320,10 @@ class ResistanceWatch:
         sniffer_factory: Callable[..., Any] = _real_sniffer,
         on_new_ip: Callable[[str, str], None] | None = None,
         on_dhcp: Callable[[str], None] | None = None,
+        on_query: Callable[[str], None] | None = None,
     ) -> None:
         self._cfg = cfg
+        self._on_query = on_query
         self._on_dhcp = on_dhcp
         self._on_new_ip = on_new_ip
         self.counter = counter
@@ -363,7 +366,7 @@ class ResistanceWatch:
         src_match = " or ".join(f"ether src {m}" for m in srcs)
         return (
             f"(ether dst {self.counter._box} and ({src_match}))"
-            " or arp or (udp and (port 67 or port 68))"
+            " or arp or (udp and (port 67 or port 68)) or (icmp6 and ip6[40] == 135)"
         )
 
     def stop(self) -> None:
@@ -386,6 +389,7 @@ class ResistanceWatch:
             return
         self._announced_ip(pkt)
         self._dhcp_rejoin(pkt)
+        self._gateway_query(pkt)
         if pkt.haslayer(IP):
             ip_dst, ip_src = pkt[IP].dst, pkt[IP].src
         elif pkt.haslayer(IPv6):
@@ -430,6 +434,32 @@ class ResistanceWatch:
                 self._on_dhcp(mac)
         except Exception:
             log.exception("dhcp rejoin handling failed")
+
+    def _gateway_query(self, pkt: Any) -> None:
+        """Watched MAC asking for the gateway (ARP who-has, NS for the router) or announcing
+        itself (gratuitous/probe ARP) -> answer now, before the real router wins the race."""
+        if self._on_query is None:
+            return
+        try:
+            from blocker.scapy_lite import ARP, Ether, ICMPv6ND_NS
+
+            src = pkt[Ether].src.lower()
+            if src not in {m.lower() for m in (self._watched or {})}:
+                return
+            gws = self.counter.gateway_ips
+            if pkt.haslayer(ARP):
+                a = pkt[ARP]
+                if a.op != 1:
+                    return
+                hit = a.pdst in gws or a.psrc in ("0.0.0.0", a.pdst)
+            else:
+                hit = pkt.haslayer(ICMPv6ND_NS) and _norm(pkt[ICMPv6ND_NS].tgt) in {
+                    _norm(i) for i in gws
+                }
+            if hit:
+                self._on_query(src)
+        except Exception:
+            log.exception("gateway query handling failed")
 
     def _announced_ip(self, pkt: Any) -> None:
         """A watched MAC announcing an IP it isn't known by (ARP, DHCP REQUEST/ACK) -> callback."""

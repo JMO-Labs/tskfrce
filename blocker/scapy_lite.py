@@ -12,6 +12,7 @@ from scapy.layers.inet import IP, TCP, UDP
 from scapy.layers.inet6 import (
     ICMPv6EchoRequest,
     ICMPv6ND_NA,
+    ICMPv6ND_NS,
     ICMPv6NDOptDstLLAddr,
     IPv6,
     getmacbyip6,
@@ -36,6 +37,7 @@ __all__ = [
     "ICMPv6EchoRequest",
     "ICMPv6NDOptDstLLAddr",
     "ICMPv6ND_NA",
+    "ICMPv6ND_NS",
     "IPv6",
     "Raw",
     "conf",

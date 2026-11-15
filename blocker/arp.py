@@ -22,6 +22,7 @@ DEFAULT_CADENCE = 2.0
 HEAL_ROUNDS = 4
 HEAL_INTERVAL = 1.2
 REDETECT_INTERVAL = 30.0  # seconds between retries while a gateway MAC is unresolved
+ANSWER_FOLLOW_UPS = (0.15, 0.3, 0.5)  # seconds after an immediate answer: out-shout the router
 POKE_DEBOUNCE = 0.5  # seconds: collapse a rejoin's DISCOVER+REQUEST into one burst
 
 
@@ -210,8 +211,10 @@ class RedirectionManager:
         send: Callable[[list, str | None], None] = _real_sendp,
         detect: Callable = detect_lan,
         cadence: float = DEFAULT_CADENCE,
+        follow_ups: tuple[float, ...] = ANSWER_FOLLOW_UPS,
     ) -> None:
         self.cfg = cfg
+        self._follow_ups = follow_ups
         self._lan = lan
         self._autodetect = lan is None  # injected facts (tests) are never re-detected
         self._lan_at = 0.0
@@ -223,6 +226,7 @@ class RedirectionManager:
         self._stops: dict[str, threading.Event] = {}
         self._threads: dict[str, threading.Thread] = {}
         self._poked: dict[str, float] = {}
+        self._following: set[str] = set()  # MACs with a follow-up chain running
 
     def _lanfacts(self) -> LanFacts:
         # Re-detect while a gateway MAC is unresolved (ARP/ND not populated at boot):
@@ -278,6 +282,38 @@ class RedirectionManager:
             if live:
                 self._poked[target.mac] = now
         if live:
+            self._burst(target)
+
+    def answer(self, mac: str) -> None:
+        """A paused device asked for the gateway (ARP who-has / NS / gratuitous ARP): reply now,
+        then repeat shortly so we override the real router's answer. No-op unless enforced."""
+        with self._lock:
+            target = next((t for m, t in self._targets.items() if m.lower() == mac.lower()), None)
+            if target is None or not _active(target) or target.mac not in self._threads:
+                return
+            start = bool(self._follow_ups) and target.mac not in self._following
+            if start:
+                self._following.add(target.mac)
+        self._burst(target)
+        if start:
+            threading.Thread(target=self._follow, args=(target.mac,), daemon=True).start()
+
+    def _follow(self, mac: str) -> None:
+        try:
+            self._follow_loop(mac)
+        finally:
+            with self._lock:
+                self._following.discard(mac)
+
+    def _follow_loop(self, mac: str) -> None:
+        prev = 0.0
+        for at in self._follow_ups:
+            time.sleep(at - prev)
+            prev = at
+            with self._lock:
+                target = self._targets.get(mac)
+                if target is None or not _active(target) or mac not in self._threads:
+                    return
             self._burst(target)
 
     def stop_all(self) -> None:
