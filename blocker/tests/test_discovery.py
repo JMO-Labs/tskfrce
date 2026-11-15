@@ -240,7 +240,7 @@ def test_ndp_sender_addrs_uses_target_for_dad():
 
 
 def _v6_frame(src_mac, src_ip, dst_ip="2606:4700::1", ns_tgt=None):
-    from scapy.all import ICMPv6ND_NS, Ether, ICMPv6EchoRequest, IPv6
+    from scapy.all import Ether, ICMPv6EchoRequest, ICMPv6ND_NS, IPv6
 
     inner = ICMPv6ND_NS(tgt=ns_tgt) if ns_tgt else ICMPv6EchoRequest()
     return Ether(src=src_mac) / IPv6(src=src_ip, dst=dst_ip) / inner
