@@ -140,8 +140,8 @@ def _own_macs() -> set[str]:
     for name in _managed_ifaces():
         try:
             out.add(get_if_hwaddr(name).lower())
-        except Exception:  # noqa: BLE001 - iface may have vanished
-            pass
+        except Exception as e:  # noqa: BLE001 - iface may have vanished
+            log.debug("hwaddr of %s unavailable: %s", name, e)
     return out
 
 

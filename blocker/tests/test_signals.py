@@ -430,7 +430,7 @@ def test_same_unknown_mac_wakes_once_within_ttl():
 
 def test_woken_mac_memory_is_bounded():
     t = [100.0]
-    sg, wake = _sgw(lambda: t[0])
+    sg, _wake = _sgw(lambda: t[0])
     for i in range(500):
         t[0] += WAKE_GAP + 0.1
         sg._on_dhcp(_arp(mac=f"aa:bb:cc:00:{i // 256:02x}:{i % 256:02x}"))
