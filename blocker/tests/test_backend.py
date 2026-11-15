@@ -158,6 +158,7 @@ def test_fetch_state_parses_and_defaults(make_stub):
         "listen_only": True,
         "covered_vlans": [20, 30],
         "network_enforce": {},
+        "block_unknown": False,
     }
     old = make_stub(body=b'{"blocked":["a"]}')
     assert fetch_state(_cfg(old.url)) == {
@@ -166,6 +167,7 @@ def test_fetch_state_parses_and_defaults(make_stub):
         "listen_only": False,
         "covered_vlans": [],
         "network_enforce": {},
+        "block_unknown": False,
     }
     assert fetch_state(_cfg("http://127.0.0.1:1")) is None
 
