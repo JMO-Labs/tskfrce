@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import threading
+import time
 from collections.abc import Callable
 from functools import cache
 from pathlib import Path
 
 CATEGORIES = ("vpn", "private_dns", "proxy", "tor")
+DOT_WINDOW = 10.0  # s: a private_dns lookup counts only if a TCP 853 SYN follows
+DOT_PORT = 853
 MAX_MACS = 1000  # memory bound between drains
 _DATA = Path(__file__).parent / "data" / "workaround_domains.txt"
 
@@ -44,8 +47,12 @@ def categorize(qname: str) -> str | None:
 
 
 class WorkaroundCounter:
-    def __init__(self, resolve: Callable[[str], str | None]) -> None:
+    def __init__(
+        self, resolve: Callable[[str], str | None], clock: Callable[[], float] = time.monotonic
+    ) -> None:
         self._resolve = resolve
+        self._clock = clock
+        self._pending: dict[str, float] = {}  # mac -> time of last private_dns lookup
         self._found: dict[str, set[str]] = {}
         self._lock = threading.Lock()
 
@@ -57,11 +64,25 @@ class WorkaroundCounter:
         if mac is None:
             return
         with self._lock:
+            if cat == "private_dns":  # Android Private DNS follows with DoT; app DoH (443) doesn't
+                if mac in self._pending or len(self._pending) < MAX_MACS:
+                    self._pending[mac] = self._clock()
+                return
             if mac not in self._found and len(self._found) >= MAX_MACS:
                 return
             self._found.setdefault(mac, set()).add(cat)
 
+    def dot(self, mac: str) -> None:
+        """A TCP 853 SYN from mac: confirms a private_dns lookup made within DOT_WINDOW."""
+        with self._lock:
+            t = self._pending.pop(mac, None)
+            if t is None or self._clock() - t > DOT_WINDOW:
+                return
+            self._found.setdefault(mac, set()).add("private_dns")
+
     def drain(self) -> dict[str, list[str]]:
         with self._lock:
             out, self._found = self._found, {}
+            now = self._clock()
+            self._pending = {m: t for m, t in self._pending.items() if now - t <= DOT_WINDOW}
         return {m: sorted(c) for m, c in out.items()}

@@ -579,6 +579,7 @@ class Service:
                 on_new_ip=self._on_new_ip,
                 on_dhcp=self._redir.poke,
                 on_query=self._redir.answer,
+                on_dot=self.workarounds.dot,
             )
         self._spawn(self._reconcile_loop)
         self._spawn(self._resist_loop)

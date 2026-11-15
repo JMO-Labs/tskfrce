@@ -321,8 +321,10 @@ class ResistanceWatch:
         on_new_ip: Callable[[str, str], None] | None = None,
         on_dhcp: Callable[[str], None] | None = None,
         on_query: Callable[[str], None] | None = None,
+        on_dot: Callable[[str], None] | None = None,
     ) -> None:
         self._cfg = cfg
+        self._on_dot = on_dot
         self._on_query = on_query
         self._on_dhcp = on_dhcp
         self._on_new_ip = on_new_ip
@@ -408,7 +410,18 @@ class ResistanceWatch:
                 flags=str(t.flags),
             )
         udp = UdpInfo(pkt[UDP].sport, pkt[UDP].dport) if pkt.haslayer(UDP) else None
+        if tcp is not None and tcp.dport == 853 and tcp.flags == "S" and self._on_dot:
+            self._dot_syn(pkt[Ether].src)
         self.counter.observe(pkt[Ether].src, pkt[Ether].dst, ip_dst, ip_src, tcp=tcp, udp=udp)
+
+    def _dot_syn(self, mac: str) -> None:
+        with self._lock:
+            watched = self._watched or {}
+        if mac.lower() in {m.lower() for m in watched}:
+            try:
+                self._on_dot(mac.lower())
+            except Exception:
+                log.debug("on_dot failed", exc_info=True)
 
     def _dhcp_rejoin(self, pkt: Any) -> None:
         """DHCP DISCOVER/REQUEST from a watched MAC (whatever its hostname or vendor class)
