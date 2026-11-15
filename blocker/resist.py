@@ -90,11 +90,12 @@ class ResistanceCounter:
         lan_cidrs: list[str] = (),
         grace: float = 30.0,
         clock: Callable[[], float] = time.monotonic,
+        lan_provider: Callable[[], LanFacts] | None = None,
     ) -> None:
-        # A None gateway MAC is unknown, so it must never match a frame.
-        self._gateways = frozenset(m.lower() for m in (lan.gateway_mac, lan.gateway_mac6) if m)
+        # lan_provider yields the current facts (IPv6 may be detected after start).
+        self._lan = lan
+        self._lan_provider = lan_provider
         self._box = lan.box_mac.lower()
-        self.gateway_ips = frozenset(i for i in (lan.gateway_ip, lan.gateway_ip6) if i)
         self._lan_nets = tuple(ipaddress.ip_network(c) for c in lan_cidrs)
         self._window = window
         self._threshold = threshold
@@ -111,6 +112,25 @@ class ResistanceCounter:
         self._samples: dict[str, tuple[float, list[dict[str, str]]]] = {}
         # mac -> {flow 4-tuple -> (highest seq end, first seen in grace)}
         self._flows: dict[str, dict[tuple, tuple[int, bool]]] = {}
+
+    def _facts(self) -> LanFacts:
+        if self._lan_provider is not None:
+            try:
+                self._lan = self._lan_provider()
+            except Exception:
+                log.exception("lan facts refresh failed; keeping last")
+        return self._lan
+
+    @property
+    def _gateways(self) -> frozenset[str]:
+        # A None gateway MAC is unknown, so it must never match a frame.
+        lan = self._facts()
+        return frozenset(m.lower() for m in (lan.gateway_mac, lan.gateway_mac6) if m)
+
+    @property
+    def gateway_ips(self) -> frozenset[str]:
+        lan = self._facts()
+        return frozenset(i for i in (lan.gateway_ip, lan.gateway_ip6) if i)
 
     def set_watched(self, targets: dict[str, TargetAddrs]) -> None:
         """Replace the watched devices; tallies of MACs no longer watched are dropped."""

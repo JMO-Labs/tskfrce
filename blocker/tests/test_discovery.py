@@ -23,9 +23,11 @@ def _pair(ip, mac):
     return (None, NS(ip=ip, mac=mac))
 
 
-def _send(arp=(), ndp=()):
+def _send(arp=(), ndp=(), listen=()):
+    rows = {"arp": arp, "ndp": ndp, "ndp_listen": listen}
+
     def send(kind, cfg, iface=None):
-        return ([_pair(*r) for r in (arp if kind == "arp" else ndp)], [])
+        return ([_pair(*r) for r in rows[kind]], [])
 
     return send
 
@@ -203,3 +205,85 @@ def test_scan_once_hands_each_seen_over_right_after_its_report(tmp_path, reporte
         on_report=lambda s: order.append(len(reported)),
     )
     assert order == [1]
+
+
+def test_scan_learns_global_and_temporary_v6_from_passive_ndp(tmp_path, reported):
+    arp = [("192.168.1.5", "aa:bb:cc:00:00:01")]
+    ndp = [("fe80::1", "aa:bb:cc:00:00:01")]
+    listen = [
+        ("2600:4040::c68b", "AA:BB:CC:00:00:01"),
+        ("2600:4040::beef", "aa:bb:cc:00:00:01"),
+        ("fe80::1", "aa:bb:cc:00:00:01"),
+    ]
+    out = scan_once(_cfg(tmp_path), send=_send(arp, ndp, listen), resolve=lambda ip: None)
+    assert out[0].ipv6 == ["fe80::1", "2600:4040::c68b", "2600:4040::beef"]
+
+
+def test_scan_survives_failing_passive_listen(tmp_path, reported):
+    arp = [("192.168.1.5", "aa:bb:cc:00:00:01")]
+
+    def send(kind, cfg, iface=None):
+        if kind == "ndp_listen":
+            raise OSError("no sniff")
+        return ([_pair(*r) for r in (arp if kind == "arp" else [])], [])
+
+    out = scan_once(_cfg(tmp_path), send=send, resolve=lambda ip: None)
+    assert len(out) == 1
+
+
+def test_ndp_sender_addrs_uses_target_for_dad():
+    from blocker.discovery import ndp_sender_addr
+
+    assert ndp_sender_addr("::", "2600::7") == "2600::7"
+    assert ndp_sender_addr("2600::8", "fe80::1") == "2600::8"
+    assert ndp_sender_addr("ff02::1", "x") is None
+
+
+def _v6_frame(src_mac, src_ip, dst_ip="2606:4700::1", ns_tgt=None):
+    from scapy.all import Ether, ICMPv6EchoRequest, ICMPv6ND_NS, IPv6
+
+    inner = ICMPv6ND_NS(tgt=ns_tgt) if ns_tgt else ICMPv6EchoRequest()
+    return Ether(src=src_mac) / IPv6(src=src_ip, dst=dst_ip) / inner
+
+
+def test_parse_v6_frame_learns_source_of_any_ipv6_traffic():
+    from blocker.discovery import parse_v6_frame
+
+    got = parse_v6_frame(_v6_frame("AA:BB:CC:00:00:01", "2600:4040::c68b"))
+    assert got == ("aa:bb:cc:00:00:01", "2600:4040::c68b")
+
+
+def test_parse_v6_frame_dad_uses_ns_target_and_skips_multicast_src():
+    from blocker.discovery import parse_v6_frame
+
+    dad = _v6_frame("aa:bb:cc:00:00:01", "::", "ff02::1:ff00:7", ns_tgt="2600::7")
+    assert parse_v6_frame(dad) == ("aa:bb:cc:00:00:01", "2600::7")
+    assert parse_v6_frame(_v6_frame("aa:bb:cc:00:00:01", "::")) is None
+    assert parse_v6_frame(_v6_frame("aa:bb:cc:00:00:01", "ff02::1")) is None
+
+
+def test_parse_v6_frame_ignores_non_ipv6():
+    from blocker.discovery import parse_v6_frame
+    from scapy.all import ARP, Ether
+
+    assert parse_v6_frame(Ether() / ARP()) is None
+
+
+def test_v6_learner_snapshot_per_mac_and_bounded():
+    from blocker.discovery import V6Learner
+
+    lr = V6Learner(max_per_mac=2)
+    for ip in ("2600::1", "2600::2", "2600::2", "2600::3"):
+        lr.on_packet(_v6_frame("aa:bb:cc:00:00:01", ip))
+    assert lr.snapshot() == [("aa:bb:cc:00:00:01", "2600::2"), ("aa:bb:cc:00:00:01", "2600::3")]
+
+
+def test_listen_ndp_returns_learned_snapshot_without_sniffing(monkeypatch):
+    from blocker.discovery import V6Learner
+
+    lr = V6Learner()
+    lr.on_packet(_v6_frame("aa:bb:cc:00:00:01", "2600::9"))
+    monkeypatch.setattr(discovery, "_learner_for", lambda iface: lr)
+    found, unans = discovery._listen_ndp("eth0")
+    assert [(r.mac, r.ip) for _, r in found] == [("aa:bb:cc:00:00:01", "2600::9")]
+    assert unans == []

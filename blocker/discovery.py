@@ -28,6 +28,91 @@ def resolve_hostname(ip: str) -> str | None:
         return None
 
 
+LISTEN_SECS = 3.0
+MAX_LEARNED = 16  # addresses kept per device (temporary addresses rotate)
+
+
+def ndp_sender_addr(src: str, target: str) -> str | None:
+    """The address an NDP message proves belongs to its sender: the source, or the
+    tentative target of a DAD probe (src ::). None for multicast sources."""
+    if src == "::":
+        return target
+    return None if src.lower().startswith("ff") else src
+
+
+def parse_v6_frame(pkt) -> tuple[str, str] | None:
+    """(ether src mac, ipv6 address) a frame proves, or None. Any IPv6 frame counts: a
+    device's own traffic names its global and temporary addresses."""
+    from blocker.scapy_lite import Ether, ICMPv6ND_NS, IPv6
+
+    if IPv6 not in pkt or Ether not in pkt:
+        return None
+    tgt = pkt[ICMPv6ND_NS].tgt if ICMPv6ND_NS in pkt else ""
+    ip = ndp_sender_addr(pkt[IPv6].src, tgt)
+    return (pkt[Ether].src.lower(), ip) if ip else None
+
+
+class V6Learner:
+    """Background passive sniffer: mac -> IPv6 addresses seen as the source of its frames.
+    Runs outside the sweep so it neither delays reports nor misses traffic between sweeps."""
+
+    def __init__(self, max_per_mac: int = MAX_LEARNED) -> None:
+        self._max = max_per_mac
+        self._lock = threading.Lock()
+        self._seen: dict[str, list[str]] = {}
+
+    def on_packet(self, pkt) -> None:
+        got = parse_v6_frame(pkt)
+        if got is None:
+            return
+        mac, ip = got
+        with self._lock:
+            addrs = self._seen.setdefault(mac, [])
+            if ip in addrs:
+                return
+            addrs.append(ip)
+            del addrs[: -self._max]
+
+    def snapshot(self) -> list[tuple[str, str]]:
+        with self._lock:
+            return [(m, ip) for m, ips in self._seen.items() for ip in ips]
+
+    def run(self, iface: str | None) -> None:  # pragma: no cover - real I/O
+        from blocker.scapy_lite import sniff
+
+        while True:
+            try:
+                sniff(
+                    iface=iface,
+                    filter="ip6",
+                    prn=self.on_packet,
+                    store=False,
+                    timeout=LISTEN_SECS * 20,
+                )
+            except Exception as e:  # noqa: BLE001 - keep listening
+                log.warning("v6 listener on %s failed: %s", iface, e)
+                time.sleep(5)
+
+
+_learners: dict[str | None, V6Learner] = {}
+_learners_lock = threading.Lock()
+
+
+def _learner_for(iface: str | None) -> V6Learner:  # pragma: no cover - starts a thread
+    with _learners_lock:
+        lr = _learners.get(iface)
+        if lr is None:
+            lr = _learners[iface] = V6Learner()
+            threading.Thread(target=lr.run, args=(iface,), daemon=True).start()
+        return lr
+
+
+def _listen_ndp(iface: str | None):
+    """(sent=None, rcv) for every address the background listener has learned (instant)."""
+    found = [(None, SimpleNamespace(ip=ip, mac=mac)) for mac, ip in _learner_for(iface).snapshot()]
+    return found, []
+
+
 def _scapy_send(kind: str, cfg: Config, iface: str | None = None):
     """Real scapy I/O. Returns (answered, unanswered) where answered holds
     (sent, rcv) pairs and rcv exposes `.ip` and `.mac`. iface overrides cfg.lan_iface."""
@@ -39,6 +124,8 @@ def _scapy_send(kind: str, cfg: Config, iface: str | None = None):
         pkt = Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=net)
         ans, unans = srp(pkt, iface=iface, timeout=2, verbose=0)
         return [(s, SimpleNamespace(ip=r[ARP].psrc, mac=r[ARP].hwsrc)) for s, r in ans], unans
+    if kind == "ndp_listen":
+        return _listen_ndp(iface)
     pkt = Ether(dst="33:33:00:00:00:01") / IPv6(dst="ff02::1") / ICMPv6EchoRequest()
     ans, unans = srp(pkt, iface=iface, timeout=2, multi=True, verbose=0)
     return [(s, SimpleNamespace(ip=r[IPv6].src, mac=r[Ether].src)) for s, r in ans], unans
@@ -61,13 +148,14 @@ def scan_once(
     for _, rcv in send("arp", cfg, iface)[0]:
         v4[_norm(rcv.mac)] = rcv.ip
     v6: dict[str, list[str]] = {}
-    try:
-        for _, rcv in send("ndp", cfg, iface)[0]:
-            addrs = v6.setdefault(_norm(rcv.mac), [])
-            if rcv.ip not in addrs:
-                addrs.append(rcv.ip)
-    except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
-        log.warning("ndp sweep failed: %s", e)
+    for kind in ("ndp", "ndp_listen"):
+        try:
+            for _, rcv in send(kind, cfg, iface)[0]:
+                addrs = v6.setdefault(_norm(rcv.mac), [])
+                if rcv.ip not in addrs:
+                    addrs.append(rcv.ip)
+        except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
+            log.warning("%s sweep failed: %s", kind, e)
     seen_list = []
     for mac, ip in v4.items():
         hostname = resolve(ip)

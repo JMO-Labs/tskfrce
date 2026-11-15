@@ -312,3 +312,41 @@ def test_poke_and_answer_share_one_rate_limited_trigger():
     time.sleep(0.4)
     assert len(fs.calls) == n + 3  # follow-ups only
     m.stop_all()
+
+
+def test_ipv6_enabled_after_start_is_redetected(monkeypatch):
+    from dataclasses import replace
+
+    from blocker import arp
+
+    monkeypatch.setattr(arp, "REDETECT_INTERVAL", 0.0)
+    results = [
+        replace(LAN, gateway_ip6=None, gateway_mac6=None),
+        replace(LAN, gateway_ip6="fe80::1"),
+    ]
+    m = RedirectionManager(
+        CFG, detect=lambda _cfg: results.pop(0) if len(results) > 1 else results[0]
+    )
+    assert m._lanfacts().gateway_ip6 is None
+    assert m._lanfacts().gateway_ip6 == "fe80::1"
+
+
+def test_redirect_without_known_v6_sends_all_nodes_na_to_device_mac():
+    from scapy.all import Ether, ICMPv6ND_NA, IPv6
+
+    t = TargetAddrs(mac=DEV, ip="192.168.1.50")
+    nas = [p for p in redirect_packets(t, LAN) if p.haslayer(ICMPv6ND_NA)]
+    assert len(nas) == 1
+    assert nas[0][Ether].dst == DEV
+    assert nas[0][IPv6].dst == "ff02::1"
+    assert nas[0][ICMPv6ND_NA].tgt == LAN.gateway_ip6
+
+
+def test_redirect_without_gateway_v6_sends_no_na():
+    from dataclasses import replace
+
+    from scapy.all import ICMPv6ND_NA
+
+    lan = replace(LAN, gateway_ip6=None, gateway_mac6=None)
+    pkts = redirect_packets(TargetAddrs(mac=DEV, ip="192.168.1.50"), lan)
+    assert not [p for p in pkts if p.haslayer(ICMPv6ND_NA)]
