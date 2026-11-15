@@ -524,6 +524,15 @@ def report_networks(body: NetworksReport, db: Session = Depends(get_db)) -> dict
             )
             .first()
         )
+        if net is None and net_item.subnet:  # adopt the legacy row that never got a CIDR
+            net = (
+                db.query(Network)
+                .filter(Network.iface == net_item.iface, Network.subnet.is_(None))
+                .order_by(Network.id)
+                .first()
+            )
+            if net:
+                net.subnet = net_item.subnet
         if net is None:
             net = Network(
                 iface=net_item.iface,

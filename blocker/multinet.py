@@ -16,7 +16,7 @@ from blocker.arp import LanFacts, RedirectionManager, TargetAddrs
 from blocker.config import Config
 from blocker.devices_meta import enrich_seen_with_gateway_and_box
 from blocker.discovery import Rescanner, run_discovery
-from blocker.ifaces import lan_addrs
+from blocker.ifaces import lan_addrs, lan_networks
 from blocker.resist import ResistanceCounter, ResistanceWatch
 
 log = logging.getLogger(__name__)
@@ -283,9 +283,12 @@ class InterfaceManager:
             return macs, ips
 
     def networks(self) -> list[dict]:
-        """Return detected networks: [{"iface": str, "gateway_ip": str, "auto_label": str}]."""
+        """Return detected networks: [{"iface", "gateway_ip", "subnet" (IPv4 CIDR), "auto_label"}]."""
         with self._lock:
             nets = []
+            cidr = {}
+            for i, n in lan_networks():
+                cidr.setdefault(i, str(n))
             for iface, (_, redir, _) in self._managers.items():
                 try:
                     lan = redir._lanfacts()
@@ -294,6 +297,7 @@ class InterfaceManager:
                             {
                                 "iface": iface,
                                 "gateway_ip": lan.gateway_ip,
+                                "subnet": cidr.get(iface),
                                 "auto_label": f"Network on {iface}",
                             }
                         )
