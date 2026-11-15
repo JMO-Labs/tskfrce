@@ -172,8 +172,15 @@ def test_title_source_parent():
 
     from app.lock.device_names import title_source
 
-    d = NS(name_from_parent=True, mdns_name=None, hostname="h", dhcp_fp=None,
-           vendor=None, device_class=None, model=None)
+    d = NS(
+        name_from_parent=True,
+        mdns_name=None,
+        hostname="h",
+        dhcp_fp=None,
+        vendor=None,
+        device_class=None,
+        model=None,
+    )
     assert title_source(d) == "parent"
     d.name_from_parent = False
     assert title_source(d) == "hostname"
