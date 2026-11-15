@@ -33,7 +33,7 @@ export function UnknownDevices({ devices, kids }: { devices: Device[]; kids: Kid
     else if (v) patch.mutate({ id: d.id, patch: { status: 'assigned', owner_ids: [Number(v)] } })
   }
   const maker = (d: Device) => d.vendor || d.maker_guess || null
-  const detail = (d: Device) => [maker(d), d.ip, d.network].filter(Boolean).join(' · ')
+  const detail = (d: Device) => [d.subtitle, maker(d), d.ip, d.network].filter(Boolean).join(' · ')
 
   return (
     <div className="p-unk">
@@ -88,7 +88,7 @@ export function UnknownDevices({ devices, kids }: { devices: Device[]; kids: Kid
                     <td className="p-unk-chk"><input type="checkbox" aria-label={`Select ${d.name}`} checked={picked.includes(d.id)} onChange={() => toggle(d.id)} /></td>
                     <td className="p-unk-nm">
                       <b title={d.name}>{d.name}{d.random_mac && <span className="p-unk-tag">private</span>}{d.held && <span className="p-unk-tag p-unk-held">New, held</span>}</b>
-                      {maker(d) && <small className="p-unk-maker">{maker(d)}</small>}
+                      {(d.subtitle || maker(d)) && <small className="p-unk-maker">{d.subtitle || maker(d)}</small>}
                       <small className="p-unk-mob">{detail(d)}</small>
                     </td>
                     <td className="p-unk-opt p-unk-mono">{d.ip ?? '—'}</td>

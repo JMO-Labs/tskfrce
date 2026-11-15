@@ -90,7 +90,7 @@ export function StepDevices({ kids }: { kids: Kid[] }) {
               {isPrivate && <span className={styles.privateTag}>private</span>}
             </div>
             <div className={styles.deviceMeta}>
-              {isPrivate ? "Open t@sk4ce on this device to claim it" : d.vendor && d.ip ? `${d.vendor} · ${d.ip}` : d.ip || ""}
+              {isPrivate ? "Open t@sk4ce on this device to claim it" : [d.subtitle ?? d.vendor, d.ip].filter(Boolean).join(" · ")}
             </div>
           </div>
           <button

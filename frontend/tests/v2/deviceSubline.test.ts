@@ -16,4 +16,9 @@ describe('deviceSubline', () => {
     expect(deviceSubline(d, '—')).toBe('Samsung · joined just now')
     expect(deviceSubline({ ...base, status: 'unassigned' }, '—')).toBe('New device')
   })
+  test('device type subtitle leads the line when present', () => {
+    expect(deviceSubline({ ...base, subtitle: 'Linux computer' }, 'Bobby')).toBe('Linux computer · Bobby · never seen')
+    expect(deviceSubline({ ...base, status: 'guest', subtitle: 'iPhone' }, '—')).toBe('iPhone · Guest · never blocked')
+    expect(deviceSubline({ ...base, subtitle: null }, 'Bobby')).toBe('Bobby · never seen')
+  })
 })
