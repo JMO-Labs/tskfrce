@@ -25,7 +25,7 @@ def out(d) -> dict:
     return {
         "id": d.id, "mac": d.mac, "ip": d.ip, "status": d.status, "replaced": d.replaced,
         "random_mac": d.random_mac, "owners": [o.id for o in d.owners],
-        "hint_of_id": d.hint_of_id, "hint_reason": d.hint_reason,
+        "hint_of_id": d.hint_of_id, "hint_reason": d.hint_reason, "held": getattr(d, "held", None),
         "first_seen": str(d.first_seen), "last_seen": str(d.last_seen),
     }  # fmt: skip
 
