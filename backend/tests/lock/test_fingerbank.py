@@ -111,8 +111,8 @@ def test_naming_precedence():
         k.get("mdns"), k.get("host"), k.get("fp"), k.get("vendor"), k.get("cls")
     )
     assert n(cls=ANDROID, vendor="Liteon") == ("Android device", "device_class")
-    assert n(cls=ANDROID, host="pixel")[1] == "device_class"
-    assert n(cls=ANDROID, mdns="pixel.local")[1] == "device_class"
+    assert n(cls=ANDROID, host="pixel")[1] == "hostname"
+    assert n(cls=ANDROID, mdns="pixel.local")[1] == "mdns"
     assert n(cls=ANDROID, fp="1,3,6,7,31")[1] == "device_class"
     assert n(mdns="tv.local", host="h1")[1] == "mdns"
     assert n(host="h1", vendor="Liteon") == ("h1", "hostname")
@@ -141,11 +141,49 @@ def test_cloud_key_never_logged(monkeypatch, caplog):
     assert "s3cr3t-key" not in caplog.text
 
 
-def test_model_beats_mdns_and_hostname():
-    assert display_device_name("tv.local", "h", None, "V", None, "Pixel 8") == (
-        "Pixel 8",
-        "model",
+def test_name_beats_model_beats_class():
+    assert display_device_name("tv.local", "h", None, "V", None, "Pixel 8")[1] == "mdns"
+    assert display_device_name(None, "h", None, "V", ANDROID, "Pixel 8")[1] == "hostname"
+    assert display_device_name(None, None, None, "V", ANDROID, "Pixel 8") == ("Pixel 8", "model")
+    assert display_device_name(None, "1234567890abcdef", None, "V", ANDROID) == (
+        "Android device",
+        "device_class",
     )
+
+
+def test_subtitle():
+    from app.lock.device_names import device_subtitle
+
+    assert device_subtitle("h", "hostname", ANDROID, "Pixel 8", "V") == "Android device"
+    assert device_subtitle("h", "hostname", None, "Pixel 8", "V") == "Pixel 8"
+    assert device_subtitle("h", "hostname", None, None, "Acme") == "Acme"
+    assert device_subtitle("h", "hostname", None, None, None) is None
+    assert device_subtitle("Pixel 8", "model", ANDROID, "Pixel 8", "V") == "Android device"
+    assert device_subtitle("Android device", "device_class", ANDROID, None, "V") is None
+    assert device_subtitle("Android device", "device_class", ANDROID, None, None) is None
+    assert device_subtitle("Pixel 8", "model", None, "Pixel 8", "V") is None
+    assert device_subtitle("Acme device", "vendor", None, None, "Acme") is None
+    assert device_subtitle("Unknown device", "unknown", None, None, None) is None
+    assert device_subtitle("Kid's tablet", "parent", ANDROID, None, "V") == "Android device"
+
+
+def test_title_source_parent():
+    from types import SimpleNamespace as NS
+
+    from app.lock.device_names import title_source
+
+    d = NS(
+        name_from_parent=True,
+        mdns_name=None,
+        hostname="h",
+        dhcp_fp=None,
+        vendor=None,
+        device_class=None,
+        model=None,
+    )
+    assert title_source(d) == "parent"
+    d.name_from_parent = False
+    assert title_source(d) == "hostname"
 
 
 def test_ip_like_hostname_never_a_name():

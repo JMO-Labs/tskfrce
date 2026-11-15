@@ -95,20 +95,47 @@ def display_device_name(
 ) -> tuple[str, str]:
     """Choose the best device display name and return (name, source).
 
-    Priority: Fingerbank class/model > mDNS > hostname > fingerprint guess > vendor > "Unknown device".
-    Dashed-IP hostnames are never used. source is one of: "device_class", "model",
-    "fingerprint", "mdns", "hostname", "vendor", "unknown".
+    Priority: mDNS > hostname > model > Fingerbank class > fingerprint guess > vendor >
+    "Unknown device" (a parent-given name outranks all; the caller handles that).
+    Dashed-IP hostnames and machine ids are never used. source is one of: "mdns",
+    "hostname", "model", "device_class", "fingerprint", "vendor", "unknown".
     """
-    if cls := friendly_name(device_class):
-        return cls, "device_class"
-    if model:
-        return model, "model"
     if name := usable_name(mdns_name):
         return name, "mdns"
     if name := usable_name(hostname):
         return name, "hostname"
+    if model:
+        return model, "model"
+    if cls := friendly_name(device_class):
+        return cls, "device_class"
     if device_type := guess_device_type_from_fingerprint(dhcp_fp, mdns_name):
         return device_type, "fingerprint"
     if vendor:
         return f"{vendor} device", "vendor"
     return "Unknown device", "unknown"
+
+
+def device_subtitle(
+    title: str | None,
+    source: str | None,
+    device_class: str | None,
+    model: str | None,
+    vendor: str | None,
+) -> str | None:
+    """Device type shown under the title: friendly class, else model, else vendor.
+
+    None when the title already is the type, or nothing is left to say.
+    """
+    if source in ("vendor", "unknown"):
+        return None
+    cand = friendly_name(device_class) or model or vendor
+    return cand if cand and cand != title else None
+
+
+def title_source(d) -> str:
+    """Where the device's title came from: "parent" or a display_device_name source."""
+    if d.name_from_parent:
+        return "parent"
+    return display_device_name(
+        d.mdns_name, d.hostname, d.dhcp_fp, d.vendor, d.device_class, d.model
+    )[1]
