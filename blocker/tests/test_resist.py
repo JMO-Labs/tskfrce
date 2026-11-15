@@ -587,3 +587,33 @@ def test_ndp_ns_for_router_fires_query_callback():
     prn(ns(KID, "fe80::2"))  # another host
     prn(ns("dd:dd:dd:dd:dd:04", "fe80::1"))  # unwatched MAC
     assert got == [KID]
+
+
+def test_dot_syn_from_watched_mac_fires_dot_callback():
+    pytest.importorskip("scapy")
+    from scapy.layers.inet import IP, TCP
+    from scapy.layers.l2 import Ether
+
+    got = []
+    captured = {}
+    w = ResistanceWatch(
+        SimpleNamespace(lan_iface=""),
+        ResistanceCounter(LAN),
+        sniffer_factory=lambda **kw: captured.update(kw) or SimpleNamespace(stop=lambda: None),
+        on_dot=got.append,
+    )
+    w.set_watched(WATCHED)
+    prn = captured["prn"]
+
+    def pkt(dport, flags, src=KID):
+        return (
+            Ether(src=src, dst=BOX)
+            / IP(src=KID_IP, dst=LAN.gateway_ip)
+            / TCP(dport=dport, flags=flags)
+        )
+
+    prn(pkt(443, "S"))  # DoH-style: not DoT
+    prn(pkt(853, "A"))  # not a SYN
+    prn(pkt(853, "S", src="dd:dd:dd:dd:dd:04"))  # unwatched
+    prn(pkt(853, "S"))
+    assert got == [KID]

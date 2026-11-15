@@ -71,3 +71,60 @@ def test_background_names_not_flagged(name):
 def test_ignore_keeps_parent_flagged():
     assert categorize("cloudflare-dns.com") == "private_dns"
     assert categorize("dns.sb") == "private_dns"
+
+
+def _clock():
+    t = [100.0]
+    return t, (lambda: t[0])
+
+
+def test_private_dns_lookup_alone_is_silent():
+    t, now = _clock()
+    c = WorkaroundCounter({"1.1.1.1": "aa:bb"}.get, clock=now)
+    c.add("1.1.1.1", "cloudflare-dns.com.")  # app-embedded DoH: only :443 follows
+    t[0] += 30
+    assert c.drain() == {}
+
+
+def test_private_dns_confirmed_by_dot_syn():
+    t, now = _clock()
+    c = WorkaroundCounter({"1.1.1.1": "aa:bb"}.get, clock=now)
+    c.add("1.1.1.1", "dns.google.")
+    t[0] += 3
+    c.dot("aa:bb")
+    assert c.drain() == {"aa:bb": ["private_dns"]}
+
+
+def test_dot_after_window_or_without_lookup_ignored():
+    t, now = _clock()
+    c = WorkaroundCounter({"1.1.1.1": "aa:bb"}.get, clock=now)
+    c.dot("aa:bb")
+    c.add("1.1.1.1", "dns.google.")
+    t[0] += 11
+    c.dot("aa:bb")
+    assert c.drain() == {}
+
+
+def test_other_categories_unaffected_by_pending():
+    c = WorkaroundCounter({"1.1.1.1": "aa:bb"}.get)
+    c.add("1.1.1.1", "dns.google.")
+    c.add("1.1.1.1", "nordvpn.com.")
+    assert c.drain() == {"aa:bb": ["vpn"]}
+
+
+def test_dot_mac_case_insensitive():
+    _t, now = _clock()
+    c = WorkaroundCounter({"1.1.1.1": "AA:BB"}.get, clock=now)
+    c.add("1.1.1.1", "dns.google.")
+    c.dot("aa:bb")
+    assert c.drain() == {"aa:bb": ["private_dns"]}
+
+
+def test_dot_bounds_macs():
+    _t, now = _clock()
+    c = WorkaroundCounter({"1.1.1.1": "aa:bb"}.get, clock=now)
+    c.add("1.1.1.1", "dns.google.")
+    for i in range(1000):
+        c._found[f"m{i}"] = {"vpn"}
+    c.dot("aa:bb")
+    assert "aa:bb" not in c.drain()
