@@ -47,7 +47,7 @@ def test_lifted_when_old_reappears(client, db, kid):
     assert not d.held and not d.held_provisional
 
 
-def test_replaced_on_link(client, db, kid):
+def test_replaced_on_link(client, db, parent, kid):
     old = _old(db, kid, silent=timedelta(seconds=10))
     pause(db, old)
     did = seen(client)
@@ -77,7 +77,7 @@ def test_never_for_hardware_mac(client, db, kid):
     assert not d.held and not d.held_provisional
 
 
-def test_expires_after_window(client, db, kid):
+def test_expires_after_window(client, db, parent, kid):
     old = _old(db, kid, silent=timedelta(seconds=10))
     pause(db, old)
     did = seen(client)
