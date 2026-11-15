@@ -441,7 +441,7 @@ class ResistanceWatch:
         if self._on_query is None:
             return
         try:
-            from blocker.scapy_lite import ARP, ICMPv6ND_NS, Ether
+            from blocker.scapy_lite import ARP, Ether, ICMPv6ND_NS
 
             src = pkt[Ether].src.lower()
             if src not in {m.lower() for m in (self._watched or {})}:
