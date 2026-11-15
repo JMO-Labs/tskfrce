@@ -55,6 +55,7 @@ def scan_once(
     vid: int | None = None,
     iface: str | None = None,
     enrich: Callable[[Seen], Seen] = lambda s: s,
+    on_report: Callable[[Seen], None] | None = None,
 ) -> list[Seen]:
     v4: dict[str, str] = {}
     for _, rcv in send("arp", cfg, iface)[0]:
@@ -83,6 +84,8 @@ def scan_once(
             )
         )
         report_seen(cfg, seen)
+        if on_report:  # act on the backend's answer now, not after the whole sweep
+            on_report(seen)
         seen_list.append(seen)
     return seen_list
 
@@ -123,9 +126,7 @@ def run_discovery(
     while not stop.is_set():
         wake.clear()
         try:
-            for seen in scan_once(cfg, vid=vid, iface=iface, enrich=enrich):
-                if on_seen:
-                    on_seen(seen)
+            scan_once(cfg, vid=vid, iface=iface, enrich=enrich, on_report=on_seen)
         except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
             log.warning("scan on %s failed: %s", iface or cfg.lan_iface, e)
         deadline = time.monotonic() + cfg.scan_interval

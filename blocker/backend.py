@@ -30,6 +30,7 @@ class Seen:
     iface: str | None = None  # base interface name (eno2, wlo1, etc.); None when using LAN_IFACE
     gateway_mac: str | None = None  # blocker's gateway MAC for filtering
     box_mac: str | None = None  # blocker's own MAC for filtering
+    blocked: bool | None = None  # backend's answer to this report; never sent (None = no answer)
 
     def __post_init__(self) -> None:
         for f in ("mdns_name", "model", "dhcp_fp", "dhcp_hostname"):
@@ -38,7 +39,11 @@ class Seen:
                 setattr(self, f, v[:255])
 
     def body(self) -> dict:
-        return {k: v for k, v in asdict(self).items() if v is not None or k not in _OPTIONAL}
+        return {
+            k: v
+            for k, v in asdict(self).items()
+            if k != "blocked" and (v is not None or k not in _OPTIONAL)
+        }
 
 
 _OPTIONAL = (
@@ -70,7 +75,10 @@ def _request(cfg: Config, path: str, body: dict | None = None):
 
 def report_seen(cfg: Config, seen: Seen) -> int | None:
     try:
-        return int(_request(cfg, "/devices/seen", seen.body())["id"])
+        resp = _request(cfg, "/devices/seen", seen.body())
+        if "blocked" in resp:
+            seen.blocked = bool(resp["blocked"])
+        return int(resp["id"])
     except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
         log.warning("report_seen failed for %s: %s", seen.mac, e)
         return None
@@ -94,6 +102,7 @@ def fetch_state(cfg: Config) -> dict | None:
             "listen_only": bool(raw.get("listen_only", False)),
             "covered_vlans": [int(v) for v in raw.get("covered_vlans", [])],
             "network_enforce": raw.get("network_enforce", {}),
+            "block_unknown": bool(raw.get("block_unknown", False)),
         }
     except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
         log.warning("fetch_state failed: %s", e)

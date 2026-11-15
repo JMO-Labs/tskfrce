@@ -154,6 +154,10 @@ class Service:
         self._seen_at: dict[str, float] = {}
         self._lock = threading.Lock()
         self._probing: set[str] = set()  # MACs overlaid by test_block; guarded by _lock
+        # MACs the /devices/seen answer (or fail-closed) blocked ahead of the next poll; the poll
+        # replaces them. Guarded by _lock.
+        self._fast: set[str] = set()
+        self._block_unknown = False  # backend: fail closed for a MAC it hasn't answered for
         self._stop = threading.Event()
         self.failed = False  # set when the control API cannot start; main exits non-zero
         self._api = None
@@ -196,7 +200,11 @@ class Service:
                 )
                 unsafe = self._unsafe_ips(lan) | site_ips
             # listen-only: nothing is paused anywhere (discovery continues)
-            blocked = set() if self._listen_only else set(self.store.current()) | self._probing
+            blocked = (
+                set()
+                if self._listen_only
+                else set(self.store.current()) | self._probing | self._fast
+            )
             blocked = {m for m in blocked if self._enforced_here(m)}
             skipped = {m for m in blocked if m.lower() in infra}
             if skipped:
@@ -376,6 +384,12 @@ class Service:
     def _on_seen(self, seen: Seen) -> None:
         self.signals.note_seen(seen)
         with self._lock:
+            new = seen.mac not in self._devices
+            if seen.blocked or (seen.blocked is None and new and self._block_unknown):
+                self._fast.add(seen.mac)
+            elif seen.blocked is False:
+                self._fast.discard(seen.mac)
+            fast = seen.mac in self._fast
             self._devices[seen.mac] = TargetAddrs(mac=seen.mac, ip=seen.ip, ip6=tuple(seen.ipv6))
             self._seen_at[seen.mac] = self._clock()
             self._claims.pop(seen.mac, None)  # a scan is the truth: drop unconfirmed claims
@@ -383,7 +397,7 @@ class Service:
             if seen.iface:  # never forget a known interface because a report lacked one
                 self._iface_of[seen.mac] = seen.iface
             self._seg_seen[(seen.mac, seen.vid)] = (self._devices[seen.mac], self._clock())
-        if seen.mac in self.store.current():
+        if fast or seen.mac in self.store.current():
             self._apply(self.store.current())
 
     def _on_new_ip(self, mac: str, ip: str) -> None:
@@ -428,6 +442,9 @@ class Service:
             return
         self._listen_only = bool(state.get("listen_only", False))
         self._network_enforce = dict(state.get("network_enforce") or {})
+        self._block_unknown = bool(state.get("block_unknown", False))
+        with self._lock:
+            self._fast.clear()  # the poll is authoritative
         self._sites.sync({int(v) for v in state.get("covered_vlans", [])})
         # always re-applies (listen_only too); keep homework when the source has none
         self.store.set_state(state["blocked"], state.get("homework", self.store.homework()))

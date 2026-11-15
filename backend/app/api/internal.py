@@ -28,7 +28,7 @@ from app.lock.relink import (
     settle_provisional,
     undo_if_reappeared,
 )
-from app.lock.rules import block_reason
+from app.lock.rules import block_reason, is_online
 from app.lock.schedule import local_now
 from app.lock.state import Prefetch, desired_blocked, device_facts
 from app.models.device_activity import DeviceEvent
@@ -306,7 +306,17 @@ def devices_seen(body: SeenReport, db: Session = Depends(get_db)) -> dict:
     db.commit()
     if hinted:
         trigger()
-    return {"id": dev.id}
+    return {"id": dev.id, "blocked": _is_blocked(db, dev)}
+
+
+def _is_blocked(db: Session, dev: Device) -> bool:
+    """Whether the lock would pause this device right now, so the blocker needn't wait for a poll."""
+    fam = get_family(db)
+    if fam.listen_only:
+        return False
+    now = datetime.now(UTC)
+    facts = device_facts(db, dev, fam, now, Prefetch(db, [dev], now=now))
+    return not is_online(facts, local_now(fam.timezone, now))
 
 
 def _note_new_address(db: Session, new: Device, now: datetime) -> None:
@@ -364,6 +374,7 @@ def state(db: Session = Depends(get_db)) -> dict:
         "homework": homework,
         "listen_only": fam.listen_only,
         "covered_vlans": covered,
+        "block_unknown": bool(fam.new_devices_blocked or fam.hold_private_devices),
         "network_enforce": network_enforce,  # NEW: enforce state per network
     }
 
