@@ -353,7 +353,7 @@ def test_redirect_without_gateway_v6_sends_no_na():
 
 
 def _ndp(pkts):
-    from scapy.all import ICMPv6ND_NA, Ether
+    from scapy.all import Ether, ICMPv6ND_NA
 
     return [p for p in pkts if p.haslayer(ICMPv6ND_NA) and p.haslayer(Ether)]
 

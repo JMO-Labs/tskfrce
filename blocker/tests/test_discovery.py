@@ -290,14 +290,13 @@ def test_listen_ndp_returns_learned_snapshot_without_sniffing(monkeypatch):
 
 
 def test_learn_ping_is_sourced_from_the_scanned_ifaces_mac(monkeypatch, tmp_path):
-    from scapy.all import Ether
-
     import blocker.scapy_lite as sl
     from blocker.discovery import _scapy_send
+    from scapy.all import Ether
 
     sent = []
     monkeypatch.setattr(sl, "get_if_hwaddr", lambda i: "30:89:4a:9b:a6:54")
-    monkeypatch.setattr(sl, "srp", lambda pkt, **k: (sent.append((pkt, k)) or ([], [])))
+    monkeypatch.setattr(sl, "srp", lambda pkt, **k: sent.append((pkt, k)) or ([], []))
     _scapy_send("ndp", _cfg(tmp_path), "wlo1")
     pkt, kw = sent[0]
     assert pkt[Ether].src == "30:89:4a:9b:a6:54" and kw["iface"] == "wlo1"

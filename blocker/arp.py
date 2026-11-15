@@ -150,9 +150,7 @@ def restore(target: TargetAddrs, lan: LanFacts) -> list:
         for ip6 in target.ip6:
             # truth: advertise the v6 gateway's real MAC, resolved separately from v4
             pkts.append(
-                ndp_advert(
-                    ip6, target.mac, lan.gateway_ip6, lan.gateway_mac6, src_mac=lan.box_mac
-                )
+                ndp_advert(ip6, target.mac, lan.gateway_ip6, lan.gateway_mac6, src_mac=lan.box_mac)
             )
             # heal the gateway: the device's v6 address is really at the device's MAC
             pkts.append(
