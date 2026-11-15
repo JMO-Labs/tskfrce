@@ -116,7 +116,15 @@ def _listen_ndp(iface: str | None):
 def _scapy_send(kind: str, cfg: Config, iface: str | None = None):
     """Real scapy I/O. Returns (answered, unanswered) where answered holds
     (sent, rcv) pairs and rcv exposes `.ip` and `.mac`. iface overrides cfg.lan_iface."""
-    from blocker.scapy_lite import ARP, Ether, ICMPv6EchoRequest, IPv6, get_if_addr, srp
+    from blocker.scapy_lite import (
+        ARP,
+        Ether,
+        ICMPv6EchoRequest,
+        IPv6,
+        get_if_addr,
+        get_if_hwaddr,
+        srp,
+    )
 
     iface = iface or cfg.lan_iface or None
     if kind == "arp":
@@ -126,7 +134,8 @@ def _scapy_send(kind: str, cfg: Config, iface: str | None = None):
         return [(s, SimpleNamespace(ip=r[ARP].psrc, mac=r[ARP].hwsrc)) for s, r in ans], unans
     if kind == "ndp_listen":
         return _listen_ndp(iface)
-    pkt = Ether(dst="33:33:00:00:00:01") / IPv6(dst="ff02::1") / ICMPv6EchoRequest()
+    src = get_if_hwaddr(iface) if iface else None  # else scapy uses the default-route MAC
+    pkt = Ether(src=src, dst="33:33:00:00:00:01") / IPv6(dst="ff02::1") / ICMPv6EchoRequest()
     ans, unans = srp(pkt, iface=iface, timeout=2, multi=True, verbose=0)
     return [(s, SimpleNamespace(ip=r[IPv6].src, mac=r[Ether].src)) for s, r in ans], unans
 
