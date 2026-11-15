@@ -58,15 +58,17 @@ export interface Device extends DevicePenaltyFields {
   random_mac?: boolean
   /** Fingerbank class ("Android device"), only when the setting is on and it matched */
   device_class?: string | null
+  /** device type shown under the title (class, else model, else maker); null = nothing to add */
+  subtitle?: string | null
   /** new private-address device paused until a parent allows or assigns it */
   held?: boolean
   /** null/absent = the untagged LAN */
   vlan_id?: number | null
   network_id?: number | null
-  /** Setup step: best display name (mdns > hostname > fingerprint guess > vendor) */
+  /** Setup step: best display name (mdns > hostname > model > class > fingerprint guess > vendor) */
   display_name?: string
   /** Setup step: which source gave the display_name */
-  name_source?: 'mdns' | 'hostname' | 'fingerprint' | 'vendor' | 'unknown'
+  name_source?: 'mdns' | 'hostname' | 'model' | 'device_class' | 'fingerprint' | 'vendor' | 'unknown'
   /** Setup step: maker guess from DHCP/mDNS for private MACs */
   maker_guess?: string | null
   /** Setup step: human-readable network label when present */

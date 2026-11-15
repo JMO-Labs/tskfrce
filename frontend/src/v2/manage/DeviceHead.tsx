@@ -119,7 +119,7 @@ export function DeviceHead({ device, locked, ov, timeZone, blockNew, pendingActi
     <DetailHeader
       media={<span className="pk-tile pk-tile-lg"><Icon name={DEVICE_TYPE_ICON[getDeviceType(device.name, device.vendor)]} size={26} /></span>}
       title={device.name}
-      sub={netLabel ? <span className="p-chip" data-tone="grey" data-net={device.network_id}>{netLabel}</span> : undefined}
+      sub={device.subtitle || netLabel ? <>{device.subtitle}{device.subtitle && netLabel ? ' ' : null}{netLabel && <span className="p-chip" data-tone="grey" data-net={device.network_id}>{netLabel}</span>}</> : undefined}
       status={status}
       main={pen ? (
         <ActionButton icon="favorite" busy={forgive.isPending} disabled={forgive.isPending} onClick={() => forgive.mutate({ id: pen.id, action: 'forgive' })}>Forgive</ActionButton>

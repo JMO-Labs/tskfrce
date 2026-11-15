@@ -10,7 +10,12 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import get_db, require_parent
 from app.lock import activity, blocker_client, hours
-from app.lock.device_names import display_device_name, guess_maker_from_signals
+from app.lock.device_names import (
+    device_subtitle,
+    display_device_name,
+    guess_maker_from_signals,
+    title_source,
+)
 from app.lock.fingerbank import friendly_name
 from app.lock.loop import trigger
 from app.lock.overrides import clear_override, set_homework, set_override
@@ -55,6 +60,9 @@ def _setup_devices(devs: list[Device]) -> list[dict]:
             "id": d.id,
             "display_name": display_name,
             "name_source": name_source,
+            "subtitle": device_subtitle(
+                display_name, name_source, d.device_class, d.model, d.vendor
+            ),
             "mac": d.mac,
             "ip": d.ip,
             "vendor": d.vendor,
@@ -127,6 +135,7 @@ def device_out(
     out = {
         "id": d.id,
         "name": d.name,
+        "subtitle": device_subtitle(d.name, title_source(d), d.device_class, d.model, d.vendor),
         "mac": d.mac,
         "vendor": d.vendor,
         "status": d.status,
