@@ -99,6 +99,10 @@ def redirect_packets(target: TargetAddrs, lan: LanFacts) -> list:
         pkts.append(arp_reply(ip, target.mac, lan.gateway_ip, lan.box_mac))
         if lan.gateway_mac:
             pkts.append(arp_reply(lan.gateway_ip, lan.gateway_mac, ip, lan.box_mac))
+    if lan.gateway_ip6 and not target.ip6:
+        # Device v6 unknown: advertise to all-nodes at its MAC so its v6 traffic reaches us
+        # and discovery can learn its addresses from it.
+        pkts.append(ndp_advert("ff02::1", target.mac, lan.gateway_ip6, lan.box_mac))
     if lan.gateway_ip6:
         for ip6 in target.ip6:
             pkts.append(ndp_advert(ip6, target.mac, lan.gateway_ip6, lan.box_mac))

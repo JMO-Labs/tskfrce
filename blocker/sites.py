@@ -79,7 +79,9 @@ def build_parts(  # pragma: no cover - real I/O
     lan_cidrs: list[str],
 ) -> SiteParts:
     redir = RedirectionManager(cfg, detect=lambda c: detect_site_lan(c.lan_iface, router))
-    watch = ResistanceWatch(cfg, ResistanceCounter(redir._lanfacts(), lan_cidrs=lan_cidrs))
+    watch = ResistanceWatch(cfg, ResistanceCounter(
+            redir._lanfacts(), lan_cidrs=lan_cidrs, lan_provider=redir._lanfacts
+        ))
     threading.Thread(target=lambda: run_discovery(cfg, stop, on_seen, vid), daemon=True).start()
     return SiteParts(redir, watch)
 

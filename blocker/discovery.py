@@ -29,6 +29,7 @@ def resolve_hostname(ip: str) -> str | None:
 
 
 LISTEN_SECS = 3.0
+MAX_LEARNED = 16  # addresses kept per device (temporary addresses rotate)
 
 
 def ndp_sender_addr(src: str, target: str) -> str | None:
@@ -39,28 +40,76 @@ def ndp_sender_addr(src: str, target: str) -> str | None:
     return None if src.lower().startswith("ff") else src
 
 
-def _listen_ndp(iface: str | None):
-    """Passively collect (sent=None, rcv) for NS/NA seen on the LAN: every address a
-    device uses (link-local, SLAAC global, temporary) shows up in its NDP traffic."""
-    from blocker.scapy_lite import Ether, ICMPv6ND_NA, ICMPv6ND_NS, IPv6, sniff
+def parse_v6_frame(pkt) -> tuple[str, str] | None:
+    """(ether src mac, ipv6 address) a frame proves, or None. Any IPv6 frame counts: a
+    device's own traffic names its global and temporary addresses."""
+    from blocker.scapy_lite import Ether, ICMPv6ND_NS, IPv6
 
-    found = []
+    if IPv6 not in pkt or Ether not in pkt:
+        return None
+    tgt = pkt[ICMPv6ND_NS].tgt if ICMPv6ND_NS in pkt else ""
+    ip = ndp_sender_addr(pkt[IPv6].src, tgt)
+    return (pkt[Ether].src.lower(), ip) if ip else None
 
-    def grab(pkt):
-        if IPv6 not in pkt or Ether not in pkt:
+
+class V6Learner:
+    """Background passive sniffer: mac -> IPv6 addresses seen as the source of its frames.
+    Runs outside the sweep so it neither delays reports nor misses traffic between sweeps."""
+
+    def __init__(self, max_per_mac: int = MAX_LEARNED) -> None:
+        self._max = max_per_mac
+        self._lock = threading.Lock()
+        self._seen: dict[str, list[str]] = {}
+
+    def on_packet(self, pkt) -> None:
+        got = parse_v6_frame(pkt)
+        if got is None:
             return
-        tgt = pkt[ICMPv6ND_NS].tgt if ICMPv6ND_NS in pkt else pkt[ICMPv6ND_NA].tgt
-        ip = ndp_sender_addr(pkt[IPv6].src, tgt)
-        if ip:
-            found.append((None, SimpleNamespace(ip=ip, mac=pkt[Ether].src)))
+        mac, ip = got
+        with self._lock:
+            addrs = self._seen.setdefault(mac, [])
+            if ip in addrs:
+                return
+            addrs.append(ip)
+            del addrs[: -self._max]
 
-    sniff(
-        iface=iface,
-        filter="icmp6 and (ip6[40] == 135 or ip6[40] == 136)",
-        prn=grab,
-        store=False,
-        timeout=LISTEN_SECS,
-    )
+    def snapshot(self) -> list[tuple[str, str]]:
+        with self._lock:
+            return [(m, ip) for m, ips in self._seen.items() for ip in ips]
+
+    def run(self, iface: str | None) -> None:  # pragma: no cover - real I/O
+        from blocker.scapy_lite import sniff
+
+        while True:
+            try:
+                sniff(
+                    iface=iface,
+                    filter="ip6",
+                    prn=self.on_packet,
+                    store=False,
+                    timeout=LISTEN_SECS * 20,
+                )
+            except Exception as e:  # noqa: BLE001 - keep listening
+                log.warning("v6 listener on %s failed: %s", iface, e)
+                time.sleep(5)
+
+
+_learners: dict[str | None, V6Learner] = {}
+_learners_lock = threading.Lock()
+
+
+def _learner_for(iface: str | None) -> V6Learner:  # pragma: no cover - starts a thread
+    with _learners_lock:
+        lr = _learners.get(iface)
+        if lr is None:
+            lr = _learners[iface] = V6Learner()
+            threading.Thread(target=lr.run, args=(iface,), daemon=True).start()
+        return lr
+
+
+def _listen_ndp(iface: str | None):
+    """(sent=None, rcv) for every address the background listener has learned (instant)."""
+    found = [(None, SimpleNamespace(ip=ip, mac=mac)) for mac, ip in _learner_for(iface).snapshot()]
     return found, []
 
 

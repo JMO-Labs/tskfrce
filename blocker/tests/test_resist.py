@@ -617,3 +617,29 @@ def test_dot_syn_from_watched_mac_fires_dot_callback():
     prn(pkt(853, "S", src="dd:dd:dd:dd:dd:04"))  # unwatched
     prn(pkt(853, "S"))
     assert got == [KID]
+
+
+def test_counter_follows_gateway_v6_detected_after_start():
+    from dataclasses import replace
+
+    gw6, mac6 = "fe80::1", "aa:aa:aa:aa:aa:66"
+    facts = [LAN]
+    c = ResistanceCounter(LAN, threshold=3, lan_provider=lambda: facts[0])
+    c.set_watched({KID: TargetAddrs(mac=KID, ip=KID_IP, ip6=("2600:4040::5",))})
+    c.observe(mac6, BOX, "2600:4040::5", INET6)
+    assert c.tally(KID).from_gateway == 0  # v6 gateway not known yet
+    facts[0] = replace(LAN, gateway_ip6=gw6, gateway_mac6=mac6)
+    for _ in range(3):
+        c.observe(mac6, BOX, "2600:4040::5", INET6)
+    assert c.resisting() == {KID}
+    assert gw6 in c.gateway_ips
+
+
+def test_counter_keeps_last_facts_when_provider_fails():
+    def boom():
+        raise OSError("x")
+
+    c = ResistanceCounter(LAN, threshold=1, lan_provider=boom)
+    c.set_watched(WATCHED)
+    c.observe(GW, BOX, KID_IP, INET)
+    assert c.resisting() == {KID}

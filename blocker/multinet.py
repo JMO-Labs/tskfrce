@@ -161,9 +161,13 @@ class InterfaceManager:
                 try:
                     cfg_iface = replace(self.cfg, lan_iface=iface)
                     # Detect gateway on this specific interface
-                    lan = detect_iface_gateway(iface)
-                    redir = RedirectionManager(cfg_iface, lan=lan)
-                    counter = ResistanceCounter(lan, lan_cidrs=self._lan_cidrs)
+                    redir = RedirectionManager(
+                        cfg_iface, detect=lambda c, i=iface: detect_iface_gateway(i)
+                    )
+                    lan = redir._lanfacts()
+                    counter = ResistanceCounter(
+                        lan, lan_cidrs=self._lan_cidrs, lan_provider=redir._lanfacts
+                    )
                     watch = ResistanceWatch(
                         cfg_iface,
                         counter,
