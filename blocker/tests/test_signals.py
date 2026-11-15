@@ -341,39 +341,39 @@ def _arp(mac=MAC, ip="10.0.0.9"):
     return Ether(src=mac, dst="ff:ff:ff:ff:ff:ff") / ARP(op=1, hwsrc=mac, psrc=ip, pdst=ip)
 
 
-def _sg(clock):
+def _sgw(clock):
     wake = Mock()
     return Signals(CFG, Mock(), on_unknown=wake, clock=clock), wake
 
 
 def test_unknown_mac_dhcp_request_wakes_discovery():
-    sg, wake = _sg(lambda: 100.0)
+    sg, wake = _sgw(lambda: 100.0)
     sg._on_dhcp(_request())
     wake.assert_called_once_with()
 
 
 def test_unknown_mac_arp_announcement_wakes_discovery():
-    sg, wake = _sg(lambda: 100.0)
+    sg, wake = _sgw(lambda: 100.0)
     sg._on_dhcp(_arp())
     wake.assert_called_once_with()
 
 
 def test_known_mac_does_not_wake():
-    sg, wake = _sg(lambda: 100.0)
-    sg.note_seen(Seen(mac=MAC, ip="10.0.0.9"))
+    sg, wake = _sgw(lambda: 100.0)
+    sg.note_seen(Seen(mac=MAC, ip="10.0.0.9", ipv6=[], hostname=None, vendor=None))
     sg._on_dhcp(_request())
     wake.assert_not_called()
 
 
 def test_discover_without_ip_does_not_wake():
-    sg, wake = _sg(lambda: 100.0)
+    sg, wake = _sgw(lambda: 100.0)
     sg._on_dhcp(_discover([1, 3]))
     wake.assert_not_called()
 
 
 def test_forged_mac_flood_is_rate_limited():
     t = [100.0]
-    sg, wake = _sg(lambda: t[0])
+    sg, wake = _sgw(lambda: t[0])
     for i in range(50):
         sg._on_dhcp(_request(mac=f"aa:bb:cc:00:00:{i:02x}"))
     assert wake.call_count == 1
