@@ -159,12 +159,24 @@ def test_subtitle():
     assert device_subtitle("h", "hostname", None, None, "Acme") == "Acme"
     assert device_subtitle("h", "hostname", None, None, None) is None
     assert device_subtitle("Pixel 8", "model", ANDROID, "Pixel 8", "V") == "Android device"
-    assert device_subtitle("Android device", "device_class", ANDROID, None, "V") == "V"
+    assert device_subtitle("Android device", "device_class", ANDROID, None, "V") is None
     assert device_subtitle("Android device", "device_class", ANDROID, None, None) is None
-    assert device_subtitle("Pixel 8", "model", None, "Pixel 8", "V") == "V"
+    assert device_subtitle("Pixel 8", "model", None, "Pixel 8", "V") is None
     assert device_subtitle("Acme device", "vendor", None, None, "Acme") is None
     assert device_subtitle("Unknown device", "unknown", None, None, None) is None
     assert device_subtitle("Kid's tablet", "parent", ANDROID, None, "V") == "Android device"
+
+
+def test_title_source_parent():
+    from types import SimpleNamespace as NS
+
+    from app.lock.device_names import title_source
+
+    d = NS(name_from_parent=True, mdns_name=None, hostname="h", dhcp_fp=None,
+           vendor=None, device_class=None, model=None)
+    assert title_source(d) == "parent"
+    d.name_from_parent = False
+    assert title_source(d) == "hostname"
 
 
 def test_ip_like_hostname_never_a_name():

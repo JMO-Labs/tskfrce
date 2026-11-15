@@ -124,9 +124,18 @@ def device_subtitle(
 ) -> str | None:
     """Device type shown under the title: friendly class, else model, else vendor.
 
-    None when nothing is left to say or it would repeat the title.
+    None when the title already is the type, or nothing is left to say.
     """
-    for cand in (friendly_name(device_class), model, vendor):
-        if cand and cand != title and source not in ("vendor", "unknown"):
-            return cand
-    return None
+    if source in ("vendor", "unknown"):
+        return None
+    cand = friendly_name(device_class) or model or vendor
+    return cand if cand and cand != title else None
+
+
+def title_source(d) -> str:
+    """Where the device's title came from: "parent" or a display_device_name source."""
+    if d.name_from_parent:
+        return "parent"
+    return display_device_name(
+        d.mdns_name, d.hostname, d.dhcp_fp, d.vendor, d.device_class, d.model
+    )[1]

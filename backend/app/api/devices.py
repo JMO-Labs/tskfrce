@@ -14,6 +14,7 @@ from app.lock.device_names import (
     device_subtitle,
     display_device_name,
     guess_maker_from_signals,
+    title_source,
 )
 from app.lock.fingerbank import friendly_name
 from app.lock.loop import trigger
@@ -131,17 +132,10 @@ def device_out(
     # two or more kids share this device and someone can sign in without a PIN
     active_kids = [k for k in d.owners if k.role == UserRole.KID and k.is_active]
     needs_pins = len(active_kids) >= 2 and any(not k.pin_hash for k in active_kids)
-    src = (
-        "parent"
-        if d.name_from_parent
-        else display_device_name(
-            d.mdns_name, d.hostname, d.dhcp_fp, d.vendor, d.device_class, d.model
-        )[1]
-    )
     out = {
         "id": d.id,
         "name": d.name,
-        "subtitle": device_subtitle(d.name, src, d.device_class, d.model, d.vendor),
+        "subtitle": device_subtitle(d.name, title_source(d), d.device_class, d.model, d.vendor),
         "mac": d.mac,
         "vendor": d.vendor,
         "status": d.status,
