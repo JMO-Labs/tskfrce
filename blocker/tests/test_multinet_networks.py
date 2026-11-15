@@ -43,6 +43,7 @@ def test_sync_wires_on_dot_into_watch(monkeypatch):
     monkeypatch.setattr(
         multinet.threading, "Thread", lambda **k: SimpleNamespace(start=lambda: None)
     )
+
     @dataclass
     class Cfg:
         lan_iface: str = ""
