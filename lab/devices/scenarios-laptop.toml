@@ -44,5 +44,6 @@ alerts_allowed = ["locked_try"]  # a DoH attempt while paused is a real "tried w
 id = "l.sni_google"
 title = "SNI www.google.com aimed at a non-Google IP (1.1.1.1): does the gate dial the IP or the name?"
 platforms = ["L"]
+alerts_allowed = ["locked_try"]  # trying a non-Google IP while paused is a real "tried while locked" signal
 # escape = Cloudflare's own cert comes back, i.e. the gate tunnelled to the IP the kid chose
 probe = """echo | timeout 8 openssl s_client -connect 1.1.1.1:443 -servername www.google.com 2>/dev/null | grep -q 'CN = cloudflare-dns.com'"""
