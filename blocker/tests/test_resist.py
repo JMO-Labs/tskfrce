@@ -578,7 +578,9 @@ def test_ndp_ns_for_router_fires_query_callback():
     mc = "33:33:ff:00:00:01"
 
     def ns(src, tgt):
-        return Ether(src=src, dst=mc) / IPv6(src=KID_IP6, dst="ff02::1:ff00:1") / ICMPv6ND_NS(tgt=tgt)
+        return (
+            Ether(src=src, dst=mc) / IPv6(src=KID_IP6, dst="ff02::1:ff00:1") / ICMPv6ND_NS(tgt=tgt)
+        )
 
     prn(ns(KID, "fe80::1"))
     assert got == [KID]
