@@ -47,3 +47,27 @@ platforms = ["L"]
 alerts_allowed = ["locked_try"]  # trying a non-Google IP while paused is a real "tried while locked" signal
 # escape = Cloudflare's own cert comes back, i.e. the gate tunnelled to the IP the kid chose
 probe = """echo | timeout 8 openssl s_client -connect 1.1.1.1:443 -servername www.google.com 2>/dev/null | grep -q 'CN = cloudflare-dns.com'"""
+
+# IPv6 rows: home LAN has global IPv6 since 2026-11-15 (EdgeRouter DHCPv6-PD, 2600:4040:b646:401::/64 on eth1.40).
+# Literal v6 target: the laptop's DNS (household 192.168.1.241) strips AAAA. V6 = Cloudflare trace over IPv6.
+[[scenario]]
+id = "l.v6.plain"
+title = "Laptop fetches over IPv6 only (curl -6)"
+platforms = ["L"]
+probe = '''curl -6 -s -m10 'https://[2606:4700:4700::1111]/cdn-cgi/trace' | grep -q fl= '''
+
+[[scenario]]
+id = "l.v6.temp"
+title = "IPv6 from the laptop's temporary (privacy) address"
+platforms = ["L"]
+probe = '''A=$(ip -6 addr show dev wlp2s0 scope global temporary | awk '/inet6 2/{sub("/.*","",$2); print $2; exit}'); [ -n "$A" ] && curl -6 --interface "$A" -s -m10 'https://[2606:4700:4700::1111]/cdn-cgi/trace' | grep -q fl= '''
+
+[[scenario]]
+id = "l.v6.static_ndp"
+live_check = false
+alerts_allowed = ["bypass", "resisting"]
+title = "Pin the router's IPv6 link-local to its real MAC (static NDP) so the box's NA spoof is ignored"
+platforms = ["L"]
+locked_setup = '''GW=$(ip -6 route show default | awk '{print $3; exit}'); sudo -n ip -6 neigh replace "$GW" lladdr f4:92:bf:8b:d8:2b dev wlp2s0 nud permanent'''
+probe = '''curl -6 -s -m10 'https://[2606:4700:4700::1111]/cdn-cgi/trace' | grep -q fl= && echo via=$(ip -6 neigh show $(ip -6 route show default | awk '{print $3; exit}') | awk '{print $3}')'''
+teardown = '''GW=$(ip -6 route show default | awk '{print $3; exit}'); sudo -n ip -6 neigh del "$GW" dev wlp2s0; true'''
