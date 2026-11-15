@@ -89,3 +89,25 @@ def test_expires_after_window(client, db, parent, kid):
     db.expire_all()
     assert not db.get(Device, did).held
     assert db.query(Notification).filter_by(kind="new_device", device_id=did).count() == 1
+
+
+def test_kept_on_rescan_while_relink_still_possible(client, db, kid):
+    old = _old(db, kid, silent=timedelta(seconds=10))
+    pause(db, old)
+    did = seen(client)
+    seen(client)
+    db.expire_all()
+    d = db.get(Device, did)
+    assert d.held and d.held_provisional and d.status == "unassigned"
+
+
+def test_parent_allow_ends_provisional(client, db, kid):
+    old = _old(db, kid, silent=timedelta(seconds=10))
+    pause(db, old)
+    did = seen(client)
+    d = db.get(Device, did)
+    d.held = False  # a parent allowed it
+    db.commit()
+    seen(client)
+    db.expire_all()
+    assert not db.get(Device, did).held
