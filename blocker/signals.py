@@ -25,7 +25,7 @@ MDNS_TYPES = (
 )
 MDNS_QUERY_EVERY = 300  # s
 _FIELDS = ("mdns_name", "model", "dhcp_fp", "dhcp_hostname")
-WAKE_GAP = 2.0  # s between announcement-triggered rescans
+WAKE_GAP = 10.0  # s between announcement-triggered rescans (idle Wi-Fi airtime budget)
 _WOKEN_MAX = 128  # cap on remembered MACs that already triggered a wake
 _FRESH = 600  # s: only trust discovery entries this recent for IP -> MAC
 
@@ -209,6 +209,8 @@ class Signals:
         if found is None:
             return
         mac = found[0]
+        if not self._is_announcement(pkt):
+            return
         if self._is_request(pkt) or mac in self._own_macs():
             return
         with self._lock:
@@ -224,6 +226,13 @@ class Signals:
             self._woken[mac] = now
             self._last_wake = now
         self._on_unknown()
+
+    @staticmethod
+    def _is_announcement(pkt) -> bool:
+        """DHCP, or a gratuitous ARP (sender IP == target IP); ordinary ARP traffic is not one."""
+        from blocker.scapy_lite import ARP
+
+        return not pkt.haslayer(ARP) or pkt[ARP].psrc == pkt[ARP].pdst
 
     @staticmethod
     def _is_request(pkt) -> bool:

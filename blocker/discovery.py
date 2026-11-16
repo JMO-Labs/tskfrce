@@ -152,12 +152,15 @@ def scan_once(
     iface: str | None = None,
     enrich: Callable[[Seen], Seen] = lambda s: s,
     on_report: Callable[[Seen], None] | None = None,
+    learn_v6: Callable[[], bool] | None = None,
 ) -> list[Seen]:
     v4: dict[str, str] = {}
     for _, rcv in send("arp", cfg, iface)[0]:
         v4[_norm(rcv.mac)] = rcv.ip
     v6: dict[str, list[str]] = {}
     for kind in ("ndp", "ndp_listen"):
+        if kind == "ndp" and learn_v6 is not None and not learn_v6():
+            continue  # ff02::1 ping is airtime: only when a device needs its v6 learned
         try:
             for _, rcv in send(kind, cfg, iface)[0]:
                 addrs = v6.setdefault(_norm(rcv.mac), [])
@@ -187,12 +190,29 @@ def scan_once(
     return seen_list
 
 
+class V6Gate:
+    """Allow the ff02::1 learn ping at most once per interval, and only while wanted()."""
+
+    def __init__(self, interval: float, wanted: Callable[[], bool], clock=time.monotonic):
+        self._interval, self._wanted, self._clock = interval, wanted, clock
+        self._last = float("-inf")
+
+    def __call__(self) -> bool:
+        now = self._clock()
+        if now - self._last < self._interval or not self._wanted():
+            return False
+        self._last = now
+        return True
+
+
 class Rescanner:
     """Fan a rescan request out to every discovery loop (one wake event each)."""
 
     def __init__(self) -> None:
         self._events: list[threading.Event] = []
         self._lock = threading.Lock()
+        # True while some device is paused (set by the service); gates the ff02::1 ping
+        self.v6_wanted: Callable[[], bool] = lambda: True
 
     def register(self) -> threading.Event:
         ev = threading.Event()
@@ -214,16 +234,18 @@ def run_discovery(
     iface: str | None = None,
     enrich: Callable[[Seen], Seen] = lambda s: s,
     wake: threading.Event | None = None,
+    v6_wanted: Callable[[], bool] = lambda: True,
 ) -> None:
     """Run periodic ARP/NDP discovery. Pass iface to override cfg.lan_iface.
 
     Setting `wake` cuts the sleep short; it is cleared as a sweep starts, so rescans
     requested during a sweep coalesce into one extra sweep."""
     wake = wake or threading.Event()
+    gate = V6Gate(cfg.scan_interval, v6_wanted)
     while not stop.is_set():
         wake.clear()
         try:
-            scan_once(cfg, vid=vid, iface=iface, enrich=enrich, on_report=on_seen)
+            scan_once(cfg, vid=vid, iface=iface, enrich=enrich, on_report=on_seen, learn_v6=gate)
         except Exception as e:  # noqa: BLE001 - best effort, the daemon keeps running
             log.warning("scan on %s failed: %s", iface or cfg.lan_iface, e)
         deadline = time.monotonic() + cfg.scan_interval

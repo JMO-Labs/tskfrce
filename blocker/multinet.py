@@ -212,6 +212,7 @@ class InterfaceManager:
                 iface=iface,
                 enrich=enrich,
                 wake=self._rescanner.register(),
+                v6_wanted=lambda: self._rescanner.v6_wanted(),
             )
         except Exception:
             log.exception("discovery on %s crashed", iface)
