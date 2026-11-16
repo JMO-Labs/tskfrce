@@ -397,7 +397,7 @@ def test_forged_mac_flood_is_rate_limited():
     for i in range(50):
         sg._on_dhcp(_ack(mac=f"aa:bb:cc:00:00:{i:02x}"))
     assert wake.call_count == 1
-    t[0] += 2.5
+    t[0] += WAKE_GAP + 0.5
     sg._on_dhcp(_ack(mac="aa:bb:cc:00:01:00"))
     assert wake.call_count == 2
 
@@ -435,3 +435,31 @@ def test_woken_mac_memory_is_bounded():
         t[0] += WAKE_GAP + 0.1
         sg._on_dhcp(_arp(mac=f"aa:bb:cc:00:{i // 256:02x}:{i % 256:02x}"))
     assert len(sg._woken) <= 128
+
+
+def _plain_arp(op, mac=MAC, ip="10.0.0.9", target="10.0.0.1"):
+    from scapy.all import ARP
+
+    return Ether(src=mac, dst="ff:ff:ff:ff:ff:ff") / ARP(op=op, hwsrc=mac, psrc=ip, pdst=target)
+
+
+def test_wake_gap_is_ten_seconds():
+    assert WAKE_GAP >= 10
+
+
+def test_ordinary_arp_request_and_reply_storm_never_wakes():
+    sg, wake = _sgw(lambda: 100.0)
+    for i in range(60):
+        m = f"aa:bb:cc:00:00:{i:02x}"
+        sg._on_dhcp(_plain_arp(1, mac=m))
+        sg._on_dhcp(_plain_arp(2, mac=m))
+    wake.assert_not_called()
+
+
+def test_announcement_storm_wakes_at_most_once_per_ten_seconds():
+    t = [100.0]
+    sg, wake = _sgw(lambda: t[0])
+    for i in range(60):
+        t[0] += 0.1
+        sg._on_dhcp(_arp(mac=f"aa:bb:cc:00:00:{i:02x}"))
+    assert wake.call_count == 1

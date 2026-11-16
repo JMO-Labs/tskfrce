@@ -112,6 +112,7 @@ class Service:
         self.cfg = cfg
         self._fw = firewall
         self._rescanner = Rescanner()
+        self._rescanner.v6_wanted = lambda: bool(self.store.current())
         self._using_iface_mgr = cfg.lan_iface == ""
         if self._using_iface_mgr:
             # InterfaceManager will be set up later with on_seen callback after full init
@@ -599,6 +600,7 @@ class Service:
                     self._on_seen,
                     enrich=self._enrich,
                     wake=self._rescanner.register(),
+                    v6_wanted=lambda: self._rescanner.v6_wanted(),
                 )
             )
         if self.cfg.lan_iface or self.cfg.mirror_iface:

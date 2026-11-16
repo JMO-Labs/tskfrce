@@ -300,3 +300,32 @@ def test_learn_ping_is_sourced_from_the_scanned_ifaces_mac(monkeypatch, tmp_path
     _scapy_send("ndp", _cfg(tmp_path), "wlo1")
     pkt, kw = sent[0]
     assert pkt[Ether].src == "30:89:4a:9b:a6:54" and kw["iface"] == "wlo1"
+
+
+def test_ndp_ping_skipped_when_gate_closed(tmp_path, reported):
+    kinds = []
+
+    def send(kind, cfg, iface=None):
+        kinds.append(kind)
+        return [], []
+
+    scan_once(_cfg(tmp_path), send=send, learn_v6=lambda: False)
+    assert "ndp" not in kinds and "ndp_listen" in kinds
+    kinds.clear()
+    scan_once(_cfg(tmp_path), send=send)
+    assert "ndp" in kinds
+
+
+def test_v6_gate_once_per_interval_and_only_when_wanted():
+    from blocker.discovery import V6Gate
+
+    t = [0.0]
+    want = [False]
+    g = V6Gate(20, lambda: want[0], clock=lambda: t[0])
+    assert not g()
+    want[0] = True
+    assert g()
+    t[0] += 5
+    assert not g()  # a wake within the interval does not ping again
+    t[0] += 16
+    assert g()
