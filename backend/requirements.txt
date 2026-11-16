@@ -1,5 +1,5 @@
 # FastAPI and ASGI server
-fastapi==0.162.0
+fastapi==0.162.6
 uvicorn[standard]==0.54.0
 python-multipart==0.0.33
 Pillow==13.0.0
@@ -7,7 +7,7 @@ Pillow==13.0.0
 # Database
 sqlalchemy==2.1.8
 alembic==1.20.1
-psycopg[binary]==3.3.8  # optional external Postgres (DATABASE_URL=postgresql+psycopg://...)
+psycopg[binary]==3.3.9  # optional external Postgres (DATABASE_URL=postgresql+psycopg://...)
 
 # Authentication and Security
 PyJWT==2.15.1
@@ -17,7 +17,7 @@ email-validator==2.3.0
 # Environment and Configuration
 python-dotenv==1.2.4
 pydantic==2.14.3
-pydantic-settings==2.16.2
+pydantic-settings==2.16.3
 
 # HTTP Client (httpx also backs the test client)
 httpx==0.28.1
@@ -30,7 +30,7 @@ structlog==26.1.0
 prometheus-client==0.26.0
 
 # Notifications
-apprise==2.1.0
+apprise==2.2.0
 cryptography==50.0.2
 
 # Testing
